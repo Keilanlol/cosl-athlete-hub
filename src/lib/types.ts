@@ -309,3 +309,96 @@ export type GameQuota = {
   qualification_criteria: string | null;
   notes: string | null;
 };
+
+// Logistics
+export type TravelStatus = "planned" | "confirmed" | "modified" | "cancelled";
+export type TravelScope = "global" | "sport" | "individual";
+
+export const TRAVEL_STATUSES: { value: TravelStatus; label: string; cls: string }[] = [
+  { value: "planned", label: "Planifié", cls: "bg-amber-100 text-amber-700" },
+  { value: "confirmed", label: "Confirmé", cls: "bg-emerald-100 text-emerald-700" },
+  { value: "modified", label: "Modifié", cls: "bg-sky-100 text-sky-700" },
+  { value: "cancelled", label: "Annulé", cls: "bg-red-100 text-red-700" },
+];
+
+export const TRAVEL_SCOPES: { value: TravelScope; label: string }[] = [
+  { value: "global", label: "Global" },
+  { value: "sport", label: "Sport" },
+  { value: "individual", label: "Individuel" },
+];
+
+export type TravelPlan = {
+  id: string;
+  game_id: string;
+  delegation_id: string | null;
+  name: string;
+  scope: TravelScope;
+  sport_id: string | null;
+  departure_date: string;
+  return_date: string;
+  departure_point: string | null;
+  arrival_point: string | null;
+  status: TravelStatus;
+  notes: string | null;
+  created_at: string;
+};
+
+export type Flight = {
+  id: string;
+  travel_plan_id: string;
+  flight_number: string;
+  airline: string | null;
+  departure_airport: string;
+  arrival_airport: string;
+  departure_time: string;
+  arrival_time: string;
+  is_outbound: boolean;
+  notes: string | null;
+};
+
+export type FlightPassenger = {
+  id: string;
+  flight_id: string;
+  athlete_id: string | null;
+  coach_id: string | null;
+  seat: string | null;
+  special_baggage: string | null;
+  notes: string | null;
+};
+
+export type Accommodation = {
+  id: string;
+  game_id: string;
+  name: string;
+  address: string | null;
+  city: string | null;
+  country: string | null;
+  type: string | null;
+  total_rooms: number | null;
+  notes: string | null;
+  created_at: string;
+};
+
+export type RoomingAssignment = {
+  id: string;
+  accommodation_id: string;
+  room_number: string;
+  room_type: string | null;
+  athlete_id: string | null;
+  coach_id: string | null;
+  check_in: string;
+  check_out: string;
+  notes: string | null;
+};
+
+export type LocalTransport = {
+  id: string;
+  game_id: string;
+  transport_type: string;
+  pickup_location: string;
+  dropoff_location: string;
+  pickup_time: string;
+  capacity: number | null;
+  notes: string | null;
+};
+
