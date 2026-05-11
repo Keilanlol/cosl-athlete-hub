@@ -132,13 +132,22 @@
   --sidebar-ring: oklch(0.551 0.027 264.364);
 }
 
+:root {
+  --cosl-red: #ED2939;
+  --cosl-navy: #003F87;
+}
+
 @layer base {
   * {
     border-color: var(--color-border);
   }
 
+  html, body {
+    font-family: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  }
+
   body {
-    background-color: var(--color-background);
+    background-color: #F8FAFC;
     color: var(--color-foreground);
   }
 }
