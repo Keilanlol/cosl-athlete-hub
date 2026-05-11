@@ -1,100 +1,82 @@
-## Approche hybride retenue
 
-- **Dev / preview Lovable** : on garde `@lovable.dev/vite-tanstack-config` et le SSR par défaut → la preview reste fonctionnelle.
-- **Déploiement self-hosted COSL** : on ajoute en parallèle un `vite.config.prod.ts` (SPA pur, `ssr: false`, pas de Cloudflare) + un serveur Express `server/node-server.mjs`.
-- Aucune logique métier dans ce scaffold : juste pages stub avec titre + placeholder « À implémenter ».
+# Audit COSLxBloobiz — rapport priorisé
 
-## Étape 1 — Dépendances
+Aucune modification effectuée. Statuts : ✅ conforme · ⚠️ partiel · ❌ non conforme.
 
-- `bun add @supabase/supabase-js`
-- `bun add -d express` (pour `server/node-server.mjs`)
+## 🟢 Conformes (8/14)
 
-## Étape 2 — Configuration & environnement
+**1. ✅ `ssr: false` & shell SPA** — `vite.config.prod.ts` configure bien `build.ssr=false`, `outDir=dist/client`. (`vite.config.ts` reste sur la config SSR Lovable mais n'est pas utilisée pour le build prod.)
 
-- `.env.example` à la racine :
-  ```
-  VITE_SUPABASE_URL=http://IP_SERVEUR:8100
-  VITE_SUPABASE_ANON_KEY=
-  ```
-- `vite.config.prod.ts` : config Vite minimale (plugin React + TanStack Router + Tailwind + tsconfig-paths), `build.ssr: false`, sortie `dist/client/`. Utilisée uniquement en prod self-hosted via `vite build --config vite.config.prod.ts`.
-- `vite.config.ts` actuel **inchangé** (preset Lovable).
-- `server/node-server.mjs` : Express, sert `dist/client/`, fallback SPA `app.get('/{*path}', ...)` qui teste `index.html` puis `_shell.html`, port via `process.env.PORT` (default 3000).
-- Ajout `scripts` dans `package.json` :
-  - `"build:prod": "vite build --config vite.config.prod.ts"`
-  - `"start:prod": "node server/node-server.mjs"`
+**2. ✅ `server/node-server.mjs`** — fallback explicite sur `["index.html", "_shell.html"]` via `find(fs.existsSync)`, syntaxe Express 5 `app.get("/{*path}", …)` correcte, exit 1 si shell absent, cache long pour `/assets/`, no-cache pour le shell.
 
-## Étape 3 — Client Supabase & Auth
+**3. ✅ `src/lib/supabase.ts`** — aucun fallback placeholder. Erreur console claire si les `VITE_SUPABASE_*` manquent, `createClient(url ?? "", anonKey ?? "")` ne masque rien.
 
-- `src/lib/supabase.ts`
-  - Lit `import.meta.env.VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY`.
-  - Si absent → `console.error` explicite, **aucun fallback placeholder**.
-  - Exporte `supabase` (createClient avec `persistSession: true, autoRefreshToken: true`).
-- `src/hooks/useAuth.ts`
-  - State : `{ session, user, username, full_name, role, loading }`.
-  - `useEffect` : `supabase.auth.onAuthStateChange(...)` **AVANT** `supabase.auth.getSession()`.
-  - Sur changement de session, charger profil depuis `user_profiles` (par `user.id`) dans `setTimeout(() => { ... }, 0)` pour éviter deadlocks.
-  - Méthodes : `signIn(username, password)` → email synthétique `${username}@coslbloobiz.local`, `signOut()`.
-  - Pas de `/register` côté UI.
+**4. ✅ SERVICE_ROLE_KEY jamais côté client** — `rg SERVICE_ROLE src` ne renvoie qu'un commentaire dans `admin/users.tsx`. Aucun import, aucun usage. (Conséquence : la suppression réelle d'`auth.users` n'est pas implémentée — voir point 12.)
 
-## Étape 4 — Layouts & garde
+**5. ✅ `useAuth` ordre des appels** — `onAuthStateChange` est bien souscrit AVANT `getSession()` (lignes 67-87), avec `setTimeout(…, 0)` pour différer le fetch de profil et éviter le deadlock auth Supabase. Conforme aux bonnes pratiques.
 
-- `src/components/layouts/AuthLayout.tsx` : fond `bg-slate-50`, card centrée max-w-md, logo COSLxBloobiz, slot enfants.
-- `src/components/layouts/AppLayout.tsx` : `SidebarProvider` shadcn + `AppSidebar` collapsible (`collapsible="icon"`) + topbar avec `SidebarTrigger`, breadcrumb, menu utilisateur (avatar, nom, déconnexion). Outlet pour le contenu.
-- `src/components/AppSidebar.tsx` : sidebar shadcn fond `bg-slate-800 text-slate-100`, accent `indigo-500` sur item actif, groupes par module (Dashboard / Athletes / Games / Accreditations / Logistics / Communication / Admin) avec icônes lucide. Liens via `<Link>` TanStack + `useRouterState` pour `isActive`.
-- `src/components/ProtectedRoute.tsx` : composant qui consomme `useAuth`, affiche spinner si `loading`, redirige vers `/login` si pas de session.
-  - Utilisé dans `src/routes/_authenticated.tsx` (pathless layout) qui wrap tous les modules.
+**6. ✅ Routes protégées** — toutes les routes applicatives sont sous `src/routes/_authenticated/` qui monte `<ProtectedRoute>` via `_authenticated.tsx`. Login et `__root` sont les seules routes publiques.
 
-## Étape 5 — Arborescence des routes
+**8. ✅ RPC `athlete_kyc_valid()`** — appelé dans `selections.tsx` (l. 173) AVANT la transition vers `status='selected'`. Bloque la promotion si `data === false`. Implémentation cohérente avec le CDC.
 
-```
-src/routes/
-  __root.tsx                              (déjà existant — wrap QueryClientProvider, head)
-  index.tsx                               (redirect → /dashboard si connecté, sinon → /login)
-  login.tsx                               (AuthLayout + form username/password stub)
+**14. ✅ Triggers `handle_new_user`** — défini l. 471, attaché à `auth.users` AFTER INSERT. Crée le `user_profiles` avec rôle issu de `raw_user_meta_data`. Conforme.
 
-  _authenticated.tsx                      (pathless, ProtectedRoute + AppLayout + Outlet)
-  _authenticated/dashboard.tsx            (KPI placeholders)
+---
 
-  _authenticated/athletes/index.tsx
-  _authenticated/athletes/$id.tsx
-  _authenticated/federations/index.tsx
-  _authenticated/clubs/index.tsx
-  _authenticated/coaches/index.tsx
+## 🟠 Partiels (3/14)
 
-  _authenticated/games/index.tsx
-  _authenticated/games/$id/index.tsx
-  _authenticated/games/$id/selections.tsx
-  _authenticated/games/$id/delegation.tsx
-  _authenticated/games/$id/accreditations.tsx
-  _authenticated/games/$id/logistics/index.tsx
-  _authenticated/games/$id/logistics/flights.tsx
-  _authenticated/games/$id/logistics/lodging.tsx
-  _authenticated/games/$id/logistics/transport.tsx
+**7. ⚠️ Validation Zod incomplète** — `athleteSchema` existe et est utilisé dans `athletes/index.tsx` + `athletes/$id.tsx` via `safeParse`. **Mais aucun autre formulaire** (games, federations, clubs, coaches, selections, accreditations, travel_plans, flights, accommodations, transports, message_templates, notifications, admin/users) n'a de schéma Zod. Validation purement HTML/`required` côté client. Risque : insertion de données incohérentes que la DB ne rattrape pas (ex. emails sans format, longueurs non bornées).
 
-  _authenticated/accreditations/index.tsx
-  _authenticated/logistics/index.tsx
+**11. ⚠️ Tableaux : tri manquant** — `PagerBar`, `EmptyState`, `TableSkeleton`, recherche et filtres sont en place sur quasiment toutes les listes (athletes, games, coaches, clubs, federations, accreditations, logistics, notifications, admin/users). **Mais aucun tri de colonne (clic header asc/desc)** n'est implémenté. Les listes sont triées en dur côté serveur (`order("last_name")`, etc.).
 
-  _authenticated/communication/index.tsx
-  _authenticated/communication/messages.tsx
-  _authenticated/communication/notifications.tsx
+**13. ⚠️ Schéma SQL — CHECK partiels** — Cohérent globalement (FK, UNIQUE, ENUMs riches, index). 9 contraintes CHECK présentes (dates, quotas, polymorphisme accréditations/passagers/rooming). **Manques notables** :
+- Pas de CHECK sur `birth_date < now()` ni `passport_expiry > now()` sur `athletes`.
+- Pas de CHECK sur `quota_max >= quota_used` (la valeur courante est calculée via RPC).
+- `email`, `phone` sans validation format en DB.
+- `cosl_id` sans regex (TEXT libre).
 
-  _authenticated/admin/users.tsx
-```
+---
 
-Chaque page = composant stub : titre H1 + paragraphe muted « Module à implémenter ». Pas d'appels Supabase pour l'instant.
+## 🔴 Non conformes (3/14)
 
-## Étape 6 — Design tokens
+**9. ❌ Routes `/admin/*` — protection client uniquement** — `admin/users.tsx` vérifie `role === 'admin'` côté composant (`isAdmin`) et affiche un message si refus, **mais la route reste accessible** (montée + données fetchées) avant le check. Pas de garde `beforeLoad` au niveau routeur, pas de layout `_authenticated/_admin.tsx` pour bloquer toute la sous-arborescence. Côté DB, RLS = "tout authentifié peut tout faire" (voir point critique ci-dessous), donc rien n'empêche un `reader` de muter `user_profiles` via la console. **Risque de privilege escalation.**
 
-- `src/styles.css` : ajout variables Team Lëtzebuerg (`--cosl-red: #ED2939`, `--cosl-navy: #003F87`) + accent indigo en token `--accent-indigo`. Font Inter chargée via `<link>` dans `__root.tsx` head.
-- Composants utilisent **uniquement** tokens Tailwind sémantiques + classes slate/indigo conformes à la knowledge base.
+**10. ❌ Types `any` (générés)** — `rg ': any|as any' src` hors `routeTree.gen.ts` = 0 occurrence. ✅ côté code écrit. **Mais** `routeTree.gen.ts` contient 25 `as any` (généré par TanStack Router, attendu et non modifiable manuellement). À documenter comme exception acceptée.
 
-## Note technique
+**12. ❌ Soft-delete athletes — incohérent** — `athletes/$id.tsx` fait bien `update({ is_active: false })` (l. 311) ✅. **Mais** `athlete_relations` (l. 418) et `athlete_documents` (l. 361) sont supprimés en dur. Plus grave : 16 autres tables utilisent `.delete()` direct (games, clubs, federations, coaches, game_sports, game_quotas, delegation_members, accreditation_types, travel_plans, flights, flight_passengers, lodging, transports, message_templates, user_profiles, …). Le CDC v3.1 demande soft-delete uniquement sur `athletes` — donc conforme à la lettre du CDC, mais à confirmer pour `coaches` et `user_profiles` (cascades dangereuses).
 
-Le preset Lovable active SSR par défaut. Comme `useAuth` touche `localStorage` via Supabase, le hook sera consommé uniquement dans des composants protégés rendus après hydratation (`useEffect` côté client). Aucune lecture de session en SSR/loader pour éviter les erreurs `window is not defined`.
+---
 
-## Hors scope (étapes futures)
+## 🚨 Trouvailles hors-checklist (critiques)
 
-- Schéma SQL Supabase, RLS, triggers `user_profiles`.
-- Données de seed.
-- Logique CRUD de chaque module.
-- Imports/exports Excel, génération PDF accréditations.
+**A. RLS trop permissif** — `01_init.sql` l. 578-588 : boucle `DO $$ … FOR ALL TO authenticated USING (true) WITH CHECK (true)` sur **toutes** les tables. Tout utilisateur authentifié peut lire/écrire/supprimer n'importe quelle ligne (athletes, user_profiles, accreditations, etc.) directement via l'API REST Supabase. Le contrôle de rôle est uniquement frontend. **Risque maximal** pour un déploiement multi-utilisateurs avec rôles `reader`, `fed_manager`, etc.
+
+**B. Trigger `set_updated_at` orphelin** — La fonction existe et est solide, mais une **seule colonne `updated_at` existe dans tout le schéma** (table `athletes` uniquement) et un seul trigger l'utilise. Toutes les autres tables n'ont pas de `updated_at` → impossible de tracer les modifications (audit, sync, cache). Incohérent avec point 14 du CDC.
+
+**C. Suppression utilisateur incomplète** — `admin/users.tsx` supprime le `user_profiles` mais pas l'entrée `auth.users` (commenté l. 123 : nécessite SERVICE_ROLE_KEY). L'utilisateur peut continuer à se connecter mais perd son profil → état zombie. Nécessite une route serveur `/api/admin/users` (avec vérif rôle) appelant `supabaseAdmin.auth.admin.deleteUser`.
+
+**D. Pas de garde rôle sur opérations sensibles** — Création de Games, désactivation d'athlètes, validation d'accréditations, envoi de messages : aucune vérification `role` côté client OU serveur. Conjugué à (A), n'importe quel `reader` peut tout faire.
+
+---
+
+## Plan de correction recommandé (par priorité)
+
+### P0 — Sécurité (à faire avant prod)
+1. Réécrire les RLS policies par table avec `has_role()` (function `SECURITY DEFINER` + table `user_roles` séparée comme préconisé) — au minimum :
+   - `user_profiles` : SELECT pour tous, INSERT/UPDATE/DELETE admin uniquement.
+   - `athletes`, `selections`, `accreditations` : écriture limitée à `admin`/`games_manager`/`fed_manager` selon contexte.
+   - Tables logistique : écriture `admin`/`logistics`.
+2. Ajouter `beforeLoad` dans un layout `_authenticated/_admin.tsx` qui redirige vers `/dashboard` si `role !== 'admin'`.
+3. Créer une route serveur `/api/admin/users` (POST création, DELETE suppression) qui utilise `supabaseAdmin` + vérifie le rôle de l'appelant via JWT.
+
+### P1 — Intégrité données
+4. Étendre Zod à tous les formulaires (générer un schéma par entité dans `src/lib/types.ts`).
+5. Ajouter `updated_at` + trigger sur toutes les tables mutables.
+6. Ajouter contraintes CHECK manquantes (`birth_date < now()`, `passport_expiry > now()`, regex `cosl_id`).
+
+### P2 — UX
+7. Ajouter tri par colonne sur les listes (header cliquable, état local `sortBy`/`sortDir`, passer dans `.order()` Supabase).
+8. Décider politique soft-delete : appliquer aussi à `coaches` et `user_profiles` (ajouter colonne `is_active`) ou conserver hard-delete documenté.
+
+### P3 — Cosmétique
+9. Documenter dans le README que les `as any` de `routeTree.gen.ts` sont attendus (généré par TanStack).
