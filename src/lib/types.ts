@@ -402,3 +402,57 @@ export type LocalTransport = {
   notes: string | null;
 };
 
+
+// Communication
+export type MessageTemplate = {
+  id: string;
+  name: string;
+  subject: string;
+  body: string;
+  channel: string;
+  is_active: boolean | null;
+  created_at: string;
+};
+
+export type MessageSent = {
+  id: string;
+  template_id: string | null;
+  game_id: string | null;
+  channel: string;
+  subject: string;
+  body: string;
+  audience_segment: string;
+  recipients_count: number;
+  sent_by: string | null;
+  sent_at: string;
+};
+
+export type Notification = {
+  id: string;
+  notification_type: string;
+  message: string;
+  target_user_id: string | null;
+  related_athlete_id: string | null;
+  related_game_id: string | null;
+  is_read: boolean | null;
+  created_at: string;
+};
+
+// Admin
+export type UserProfile = {
+  id: string;
+  username: string;
+  full_name: string;
+  email: string;
+  role: "admin" | "games_manager" | "fed_manager" | "logistics" | "communication" | "reader";
+  created_at: string;
+};
+
+export const USER_ROLES: { value: UserProfile["role"]; label: string; cls: string }[] = [
+  { value: "admin", label: "Administrateur", cls: "bg-red-100 text-red-700" },
+  { value: "games_manager", label: "Games Manager", cls: "bg-indigo-100 text-indigo-700" },
+  { value: "fed_manager", label: "Fed. Manager", cls: "bg-blue-100 text-blue-700" },
+  { value: "logistics", label: "Logistique", cls: "bg-amber-100 text-amber-700" },
+  { value: "communication", label: "Communication", cls: "bg-emerald-100 text-emerald-700" },
+  { value: "reader", label: "Lecteur", cls: "bg-slate-200 text-slate-700" },
+];
