@@ -244,3 +244,68 @@ export const generateCoslId = (existing: string[]): string => {
     .reduce((m, n) => Math.max(m, n), 0);
   return `${prefix}${String(max + 1).padStart(4, "0")}`;
 };
+
+// Games
+export type GameType =
+  | "jo_summer" | "jo_winter" | "joj_summer" | "joj_winter"
+  | "jpee" | "european_games" | "eyof_summer" | "eyof_winter" | "other";
+
+export type GameStatus = "preparation" | "in_progress" | "finished" | "archived";
+
+export const GAME_TYPES: { value: GameType; label: string; cls: string }[] = [
+  { value: "jo_summer", label: "JO été", cls: "bg-amber-100 text-amber-800" },
+  { value: "jo_winter", label: "JO hiver", cls: "bg-sky-100 text-sky-800" },
+  { value: "joj_summer", label: "JOJ été", cls: "bg-amber-50 text-amber-700" },
+  { value: "joj_winter", label: "JOJ hiver", cls: "bg-sky-50 text-sky-700" },
+  { value: "jpee", label: "JPEE", cls: "bg-indigo-100 text-indigo-700" },
+  { value: "european_games", label: "European Games", cls: "bg-blue-100 text-blue-800" },
+  { value: "eyof_summer", label: "EYOF été", cls: "bg-emerald-100 text-emerald-700" },
+  { value: "eyof_winter", label: "EYOF hiver", cls: "bg-cyan-100 text-cyan-800" },
+  { value: "other", label: "Autre", cls: "bg-slate-200 text-slate-700" },
+];
+
+export const GAME_STATUSES: { value: GameStatus; label: string; cls: string }[] = [
+  { value: "preparation", label: "Préparation", cls: "bg-amber-100 text-amber-700" },
+  { value: "in_progress", label: "En cours", cls: "bg-emerald-100 text-emerald-700" },
+  { value: "finished", label: "Terminé", cls: "bg-slate-200 text-slate-700" },
+  { value: "archived", label: "Archivé", cls: "bg-slate-100 text-slate-500" },
+];
+
+export type Game = {
+  id: string;
+  name: string;
+  short_name: string | null;
+  game_type: GameType;
+  edition_year: number;
+  host_country: string | null;
+  host_city: string | null;
+  organizer: string | null;
+  preparation_start: string | null;
+  competition_start: string;
+  competition_end: string;
+  closing_date: string | null;
+  timezone: string | null;
+  status: GameStatus;
+  description: string | null;
+  created_at: string;
+};
+
+export type GameSport = {
+  id: string;
+  game_id: string;
+  sport_id: string;
+  is_active: boolean | null;
+  sport?: Sport | null;
+};
+
+export type GameQuota = {
+  id: string;
+  game_id: string;
+  sport_id: string;
+  discipline_id: string | null;
+  gender: Gender;
+  quota_max: number;
+  qualification_deadline: string | null;
+  qualification_criteria: string | null;
+  notes: string | null;
+};
