@@ -16,13 +16,13 @@ export const Route = createFileRoute("/_authenticated/games/$id")({
   component: GameLayout,
 });
 
-const TABS = [
+const TABS: Array<{ to: "/games/$id" | "/games/$id/selections" | "/games/$id/delegation" | "/games/$id/accreditations" | "/games/$id/logistics"; label: string; exact?: boolean }> = [
   { to: "/games/$id", label: "Vue d'ensemble", exact: true },
   { to: "/games/$id/selections", label: "Sélections" },
   { to: "/games/$id/delegation", label: "Délégation" },
   { to: "/games/$id/accreditations", label: "Accréditations" },
   { to: "/games/$id/logistics", label: "Logistique" },
-] as const;
+];
 
 function GameLayout() {
   const { id } = Route.useParams();
@@ -62,7 +62,7 @@ function GameLayout() {
       toast.error("Export impossible", { description: error.message });
       return;
     }
-    const rows = (data ?? []) as Array<{
+    const rows = (data ?? []) as unknown as Array<{
       status: string;
       athlete: { cosl_id: string; first_name: string; last_name: string; gender: string; birth_date: string } | null;
       sport: { name: string } | null;
