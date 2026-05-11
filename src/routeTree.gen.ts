@@ -9,38 +9,355 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedLogisticsIndexRouteImport } from './routes/_authenticated/logistics/index'
+import { Route as AuthenticatedGamesIndexRouteImport } from './routes/_authenticated/games/index'
+import { Route as AuthenticatedFederationsIndexRouteImport } from './routes/_authenticated/federations/index'
+import { Route as AuthenticatedCommunicationIndexRouteImport } from './routes/_authenticated/communication/index'
+import { Route as AuthenticatedCoachesIndexRouteImport } from './routes/_authenticated/coaches/index'
+import { Route as AuthenticatedClubsIndexRouteImport } from './routes/_authenticated/clubs/index'
+import { Route as AuthenticatedAthletesIndexRouteImport } from './routes/_authenticated/athletes/index'
+import { Route as AuthenticatedAccreditationsIndexRouteImport } from './routes/_authenticated/accreditations/index'
+import { Route as AuthenticatedGamesIdRouteImport } from './routes/_authenticated/games/$id'
+import { Route as AuthenticatedCommunicationNotificationsRouteImport } from './routes/_authenticated/communication/notifications'
+import { Route as AuthenticatedCommunicationMessagesRouteImport } from './routes/_authenticated/communication/messages'
+import { Route as AuthenticatedAthletesIdRouteImport } from './routes/_authenticated/athletes/$id'
+import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin/users'
+import { Route as AuthenticatedGamesIdIndexRouteImport } from './routes/_authenticated/games/$id/index'
+import { Route as AuthenticatedGamesIdSelectionsRouteImport } from './routes/_authenticated/games/$id/selections'
+import { Route as AuthenticatedGamesIdDelegationRouteImport } from './routes/_authenticated/games/$id/delegation'
+import { Route as AuthenticatedGamesIdAccreditationsRouteImport } from './routes/_authenticated/games/$id/accreditations'
+import { Route as AuthenticatedGamesIdLogisticsIndexRouteImport } from './routes/_authenticated/games/$id/logistics/index'
+import { Route as AuthenticatedGamesIdLogisticsTransportRouteImport } from './routes/_authenticated/games/$id/logistics/transport'
+import { Route as AuthenticatedGamesIdLogisticsLodgingRouteImport } from './routes/_authenticated/games/$id/logistics/lodging'
+import { Route as AuthenticatedGamesIdLogisticsFlightsRouteImport } from './routes/_authenticated/games/$id/logistics/flights'
 
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRoute = AuthenticatedRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedLogisticsIndexRoute =
+  AuthenticatedLogisticsIndexRouteImport.update({
+    id: '/logistics/',
+    path: '/logistics/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedGamesIndexRoute = AuthenticatedGamesIndexRouteImport.update({
+  id: '/games/',
+  path: '/games/',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedFederationsIndexRoute =
+  AuthenticatedFederationsIndexRouteImport.update({
+    id: '/federations/',
+    path: '/federations/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedCommunicationIndexRoute =
+  AuthenticatedCommunicationIndexRouteImport.update({
+    id: '/communication/',
+    path: '/communication/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedCoachesIndexRoute =
+  AuthenticatedCoachesIndexRouteImport.update({
+    id: '/coaches/',
+    path: '/coaches/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedClubsIndexRoute = AuthenticatedClubsIndexRouteImport.update({
+  id: '/clubs/',
+  path: '/clubs/',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedAthletesIndexRoute =
+  AuthenticatedAthletesIndexRouteImport.update({
+    id: '/athletes/',
+    path: '/athletes/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedAccreditationsIndexRoute =
+  AuthenticatedAccreditationsIndexRouteImport.update({
+    id: '/accreditations/',
+    path: '/accreditations/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedGamesIdRoute = AuthenticatedGamesIdRouteImport.update({
+  id: '/games/$id',
+  path: '/games/$id',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedCommunicationNotificationsRoute =
+  AuthenticatedCommunicationNotificationsRouteImport.update({
+    id: '/communication/notifications',
+    path: '/communication/notifications',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedCommunicationMessagesRoute =
+  AuthenticatedCommunicationMessagesRouteImport.update({
+    id: '/communication/messages',
+    path: '/communication/messages',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedAthletesIdRoute = AuthenticatedAthletesIdRouteImport.update({
+  id: '/athletes/$id',
+  path: '/athletes/$id',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedAdminUsersRoute = AuthenticatedAdminUsersRouteImport.update({
+  id: '/admin/users',
+  path: '/admin/users',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedGamesIdIndexRoute =
+  AuthenticatedGamesIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedGamesIdRoute,
+  } as any)
+const AuthenticatedGamesIdSelectionsRoute =
+  AuthenticatedGamesIdSelectionsRouteImport.update({
+    id: '/selections',
+    path: '/selections',
+    getParentRoute: () => AuthenticatedGamesIdRoute,
+  } as any)
+const AuthenticatedGamesIdDelegationRoute =
+  AuthenticatedGamesIdDelegationRouteImport.update({
+    id: '/delegation',
+    path: '/delegation',
+    getParentRoute: () => AuthenticatedGamesIdRoute,
+  } as any)
+const AuthenticatedGamesIdAccreditationsRoute =
+  AuthenticatedGamesIdAccreditationsRouteImport.update({
+    id: '/accreditations',
+    path: '/accreditations',
+    getParentRoute: () => AuthenticatedGamesIdRoute,
+  } as any)
+const AuthenticatedGamesIdLogisticsIndexRoute =
+  AuthenticatedGamesIdLogisticsIndexRouteImport.update({
+    id: '/logistics/',
+    path: '/logistics/',
+    getParentRoute: () => AuthenticatedGamesIdRoute,
+  } as any)
+const AuthenticatedGamesIdLogisticsTransportRoute =
+  AuthenticatedGamesIdLogisticsTransportRouteImport.update({
+    id: '/logistics/transport',
+    path: '/logistics/transport',
+    getParentRoute: () => AuthenticatedGamesIdRoute,
+  } as any)
+const AuthenticatedGamesIdLogisticsLodgingRoute =
+  AuthenticatedGamesIdLogisticsLodgingRouteImport.update({
+    id: '/logistics/lodging',
+    path: '/logistics/lodging',
+    getParentRoute: () => AuthenticatedGamesIdRoute,
+  } as any)
+const AuthenticatedGamesIdLogisticsFlightsRoute =
+  AuthenticatedGamesIdLogisticsFlightsRouteImport.update({
+    id: '/logistics/flights',
+    path: '/logistics/flights',
+    getParentRoute: () => AuthenticatedGamesIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/athletes/$id': typeof AuthenticatedAthletesIdRoute
+  '/communication/messages': typeof AuthenticatedCommunicationMessagesRoute
+  '/communication/notifications': typeof AuthenticatedCommunicationNotificationsRoute
+  '/games/$id': typeof AuthenticatedGamesIdRouteWithChildren
+  '/accreditations/': typeof AuthenticatedAccreditationsIndexRoute
+  '/athletes/': typeof AuthenticatedAthletesIndexRoute
+  '/clubs/': typeof AuthenticatedClubsIndexRoute
+  '/coaches/': typeof AuthenticatedCoachesIndexRoute
+  '/communication/': typeof AuthenticatedCommunicationIndexRoute
+  '/federations/': typeof AuthenticatedFederationsIndexRoute
+  '/games/': typeof AuthenticatedGamesIndexRoute
+  '/logistics/': typeof AuthenticatedLogisticsIndexRoute
+  '/games/$id/accreditations': typeof AuthenticatedGamesIdAccreditationsRoute
+  '/games/$id/delegation': typeof AuthenticatedGamesIdDelegationRoute
+  '/games/$id/selections': typeof AuthenticatedGamesIdSelectionsRoute
+  '/games/$id/': typeof AuthenticatedGamesIdIndexRoute
+  '/games/$id/logistics/flights': typeof AuthenticatedGamesIdLogisticsFlightsRoute
+  '/games/$id/logistics/lodging': typeof AuthenticatedGamesIdLogisticsLodgingRoute
+  '/games/$id/logistics/transport': typeof AuthenticatedGamesIdLogisticsTransportRoute
+  '/games/$id/logistics/': typeof AuthenticatedGamesIdLogisticsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/athletes/$id': typeof AuthenticatedAthletesIdRoute
+  '/communication/messages': typeof AuthenticatedCommunicationMessagesRoute
+  '/communication/notifications': typeof AuthenticatedCommunicationNotificationsRoute
+  '/accreditations': typeof AuthenticatedAccreditationsIndexRoute
+  '/athletes': typeof AuthenticatedAthletesIndexRoute
+  '/clubs': typeof AuthenticatedClubsIndexRoute
+  '/coaches': typeof AuthenticatedCoachesIndexRoute
+  '/communication': typeof AuthenticatedCommunicationIndexRoute
+  '/federations': typeof AuthenticatedFederationsIndexRoute
+  '/games': typeof AuthenticatedGamesIndexRoute
+  '/logistics': typeof AuthenticatedLogisticsIndexRoute
+  '/games/$id/accreditations': typeof AuthenticatedGamesIdAccreditationsRoute
+  '/games/$id/delegation': typeof AuthenticatedGamesIdDelegationRoute
+  '/games/$id/selections': typeof AuthenticatedGamesIdSelectionsRoute
+  '/games/$id': typeof AuthenticatedGamesIdIndexRoute
+  '/games/$id/logistics/flights': typeof AuthenticatedGamesIdLogisticsFlightsRoute
+  '/games/$id/logistics/lodging': typeof AuthenticatedGamesIdLogisticsLodgingRoute
+  '/games/$id/logistics/transport': typeof AuthenticatedGamesIdLogisticsTransportRoute
+  '/games/$id/logistics': typeof AuthenticatedGamesIdLogisticsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/login': typeof LoginRoute
+  '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/_authenticated/athletes/$id': typeof AuthenticatedAthletesIdRoute
+  '/_authenticated/communication/messages': typeof AuthenticatedCommunicationMessagesRoute
+  '/_authenticated/communication/notifications': typeof AuthenticatedCommunicationNotificationsRoute
+  '/_authenticated/games/$id': typeof AuthenticatedGamesIdRouteWithChildren
+  '/_authenticated/accreditations/': typeof AuthenticatedAccreditationsIndexRoute
+  '/_authenticated/athletes/': typeof AuthenticatedAthletesIndexRoute
+  '/_authenticated/clubs/': typeof AuthenticatedClubsIndexRoute
+  '/_authenticated/coaches/': typeof AuthenticatedCoachesIndexRoute
+  '/_authenticated/communication/': typeof AuthenticatedCommunicationIndexRoute
+  '/_authenticated/federations/': typeof AuthenticatedFederationsIndexRoute
+  '/_authenticated/games/': typeof AuthenticatedGamesIndexRoute
+  '/_authenticated/logistics/': typeof AuthenticatedLogisticsIndexRoute
+  '/_authenticated/games/$id/accreditations': typeof AuthenticatedGamesIdAccreditationsRoute
+  '/_authenticated/games/$id/delegation': typeof AuthenticatedGamesIdDelegationRoute
+  '/_authenticated/games/$id/selections': typeof AuthenticatedGamesIdSelectionsRoute
+  '/_authenticated/games/$id/': typeof AuthenticatedGamesIdIndexRoute
+  '/_authenticated/games/$id/logistics/flights': typeof AuthenticatedGamesIdLogisticsFlightsRoute
+  '/_authenticated/games/$id/logistics/lodging': typeof AuthenticatedGamesIdLogisticsLodgingRoute
+  '/_authenticated/games/$id/logistics/transport': typeof AuthenticatedGamesIdLogisticsTransportRoute
+  '/_authenticated/games/$id/logistics/': typeof AuthenticatedGamesIdLogisticsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/dashboard'
+    | '/admin/users'
+    | '/athletes/$id'
+    | '/communication/messages'
+    | '/communication/notifications'
+    | '/games/$id'
+    | '/accreditations/'
+    | '/athletes/'
+    | '/clubs/'
+    | '/coaches/'
+    | '/communication/'
+    | '/federations/'
+    | '/games/'
+    | '/logistics/'
+    | '/games/$id/accreditations'
+    | '/games/$id/delegation'
+    | '/games/$id/selections'
+    | '/games/$id/'
+    | '/games/$id/logistics/flights'
+    | '/games/$id/logistics/lodging'
+    | '/games/$id/logistics/transport'
+    | '/games/$id/logistics/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/login'
+    | '/dashboard'
+    | '/admin/users'
+    | '/athletes/$id'
+    | '/communication/messages'
+    | '/communication/notifications'
+    | '/accreditations'
+    | '/athletes'
+    | '/clubs'
+    | '/coaches'
+    | '/communication'
+    | '/federations'
+    | '/games'
+    | '/logistics'
+    | '/games/$id/accreditations'
+    | '/games/$id/delegation'
+    | '/games/$id/selections'
+    | '/games/$id'
+    | '/games/$id/logistics/flights'
+    | '/games/$id/logistics/lodging'
+    | '/games/$id/logistics/transport'
+    | '/games/$id/logistics'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/login'
+    | '/_authenticated/dashboard'
+    | '/_authenticated/admin/users'
+    | '/_authenticated/athletes/$id'
+    | '/_authenticated/communication/messages'
+    | '/_authenticated/communication/notifications'
+    | '/_authenticated/games/$id'
+    | '/_authenticated/accreditations/'
+    | '/_authenticated/athletes/'
+    | '/_authenticated/clubs/'
+    | '/_authenticated/coaches/'
+    | '/_authenticated/communication/'
+    | '/_authenticated/federations/'
+    | '/_authenticated/games/'
+    | '/_authenticated/logistics/'
+    | '/_authenticated/games/$id/accreditations'
+    | '/_authenticated/games/$id/delegation'
+    | '/_authenticated/games/$id/selections'
+    | '/_authenticated/games/$id/'
+    | '/_authenticated/games/$id/logistics/flights'
+    | '/_authenticated/games/$id/logistics/lodging'
+    | '/_authenticated/games/$id/logistics/transport'
+    | '/_authenticated/games/$id/logistics/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  LoginRoute: typeof LoginRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +365,237 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/logistics/': {
+      id: '/_authenticated/logistics/'
+      path: '/logistics'
+      fullPath: '/logistics/'
+      preLoaderRoute: typeof AuthenticatedLogisticsIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/games/': {
+      id: '/_authenticated/games/'
+      path: '/games'
+      fullPath: '/games/'
+      preLoaderRoute: typeof AuthenticatedGamesIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/federations/': {
+      id: '/_authenticated/federations/'
+      path: '/federations'
+      fullPath: '/federations/'
+      preLoaderRoute: typeof AuthenticatedFederationsIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/communication/': {
+      id: '/_authenticated/communication/'
+      path: '/communication'
+      fullPath: '/communication/'
+      preLoaderRoute: typeof AuthenticatedCommunicationIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/coaches/': {
+      id: '/_authenticated/coaches/'
+      path: '/coaches'
+      fullPath: '/coaches/'
+      preLoaderRoute: typeof AuthenticatedCoachesIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/clubs/': {
+      id: '/_authenticated/clubs/'
+      path: '/clubs'
+      fullPath: '/clubs/'
+      preLoaderRoute: typeof AuthenticatedClubsIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/athletes/': {
+      id: '/_authenticated/athletes/'
+      path: '/athletes'
+      fullPath: '/athletes/'
+      preLoaderRoute: typeof AuthenticatedAthletesIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/accreditations/': {
+      id: '/_authenticated/accreditations/'
+      path: '/accreditations'
+      fullPath: '/accreditations/'
+      preLoaderRoute: typeof AuthenticatedAccreditationsIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/games/$id': {
+      id: '/_authenticated/games/$id'
+      path: '/games/$id'
+      fullPath: '/games/$id'
+      preLoaderRoute: typeof AuthenticatedGamesIdRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/communication/notifications': {
+      id: '/_authenticated/communication/notifications'
+      path: '/communication/notifications'
+      fullPath: '/communication/notifications'
+      preLoaderRoute: typeof AuthenticatedCommunicationNotificationsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/communication/messages': {
+      id: '/_authenticated/communication/messages'
+      path: '/communication/messages'
+      fullPath: '/communication/messages'
+      preLoaderRoute: typeof AuthenticatedCommunicationMessagesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/athletes/$id': {
+      id: '/_authenticated/athletes/$id'
+      path: '/athletes/$id'
+      fullPath: '/athletes/$id'
+      preLoaderRoute: typeof AuthenticatedAthletesIdRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/admin/users': {
+      id: '/_authenticated/admin/users'
+      path: '/admin/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AuthenticatedAdminUsersRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/games/$id/': {
+      id: '/_authenticated/games/$id/'
+      path: '/'
+      fullPath: '/games/$id/'
+      preLoaderRoute: typeof AuthenticatedGamesIdIndexRouteImport
+      parentRoute: typeof AuthenticatedGamesIdRoute
+    }
+    '/_authenticated/games/$id/selections': {
+      id: '/_authenticated/games/$id/selections'
+      path: '/selections'
+      fullPath: '/games/$id/selections'
+      preLoaderRoute: typeof AuthenticatedGamesIdSelectionsRouteImport
+      parentRoute: typeof AuthenticatedGamesIdRoute
+    }
+    '/_authenticated/games/$id/delegation': {
+      id: '/_authenticated/games/$id/delegation'
+      path: '/delegation'
+      fullPath: '/games/$id/delegation'
+      preLoaderRoute: typeof AuthenticatedGamesIdDelegationRouteImport
+      parentRoute: typeof AuthenticatedGamesIdRoute
+    }
+    '/_authenticated/games/$id/accreditations': {
+      id: '/_authenticated/games/$id/accreditations'
+      path: '/accreditations'
+      fullPath: '/games/$id/accreditations'
+      preLoaderRoute: typeof AuthenticatedGamesIdAccreditationsRouteImport
+      parentRoute: typeof AuthenticatedGamesIdRoute
+    }
+    '/_authenticated/games/$id/logistics/': {
+      id: '/_authenticated/games/$id/logistics/'
+      path: '/logistics'
+      fullPath: '/games/$id/logistics/'
+      preLoaderRoute: typeof AuthenticatedGamesIdLogisticsIndexRouteImport
+      parentRoute: typeof AuthenticatedGamesIdRoute
+    }
+    '/_authenticated/games/$id/logistics/transport': {
+      id: '/_authenticated/games/$id/logistics/transport'
+      path: '/logistics/transport'
+      fullPath: '/games/$id/logistics/transport'
+      preLoaderRoute: typeof AuthenticatedGamesIdLogisticsTransportRouteImport
+      parentRoute: typeof AuthenticatedGamesIdRoute
+    }
+    '/_authenticated/games/$id/logistics/lodging': {
+      id: '/_authenticated/games/$id/logistics/lodging'
+      path: '/logistics/lodging'
+      fullPath: '/games/$id/logistics/lodging'
+      preLoaderRoute: typeof AuthenticatedGamesIdLogisticsLodgingRouteImport
+      parentRoute: typeof AuthenticatedGamesIdRoute
+    }
+    '/_authenticated/games/$id/logistics/flights': {
+      id: '/_authenticated/games/$id/logistics/flights'
+      path: '/logistics/flights'
+      fullPath: '/games/$id/logistics/flights'
+      preLoaderRoute: typeof AuthenticatedGamesIdLogisticsFlightsRouteImport
+      parentRoute: typeof AuthenticatedGamesIdRoute
+    }
   }
 }
 
+interface AuthenticatedGamesIdRouteChildren {
+  AuthenticatedGamesIdAccreditationsRoute: typeof AuthenticatedGamesIdAccreditationsRoute
+  AuthenticatedGamesIdDelegationRoute: typeof AuthenticatedGamesIdDelegationRoute
+  AuthenticatedGamesIdSelectionsRoute: typeof AuthenticatedGamesIdSelectionsRoute
+  AuthenticatedGamesIdIndexRoute: typeof AuthenticatedGamesIdIndexRoute
+  AuthenticatedGamesIdLogisticsFlightsRoute: typeof AuthenticatedGamesIdLogisticsFlightsRoute
+  AuthenticatedGamesIdLogisticsLodgingRoute: typeof AuthenticatedGamesIdLogisticsLodgingRoute
+  AuthenticatedGamesIdLogisticsTransportRoute: typeof AuthenticatedGamesIdLogisticsTransportRoute
+  AuthenticatedGamesIdLogisticsIndexRoute: typeof AuthenticatedGamesIdLogisticsIndexRoute
+}
+
+const AuthenticatedGamesIdRouteChildren: AuthenticatedGamesIdRouteChildren = {
+  AuthenticatedGamesIdAccreditationsRoute:
+    AuthenticatedGamesIdAccreditationsRoute,
+  AuthenticatedGamesIdDelegationRoute: AuthenticatedGamesIdDelegationRoute,
+  AuthenticatedGamesIdSelectionsRoute: AuthenticatedGamesIdSelectionsRoute,
+  AuthenticatedGamesIdIndexRoute: AuthenticatedGamesIdIndexRoute,
+  AuthenticatedGamesIdLogisticsFlightsRoute:
+    AuthenticatedGamesIdLogisticsFlightsRoute,
+  AuthenticatedGamesIdLogisticsLodgingRoute:
+    AuthenticatedGamesIdLogisticsLodgingRoute,
+  AuthenticatedGamesIdLogisticsTransportRoute:
+    AuthenticatedGamesIdLogisticsTransportRoute,
+  AuthenticatedGamesIdLogisticsIndexRoute:
+    AuthenticatedGamesIdLogisticsIndexRoute,
+}
+
+const AuthenticatedGamesIdRouteWithChildren =
+  AuthenticatedGamesIdRoute._addFileChildren(AuthenticatedGamesIdRouteChildren)
+
+interface AuthenticatedRouteChildren {
+  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
+  AuthenticatedAthletesIdRoute: typeof AuthenticatedAthletesIdRoute
+  AuthenticatedCommunicationMessagesRoute: typeof AuthenticatedCommunicationMessagesRoute
+  AuthenticatedCommunicationNotificationsRoute: typeof AuthenticatedCommunicationNotificationsRoute
+  AuthenticatedGamesIdRoute: typeof AuthenticatedGamesIdRouteWithChildren
+  AuthenticatedAccreditationsIndexRoute: typeof AuthenticatedAccreditationsIndexRoute
+  AuthenticatedAthletesIndexRoute: typeof AuthenticatedAthletesIndexRoute
+  AuthenticatedClubsIndexRoute: typeof AuthenticatedClubsIndexRoute
+  AuthenticatedCoachesIndexRoute: typeof AuthenticatedCoachesIndexRoute
+  AuthenticatedCommunicationIndexRoute: typeof AuthenticatedCommunicationIndexRoute
+  AuthenticatedFederationsIndexRoute: typeof AuthenticatedFederationsIndexRoute
+  AuthenticatedGamesIndexRoute: typeof AuthenticatedGamesIndexRoute
+  AuthenticatedLogisticsIndexRoute: typeof AuthenticatedLogisticsIndexRoute
+}
+
+const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
+  AuthenticatedAthletesIdRoute: AuthenticatedAthletesIdRoute,
+  AuthenticatedCommunicationMessagesRoute:
+    AuthenticatedCommunicationMessagesRoute,
+  AuthenticatedCommunicationNotificationsRoute:
+    AuthenticatedCommunicationNotificationsRoute,
+  AuthenticatedGamesIdRoute: AuthenticatedGamesIdRouteWithChildren,
+  AuthenticatedAccreditationsIndexRoute: AuthenticatedAccreditationsIndexRoute,
+  AuthenticatedAthletesIndexRoute: AuthenticatedAthletesIndexRoute,
+  AuthenticatedClubsIndexRoute: AuthenticatedClubsIndexRoute,
+  AuthenticatedCoachesIndexRoute: AuthenticatedCoachesIndexRoute,
+  AuthenticatedCommunicationIndexRoute: AuthenticatedCommunicationIndexRoute,
+  AuthenticatedFederationsIndexRoute: AuthenticatedFederationsIndexRoute,
+  AuthenticatedGamesIndexRoute: AuthenticatedGamesIndexRoute,
+  AuthenticatedLogisticsIndexRoute: AuthenticatedLogisticsIndexRoute,
+}
+
+const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
+  AuthenticatedRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
