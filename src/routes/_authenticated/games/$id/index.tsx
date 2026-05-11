@@ -1,11 +1,450 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { PageStub } from "@/components/PageStub";
+import { useEffect, useMemo, useState } from "react";
+import { Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
+import {
+  type Game,
+  type GameQuota,
+  type GameSport,
+  type Gender,
+  type Sport,
+  GENDERS,
+} from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/_authenticated/games/$id/")({
-  component: GameDetail,
+  component: GameOverviewPage,
 });
 
-function GameDetail() {
+type Discipline = { id: string; sport_id: string; name: string; gender: Gender };
+
+function GameOverviewPage() {
   const { id } = Route.useParams();
-  return <PageStub title={`Games #${id}`} description="Sports activés, quotas, sélections." />;
+  const [game, setGame] = useState<Game | null>(null);
+  const [sports, setSports] = useState<Sport[]>([]);
+  const [disciplines, setDisciplines] = useState<Discipline[]>([]);
+  const [gameSports, setGameSports] = useState<GameSport[]>([]);
+  const [quotas, setQuotas] = useState<GameQuota[]>([]);
+  const [kpi, setKpi] = useState({ selected: 0, accred: 0, plans: 0 });
+  const [loading, setLoading] = useState(true);
+
+  // Add sport dialog
+  const [sportDlgOpen, setSportDlgOpen] = useState(false);
+  const [newSportId, setNewSportId] = useState<string>("");
+
+  // Add quota dialog
+  const [quotaDlgOpen, setQuotaDlgOpen] = useState(false);
+  const [quotaForm, setQuotaForm] = useState({
+    sport_id: "",
+    discipline_id: "",
+    gender: "mixed" as Gender,
+    quota_max: 1,
+    qualification_deadline: "",
+    qualification_criteria: "",
+  });
+
+  const load = async () => {
+    setLoading(true);
+    const [gameRes, sportsRes, discRes, gsRes, qRes, selRes, accRes, tpRes] = await Promise.all([
+      supabase.from("games").select("*").eq("id", id).maybeSingle(),
+      supabase.from("sports").select("*").order("name"),
+      supabase.from("disciplines").select("id,sport_id,name,gender").order("name"),
+      supabase.from("game_sports").select("*, sport:sports(*)").eq("game_id", id),
+      supabase.from("game_quotas").select("*").eq("game_id", id),
+      supabase.from("selections").select("id", { count: "exact", head: true }).eq("game_id", id).in("status", ["selected", "reserve"]),
+      supabase.from("accreditations").select("id", { count: "exact", head: true }).eq("game_id", id).eq("status", "validated"),
+      supabase.from("travel_plans").select("id", { count: "exact", head: true }).eq("game_id", id),
+    ]);
+    setLoading(false);
+    if (gameRes.error) { toast.error("Erreur", { description: gameRes.error.message }); return; }
+    setGame((gameRes.data ?? null) as Game | null);
+    setSports((sportsRes.data ?? []) as Sport[]);
+    setDisciplines((discRes.data ?? []) as Discipline[]);
+    setGameSports((gsRes.data ?? []) as unknown as GameSport[]);
+    setQuotas((qRes.data ?? []) as GameQuota[]);
+    setKpi({
+      selected: selRes.count ?? 0,
+      accred: accRes.count ?? 0,
+      plans: tpRes.count ?? 0,
+    });
+  };
+
+  useEffect(() => { load(); }, [id]);
+
+  const activeSportsCount = gameSports.filter((g) => g.is_active).length;
+
+  // Quota fill counts
+  const [fills, setFills] = useState<Record<string, number>>({});
+  useEffect(() => {
+    if (!quotas.length) { setFills({}); return; }
+    (async () => {
+      const result: Record<string, number> = {};
+      // Aggregate selections per sport+discipline+gender
+      const { data } = await supabase
+        .from("selections")
+        .select("sport_id, discipline_id, athlete:athletes(gender)")
+        .eq("game_id", id)
+        .in("status", ["selected", "reserve"]);
+      const sels = (data ?? []) as unknown as Array<{
+        sport_id: string;
+        discipline_id: string | null;
+        athlete: { gender: Gender } | null;
+      }>;
+      for (const q of quotas) {
+        result[q.id] = sels.filter((s) =>
+          s.sport_id === q.sport_id &&
+          (q.discipline_id ? s.discipline_id === q.discipline_id : true) &&
+          (q.gender === "mixed" ? true : s.athlete?.gender === q.gender),
+        ).length;
+      }
+      setFills(result);
+    })();
+  }, [quotas, id]);
+
+  const sportName = (sid: string) => sports.find((s) => s.id === sid)?.name ?? "—";
+  const discName = (did: string | null) => (did ? disciplines.find((d) => d.id === did)?.name ?? "—" : "—");
+
+  const availableSportsToAdd = useMemo(() => {
+    const used = new Set(gameSports.map((g) => g.sport_id));
+    return sports.filter((s) => !used.has(s.id));
+  }, [sports, gameSports]);
+
+  const availableDisciplines = useMemo(
+    () => disciplines.filter((d) => d.sport_id === quotaForm.sport_id),
+    [disciplines, quotaForm.sport_id],
+  );
+
+  const addSport = async () => {
+    if (!newSportId) return;
+    const { error } = await supabase.from("game_sports").insert({ game_id: id, sport_id: newSportId, is_active: true });
+    if (error) toast.error("Échec", { description: error.message });
+    else {
+      toast.success("Sport ajouté");
+      setSportDlgOpen(false);
+      setNewSportId("");
+      load();
+    }
+  };
+
+  const toggleSport = async (gs: GameSport) => {
+    const { error } = await supabase.from("game_sports").update({ is_active: !gs.is_active }).eq("id", gs.id);
+    if (error) toast.error("Échec", { description: error.message });
+    else load();
+  };
+
+  const removeSport = async (gs: GameSport) => {
+    const { error } = await supabase.from("game_sports").delete().eq("id", gs.id);
+    if (error) toast.error("Échec", { description: error.message });
+    else { toast.success("Sport retiré"); load(); }
+  };
+
+  const addQuota = async () => {
+    if (!quotaForm.sport_id || quotaForm.quota_max < 0) {
+      toast.error("Sport et quota requis"); return;
+    }
+    const { error } = await supabase.from("game_quotas").insert({
+      game_id: id,
+      sport_id: quotaForm.sport_id,
+      discipline_id: quotaForm.discipline_id || null,
+      gender: quotaForm.gender,
+      quota_max: quotaForm.quota_max,
+      qualification_deadline: quotaForm.qualification_deadline || null,
+      qualification_criteria: quotaForm.qualification_criteria.trim() || null,
+    });
+    if (error) toast.error("Échec", { description: error.message });
+    else {
+      toast.success("Quota ajouté");
+      setQuotaDlgOpen(false);
+      setQuotaForm({ sport_id: "", discipline_id: "", gender: "mixed", quota_max: 1, qualification_deadline: "", qualification_criteria: "" });
+      load();
+    }
+  };
+
+  const removeQuota = async (q: GameQuota) => {
+    const { error } = await supabase.from("game_quotas").delete().eq("id", q.id);
+    if (error) toast.error("Échec", { description: error.message });
+    else { toast.success("Quota supprimé"); load(); }
+  };
+
+  if (loading) return <Skeleton className="h-64 w-full" />;
+  if (!game) return null;
+
+  return (
+    <Tabs defaultValue="overview" className="space-y-4">
+      <TabsList>
+        <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
+        <TabsTrigger value="sports">Sports & Disciplines</TabsTrigger>
+        <TabsTrigger value="quotas">Quotas</TabsTrigger>
+      </TabsList>
+
+      {/* Overview */}
+      <TabsContent value="overview" className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Kpi label="Athlètes sélectionnés" value={kpi.selected} />
+          <Kpi label="Sports activés" value={activeSportsCount} />
+          <Kpi label="Accréditations validées" value={kpi.accred} />
+          <Kpi label="Plans de voyage" value={kpi.plans} />
+        </div>
+        <div className="rounded-lg border border-slate-200 bg-white p-6">
+          <h3 className="mb-4 text-base font-semibold">Informations générales</h3>
+          <dl className="grid gap-3 sm:grid-cols-2 text-sm">
+            <Info label="Acronyme" value={game.short_name} />
+            <Info label="Organisateur" value={game.organizer} />
+            <Info label="Pays hôte" value={game.host_country} />
+            <Info label="Ville hôte" value={game.host_city} />
+            <Info label="Préparation depuis" value={game.preparation_start} />
+            <Info label="Clôture" value={game.closing_date} />
+            <Info label="Fuseau" value={game.timezone} />
+            <Info label="Édition" value={String(game.edition_year)} />
+          </dl>
+          {game.description && (
+            <p className="mt-4 text-sm text-slate-600 whitespace-pre-wrap">{game.description}</p>
+          )}
+        </div>
+      </TabsContent>
+
+      {/* Sports */}
+      <TabsContent value="sports" className="space-y-4">
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-slate-600">{gameSports.length} sport(s) liés à ces Games</p>
+          <Button size="sm" onClick={() => setSportDlgOpen(true)} className="bg-indigo-500 hover:bg-indigo-600">
+            <Plus className="mr-2 h-4 w-4" /> Ajouter un sport
+          </Button>
+        </div>
+        <div className="rounded-lg border border-slate-200 bg-white">
+          {gameSports.length === 0 ? (
+            <p className="p-6 text-sm text-slate-500">Aucun sport activé.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Sport</TableHead>
+                  <TableHead>Disciplines</TableHead>
+                  <TableHead>Actif</TableHead>
+                  <TableHead className="w-20 text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {gameSports.map((gs) => {
+                  const sportDiscs = disciplines.filter((d) => d.sport_id === gs.sport_id);
+                  return (
+                    <TableRow key={gs.id}>
+                      <TableCell className="font-medium">{gs.sport?.name ?? sportName(gs.sport_id)}</TableCell>
+                      <TableCell className="text-slate-600">
+                        {sportDiscs.length === 0
+                          ? <span className="text-slate-400">—</span>
+                          : <div className="flex flex-wrap gap-1">
+                              {sportDiscs.map((d) => (
+                                <Badge key={d.id} variant="outline" className="font-normal">
+                                  {d.name} <span className="ml-1 text-xs text-slate-400">{d.gender}</span>
+                                </Badge>
+                              ))}
+                            </div>
+                        }
+                      </TableCell>
+                      <TableCell>
+                        <Switch checked={!!gs.is_active} onCheckedChange={() => toggleSport(gs)} />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" onClick={() => removeSport(gs)} aria-label="Retirer">
+                          <Trash2 className="h-4 w-4 text-red-600" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </div>
+      </TabsContent>
+
+      {/* Quotas */}
+      <TabsContent value="quotas" className="space-y-4">
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-slate-600">{quotas.length} quota(s) définis</p>
+          <Button size="sm" onClick={() => setQuotaDlgOpen(true)} className="bg-indigo-500 hover:bg-indigo-600">
+            <Plus className="mr-2 h-4 w-4" /> Ajouter un quota
+          </Button>
+        </div>
+        <div className="rounded-lg border border-slate-200 bg-white">
+          {quotas.length === 0 ? (
+            <p className="p-6 text-sm text-slate-500">Aucun quota défini.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Sport</TableHead>
+                  <TableHead>Discipline</TableHead>
+                  <TableHead>Genre</TableHead>
+                  <TableHead>Quota</TableHead>
+                  <TableHead>Remplissage</TableHead>
+                  <TableHead>Échéance qual.</TableHead>
+                  <TableHead className="w-20 text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {quotas.map((q) => {
+                  const filled = fills[q.id] ?? 0;
+                  const pct = q.quota_max ? Math.min(100, (filled / q.quota_max) * 100) : 0;
+                  const remaining = Math.max(0, q.quota_max - filled);
+                  const tone = filled >= q.quota_max ? "text-red-600" : remaining <= 1 ? "text-amber-600" : "text-emerald-600";
+                  return (
+                    <TableRow key={q.id}>
+                      <TableCell className="font-medium">{sportName(q.sport_id)}</TableCell>
+                      <TableCell>{discName(q.discipline_id)}</TableCell>
+                      <TableCell><Badge variant="outline">{q.gender}</Badge></TableCell>
+                      <TableCell>{q.quota_max}</TableCell>
+                      <TableCell className="min-w-[180px]">
+                        <div className="flex items-center gap-2">
+                          <Progress value={pct} className="h-2 flex-1" />
+                          <span className={`text-xs font-medium ${tone}`}>{filled}/{q.quota_max}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-slate-600">
+                        {q.qualification_deadline ? new Date(q.qualification_deadline).toLocaleDateString("fr-FR") : "—"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" onClick={() => removeQuota(q)} aria-label="Supprimer">
+                          <Trash2 className="h-4 w-4 text-red-600" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </div>
+      </TabsContent>
+
+      {/* Add Sport Dialog */}
+      <Dialog open={sportDlgOpen} onOpenChange={setSportDlgOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Ajouter un sport</DialogTitle>
+            <DialogDescription>Activer un sport pour ces Games.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Sport</Label>
+            <Select value={newSportId} onValueChange={setNewSportId}>
+              <SelectTrigger><SelectValue placeholder="Choisir…" /></SelectTrigger>
+              <SelectContent>
+                {availableSportsToAdd.length === 0 ? (
+                  <div className="p-2 text-sm text-slate-500">Tous les sports sont déjà ajoutés.</div>
+                ) : availableSportsToAdd.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSportDlgOpen(false)}>Annuler</Button>
+            <Button onClick={addSport} disabled={!newSportId} className="bg-indigo-500 hover:bg-indigo-600">Ajouter</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Quota Dialog */}
+      <Dialog open={quotaDlgOpen} onOpenChange={setQuotaDlgOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Ajouter un quota</DialogTitle>
+            <DialogDescription>Définir un nombre maximum d'athlètes par catégorie.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <div className="space-y-1.5">
+              <Label>Sport *</Label>
+              <Select value={quotaForm.sport_id} onValueChange={(v) => setQuotaForm({ ...quotaForm, sport_id: v, discipline_id: "" })}>
+                <SelectTrigger><SelectValue placeholder="Choisir…" /></SelectTrigger>
+                <SelectContent>
+                  {gameSports.filter((g) => g.is_active).map((gs) => (
+                    <SelectItem key={gs.sport_id} value={gs.sport_id}>{gs.sport?.name ?? sportName(gs.sport_id)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Discipline</Label>
+                <Select value={quotaForm.discipline_id || "none"} onValueChange={(v) => setQuotaForm({ ...quotaForm, discipline_id: v === "none" ? "" : v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Toutes</SelectItem>
+                    {availableDisciplines.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>{d.name} ({d.gender})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Genre *</Label>
+                <Select value={quotaForm.gender} onValueChange={(v) => setQuotaForm({ ...quotaForm, gender: v as Gender })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {GENDERS.map((g) => (
+                      <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Quota max *</Label>
+                <Input type="number" min={0} value={quotaForm.quota_max} onChange={(e) => setQuotaForm({ ...quotaForm, quota_max: Number(e.target.value) })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Échéance qualification</Label>
+                <Input type="date" value={quotaForm.qualification_deadline} onChange={(e) => setQuotaForm({ ...quotaForm, qualification_deadline: e.target.value })} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Critères de qualification</Label>
+              <Input value={quotaForm.qualification_criteria} onChange={(e) => setQuotaForm({ ...quotaForm, qualification_criteria: e.target.value })} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setQuotaDlgOpen(false)}>Annuler</Button>
+            <Button onClick={addQuota} className="bg-indigo-500 hover:bg-indigo-600">Ajouter</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </Tabs>
+  );
+}
+
+function Kpi({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-4">
+      <p className="text-sm text-slate-500">{label}</p>
+      <p className="mt-1 text-3xl font-semibold text-slate-900">{value}</p>
+    </div>
+  );
+}
+
+function Info({ label, value }: { label: string; value: string | null | undefined }) {
+  return (
+    <div>
+      <dt className="text-xs uppercase tracking-wide text-slate-500">{label}</dt>
+      <dd className="text-slate-900">{value || "—"}</dd>
+    </div>
+  );
 }
