@@ -1,11 +1,17 @@
 import { Link, useLocation } from "@tanstack/react-router";
 
-const TABS = [
+type Tab = {
+  to: "/games/$id/logistics" | "/games/$id/logistics/flights" | "/games/$id/logistics/lodging" | "/games/$id/logistics/transport";
+  label: string;
+  exact?: boolean;
+};
+
+const TABS: Tab[] = [
   { to: "/games/$id/logistics", label: "Plans de voyage", exact: true },
   { to: "/games/$id/logistics/flights", label: "Vols" },
   { to: "/games/$id/logistics/lodging", label: "Hébergement" },
   { to: "/games/$id/logistics/transport", label: "Transports locaux" },
-] as const;
+];
 
 export function LogisticsTabs({ id }: { id: string }) {
   const location = useLocation();
