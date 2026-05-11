@@ -150,35 +150,30 @@ function AthleteDetailPage() {
     setLoading(false);
 
     const a = data as Athlete;
-    const reqs: Promise<unknown>[] = [];
-    if (a.primary_sport_id)
-      reqs.push(
-        supabase
-          .from("sports")
-          .select("*")
-          .eq("id", a.primary_sport_id)
-          .maybeSingle()
-          .then(({ data: d }) => setSport((d ?? null) as Sport | null)),
-      );
-    if (a.primary_federation_id)
-      reqs.push(
-        supabase
-          .from("federations")
-          .select("*")
-          .eq("id", a.primary_federation_id)
-          .maybeSingle()
-          .then(({ data: d }) => setFederation((d ?? null) as Federation | null)),
-      );
-    if (a.current_club_id)
-      reqs.push(
-        supabase
-          .from("clubs")
-          .select("*")
-          .eq("id", a.current_club_id)
-          .maybeSingle()
-          .then(({ data: d }) => setClub((d ?? null) as Club | null)),
-      );
-    await Promise.all(reqs);
+    if (a.primary_sport_id) {
+      const { data: d } = await supabase
+        .from("sports")
+        .select("*")
+        .eq("id", a.primary_sport_id)
+        .maybeSingle();
+      setSport((d ?? null) as Sport | null);
+    } else setSport(null);
+    if (a.primary_federation_id) {
+      const { data: d } = await supabase
+        .from("federations")
+        .select("*")
+        .eq("id", a.primary_federation_id)
+        .maybeSingle();
+      setFederation((d ?? null) as Federation | null);
+    } else setFederation(null);
+    if (a.current_club_id) {
+      const { data: d } = await supabase
+        .from("clubs")
+        .select("*")
+        .eq("id", a.current_club_id)
+        .maybeSingle();
+      setClub((d ?? null) as Club | null);
+    } else setClub(null);
 
     const [{ data: dd }, { data: kk }, { data: rr }, { data: ss }] = await Promise.all([
       supabase
