@@ -1,82 +1,232 @@
 
-# Audit COSLxBloobiz — rapport priorisé
+# Plan de mise en service — COSLxBloobiz
 
-Aucune modification effectuée. Statuts : ✅ conforme · ⚠️ partiel · ❌ non conforme.
-
-## 🟢 Conformes (8/14)
-
-**1. ✅ `ssr: false` & shell SPA** — `vite.config.prod.ts` configure bien `build.ssr=false`, `outDir=dist/client`. (`vite.config.ts` reste sur la config SSR Lovable mais n'est pas utilisée pour le build prod.)
-
-**2. ✅ `server/node-server.mjs`** — fallback explicite sur `["index.html", "_shell.html"]` via `find(fs.existsSync)`, syntaxe Express 5 `app.get("/{*path}", …)` correcte, exit 1 si shell absent, cache long pour `/assets/`, no-cache pour le shell.
-
-**3. ✅ `src/lib/supabase.ts`** — aucun fallback placeholder. Erreur console claire si les `VITE_SUPABASE_*` manquent, `createClient(url ?? "", anonKey ?? "")` ne masque rien.
-
-**4. ✅ SERVICE_ROLE_KEY jamais côté client** — `rg SERVICE_ROLE src` ne renvoie qu'un commentaire dans `admin/users.tsx`. Aucun import, aucun usage. (Conséquence : la suppression réelle d'`auth.users` n'est pas implémentée — voir point 12.)
-
-**5. ✅ `useAuth` ordre des appels** — `onAuthStateChange` est bien souscrit AVANT `getSession()` (lignes 67-87), avec `setTimeout(…, 0)` pour différer le fetch de profil et éviter le deadlock auth Supabase. Conforme aux bonnes pratiques.
-
-**6. ✅ Routes protégées** — toutes les routes applicatives sont sous `src/routes/_authenticated/` qui monte `<ProtectedRoute>` via `_authenticated.tsx`. Login et `__root` sont les seules routes publiques.
-
-**8. ✅ RPC `athlete_kyc_valid()`** — appelé dans `selections.tsx` (l. 173) AVANT la transition vers `status='selected'`. Bloque la promotion si `data === false`. Implémentation cohérente avec le CDC.
-
-**14. ✅ Triggers `handle_new_user`** — défini l. 471, attaché à `auth.users` AFTER INSERT. Crée le `user_profiles` avec rôle issu de `raw_user_meta_data`. Conforme.
+Document opérationnel : tout ce qu'il faut paramétrer, dans l'ordre, pour qu'une instance vierge soit fonctionnelle en production. À cocher étape par étape.
 
 ---
 
-## 🟠 Partiels (3/14)
+## 1. Pré-requis serveur
 
-**7. ⚠️ Validation Zod incomplète** — `athleteSchema` existe et est utilisé dans `athletes/index.tsx` + `athletes/$id.tsx` via `safeParse`. **Mais aucun autre formulaire** (games, federations, clubs, coaches, selections, accreditations, travel_plans, flights, accommodations, transports, message_templates, notifications, admin/users) n'a de schéma Zod. Validation purement HTML/`required` côté client. Risque : insertion de données incohérentes que la DB ne rattrape pas (ex. emails sans format, longueurs non bornées).
-
-**11. ⚠️ Tableaux : tri manquant** — `PagerBar`, `EmptyState`, `TableSkeleton`, recherche et filtres sont en place sur quasiment toutes les listes (athletes, games, coaches, clubs, federations, accreditations, logistics, notifications, admin/users). **Mais aucun tri de colonne (clic header asc/desc)** n'est implémenté. Les listes sont triées en dur côté serveur (`order("last_name")`, etc.).
-
-**13. ⚠️ Schéma SQL — CHECK partiels** — Cohérent globalement (FK, UNIQUE, ENUMs riches, index). 9 contraintes CHECK présentes (dates, quotas, polymorphisme accréditations/passagers/rooming). **Manques notables** :
-- Pas de CHECK sur `birth_date < now()` ni `passport_expiry > now()` sur `athletes`.
-- Pas de CHECK sur `quota_max >= quota_used` (la valeur courante est calculée via RPC).
-- `email`, `phone` sans validation format en DB.
-- `cosl_id` sans regex (TEXT libre).
-
----
-
-## 🔴 Non conformes (3/14)
-
-**9. ❌ Routes `/admin/*` — protection client uniquement** — `admin/users.tsx` vérifie `role === 'admin'` côté composant (`isAdmin`) et affiche un message si refus, **mais la route reste accessible** (montée + données fetchées) avant le check. Pas de garde `beforeLoad` au niveau routeur, pas de layout `_authenticated/_admin.tsx` pour bloquer toute la sous-arborescence. Côté DB, RLS = "tout authentifié peut tout faire" (voir point critique ci-dessous), donc rien n'empêche un `reader` de muter `user_profiles` via la console. **Risque de privilege escalation.**
-
-**10. ❌ Types `any` (générés)** — `rg ': any|as any' src` hors `routeTree.gen.ts` = 0 occurrence. ✅ côté code écrit. **Mais** `routeTree.gen.ts` contient 25 `as any` (généré par TanStack Router, attendu et non modifiable manuellement). À documenter comme exception acceptée.
-
-**12. ❌ Soft-delete athletes — incohérent** — `athletes/$id.tsx` fait bien `update({ is_active: false })` (l. 311) ✅. **Mais** `athlete_relations` (l. 418) et `athlete_documents` (l. 361) sont supprimés en dur. Plus grave : 16 autres tables utilisent `.delete()` direct (games, clubs, federations, coaches, game_sports, game_quotas, delegation_members, accreditation_types, travel_plans, flights, flight_passengers, lodging, transports, message_templates, user_profiles, …). Le CDC v3.1 demande soft-delete uniquement sur `athletes` — donc conforme à la lettre du CDC, mais à confirmer pour `coaches` et `user_profiles` (cascades dangereuses).
+| Composant | Version min. | Usage |
+|---|---|---|
+| Node.js | 20 LTS | Build + Express runtime |
+| npm ou bun | npm 10 / bun 1.1 | Install |
+| PostgreSQL | 15+ | Base Supabase |
+| Supabase self-hosted | dernière stable | Auth + DB + Storage |
+| Reverse proxy | nginx ou Caddy | TLS + WAF devant Express |
+| Domaine + certificat | Let's Encrypt | HTTPS obligatoire (Supabase exige HTTPS pour cookies sécurisés) |
 
 ---
 
-## 🚨 Trouvailles hors-checklist (critiques)
+## 2. Provisionner Supabase self-hosted
 
-**A. RLS trop permissif** — `01_init.sql` l. 578-588 : boucle `DO $$ … FOR ALL TO authenticated USING (true) WITH CHECK (true)` sur **toutes** les tables. Tout utilisateur authentifié peut lire/écrire/supprimer n'importe quelle ligne (athletes, user_profiles, accreditations, etc.) directement via l'API REST Supabase. Le contrôle de rôle est uniquement frontend. **Risque maximal** pour un déploiement multi-utilisateurs avec rôles `reader`, `fed_manager`, etc.
-
-**B. Trigger `set_updated_at` orphelin** — La fonction existe et est solide, mais une **seule colonne `updated_at` existe dans tout le schéma** (table `athletes` uniquement) et un seul trigger l'utilise. Toutes les autres tables n'ont pas de `updated_at` → impossible de tracer les modifications (audit, sync, cache). Incohérent avec point 14 du CDC.
-
-**C. Suppression utilisateur incomplète** — `admin/users.tsx` supprime le `user_profiles` mais pas l'entrée `auth.users` (commenté l. 123 : nécessite SERVICE_ROLE_KEY). L'utilisateur peut continuer à se connecter mais perd son profil → état zombie. Nécessite une route serveur `/api/admin/users` (avec vérif rôle) appelant `supabaseAdmin.auth.admin.deleteUser`.
-
-**D. Pas de garde rôle sur opérations sensibles** — Création de Games, désactivation d'athlètes, validation d'accréditations, envoi de messages : aucune vérification `role` côté client OU serveur. Conjugué à (A), n'importe quel `reader` peut tout faire.
+1. Déployer Supabase (docker-compose officiel ou Coolify/Dokploy).
+2. Récupérer dans le dashboard Supabase → **Project Settings → API** :
+   - `Project URL` (ex. `https://supabase.cosl.lu`)
+   - `anon public key` (clé publique)
+   - `service_role key` (clé privée — **ne jamais committer**)
+3. Vérifier que **Auth → Email auth** est activé, **désactiver "Enable email confirmations"** (l'app utilise des emails synthétiques `${username}@coslbloobiz.local` qui ne sont pas livrables).
+4. Vérifier que **Auth → Settings → Site URL** pointe vers le domaine final (ex. `https://app.cosl.lu`).
+5. Optionnel : activer **HIBP password check** (Auth → Providers → Email).
 
 ---
 
-## Plan de correction recommandé (par priorité)
+## 3. Appliquer le schéma SQL
 
-### P0 — Sécurité (à faire avant prod)
-1. Réécrire les RLS policies par table avec `has_role()` (function `SECURITY DEFINER` + table `user_roles` séparée comme préconisé) — au minimum :
-   - `user_profiles` : SELECT pour tous, INSERT/UPDATE/DELETE admin uniquement.
-   - `athletes`, `selections`, `accreditations` : écriture limitée à `admin`/`games_manager`/`fed_manager` selon contexte.
-   - Tables logistique : écriture `admin`/`logistics`.
-2. Ajouter `beforeLoad` dans un layout `_authenticated/_admin.tsx` qui redirige vers `/dashboard` si `role !== 'admin'`.
-3. Créer une route serveur `/api/admin/users` (POST création, DELETE suppression) qui utilise `supabaseAdmin` + vérifie le rôle de l'appelant via JWT.
+Dans cet ordre, depuis le serveur Postgres ou via `psql` distant :
 
-### P1 — Intégrité données
-4. Étendre Zod à tous les formulaires (générer un schéma par entité dans `src/lib/types.ts`).
-5. Ajouter `updated_at` + trigger sur toutes les tables mutables.
-6. Ajouter contraintes CHECK manquantes (`birth_date < now()`, `passport_expiry > now()`, regex `cosl_id`).
+```bash
+psql "$DATABASE_URL" -f supabase/sql/01_init.sql
+psql "$DATABASE_URL" -f supabase/sql/02_storage.sql
+```
 
-### P2 — UX
-7. Ajouter tri par colonne sur les listes (header cliquable, état local `sortBy`/`sortDir`, passer dans `.order()` Supabase).
-8. Décider politique soft-delete : appliquer aussi à `coaches` et `user_profiles` (ajouter colonne `is_active`) ou conserver hard-delete documenté.
+`01_init.sql` crée :
+- 13 enums métier
+- 24 tables (référentiels, athlètes, games, accréditations, logistique, communication)
+- triggers `handle_new_user` + `set_athletes_updated_at`
+- RPC `athlete_kyc_valid`, `accreditation_completeness`, `quota_filled`
+- RLS activé sur toutes les tables avec policy "authenticated = full access"
 
-### P3 — Cosmétique
-9. Documenter dans le README que les `as any` de `routeTree.gen.ts` sont attendus (généré par TanStack).
+`02_storage.sql` crée le bucket privé `accreditation-docs` + policies.
+
+> ⚠️ **À corriger avant prod** (cf. audit précédent) : les RLS sont permissives. Réécrire les policies par rôle (admin/games_manager/fed_manager/logistics/communication/reader) avant ouverture multi-utilisateurs.
+
+---
+
+## 4. Seed de données initiales
+
+Aucun seed n'est fourni. À insérer manuellement via SQL ou via l'UI une fois le 1er admin créé :
+
+1. **Sports** (athlétisme, natation, judo, …) — table `sports`
+2. **Disciplines** rattachées à chaque sport — table `disciplines`
+3. **Fédérations luxembourgeoises** (FLA, FLNS, FLAM, …) — table `federations`
+4. **Clubs** principaux — table `clubs`
+
+Sans sports/fédérations, les formulaires athlètes/games seront bloqués (FK vides).
+
+---
+
+## 5. Créer le premier utilisateur admin
+
+L'app n'a pas de page `/register`. Pour créer le premier compte :
+
+```sql
+-- Dans Supabase SQL Editor
+SELECT auth.admin_create_user(
+  jsonb_build_object(
+    'email', 'admin@coslbloobiz.local',
+    'password', 'CHANGEZ_MOI_FORT',
+    'email_confirm', true,
+    'user_metadata', jsonb_build_object(
+      'username', 'admin',
+      'full_name', 'Administrateur COSL',
+      'role', 'admin'
+    )
+  )
+);
+```
+
+Le trigger `handle_new_user` crée automatiquement la ligne `user_profiles` avec rôle `admin`. Login ensuite via `/login` avec username `admin` + mot de passe défini.
+
+---
+
+## 6. Variables d'environnement
+
+Créer `.env` à la racine du projet **avant** le build :
+
+```env
+# Côté client (injecté dans le bundle)
+VITE_SUPABASE_URL=https://supabase.cosl.lu
+VITE_SUPABASE_ANON_KEY=eyJhbGciOi...
+```
+
+> Le `service_role` key n'est utilisé nulle part dans le code actuel et ne doit JAMAIS être ajoutée à un `VITE_*`. Elle sera nécessaire uniquement quand on implémentera la suppression hard d'utilisateurs (route serveur dédiée — non en place).
+
+---
+
+## 7. Build de production
+
+```bash
+npm install              # ou bun install
+npm run build:prod       # → dist/client/ (SPA pure, ssr: false)
+```
+
+Vérifier que `dist/client/index.html` (ou `_shell.html`) existe.
+
+---
+
+## 8. Lancer le serveur Express
+
+```bash
+PORT=3000 HOST=0.0.0.0 npm run start:prod
+```
+
+À production, encadrer avec un superviseur :
+- **systemd** (recommandé) — créer `/etc/systemd/system/cosl-bloobiz.service`
+- ou **PM2** — `pm2 start "npm run start:prod" --name cosl`
+
+---
+
+## 9. Reverse proxy + TLS
+
+Exemple nginx minimal :
+
+```nginx
+server {
+  listen 443 ssl http2;
+  server_name app.cosl.lu;
+  ssl_certificate     /etc/letsencrypt/live/app.cosl.lu/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/app.cosl.lu/privkey.pem;
+
+  location / {
+    proxy_pass http://127.0.0.1:3000;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-Proto https;
+  }
+}
+```
+
+Renouvellement Let's Encrypt via `certbot --nginx`.
+
+---
+
+## 10. CORS Supabase
+
+Dans Supabase → **API → CORS** : ajouter `https://app.cosl.lu` dans les origins autorisées.
+
+---
+
+## 11. Storage : taille fichiers et types
+
+Dans Supabase → Storage → bucket `accreditation-docs` → **Edit** :
+- File size limit : 10 MB recommandé
+- Allowed MIME types : `application/pdf, image/jpeg, image/png`
+
+---
+
+## 12. Sauvegardes
+
+1. **Postgres** : `pg_dump` quotidien chiffré (cron + offsite, ex. S3 + GPG).
+2. **Storage** : sync `accreditation-docs` avec `rclone` ou snapshot du volume Docker.
+3. Tester la restauration au moins une fois.
+
+---
+
+## 13. Monitoring minimal
+
+- Healthcheck HTTP : `GET https://app.cosl.lu/login` → 200
+- Logs Express → journald (via systemd) ou fichier rotaté
+- Alertes Supabase (CPU/disque) via dashboard
+
+---
+
+## 14. Checklist avant ouverture aux utilisateurs
+
+- [ ] Schéma SQL appliqué (01 + 02)
+- [ ] Seeds sports / disciplines / fédérations / clubs insérés
+- [ ] Compte admin créé et testé
+- [ ] `.env` rempli avec URL + anon key prod
+- [ ] Build prod OK (`dist/client/` présent)
+- [ ] Express tourne sous systemd/PM2
+- [ ] Domaine HTTPS opérationnel + CORS Supabase configuré
+- [ ] Bucket `accreditation-docs` privé avec policies appliquées
+- [ ] Backup Postgres + Storage planifié
+- [ ] **(P0 sécurité)** RLS reécrites par rôle avant accès multi-utilisateurs
+- [ ] **(P1)** Validation Zod étendue à tous les formulaires
+- [ ] **(P1)** `updated_at` ajouté à toutes les tables
+- [ ] **(P2)** Tri colonnes ajouté sur les tableaux
+
+---
+
+## 15. Tests fonctionnels minimum
+
+Une fois tout en place, dérouler :
+
+1. Login avec admin → dashboard chargé.
+2. Créer une fédération → un club → un sport → une discipline.
+3. Créer un athlète complet, valider Zod, vérifier KYC.
+4. Créer un Games, ajouter sport + quota.
+5. Sélectionner un athlète → vérifier que la promotion vers `selected` appelle `athlete_kyc_valid` (toast rouge si KYC invalide).
+6. Créer une accréditation, uploader un document, le valider.
+7. Créer un plan de voyage, un vol avec passager.
+8. Envoyer un message via template.
+9. Créer un 2e utilisateur depuis `/admin/users`, se déconnecter, se reconnecter avec ce compte.
+
+---
+
+## 16. Travaux différés (post-mise en service)
+
+D'après l'audit du tour précédent, à planifier en sprint suivant :
+
+| Priorité | Action |
+|---|---|
+| P0 | Réécrire RLS par rôle (table `user_roles` + fonction `has_role`) |
+| P0 | Ajouter `beforeLoad` sur layout `_authenticated/_admin` |
+| P0 | Route serveur `/api/admin/users` (création/suppression via service_role) |
+| P1 | Schémas Zod pour games, federations, clubs, coaches, accreditations, logistique, communication |
+| P1 | Colonne + trigger `updated_at` sur toutes les tables mutables |
+| P1 | CHECK SQL : `birth_date`, `passport_expiry`, regex `cosl_id` |
+| P2 | Tri par colonne sur toutes les listes |
+| P2 | Statuer sur soft-delete coaches / user_profiles |
+| P3 | README de déploiement dérivé de ce plan |
