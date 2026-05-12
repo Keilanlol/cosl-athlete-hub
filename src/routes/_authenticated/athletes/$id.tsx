@@ -489,6 +489,8 @@ function AthleteDetailPage() {
     });
     loadAll();
   };
+
+  const fieldErr = (k: string) =>
     errors[k] ? <p className="text-xs text-red-600">{errors[k]}</p> : null;
 
   const clubsForFed = useMemo(
