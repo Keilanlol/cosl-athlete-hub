@@ -106,6 +106,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      const pendingSession = s;
+
       if (validatedTokenRef.current === token) {
         setLoading(false);
         return;
@@ -124,7 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        commitVerifiedSession(s, verifiedUser);
+        commitVerifiedSession(pendingSession, verifiedUser);
       }, 0);
     };
 
