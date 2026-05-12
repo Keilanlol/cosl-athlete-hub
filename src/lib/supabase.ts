@@ -53,7 +53,10 @@ const createSupabaseClient = (): SupabaseClient => {
     return createClient(url as string, anonKey as string, {
       auth: {
         persistSession: true,
-        autoRefreshToken: true,
+        // Disabled: self-hosted GoTrue refresh failures were triggering a
+        // SIGNED_OUT → verifySession → getUser loop on /login. We refresh
+        // manually after a successful signIn instead.
+        autoRefreshToken: false,
         detectSessionInUrl: false,
       },
     });
