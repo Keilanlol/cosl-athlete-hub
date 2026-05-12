@@ -343,13 +343,24 @@ function AthletesPage() {
             className="pl-9"
           />
         </div>
-        <Select value={fSport} onValueChange={setFSport}>
+        <Select value={fSport} onValueChange={(v) => { setFSport(v); setFDiscipline(ALL); }}>
           <SelectTrigger><SelectValue placeholder="Sport" /></SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL}>Tous les sports</SelectItem>
             {sports.map((s) => (
               <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
             ))}
+          </SelectContent>
+        </Select>
+        <Select value={fDiscipline} onValueChange={setFDiscipline}>
+          <SelectTrigger><SelectValue placeholder="Discipline" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>Toutes les disciplines</SelectItem>
+            {disciplines
+              .filter((d) => fSport === ALL || d.sport_id === fSport)
+              .map((d) => (
+                <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+              ))}
           </SelectContent>
         </Select>
         <Select value={fFed} onValueChange={setFFed}>
