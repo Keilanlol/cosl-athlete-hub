@@ -47,11 +47,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const authRequestRef = useRef(0);
   const validatedTokenRef = useRef<string | null>(null);
   const renderCountRef = useRef(0);
-  renderCountRef.current += 1;
-  dlog("AuthProvider.render", `render #${renderCountRef.current}`, {
-    loading,
-    hasSession: !!session,
-    hasUser: !!user,
+
+  useEffect(() => {
+    renderCountRef.current += 1;
+    dlog("AuthProvider.render", `render #${renderCountRef.current}`, {
+      loading,
+      hasSession: !!session,
+      hasUser: !!user,
+    });
   });
 
   useEffect(() => {
