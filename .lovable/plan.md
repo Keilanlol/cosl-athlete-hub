@@ -68,25 +68,84 @@ Sans sports/fédérations, les formulaires athlètes/games seront bloqués (FK v
 
 ## 5. Créer le premier utilisateur admin
 
-L'app n'a pas de page `/register`. Pour créer le premier compte :
+⚠️ La fonction `auth.admin_create_user(jsonb)` **n'existe pas** dans Supabase self-hosted (c'est une API REST, pas une fonction SQL). Trois méthodes possibles, par ordre de préférence :
+
+### Méthode A — Dashboard Supabase (recommandée)
+
+1. Supabase Studio → **Authentication → Users → Add user → Create new user**
+2. Email : `admin@coslbloobiz.local`
+3. Password : un mot de passe fort
+4. Cocher **Auto Confirm User**
+5. Créer.
+
+Puis compléter le profil applicatif (le trigger `handle_new_user` lit `raw_user_meta_data` qui est vide via cette UI, donc il faut soit relancer le trigger, soit insérer manuellement) :
 
 ```sql
--- Dans Supabase SQL Editor
-SELECT auth.admin_create_user(
-  jsonb_build_object(
-    'email', 'admin@coslbloobiz.local',
-    'password', 'CHANGEZ_MOI_FORT',
-    'email_confirm', true,
-    'user_metadata', jsonb_build_object(
-      'username', 'admin',
-      'full_name', 'Administrateur COSL',
-      'role', 'admin'
-    )
-  )
+-- Récupérer l'UUID créé
+SELECT id, email FROM auth.users WHERE email = 'admin@coslbloobiz.local';
+
+-- Insérer le profil applicatif
+INSERT INTO public.user_profiles (id, username, full_name, email, role)
+VALUES (
+  '<UUID_COPIE_CI_DESSUS>',
+  'admin',
+  'Administrateur COSL',
+  'admin@coslbloobiz.local',
+  'admin'
 );
 ```
 
-Le trigger `handle_new_user` crée automatiquement la ligne `user_profiles` avec rôle `admin`. Login ensuite via `/login` avec username `admin` + mot de passe défini.
+### Méthode B — API REST Auth Admin (script ou curl)
+
+Avec la `SERVICE_ROLE_KEY` (jamais committée) :
+
+```bash
+curl -X POST "$SUPABASE_URL/auth/v1/admin/users" \
+  -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+  -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "admin@coslbloobiz.local",
+    "password": "CHANGEZ_MOI_FORT",
+    "email_confirm": true,
+    "user_metadata": {
+      "username": "admin",
+      "full_name": "Administrateur COSL",
+      "role": "admin"
+    }
+  }'
+```
+
+Avec cette méthode, `user_metadata` est rempli → le trigger `handle_new_user` crée automatiquement la ligne `user_profiles` avec rôle `admin`. Aucune insertion manuelle nécessaire.
+
+### Méthode C — Insertion SQL directe (avancé, à éviter sauf si A/B impossibles)
+
+```sql
+-- 1) Créer l'utilisateur dans auth.users (mot de passe haché par Supabase)
+INSERT INTO auth.users (
+  instance_id, id, aud, role, email, encrypted_password,
+  email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+  created_at, updated_at, confirmation_token, recovery_token,
+  email_change_token_new, email_change
+)
+VALUES (
+  '00000000-0000-0000-0000-000000000000',
+  gen_random_uuid(),
+  'authenticated', 'authenticated',
+  'admin@coslbloobiz.local',
+  crypt('CHANGEZ_MOI_FORT', gen_salt('bf')),
+  now(),
+  '{"provider":"email","providers":["email"]}'::jsonb,
+  '{"username":"admin","full_name":"Administrateur COSL","role":"admin"}'::jsonb,
+  now(), now(), '', '', '', ''
+);
+```
+
+Le trigger `handle_new_user` se déclenche et crée la ligne `user_profiles`. Nécessite l'extension `pgcrypto` (`CREATE EXTENSION IF NOT EXISTS pgcrypto;`).
+
+### Connexion
+
+Une fois le compte créé, login via `/login` avec **username = `admin`** + mot de passe défini.
 
 ---
 
