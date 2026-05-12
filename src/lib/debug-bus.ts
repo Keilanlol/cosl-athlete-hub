@@ -14,6 +14,7 @@ const listeners = new Set<(entries: DebugEntry[]) => void>();
 const entries: DebugEntry[] = [];
 let nextId = 1;
 const MAX = 200;
+let notifyScheduled = false;
 
 // Counters keyed by tag — useful to detect render/event loops.
 const counters = new Map<string, number>();
@@ -43,7 +44,7 @@ export function dlog(tag: string, message: string, data?: unknown) {
     );
   }
 
-  for (const fn of listeners) fn(entries.slice());
+  scheduleNotify();
 }
 
 export function subscribeDebug(fn: (entries: DebugEntry[]) => void) {
@@ -57,9 +58,19 @@ export function subscribeDebug(fn: (entries: DebugEntry[]) => void) {
 export function clearDebug() {
   entries.length = 0;
   counters.clear();
-  for (const fn of listeners) fn([]);
+  scheduleNotify();
 }
 
 export function getCounters() {
   return Object.fromEntries(counters);
+}
+
+function scheduleNotify() {
+  if (notifyScheduled) return;
+  notifyScheduled = true;
+  globalThis.setTimeout(() => {
+    notifyScheduled = false;
+    const snapshot = entries.slice();
+    for (const fn of listeners) fn(snapshot);
+  }, 0);
 }
