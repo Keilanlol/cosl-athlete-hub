@@ -151,14 +151,22 @@ function AthletesPage() {
   };
 
   const loadRefs = async () => {
-    const [sp, fd, cl] = await Promise.all([
+    const [sp, fd, cl, di, ad] = await Promise.all([
       supabase.from("sports").select("*").order("name"),
       supabase.from("federations").select("*").order("acronym"),
       supabase.from("clubs").select("*").order("name"),
+      supabase.from("disciplines").select("*").order("name"),
+      supabase.from("athlete_disciplines").select("athlete_id, discipline_id"),
     ]);
     setSports((sp.data ?? []) as Sport[]);
     setFederations((fd.data ?? []) as Federation[]);
     setClubs((cl.data ?? []) as Club[]);
+    setDisciplines((di.data ?? []) as Discipline[]);
+    const map: Record<string, string[]> = {};
+    ((ad.data ?? []) as { athlete_id: string; discipline_id: string }[]).forEach((r) => {
+      (map[r.athlete_id] ||= []).push(r.discipline_id);
+    });
+    setAthleteDisciplines(map);
   };
 
   useEffect(() => {
