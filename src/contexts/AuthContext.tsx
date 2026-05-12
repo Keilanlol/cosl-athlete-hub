@@ -69,28 +69,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setRole(null);
         return;
       }
-      setTimeout(async () => {
-        const { data, error } = await withTimeout(
-          supabase
-            .from("user_profiles")
-            .select("username, full_name, role")
-            .eq("id", u.id)
-            .maybeSingle(),
-          AUTH_TIMEOUT_MS,
-          "profile timeout",
-        );
-        if (cancelled || requestId !== profileRequestRef.current) return;
-        if (error) {
-          console.warn("[auth] profile fetch error:", error.message);
-          return;
+      (async () => {
+        try {
+          const { data, error } = await withTimeout(
+            supabase
+              .from("user_profiles")
+              .select("username, full_name, role")
+              .eq("id", u.id)
+              .maybeSingle(),
+            AUTH_TIMEOUT_MS,
+            "profile timeout",
+          );
+          if (cancelled || requestId !== profileRequestRef.current) return;
+          if (error) {
+            console.error("[auth] profile fetch error:", error);
+            return;
+          }
+          if (!data) {
+            console.warn("[auth] no user_profiles row for", u.id, "(check RLS or trigger)");
+            return;
+          }
+          console.info("[auth] profile loaded:", data);
+          setUsername(data.username ?? null);
+          setFullName(data.full_name ?? null);
+          setRole((data.role as UserRole | undefined) ?? null);
+        } catch (e) {
+          console.error("[auth] loadProfile threw:", e);
         }
-        const nextUsername = data?.username ?? null;
-        const nextFullName = data?.full_name ?? null;
-        const nextRole = (data?.role as UserRole | undefined) ?? null;
-        setUsername((prev) => (prev === nextUsername ? prev : nextUsername));
-        setFullName((prev) => (prev === nextFullName ? prev : nextFullName));
-        setRole((prev) => (prev === nextRole ? prev : nextRole));
-      }, 0);
+      })();
     };
 
     const commitVerifiedSession = (s: Session, verifiedUser: User) => {
