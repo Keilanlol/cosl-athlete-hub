@@ -1,5 +1,5 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Loader2 } from "lucide-react";
 import { AuthLayout } from "@/components/layouts/AuthLayout";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,10 @@ function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const isAuthValid = !!session?.access_token && !!user?.id;
-  dlog("LoginPage.render", "render", { loading, isAuthValid, submitting });
+
+  useEffect(() => {
+    dlog("LoginPage.render", "render", { loading, isAuthValid, submitting });
+  }, [loading, isAuthValid, submitting]);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -35,7 +38,6 @@ function LoginPage() {
   };
 
   if (!loading && isAuthValid) {
-    dlog("LoginPage", "redirecting to /dashboard");
     return <Navigate to="/dashboard" replace />;
   }
 
