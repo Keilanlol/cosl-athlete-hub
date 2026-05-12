@@ -78,13 +78,13 @@ Sans sports/fédérations, les formulaires athlètes/games seront bloqués (FK v
 4. Cocher **Auto Confirm User**
 5. Créer.
 
-Puis compléter le profil applicatif (le trigger `handle_new_user` lit `raw_user_meta_data` qui est vide via cette UI, donc il faut soit relancer le trigger, soit insérer manuellement) :
+Puis compléter le profil applicatif (le trigger `handle_new_user` peut déjà avoir créé une ligne avec les métadonnées disponibles ; il faut donc faire un **upsert**, pas un insert simple) :
 
 ```sql
 -- Récupérer l'UUID créé
 SELECT id, email FROM auth.users WHERE email = 'admin@coslbloobiz.local';
 
--- Insérer le profil applicatif
+-- Créer ou corriger le profil applicatif
 INSERT INTO public.user_profiles (id, username, full_name, email, role)
 VALUES (
   '<UUID_COPIE_CI_DESSUS>',
@@ -92,7 +92,12 @@ VALUES (
   'Administrateur COSL',
   'admin@coslbloobiz.local',
   'admin'
-);
+)
+ON CONFLICT (id) DO UPDATE SET
+  username = EXCLUDED.username,
+  full_name = EXCLUDED.full_name,
+  email = EXCLUDED.email,
+  role = EXCLUDED.role;
 ```
 
 ### Méthode B — API REST Auth Admin (script ou curl)
