@@ -180,6 +180,10 @@ function AthletesPage() {
     return rows.filter((a) => {
       if (activeOnly && a.is_active === false) return false;
       if (fSport !== ALL && a.primary_sport_id !== fSport) return false;
+      if (fDiscipline !== ALL) {
+        const ads = athleteDisciplines[a.id] ?? [];
+        if (!ads.includes(fDiscipline)) return false;
+      }
       if (fFed !== ALL && a.primary_federation_id !== fFed) return false;
       if (fStatus !== ALL && a.status !== fStatus) return false;
       if (fLevel !== ALL && a.level !== fLevel) return false;
@@ -191,7 +195,7 @@ function AthletesPage() {
       }
       return true;
     });
-  }, [rows, search, fSport, fFed, fStatus, fLevel, fKyc, activeOnly]);
+  }, [rows, search, fSport, fDiscipline, fFed, fStatus, fLevel, fKyc, activeOnly, athleteDisciplines]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
