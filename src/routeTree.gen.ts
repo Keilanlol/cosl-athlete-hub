@@ -29,6 +29,7 @@ import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authentic
 import { Route as AuthenticatedGamesIdIndexRouteImport } from './routes/_authenticated/games/$id/index'
 import { Route as AuthenticatedGamesIdSelectionsRouteImport } from './routes/_authenticated/games/$id/selections'
 import { Route as AuthenticatedGamesIdDelegationRouteImport } from './routes/_authenticated/games/$id/delegation'
+import { Route as AuthenticatedGamesIdCompetitionsRouteImport } from './routes/_authenticated/games/$id/competitions'
 import { Route as AuthenticatedGamesIdAccreditationsRouteImport } from './routes/_authenticated/games/$id/accreditations'
 import { Route as AuthenticatedGamesIdLogisticsIndexRouteImport } from './routes/_authenticated/games/$id/logistics/index'
 import { Route as AuthenticatedGamesIdLogisticsTransportRouteImport } from './routes/_authenticated/games/$id/logistics/transport'
@@ -145,6 +146,12 @@ const AuthenticatedGamesIdDelegationRoute =
     path: '/delegation',
     getParentRoute: () => AuthenticatedGamesIdRoute,
   } as any)
+const AuthenticatedGamesIdCompetitionsRoute =
+  AuthenticatedGamesIdCompetitionsRouteImport.update({
+    id: '/competitions',
+    path: '/competitions',
+    getParentRoute: () => AuthenticatedGamesIdRoute,
+  } as any)
 const AuthenticatedGamesIdAccreditationsRoute =
   AuthenticatedGamesIdAccreditationsRouteImport.update({
     id: '/accreditations',
@@ -194,6 +201,7 @@ export interface FileRoutesByFullPath {
   '/games/': typeof AuthenticatedGamesIndexRoute
   '/logistics/': typeof AuthenticatedLogisticsIndexRoute
   '/games/$id/accreditations': typeof AuthenticatedGamesIdAccreditationsRoute
+  '/games/$id/competitions': typeof AuthenticatedGamesIdCompetitionsRoute
   '/games/$id/delegation': typeof AuthenticatedGamesIdDelegationRoute
   '/games/$id/selections': typeof AuthenticatedGamesIdSelectionsRoute
   '/games/$id/': typeof AuthenticatedGamesIdIndexRoute
@@ -219,6 +227,7 @@ export interface FileRoutesByTo {
   '/games': typeof AuthenticatedGamesIndexRoute
   '/logistics': typeof AuthenticatedLogisticsIndexRoute
   '/games/$id/accreditations': typeof AuthenticatedGamesIdAccreditationsRoute
+  '/games/$id/competitions': typeof AuthenticatedGamesIdCompetitionsRoute
   '/games/$id/delegation': typeof AuthenticatedGamesIdDelegationRoute
   '/games/$id/selections': typeof AuthenticatedGamesIdSelectionsRoute
   '/games/$id': typeof AuthenticatedGamesIdIndexRoute
@@ -247,6 +256,7 @@ export interface FileRoutesById {
   '/_authenticated/games/': typeof AuthenticatedGamesIndexRoute
   '/_authenticated/logistics/': typeof AuthenticatedLogisticsIndexRoute
   '/_authenticated/games/$id/accreditations': typeof AuthenticatedGamesIdAccreditationsRoute
+  '/_authenticated/games/$id/competitions': typeof AuthenticatedGamesIdCompetitionsRoute
   '/_authenticated/games/$id/delegation': typeof AuthenticatedGamesIdDelegationRoute
   '/_authenticated/games/$id/selections': typeof AuthenticatedGamesIdSelectionsRoute
   '/_authenticated/games/$id/': typeof AuthenticatedGamesIdIndexRoute
@@ -275,6 +285,7 @@ export interface FileRouteTypes {
     | '/games/'
     | '/logistics/'
     | '/games/$id/accreditations'
+    | '/games/$id/competitions'
     | '/games/$id/delegation'
     | '/games/$id/selections'
     | '/games/$id/'
@@ -300,6 +311,7 @@ export interface FileRouteTypes {
     | '/games'
     | '/logistics'
     | '/games/$id/accreditations'
+    | '/games/$id/competitions'
     | '/games/$id/delegation'
     | '/games/$id/selections'
     | '/games/$id'
@@ -327,6 +339,7 @@ export interface FileRouteTypes {
     | '/_authenticated/games/'
     | '/_authenticated/logistics/'
     | '/_authenticated/games/$id/accreditations'
+    | '/_authenticated/games/$id/competitions'
     | '/_authenticated/games/$id/delegation'
     | '/_authenticated/games/$id/selections'
     | '/_authenticated/games/$id/'
@@ -484,6 +497,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedGamesIdDelegationRouteImport
       parentRoute: typeof AuthenticatedGamesIdRoute
     }
+    '/_authenticated/games/$id/competitions': {
+      id: '/_authenticated/games/$id/competitions'
+      path: '/competitions'
+      fullPath: '/games/$id/competitions'
+      preLoaderRoute: typeof AuthenticatedGamesIdCompetitionsRouteImport
+      parentRoute: typeof AuthenticatedGamesIdRoute
+    }
     '/_authenticated/games/$id/accreditations': {
       id: '/_authenticated/games/$id/accreditations'
       path: '/accreditations'
@@ -524,6 +544,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedGamesIdRouteChildren {
   AuthenticatedGamesIdAccreditationsRoute: typeof AuthenticatedGamesIdAccreditationsRoute
+  AuthenticatedGamesIdCompetitionsRoute: typeof AuthenticatedGamesIdCompetitionsRoute
   AuthenticatedGamesIdDelegationRoute: typeof AuthenticatedGamesIdDelegationRoute
   AuthenticatedGamesIdSelectionsRoute: typeof AuthenticatedGamesIdSelectionsRoute
   AuthenticatedGamesIdIndexRoute: typeof AuthenticatedGamesIdIndexRoute
@@ -536,6 +557,7 @@ interface AuthenticatedGamesIdRouteChildren {
 const AuthenticatedGamesIdRouteChildren: AuthenticatedGamesIdRouteChildren = {
   AuthenticatedGamesIdAccreditationsRoute:
     AuthenticatedGamesIdAccreditationsRoute,
+  AuthenticatedGamesIdCompetitionsRoute: AuthenticatedGamesIdCompetitionsRoute,
   AuthenticatedGamesIdDelegationRoute: AuthenticatedGamesIdDelegationRoute,
   AuthenticatedGamesIdSelectionsRoute: AuthenticatedGamesIdSelectionsRoute,
   AuthenticatedGamesIdIndexRoute: AuthenticatedGamesIdIndexRoute,

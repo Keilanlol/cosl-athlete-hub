@@ -12,6 +12,7 @@ import {
   type Athlete,
   type AthleteForm,
   type Club,
+  type Discipline,
   type Federation,
   type Sport,
 } from "@/lib/types";
@@ -114,9 +115,12 @@ function AthletesPage() {
   const [sports, setSports] = useState<Sport[]>([]);
   const [federations, setFederations] = useState<Federation[]>([]);
   const [clubs, setClubs] = useState<Club[]>([]);
+  const [disciplines, setDisciplines] = useState<Discipline[]>([]);
+  const [athleteDisciplines, setAthleteDisciplines] = useState<Record<string, string[]>>({});
 
   const [search, setSearch] = useState("");
   const [fSport, setFSport] = useState(ALL);
+  const [fDiscipline, setFDiscipline] = useState(ALL);
   const [fFed, setFFed] = useState(ALL);
   const [fStatus, setFStatus] = useState(ALL);
   const [fLevel, setFLevel] = useState(ALL);
@@ -147,14 +151,22 @@ function AthletesPage() {
   };
 
   const loadRefs = async () => {
-    const [sp, fd, cl] = await Promise.all([
+    const [sp, fd, cl, di, ad] = await Promise.all([
       supabase.from("sports").select("*").order("name"),
       supabase.from("federations").select("*").order("acronym"),
       supabase.from("clubs").select("*").order("name"),
+      supabase.from("disciplines").select("*").order("name"),
+      supabase.from("athlete_disciplines").select("athlete_id, discipline_id"),
     ]);
     setSports((sp.data ?? []) as Sport[]);
     setFederations((fd.data ?? []) as Federation[]);
     setClubs((cl.data ?? []) as Club[]);
+    setDisciplines((di.data ?? []) as Discipline[]);
+    const map: Record<string, string[]> = {};
+    ((ad.data ?? []) as { athlete_id: string; discipline_id: string }[]).forEach((r) => {
+      (map[r.athlete_id] ||= []).push(r.discipline_id);
+    });
+    setAthleteDisciplines(map);
   };
 
   useEffect(() => {
@@ -168,6 +180,10 @@ function AthletesPage() {
     return rows.filter((a) => {
       if (activeOnly && a.is_active === false) return false;
       if (fSport !== ALL && a.primary_sport_id !== fSport) return false;
+      if (fDiscipline !== ALL) {
+        const ads = athleteDisciplines[a.id] ?? [];
+        if (!ads.includes(fDiscipline)) return false;
+      }
       if (fFed !== ALL && a.primary_federation_id !== fFed) return false;
       if (fStatus !== ALL && a.status !== fStatus) return false;
       if (fLevel !== ALL && a.level !== fLevel) return false;
@@ -179,7 +195,7 @@ function AthletesPage() {
       }
       return true;
     });
-  }, [rows, search, fSport, fFed, fStatus, fLevel, fKyc, activeOnly]);
+  }, [rows, search, fSport, fDiscipline, fFed, fStatus, fLevel, fKyc, activeOnly, athleteDisciplines]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -327,13 +343,24 @@ function AthletesPage() {
             className="pl-9"
           />
         </div>
-        <Select value={fSport} onValueChange={setFSport}>
+        <Select value={fSport} onValueChange={(v) => { setFSport(v); setFDiscipline(ALL); }}>
           <SelectTrigger><SelectValue placeholder="Sport" /></SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL}>Tous les sports</SelectItem>
             {sports.map((s) => (
               <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
             ))}
+          </SelectContent>
+        </Select>
+        <Select value={fDiscipline} onValueChange={setFDiscipline}>
+          <SelectTrigger><SelectValue placeholder="Discipline" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>Toutes les disciplines</SelectItem>
+            {disciplines
+              .filter((d) => fSport === ALL || d.sport_id === fSport)
+              .map((d) => (
+                <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+              ))}
           </SelectContent>
         </Select>
         <Select value={fFed} onValueChange={setFFed}>

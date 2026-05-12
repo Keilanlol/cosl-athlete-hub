@@ -10,15 +10,19 @@ import {
   DOCUMENT_CATEGORIES,
   DOCUMENT_STATUSES,
   GENDERS,
+  MEDAL_LABELS,
   athleteSchema,
   type Athlete,
   type AthleteDocument,
   type AthleteForm,
   type AthleteKyc,
   type AthleteRelation,
+  type AthleteResult,
   type Club,
   type Coach,
   type Federation,
+  type Game,
+  type GameCompetition,
   type Selection,
   type Sport,
 } from "@/lib/types";
@@ -108,6 +112,32 @@ function AthleteDetailPage() {
   const [deactivating, setDeactivating] = useState(false);
   const [confirmDeactivate, setConfirmDeactivate] = useState(false);
 
+  // Palmarès
+  type ResultRow = AthleteResult & {
+    game: { name: string; edition_year: number } | null;
+    game_competition: { name: string } | null;
+    sport: { name: string } | null;
+    discipline: { name: string } | null;
+  };
+  const [results, setResults] = useState<ResultRow[] | null>(null);
+  const [games, setGames] = useState<Game[]>([]);
+  const [competitions, setCompetitions] = useState<GameCompetition[]>([]);
+  const [resultOpen, setResultOpen] = useState(false);
+  const [resultForm, setResultForm] = useState({
+    game_id: "",
+    game_competition_id: "",
+    sport_id: "",
+    discipline_id: "",
+    result_date: "",
+    rank: "",
+    medal: "",
+    score: "",
+    unit: "",
+    is_national_record: false,
+    is_personal_best: false,
+    notes: "",
+  });
+
   const [docOpen, setDocOpen] = useState(false);
   const [docForm, setDocForm] = useState({
     category: "admin",
@@ -175,7 +205,7 @@ function AthleteDetailPage() {
       setClub((d ?? null) as Club | null);
     } else setClub(null);
 
-    const [{ data: dd }, { data: kk }, { data: rr }, { data: ss }] = await Promise.all([
+    const [{ data: dd }, { data: kk }, { data: rr }, { data: ss }, { data: rs }] = await Promise.all([
       supabase
         .from("athlete_documents")
         .select("*")
@@ -192,21 +222,29 @@ function AthleteDetailPage() {
         .select("*, game:games(id,name,edition_year)")
         .eq("athlete_id", id)
         .order("created_at", { ascending: false }),
+      supabase
+        .from("athlete_results")
+        .select("*, game:games(name,edition_year), game_competition:game_competitions(name), sport:sports(name), discipline:disciplines(name)")
+        .eq("athlete_id", id)
+        .order("result_date", { ascending: false, nullsFirst: false }),
     ]);
     setDocs((dd ?? []) as AthleteDocument[]);
     setKyc((kk ?? null) as AthleteKyc | null);
     setRelations((rr ?? []) as AthleteRelation[]);
     setSelections((ss ?? []) as Selection[]);
+    setResults((rs ?? []) as ResultRow[]);
   };
 
   useEffect(() => {
     loadAll();
     (async () => {
-      const [sp, fd, cl, co] = await Promise.all([
+      const [sp, fd, cl, co, gm, gc] = await Promise.all([
         supabase.from("sports").select("*").order("name"),
         supabase.from("federations").select("*").order("acronym"),
         supabase.from("clubs").select("*").order("name"),
         supabase.from("coaches").select("*").eq("is_active", true).order("last_name"),
+        supabase.from("games").select("*").order("competition_start", { ascending: false }),
+        supabase.from("game_competitions").select("*"),
       ]);
       setRefs({
         sports: (sp.data ?? []) as Sport[],
@@ -214,6 +252,8 @@ function AthleteDetailPage() {
         clubs: (cl.data ?? []) as Club[],
       });
       setCoaches((co.data ?? []) as Coach[]);
+      setGames((gm.data ?? []) as Game[]);
+      setCompetitions((gc.data ?? []) as GameCompetition[]);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -421,6 +461,35 @@ function AthleteDetailPage() {
     loadAll();
   };
 
+  const submitResult = async () => {
+    if (!resultForm.game_id) return toast.error("Games requis");
+    const payload = {
+      athlete_id: id,
+      game_id: resultForm.game_id,
+      game_competition_id: resultForm.game_competition_id || null,
+      sport_id: resultForm.sport_id || null,
+      discipline_id: resultForm.discipline_id || null,
+      result_date: resultForm.result_date || null,
+      rank: resultForm.rank ? Number(resultForm.rank) : null,
+      medal: resultForm.medal || null,
+      score: resultForm.score.trim() || null,
+      unit: resultForm.unit.trim() || null,
+      is_national_record: resultForm.is_national_record,
+      is_personal_best: resultForm.is_personal_best,
+      notes: resultForm.notes.trim() || null,
+    };
+    const { error } = await supabase.from("athlete_results").insert(payload);
+    if (error) return toast.error("Échec", { description: error.message });
+    toast.success("Résultat ajouté");
+    setResultOpen(false);
+    setResultForm({
+      game_id: "", game_competition_id: "", sport_id: "", discipline_id: "",
+      result_date: "", rank: "", medal: "", score: "", unit: "",
+      is_national_record: false, is_personal_best: false, notes: "",
+    });
+    loadAll();
+  };
+
   const fieldErr = (k: string) =>
     errors[k] ? <p className="text-xs text-red-600">{errors[k]}</p> : null;
 
@@ -499,6 +568,7 @@ function AthleteDetailPage() {
           <TabsTrigger value="kyc">KYC</TabsTrigger>
           <TabsTrigger value="relations">Relations</TabsTrigger>
           <TabsTrigger value="selections">Sélections</TabsTrigger>
+          <TabsTrigger value="palmares">Palmarès</TabsTrigger>
         </TabsList>
 
         <TabsContent value="profil">
@@ -788,6 +858,76 @@ function AthleteDetailPage() {
                 </TableBody>
               </Table>
             )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="palmares">
+          <div className="space-y-4">
+            {(() => {
+              const r = results ?? [];
+              const gold = r.filter((x) => x.medal === "gold").length;
+              const silver = r.filter((x) => x.medal === "silver").length;
+              const bronze = r.filter((x) => x.medal === "bronze").length;
+              const rn = r.filter((x) => x.is_national_record).length;
+              const pb = r.filter((x) => x.is_personal_best).length;
+              return (
+                <div className="grid gap-3 md:grid-cols-5">
+                  <SummaryCard label="Or" value={gold} cls="bg-amber-100 text-amber-800" />
+                  <SummaryCard label="Argent" value={silver} cls="bg-slate-200 text-slate-700" />
+                  <SummaryCard label="Bronze" value={bronze} cls="bg-orange-100 text-orange-700" />
+                  <SummaryCard label="Records nationaux" value={rn} cls="bg-indigo-100 text-indigo-700" />
+                  <SummaryCard label="Personal bests" value={pb} cls="bg-emerald-100 text-emerald-700" />
+                </div>
+              );
+            })()}
+            <div className="flex justify-end">
+              <Button onClick={() => setResultOpen(true)} className="bg-indigo-500 hover:bg-indigo-600">
+                <Plus className="mr-2 h-4 w-4" /> Ajouter un résultat
+              </Button>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-white">
+              {results === null ? (
+                <TableSkeleton cols={9} />
+              ) : results.length === 0 ? (
+                <div className="p-6"><EmptyState message="Aucun résultat enregistré." /></div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Games</TableHead>
+                      <TableHead>Épreuve</TableHead>
+                      <TableHead>Sport</TableHead>
+                      <TableHead>Discipline</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Classement</TableHead>
+                      <TableHead>Médaille</TableHead>
+                      <TableHead>Score</TableHead>
+                      <TableHead>RN</TableHead>
+                      <TableHead>PB</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {results.map((r) => {
+                      const med = r.medal ? MEDAL_LABELS.find((m) => m.value === r.medal) : null;
+                      return (
+                        <TableRow key={r.id}>
+                          <TableCell>{r.game ? `${r.game.name} ${r.game.edition_year}` : "—"}</TableCell>
+                          <TableCell>{r.game_competition?.name ?? "—"}</TableCell>
+                          <TableCell>{r.sport?.name ?? "—"}</TableCell>
+                          <TableCell>{r.discipline?.name ?? "—"}</TableCell>
+                          <TableCell>{r.result_date ?? "—"}</TableCell>
+                          <TableCell>{r.rank ?? "—"}</TableCell>
+                          <TableCell>{med ? <Badge className={`${med.cls} hover:${med.cls}`}>{med.label}</Badge> : "—"}</TableCell>
+                          <TableCell>{r.score ? `${r.score}${r.unit ? " " + r.unit : ""}` : "—"}</TableCell>
+                          <TableCell>{r.is_national_record ? <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">RN</Badge> : "—"}</TableCell>
+                          <TableCell>{r.is_personal_best ? <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">PB</Badge> : "—"}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
           </div>
         </TabsContent>
       </Tabs>
@@ -1175,6 +1315,88 @@ function AthleteDetailPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Result dialog */}
+      <Dialog open={resultOpen} onOpenChange={setResultOpen}>
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Ajouter un résultat</DialogTitle></DialogHeader>
+          <div className="grid gap-3 py-4 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label>Games *</Label>
+              <Select value={resultForm.game_id} onValueChange={(v) => setResultForm({ ...resultForm, game_id: v, game_competition_id: "" })}>
+                <SelectTrigger><SelectValue placeholder="Choisir" /></SelectTrigger>
+                <SelectContent>
+                  {games.map((g) => (<SelectItem key={g.id} value={g.id}>{g.name} {g.edition_year}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Épreuve</Label>
+              <Select value={resultForm.game_competition_id || ALL} onValueChange={(v) => setResultForm({ ...resultForm, game_competition_id: v === ALL ? "" : v })}>
+                <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>—</SelectItem>
+                  {competitions.filter((c) => !resultForm.game_id || c.game_id === resultForm.game_id).map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Sport</Label>
+              <Select value={resultForm.sport_id || ALL} onValueChange={(v) => setResultForm({ ...resultForm, sport_id: v === ALL ? "" : v, discipline_id: "" })}>
+                <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>—</SelectItem>
+                  {refs.sports.map((s) => (<SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Date</Label>
+              <Input type="date" value={resultForm.result_date} onChange={(e) => setResultForm({ ...resultForm, result_date: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <Label>Classement</Label>
+              <Input type="number" value={resultForm.rank} onChange={(e) => setResultForm({ ...resultForm, rank: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <Label>Médaille</Label>
+              <Select value={resultForm.medal || ALL} onValueChange={(v) => setResultForm({ ...resultForm, medal: v === ALL ? "" : v })}>
+                <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>Aucune</SelectItem>
+                  {MEDAL_LABELS.map((m) => (<SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Score</Label>
+              <Input value={resultForm.score} onChange={(e) => setResultForm({ ...resultForm, score: e.target.value })} placeholder="10.93" />
+            </div>
+            <div className="space-y-1">
+              <Label>Unité</Label>
+              <Input value={resultForm.unit} onChange={(e) => setResultForm({ ...resultForm, unit: e.target.value })} placeholder="s, m, pts" />
+            </div>
+            <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
+              <Label>Record national</Label>
+              <Switch checked={resultForm.is_national_record} onCheckedChange={(v) => setResultForm({ ...resultForm, is_national_record: v })} />
+            </div>
+            <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
+              <Label>Personal best</Label>
+              <Switch checked={resultForm.is_personal_best} onCheckedChange={(v) => setResultForm({ ...resultForm, is_personal_best: v })} />
+            </div>
+            <div className="sm:col-span-2 space-y-1">
+              <Label>Notes</Label>
+              <Textarea value={resultForm.notes} onChange={(e) => setResultForm({ ...resultForm, notes: e.target.value })} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResultOpen(false)}>Annuler</Button>
+            <Button onClick={submitResult} className="bg-indigo-500 hover:bg-indigo-600">Ajouter</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <AlertDialog open={confirmDeactivate} onOpenChange={setConfirmDeactivate}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -1222,6 +1444,15 @@ function KycToggle({
     <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
       <Label className="cursor-pointer">{label}</Label>
       <Switch checked={value} onCheckedChange={onChange} />
+    </div>
+  );
+}
+
+function SummaryCard({ label, value, cls }: { label: string; value: number; cls: string }) {
+  return (
+    <div className={`rounded-lg border border-slate-200 p-4 ${cls}`}>
+      <p className="text-xs uppercase tracking-wide opacity-80">{label}</p>
+      <p className="text-2xl font-semibold">{value}</p>
     </div>
   );
 }

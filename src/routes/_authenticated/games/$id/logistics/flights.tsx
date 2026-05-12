@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, X } from "lucide-react";
+import { Plus, Trash2, X, Pencil, Check } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import {
@@ -83,6 +83,30 @@ function FlightsPage() {
     special_baggage: "",
   });
   const [confirmDel, setConfirmDel] = useState<Flight | null>(null);
+  const [editPaxId, setEditPaxId] = useState<string | null>(null);
+  const [editSeat, setEditSeat] = useState("");
+  const [editBag, setEditBag] = useState("");
+
+  const startEditPax = (p: FlightPassenger) => {
+    setEditPaxId(p.id);
+    setEditSeat(p.seat ?? "");
+    setEditBag(p.special_baggage ?? "");
+  };
+
+  const saveEditPax = async () => {
+    if (!editPaxId) return;
+    const { error } = await supabase
+      .from("flight_passengers")
+      .update({
+        seat: editSeat.trim() || null,
+        special_baggage: editBag.trim() || null,
+      })
+      .eq("id", editPaxId);
+    if (error) return toast.error("Échec", { description: error.message });
+    toast.success("Passager mis à jour");
+    setEditPaxId(null);
+    if (drawerFlight) openDrawer(drawerFlight);
+  };
 
   const load = async () => {
     setLoading(true);
@@ -388,20 +412,58 @@ function FlightsPage() {
                 <p className="text-sm text-slate-500">Aucun passager.</p>
               ) : (
                 <ul className="space-y-2">
-                  {passengers.map((p) => (
-                    <li key={p.id} className="flex items-center justify-between rounded border border-slate-200 p-2 text-sm">
-                      <div>
-                        <div className="font-medium">{paxLabel(p)}</div>
-                        <div className="text-xs text-slate-500">
-                          {p.seat ? `Siège ${p.seat}` : "Siège —"}
-                          {p.special_baggage ? ` · ${p.special_baggage}` : ""}
+                  {passengers.map((p) => {
+                    const isEdit = editPaxId === p.id;
+                    return (
+                      <li key={p.id} className="rounded border border-slate-200 p-2 text-sm">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1">
+                            <div className="font-medium">{paxLabel(p)}</div>
+                            {!isEdit ? (
+                              <div className="text-xs text-slate-500">
+                                {p.seat ? `Siège ${p.seat}` : "Siège —"}
+                                {p.special_baggage ? ` · ${p.special_baggage}` : ""}
+                              </div>
+                            ) : (
+                              <div className="mt-2 grid grid-cols-2 gap-2">
+                                <Input
+                                  placeholder="Siège (ex: 12A)"
+                                  value={editSeat}
+                                  onChange={(e) => setEditSeat(e.target.value)}
+                                />
+                                <Input
+                                  placeholder="Bagage spécial"
+                                  value={editBag}
+                                  onChange={(e) => setEditBag(e.target.value)}
+                                />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex gap-1">
+                            {!isEdit ? (
+                              <>
+                                <Button variant="ghost" size="icon" onClick={() => startEditPax(p)} aria-label="Modifier">
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => removePax(p.id)} aria-label="Retirer">
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button size="sm" onClick={saveEditPax} className="bg-indigo-500 hover:bg-indigo-600">
+                                  <Check className="mr-1 h-4 w-4" /> Enregistrer
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => setEditPaxId(null)}>
+                                  Annuler
+                                </Button>
+                              </>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                      <Button variant="ghost" size="icon" onClick={() => removePax(p.id)}>
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </li>
-                  ))}
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </div>
