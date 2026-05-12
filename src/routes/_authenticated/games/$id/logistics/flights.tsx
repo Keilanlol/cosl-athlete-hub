@@ -83,6 +83,30 @@ function FlightsPage() {
     special_baggage: "",
   });
   const [confirmDel, setConfirmDel] = useState<Flight | null>(null);
+  const [editPaxId, setEditPaxId] = useState<string | null>(null);
+  const [editSeat, setEditSeat] = useState("");
+  const [editBag, setEditBag] = useState("");
+
+  const startEditPax = (p: FlightPassenger) => {
+    setEditPaxId(p.id);
+    setEditSeat(p.seat ?? "");
+    setEditBag(p.special_baggage ?? "");
+  };
+
+  const saveEditPax = async () => {
+    if (!editPaxId) return;
+    const { error } = await supabase
+      .from("flight_passengers")
+      .update({
+        seat: editSeat.trim() || null,
+        special_baggage: editBag.trim() || null,
+      })
+      .eq("id", editPaxId);
+    if (error) return toast.error("Échec", { description: error.message });
+    toast.success("Passager mis à jour");
+    setEditPaxId(null);
+    if (drawerFlight) openDrawer(drawerFlight);
+  };
 
   const load = async () => {
     setLoading(true);
