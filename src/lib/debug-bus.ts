@@ -68,7 +68,7 @@ export function getCounters() {
 function scheduleNotify() {
   if (notifyScheduled) return;
   notifyScheduled = true;
-  window.setTimeout(() => {
+  globalThis.setTimeout(() => {
     notifyScheduled = false;
     const snapshot = entries.slice();
     for (const fn of listeners) fn(snapshot);
