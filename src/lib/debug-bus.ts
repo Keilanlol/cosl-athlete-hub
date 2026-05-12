@@ -68,9 +68,9 @@ export function getCounters() {
 function scheduleNotify() {
   if (notifyScheduled) return;
   notifyScheduled = true;
-  queueMicrotask(() => {
+  window.setTimeout(() => {
     notifyScheduled = false;
     const snapshot = entries.slice();
     for (const fn of listeners) fn(snapshot);
-  });
+  }, 0);
 }
