@@ -578,6 +578,11 @@ ALTER TABLE public.message_templates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages_sent ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO authenticated;
+
 -- Policy par défaut : tout utilisateur connecté peut lire et écrire.
 -- Le contrôle fin par rôle se fait côté frontend via useAuth.
 DO $$
