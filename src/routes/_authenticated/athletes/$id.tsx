@@ -238,11 +238,13 @@ function AthleteDetailPage() {
   useEffect(() => {
     loadAll();
     (async () => {
-      const [sp, fd, cl, co] = await Promise.all([
+      const [sp, fd, cl, co, gm, gc] = await Promise.all([
         supabase.from("sports").select("*").order("name"),
         supabase.from("federations").select("*").order("acronym"),
         supabase.from("clubs").select("*").order("name"),
         supabase.from("coaches").select("*").eq("is_active", true).order("last_name"),
+        supabase.from("games").select("*").order("competition_start", { ascending: false }),
+        supabase.from("game_competitions").select("*"),
       ]);
       setRefs({
         sports: (sp.data ?? []) as Sport[],
@@ -250,6 +252,8 @@ function AthleteDetailPage() {
         clubs: (cl.data ?? []) as Club[],
       });
       setCoaches((co.data ?? []) as Coach[]);
+      setGames((gm.data ?? []) as Game[]);
+      setCompetitions((gc.data ?? []) as GameCompetition[]);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
