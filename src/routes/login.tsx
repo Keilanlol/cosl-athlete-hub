@@ -1,5 +1,5 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState, type FormEvent } from "react";
+import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { useState, type FormEvent } from "react";
 import { Loader2 } from "lucide-react";
 import { AuthLayout } from "@/components/layouts/AuthLayout";
 import { Button } from "@/components/ui/button";
@@ -14,21 +14,12 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const { signIn, session, user, loading } = useAuth();
-  const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [isRedirecting, setIsRedirecting] = useState(false);
 
-  useEffect(() => {
-    if (loading || isRedirecting) return;
-    // Only navigate when session is confirmed valid (has user + access_token)
-    if (session?.access_token && user?.id) {
-      setIsRedirecting(true);
-      navigate({ to: "/dashboard" });
-    }
-  }, [loading, session, user, navigate, isRedirecting]);
+  const isAuthValid = !!session?.access_token && !!user?.id;
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -38,6 +29,8 @@ function LoginPage() {
     setSubmitting(false);
     if (error) setError("Identifiants invalides.");
   };
+
+  if (!loading && isAuthValid) return <Navigate to="/dashboard" replace />;
 
   return (
     <AuthLayout>

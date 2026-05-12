@@ -1,5 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -8,13 +7,15 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const { session, loading } = useAuth();
-  const navigate = useNavigate();
+  const { session, user, loading } = useAuth();
 
-  useEffect(() => {
-    if (loading) return;
-    navigate({ to: session ? "/dashboard" : "/login" });
-  }, [loading, session, navigate]);
+  if (!loading) {
+    return session?.access_token && user?.id ? (
+      <Navigate to="/dashboard" replace />
+    ) : (
+      <Navigate to="/login" replace />
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50">
