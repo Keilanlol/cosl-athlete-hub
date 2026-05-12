@@ -1447,3 +1447,12 @@ function KycToggle({
     </div>
   );
 }
+
+function SummaryCard({ label, value, cls }: { label: string; value: number; cls: string }) {
+  return (
+    <div className={`rounded-lg border border-slate-200 p-4 ${cls}`}>
+      <p className="text-xs uppercase tracking-wide opacity-80">{label}</p>
+      <p className="text-2xl font-semibold">{value}</p>
+    </div>
+  );
+}
