@@ -29,6 +29,7 @@ const createDisabledSupabaseClient = (): SupabaseClient => {
         data: { subscription: { unsubscribe: () => undefined } },
       }),
       getSession: async () => ({ data: { session: null }, error: null }),
+      getUser: async () => ({ data: { user: null }, error: authError }),
       signInWithPassword: async () => ({
         data: { user: null, session: null },
         error: authError,
