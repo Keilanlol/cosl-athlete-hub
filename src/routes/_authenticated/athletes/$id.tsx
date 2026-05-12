@@ -1315,6 +1315,88 @@ function AthleteDetailPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Result dialog */}
+      <Dialog open={resultOpen} onOpenChange={setResultOpen}>
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Ajouter un résultat</DialogTitle></DialogHeader>
+          <div className="grid gap-3 py-4 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label>Games *</Label>
+              <Select value={resultForm.game_id} onValueChange={(v) => setResultForm({ ...resultForm, game_id: v, game_competition_id: "" })}>
+                <SelectTrigger><SelectValue placeholder="Choisir" /></SelectTrigger>
+                <SelectContent>
+                  {games.map((g) => (<SelectItem key={g.id} value={g.id}>{g.name} {g.edition_year}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Épreuve</Label>
+              <Select value={resultForm.game_competition_id || ALL} onValueChange={(v) => setResultForm({ ...resultForm, game_competition_id: v === ALL ? "" : v })}>
+                <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>—</SelectItem>
+                  {competitions.filter((c) => !resultForm.game_id || c.game_id === resultForm.game_id).map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Sport</Label>
+              <Select value={resultForm.sport_id || ALL} onValueChange={(v) => setResultForm({ ...resultForm, sport_id: v === ALL ? "" : v, discipline_id: "" })}>
+                <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>—</SelectItem>
+                  {refs.sports.map((s) => (<SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Date</Label>
+              <Input type="date" value={resultForm.result_date} onChange={(e) => setResultForm({ ...resultForm, result_date: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <Label>Classement</Label>
+              <Input type="number" value={resultForm.rank} onChange={(e) => setResultForm({ ...resultForm, rank: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <Label>Médaille</Label>
+              <Select value={resultForm.medal || ALL} onValueChange={(v) => setResultForm({ ...resultForm, medal: v === ALL ? "" : v })}>
+                <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>Aucune</SelectItem>
+                  {MEDAL_LABELS.map((m) => (<SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Score</Label>
+              <Input value={resultForm.score} onChange={(e) => setResultForm({ ...resultForm, score: e.target.value })} placeholder="10.93" />
+            </div>
+            <div className="space-y-1">
+              <Label>Unité</Label>
+              <Input value={resultForm.unit} onChange={(e) => setResultForm({ ...resultForm, unit: e.target.value })} placeholder="s, m, pts" />
+            </div>
+            <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
+              <Label>Record national</Label>
+              <Switch checked={resultForm.is_national_record} onCheckedChange={(v) => setResultForm({ ...resultForm, is_national_record: v })} />
+            </div>
+            <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
+              <Label>Personal best</Label>
+              <Switch checked={resultForm.is_personal_best} onCheckedChange={(v) => setResultForm({ ...resultForm, is_personal_best: v })} />
+            </div>
+            <div className="sm:col-span-2 space-y-1">
+              <Label>Notes</Label>
+              <Textarea value={resultForm.notes} onChange={(e) => setResultForm({ ...resultForm, notes: e.target.value })} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResultOpen(false)}>Annuler</Button>
+            <Button onClick={submitResult} className="bg-indigo-500 hover:bg-indigo-600">Ajouter</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <AlertDialog open={confirmDeactivate} onOpenChange={setConfirmDeactivate}>
         <AlertDialogContent>
           <AlertDialogHeader>
