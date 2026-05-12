@@ -860,6 +860,76 @@ function AthleteDetailPage() {
             )}
           </div>
         </TabsContent>
+
+        <TabsContent value="palmares">
+          <div className="space-y-4">
+            {(() => {
+              const r = results ?? [];
+              const gold = r.filter((x) => x.medal === "gold").length;
+              const silver = r.filter((x) => x.medal === "silver").length;
+              const bronze = r.filter((x) => x.medal === "bronze").length;
+              const rn = r.filter((x) => x.is_national_record).length;
+              const pb = r.filter((x) => x.is_personal_best).length;
+              return (
+                <div className="grid gap-3 md:grid-cols-5">
+                  <SummaryCard label="Or" value={gold} cls="bg-amber-100 text-amber-800" />
+                  <SummaryCard label="Argent" value={silver} cls="bg-slate-200 text-slate-700" />
+                  <SummaryCard label="Bronze" value={bronze} cls="bg-orange-100 text-orange-700" />
+                  <SummaryCard label="Records nationaux" value={rn} cls="bg-indigo-100 text-indigo-700" />
+                  <SummaryCard label="Personal bests" value={pb} cls="bg-emerald-100 text-emerald-700" />
+                </div>
+              );
+            })()}
+            <div className="flex justify-end">
+              <Button onClick={() => setResultOpen(true)} className="bg-indigo-500 hover:bg-indigo-600">
+                <Plus className="mr-2 h-4 w-4" /> Ajouter un résultat
+              </Button>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-white">
+              {results === null ? (
+                <TableSkeleton cols={9} />
+              ) : results.length === 0 ? (
+                <div className="p-6"><EmptyState message="Aucun résultat enregistré." /></div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Games</TableHead>
+                      <TableHead>Épreuve</TableHead>
+                      <TableHead>Sport</TableHead>
+                      <TableHead>Discipline</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Classement</TableHead>
+                      <TableHead>Médaille</TableHead>
+                      <TableHead>Score</TableHead>
+                      <TableHead>RN</TableHead>
+                      <TableHead>PB</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {results.map((r) => {
+                      const med = r.medal ? MEDAL_LABELS.find((m) => m.value === r.medal) : null;
+                      return (
+                        <TableRow key={r.id}>
+                          <TableCell>{r.game ? `${r.game.name} ${r.game.edition_year}` : "—"}</TableCell>
+                          <TableCell>{r.game_competition?.name ?? "—"}</TableCell>
+                          <TableCell>{r.sport?.name ?? "—"}</TableCell>
+                          <TableCell>{r.discipline?.name ?? "—"}</TableCell>
+                          <TableCell>{r.result_date ?? "—"}</TableCell>
+                          <TableCell>{r.rank ?? "—"}</TableCell>
+                          <TableCell>{med ? <Badge className={`${med.cls} hover:${med.cls}`}>{med.label}</Badge> : "—"}</TableCell>
+                          <TableCell>{r.score ? `${r.score}${r.unit ? " " + r.unit : ""}` : "—"}</TableCell>
+                          <TableCell>{r.is_national_record ? <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">RN</Badge> : "—"}</TableCell>
+                          <TableCell>{r.is_personal_best ? <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">PB</Badge> : "—"}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+          </div>
+        </TabsContent>
       </Tabs>
 
       <div className="flex justify-end border-t border-slate-200 pt-4">
