@@ -483,7 +483,12 @@ BEGIN
     _full_name,
     new.email,
     coalesce((new.raw_user_meta_data->>'role')::public.user_role, 'reader')
-  );
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    username = EXCLUDED.username,
+    full_name = EXCLUDED.full_name,
+    email = EXCLUDED.email,
+    role = EXCLUDED.role;
   RETURN new;
 END;
 $$;
