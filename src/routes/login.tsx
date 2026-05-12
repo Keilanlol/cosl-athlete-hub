@@ -1,5 +1,5 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { Loader2 } from "lucide-react";
 import { AuthLayout } from "@/components/layouts/AuthLayout";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { supabaseConfigured } from "@/lib/supabase";
-import { dlog } from "@/lib/debug-bus";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -22,18 +21,12 @@ function LoginPage() {
 
   const isAuthValid = !!session?.access_token && !!user?.id;
 
-  useEffect(() => {
-    dlog("LoginPage.render", "render", { loading, isAuthValid, submitting });
-  }, [loading, isAuthValid, submitting]);
-
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    dlog("LoginPage.submit", "signIn called", { username });
     setError(null);
     setSubmitting(true);
     const { error } = await signIn(username, password);
     setSubmitting(false);
-    dlog("LoginPage.submit", "signIn returned", { error: error?.message });
     if (error) setError("Identifiants invalides.");
   };
 
