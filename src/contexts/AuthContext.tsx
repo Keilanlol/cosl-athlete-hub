@@ -236,14 +236,14 @@ export function useAuth() {
 
 function withTimeout<T>(promise: PromiseLike<T>, ms: number, message: string): Promise<T> {
   return new Promise((resolve, reject) => {
-    const timer = window.setTimeout(() => reject(new Error(message)), ms);
+    const timer = globalThis.setTimeout(() => reject(new Error(message)), ms);
     Promise.resolve(promise).then(
       (value) => {
-        window.clearTimeout(timer);
+        globalThis.clearTimeout(timer);
         resolve(value);
       },
       (error) => {
-        window.clearTimeout(timer);
+        globalThis.clearTimeout(timer);
         reject(error);
       },
     );
