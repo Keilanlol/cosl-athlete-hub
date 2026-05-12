@@ -245,6 +245,65 @@ export const generateCoslId = (existing: string[]): string => {
   return `${prefix}${String(max + 1).padStart(4, "0")}`;
 };
 
+export type Discipline = {
+  id: string;
+  sport_id: string;
+  name: string;
+  gender: Gender;
+  age_category: string | null;
+};
+
+export type GameCompetition = {
+  id: string;
+  game_id: string;
+  sport_id: string;
+  discipline_id: string | null;
+  name: string;
+  competition_date: string | null;
+  round: string | null;
+  gender: Gender | null;
+  category: string | null;
+  venue: string | null;
+  notes: string | null;
+  created_at: string;
+};
+
+export type AthleteResult = {
+  id: string;
+  athlete_id: string;
+  game_id: string | null;
+  game_competition_id: string | null;
+  sport_id: string | null;
+  discipline_id: string | null;
+  result_date: string | null;
+  rank: number | null;
+  medal: "gold" | "silver" | "bronze" | null;
+  score: string | null;
+  unit: string | null;
+  is_national_record: boolean;
+  is_personal_best: boolean;
+  notes: string | null;
+  created_at: string;
+};
+
+export const MEDAL_LABELS: { value: "gold" | "silver" | "bronze"; label: string; cls: string }[] = [
+  { value: "gold", label: "🥇 Or", cls: "bg-amber-100 text-amber-800" },
+  { value: "silver", label: "🥈 Argent", cls: "bg-slate-200 text-slate-700" },
+  { value: "bronze", label: "🥉 Bronze", cls: "bg-orange-100 text-orange-700" },
+];
+
+export const ROUND_OPTIONS = [
+  "Finale",
+  "Petite Finale",
+  "Demi-finale",
+  "Quart de finale",
+  "Huitième de finale",
+  "Qualification",
+  "Séries",
+  "Poules",
+  "Autre",
+];
+
 // Games
 export type GameType =
   | "jo_summer" | "jo_winter" | "joj_summer" | "joj_winter"
