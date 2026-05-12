@@ -98,15 +98,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const verifySession = (s: Session | null) => {
-      const token = s?.access_token ?? null;
-      const sessionUserId = s?.user?.id ?? null;
-
-      if (!token || !sessionUserId) {
+      if (!s?.access_token || !s.user?.id) {
         clearAuth();
         return;
       }
 
-      const pendingSession = s;
+      const token = s.access_token;
+      const sessionUserId = s.user.id;
+
+      const pendingSession: Session = s;
 
       if (validatedTokenRef.current === token) {
         setLoading(false);
