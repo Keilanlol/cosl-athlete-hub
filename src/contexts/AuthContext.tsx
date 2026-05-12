@@ -64,7 +64,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .maybeSingle();
         if (cancelled || requestId !== profileRequestRef.current) return;
         if (error) {
-          // eslint-disable-next-line no-console
           console.warn("[auth] profile fetch failed:", error.message);
           return;
         }
