@@ -115,9 +115,12 @@ function AthletesPage() {
   const [sports, setSports] = useState<Sport[]>([]);
   const [federations, setFederations] = useState<Federation[]>([]);
   const [clubs, setClubs] = useState<Club[]>([]);
+  const [disciplines, setDisciplines] = useState<Discipline[]>([]);
+  const [athleteDisciplines, setAthleteDisciplines] = useState<Record<string, string[]>>({});
 
   const [search, setSearch] = useState("");
   const [fSport, setFSport] = useState(ALL);
+  const [fDiscipline, setFDiscipline] = useState(ALL);
   const [fFed, setFFed] = useState(ALL);
   const [fStatus, setFStatus] = useState(ALL);
   const [fLevel, setFLevel] = useState(ALL);
