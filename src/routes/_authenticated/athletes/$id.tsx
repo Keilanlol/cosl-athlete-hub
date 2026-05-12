@@ -112,6 +112,32 @@ function AthleteDetailPage() {
   const [deactivating, setDeactivating] = useState(false);
   const [confirmDeactivate, setConfirmDeactivate] = useState(false);
 
+  // Palmarès
+  type ResultRow = AthleteResult & {
+    game: { name: string; edition_year: number } | null;
+    game_competition: { name: string } | null;
+    sport: { name: string } | null;
+    discipline: { name: string } | null;
+  };
+  const [results, setResults] = useState<ResultRow[] | null>(null);
+  const [games, setGames] = useState<Game[]>([]);
+  const [competitions, setCompetitions] = useState<GameCompetition[]>([]);
+  const [resultOpen, setResultOpen] = useState(false);
+  const [resultForm, setResultForm] = useState({
+    game_id: "",
+    game_competition_id: "",
+    sport_id: "",
+    discipline_id: "",
+    result_date: "",
+    rank: "",
+    medal: "",
+    score: "",
+    unit: "",
+    is_national_record: false,
+    is_personal_best: false,
+    notes: "",
+  });
+
   const [docOpen, setDocOpen] = useState(false);
   const [docForm, setDocForm] = useState({
     category: "admin",
