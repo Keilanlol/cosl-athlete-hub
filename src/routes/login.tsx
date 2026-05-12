@@ -13,16 +13,22 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
-  const { signIn, session, loading } = useAuth();
+  const { signIn, session, user, loading } = useAuth();
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   useEffect(() => {
-    if (!loading && session) navigate({ to: "/dashboard" });
-  }, [loading, session, navigate]);
+    if (loading || isRedirecting) return;
+    // Only navigate when session is confirmed valid (has user + access_token)
+    if (session?.access_token && user?.id) {
+      setIsRedirecting(true);
+      navigate({ to: "/dashboard" });
+    }
+  }, [loading, session, user, navigate, isRedirecting]);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
