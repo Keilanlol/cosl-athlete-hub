@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { supabaseConfigured } from "@/lib/supabase";
+import { dlog } from "@/lib/debug-bus";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -20,17 +21,23 @@ function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const isAuthValid = !!session?.access_token && !!user?.id;
+  dlog("LoginPage.render", "render", { loading, isAuthValid, submitting });
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    dlog("LoginPage.submit", "signIn called", { username });
     setError(null);
     setSubmitting(true);
     const { error } = await signIn(username, password);
     setSubmitting(false);
+    dlog("LoginPage.submit", "signIn returned", { error: error?.message });
     if (error) setError("Identifiants invalides.");
   };
 
-  if (!loading && isAuthValid) return <Navigate to="/dashboard" replace />;
+  if (!loading && isAuthValid) {
+    dlog("LoginPage", "redirecting to /dashboard");
+    return <Navigate to="/dashboard" replace />;
+  }
 
   return (
     <AuthLayout>
