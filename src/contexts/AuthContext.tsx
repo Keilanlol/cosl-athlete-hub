@@ -3,6 +3,8 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -40,11 +42,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [fullName, setFullName] = useState<string | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const profileRequestRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
 
     const loadProfile = (u: User | null) => {
+      const requestId = ++profileRequestRef.current;
       if (!u) {
         setUsername(null);
         setFullName(null);
@@ -58,33 +62,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .select("username, full_name, role")
           .eq("id", u.id)
           .maybeSingle();
-        if (cancelled) return;
+        if (cancelled || requestId !== profileRequestRef.current) return;
         if (error) {
           // eslint-disable-next-line no-console
           console.warn("[auth] profile fetch failed:", error.message);
           return;
         }
-        setUsername(data?.username ?? null);
-        setFullName(data?.full_name ?? null);
-        setRole((data?.role as UserRole | undefined) ?? null);
+        const nextUsername = data?.username ?? null;
+        const nextFullName = data?.full_name ?? null;
+        const nextRole = (data?.role as UserRole | undefined) ?? null;
+        setUsername((prev) => (prev === nextUsername ? prev : nextUsername));
+        setFullName((prev) => (prev === nextFullName ? prev : nextFullName));
+        setRole((prev) => (prev === nextRole ? prev : nextRole));
       }, 0);
+    };
+
+    const commitSession = (s: Session | null) => {
+      const nextUser = s?.user ?? null;
+      setSession((prev) => (prev?.access_token === s?.access_token ? prev : s));
+      setUser((prev) => (prev?.id === nextUser?.id ? prev : nextUser));
+      setLoading(false);
+      loadProfile(nextUser);
     };
 
     // 1. Subscribe FIRST
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
-      setSession(s);
-      setUser(s?.user ?? null);
-      setLoading(false);
-      loadProfile(s?.user ?? null);
+      commitSession(s);
     });
 
     // 2. THEN load existing session
     supabase.auth.getSession().then(({ data: { session: s } }) => {
       if (cancelled) return;
-      setSession(s);
-      setUser(s?.user ?? null);
-      setLoading(false);
-      loadProfile(s?.user ?? null);
+      commitSession(s);
     });
 
     return () => {
@@ -104,19 +113,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(() => supabase.auth.signOut(), []);
 
+  const value = useMemo(
+    () => ({
+      session,
+      user,
+      username,
+      full_name: fullName,
+      role,
+      loading,
+      signIn,
+      signOut,
+    }),
+    [session, user, username, fullName, role, loading, signIn, signOut],
+  );
+
   return (
-    <AuthContext.Provider
-      value={{
-        session,
-        user,
-        username,
-        full_name: fullName,
-        role,
-        loading,
-        signIn,
-        signOut,
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
