@@ -35,6 +35,7 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+const AUTH_TIMEOUT_MS = 8_000;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
@@ -83,11 +84,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       dlog("auth.loadProfile", "fetching profile", { userId: u.id, requestId });
       setTimeout(async () => {
-        const { data, error } = await supabase
-          .from("user_profiles")
-          .select("username, full_name, role")
-          .eq("id", u.id)
-          .maybeSingle();
+        const { data, error } = await withTimeout(
+          supabase
+            .from("user_profiles")
+            .select("username, full_name, role")
+            .eq("id", u.id)
+            .maybeSingle(),
+          AUTH_TIMEOUT_MS,
+          "profile timeout",
+        );
         if (cancelled || requestId !== profileRequestRef.current) {
           dlog("auth.loadProfile", "stale, dropped", { requestId });
           return;
@@ -141,7 +146,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setTimeout(async () => {
         const t0 = Date.now();
         try {
-          const { data, error } = await supabase.auth.getUser();
+          const { data, error } = await withTimeout(
+            supabase.auth.getUser(),
+            AUTH_TIMEOUT_MS,
+            "getUser timeout",
+          );
           dlog("auth.getUser", `returned in ${Date.now() - t0}ms`, {
             requestId,
             hasUser: !!data?.user,
@@ -161,6 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           commitVerifiedSession(pendingSession, verifiedUser);
         } catch (e) {
           dlog("auth.getUser", "THREW", String(e));
+          if (!cancelled && requestId === authRequestRef.current) clearAuth();
         }
       }, 0);
     };
