@@ -10,6 +10,7 @@ import {
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase, usernameToEmail } from "@/lib/supabase";
+import { dlog } from "@/lib/debug-bus";
 
 export type UserRole =
   | "admin"
