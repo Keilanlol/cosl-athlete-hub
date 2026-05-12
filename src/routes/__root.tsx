@@ -122,6 +122,7 @@ function RootComponent() {
       <AuthProvider>
         <Outlet />
         <Toaster richColors position="top-right" />
+        <DebugOverlay />
       </AuthProvider>
     </QueryClientProvider>
   );
