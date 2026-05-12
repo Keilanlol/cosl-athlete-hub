@@ -12,6 +12,7 @@ import {
   type Athlete,
   type AthleteForm,
   type Club,
+  type Discipline,
   type Federation,
   type Sport,
 } from "@/lib/types";
