@@ -35,6 +35,13 @@ function LoginPage() {
 
   return (
     <AuthLayout>
+      {!supabaseConfigured && (
+        <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          Configuration Lovable Cloud manquante : crée un fichier <code>.env</code> avec
+          <code> VITE_SUPABASE_URL</code> et <code>VITE_SUPABASE_ANON_KEY</code> (voir
+          <code> .env.example</code>) puis relance le build.
+        </div>
+      )}
       <form onSubmit={onSubmit} className="space-y-4">
         <div className="space-y-1.5">
           <Label htmlFor="username">Nom d'utilisateur</Label>
