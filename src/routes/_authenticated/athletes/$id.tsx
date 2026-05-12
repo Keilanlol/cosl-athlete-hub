@@ -568,6 +568,7 @@ function AthleteDetailPage() {
           <TabsTrigger value="kyc">KYC</TabsTrigger>
           <TabsTrigger value="relations">Relations</TabsTrigger>
           <TabsTrigger value="selections">Sélections</TabsTrigger>
+          <TabsTrigger value="palmares">Palmarès</TabsTrigger>
         </TabsList>
 
         <TabsContent value="profil">
