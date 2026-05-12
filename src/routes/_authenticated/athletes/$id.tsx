@@ -461,7 +461,34 @@ function AthleteDetailPage() {
     loadAll();
   };
 
-  const fieldErr = (k: string) =>
+  const submitResult = async () => {
+    if (!resultForm.game_id) return toast.error("Games requis");
+    const payload = {
+      athlete_id: id,
+      game_id: resultForm.game_id,
+      game_competition_id: resultForm.game_competition_id || null,
+      sport_id: resultForm.sport_id || null,
+      discipline_id: resultForm.discipline_id || null,
+      result_date: resultForm.result_date || null,
+      rank: resultForm.rank ? Number(resultForm.rank) : null,
+      medal: resultForm.medal || null,
+      score: resultForm.score.trim() || null,
+      unit: resultForm.unit.trim() || null,
+      is_national_record: resultForm.is_national_record,
+      is_personal_best: resultForm.is_personal_best,
+      notes: resultForm.notes.trim() || null,
+    };
+    const { error } = await supabase.from("athlete_results").insert(payload);
+    if (error) return toast.error("Échec", { description: error.message });
+    toast.success("Résultat ajouté");
+    setResultOpen(false);
+    setResultForm({
+      game_id: "", game_competition_id: "", sport_id: "", discipline_id: "",
+      result_date: "", rank: "", medal: "", score: "", unit: "",
+      is_national_record: false, is_personal_best: false, notes: "",
+    });
+    loadAll();
+  };
     errors[k] ? <p className="text-xs text-red-600">{errors[k]}</p> : null;
 
   const clubsForFed = useMemo(
