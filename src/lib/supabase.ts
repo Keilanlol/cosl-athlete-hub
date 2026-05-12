@@ -2,6 +2,8 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+const configErrorMessage =
+  "Configuration Lovable Cloud manquante ou invalide. Vérifie VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY.";
 
 export const supabaseConfigured = Boolean(
   url && anonKey && /^https?:\/\//.test(url),
@@ -10,23 +12,59 @@ export const supabaseConfigured = Boolean(
 if (!supabaseConfigured) {
   // eslint-disable-next-line no-console
   console.warn(
-    "[supabase] VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY manquants ou invalides. Crée un fichier .env (voir .env.example) puis relance le build.",
+    `[supabase] ${configErrorMessage} Crée un fichier .env (voir .env.example) puis relance le build.`,
   );
 }
 
-// Fallback URL valide pour éviter que createClient throw et casse tout le rendu.
-// Aucune requête ne sera émise tant que supabaseConfigured === false (gardé côté UI).
-export const supabase: SupabaseClient = createClient(
-  supabaseConfigured ? (url as string) : "http://localhost:54321",
-  supabaseConfigured ? (anonKey as string) : "anon-placeholder",
-  {
+const createDisabledSupabaseClient = (): SupabaseClient => {
+  const authError = {
+    name: "AuthError",
+    message: configErrorMessage,
+    status: 500,
+  };
+
+  return {
     auth: {
-      persistSession: supabaseConfigured,
-      autoRefreshToken: supabaseConfigured,
-      detectSessionInUrl: false,
+      onAuthStateChange: () => ({
+        data: { subscription: { unsubscribe: () => undefined } },
+      }),
+      getSession: async () => ({ data: { session: null }, error: null }),
+      signInWithPassword: async () => ({
+        data: { user: null, session: null },
+        error: authError,
+      }),
+      signOut: async () => ({ error: null }),
     },
-  },
-);
+    from: () => ({
+      select: () => ({
+        eq: () => ({
+          maybeSingle: async () => ({ data: null, error: null }),
+        }),
+      }),
+    }),
+  } as unknown as SupabaseClient;
+};
+
+const createSupabaseClient = (): SupabaseClient => {
+  if (!supabaseConfigured) return createDisabledSupabaseClient();
+
+  try {
+    return createClient(url as string, anonKey as string, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: false,
+      },
+    });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.warn("[supabase] Initialisation désactivée:", error);
+    return createDisabledSupabaseClient();
+  }
+};
+
+export const supabase: SupabaseClient = createSupabaseClient();
+export const supabaseConfigError = supabaseConfigured ? null : configErrorMessage;
 
 export const usernameToEmail = (username: string) =>
   `${username.trim().toLowerCase()}@coslbloobiz.local`;
