@@ -194,7 +194,7 @@ function AthletesPage() {
       if (fFed !== ALL && a.primary_federation_id !== fFed) return false;
       if (fStatus !== ALL && a.status !== fStatus) return false;
       if (fLevel !== ALL && a.level !== fLevel) return false;
-      const kyc = a.athlete_kyc?.[0]?.global_status ?? "red";
+      const kyc = readKyc(a.athlete_kyc);
       if (fKyc !== ALL && kyc !== fKyc) return false;
       if (q) {
         const hay = `${a.first_name} ${a.last_name} ${a.cosl_id} ${a.email ?? ""}`.toLowerCase();
