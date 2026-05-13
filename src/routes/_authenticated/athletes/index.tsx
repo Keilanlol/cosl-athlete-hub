@@ -615,7 +615,7 @@ function AthletesPage() {
                   <div className="space-y-1.5">
                     <Label>Sport principal</Label>
                     <EditableSelect
-                      value={form.primary_sport_id}
+                      value={form.primary_sport_id ?? ""}
                       onValueChange={(v) => setForm({ ...form, primary_sport_id: v })}
                       options={sports.map((s) => ({ value: s.id, label: s.name }))}
                       emptyLabel="—"
