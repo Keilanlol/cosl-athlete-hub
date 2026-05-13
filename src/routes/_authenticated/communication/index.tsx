@@ -1,15 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Mail, BellRing, MailOpen, Eye } from "lucide-react";
+import { Mail, BellRing, MailOpen, Send } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { type MessageSent } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/DataTableShell";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { MessageDetailDialog } from "@/components/MessageDetailDialog";
 
 export const Route = createFileRoute("/_authenticated/communication/")({
   component: CommunicationDashboard,
@@ -20,6 +22,7 @@ function CommunicationDashboard() {
   const [unread, setUnread] = useState(0);
   const [latest, setLatest] = useState<MessageSent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [openMsgId, setOpenMsgId] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
