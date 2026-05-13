@@ -1109,23 +1109,18 @@ function AthleteDetailPage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label>Niveau</Label>
-                    <Select
-                      value={form.level || ALL}
+                    <EditableSelect
+                      value={form.level ?? ""}
                       onValueChange={(v) =>
-                        setForm({
-                          ...form,
-                          level: (v === ALL ? "" : v) as AthleteForm["level"],
-                        })
+                        setForm({ ...form, level: v as AthleteForm["level"] })
                       }
-                    >
-                      <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={ALL}>—</SelectItem>
-                        {ATHLETE_LEVELS.map((s) => (
-                          <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      options={levels.map((l) => ({ value: l.code, label: l.label }))}
+                      emptyLabel="—"
+                      onAdd={addLevel}
+                      onDelete={removeLevel}
+                      addLabel="+ Ajouter un niveau…"
+                      manageTitle="Gérer les niveaux"
+                    />
                   </div>
                 </div>
               </div>
