@@ -599,7 +599,7 @@ function AthleteDetailPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="profil" className="space-y-4">
+      <Tabs value={tab} onValueChange={setTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="profil">Profil</TabsTrigger>
           <TabsTrigger value="sportif">Sportif</TabsTrigger>
@@ -607,6 +607,7 @@ function AthleteDetailPage() {
           <TabsTrigger value="kyc">KYC</TabsTrigger>
           <TabsTrigger value="relations">Relations</TabsTrigger>
           <TabsTrigger value="selections">Sélections</TabsTrigger>
+          <TabsTrigger value="agenda">Agenda</TabsTrigger>
           <TabsTrigger value="palmares">Palmarès</TabsTrigger>
         </TabsList>
 
