@@ -73,6 +73,7 @@ import {
 import { EmptyState, TableSkeleton } from "@/components/DataTableShell";
 import { useHashTab } from "@/hooks/useHashTab";
 import { WeekAgenda } from "@/components/WeekAgenda";
+import { MessageDetailDialog } from "@/components/MessageDetailDialog";
 
 type Appointment = {
   id: string;
