@@ -238,7 +238,7 @@ function AthleteDetailPage() {
       setClub((d ?? null) as Club | null);
     } else setClub(null);
 
-    const [{ data: dd }, { data: kk }, { data: rr }, { data: ss }, { data: rs }] = await Promise.all([
+    const [{ data: dd }, { data: kk }, { data: rr }, { data: ss }, { data: rs }, { data: ap }] = await Promise.all([
       supabase
         .from("athlete_documents")
         .select("*")
@@ -260,12 +260,18 @@ function AthleteDetailPage() {
         .select("*, game:games(name,edition_year), game_competition:game_competitions(name), sport:sports(name), discipline:disciplines(name)")
         .eq("athlete_id", id)
         .order("result_date", { ascending: false, nullsFirst: false }),
+      supabase
+        .from("athlete_appointments")
+        .select("*")
+        .eq("athlete_id", id)
+        .order("starts_at", { ascending: true }),
     ]);
     setDocs((dd ?? []) as AthleteDocument[]);
     setKyc((kk ?? null) as AthleteKyc | null);
     setRelations((rr ?? []) as AthleteRelation[]);
     setSelections((ss ?? []) as Selection[]);
     setResults((rs ?? []) as ResultRow[]);
+    setAppointments((ap ?? []) as Appointment[]);
   };
 
   useEffect(() => {
