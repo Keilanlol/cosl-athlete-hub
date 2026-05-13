@@ -71,6 +71,17 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { EmptyState, TableSkeleton } from "@/components/DataTableShell";
+import { useHashTab } from "@/hooks/useHashTab";
+
+type Appointment = {
+  id: string;
+  athlete_id: string;
+  title: string;
+  description: string | null;
+  location: string | null;
+  starts_at: string;
+  ends_at: string | null;
+};
 
 export const Route = createFileRoute("/_authenticated/athletes/$id")({
   component: AthleteDetailPage,
