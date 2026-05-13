@@ -1092,7 +1092,50 @@ function AthleteDetailPage() {
             </div>
           </div>
         </TabsContent>
+
+        <TabsContent value="messages">
+          <div className="rounded-lg border border-slate-200 bg-white">
+            {athleteMessages === null ? (
+              <TableSkeleton cols={4} />
+            ) : athleteMessages.length === 0 ? (
+              <div className="p-6">
+                <EmptyState message="Aucun message reçu." />
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Sujet</TableHead>
+                    <TableHead>Canal</TableHead>
+                    <TableHead>Audience</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {athleteMessages.map((m) => (
+                    <TableRow
+                      key={m.id}
+                      className="cursor-pointer hover:bg-slate-50"
+                      onClick={() => setOpenMsgId(m.id)}
+                    >
+                      <TableCell>
+                        {new Date(m.sent_at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}
+                      </TableCell>
+                      <TableCell className="font-medium">{m.subject}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{m.channel}</Badge>
+                      </TableCell>
+                      <TableCell className="text-xs text-slate-500">{m.audience_segment}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        </TabsContent>
       </Tabs>
+
+      <MessageDetailDialog messageId={openMsgId} onClose={() => setOpenMsgId(null)} />
 
       <div className="flex justify-end border-t border-slate-200 pt-4">
         <Button
