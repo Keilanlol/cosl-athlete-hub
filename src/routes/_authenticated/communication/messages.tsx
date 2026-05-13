@@ -151,21 +151,21 @@ function MessagesPage() {
     }
   };
 
-  const computeRecipients = async (): Promise<number> => {
+  const computeRecipientIds = async (): Promise<string[]> => {
     if (audience.kind === "all_athletes") {
-      const { count } = await supabase
+      const { data } = await supabase
         .from("athletes")
-        .select("id", { count: "exact", head: true })
+        .select("id")
         .eq("is_active", true);
-      return count ?? 0;
+      return ((data ?? []) as { id: string }[]).map((r) => r.id);
     }
     if (audience.kind === "federation" && audience.federationId) {
-      const { count } = await supabase
+      const { data } = await supabase
         .from("athletes")
-        .select("id", { count: "exact", head: true })
+        .select("id")
         .eq("primary_federation_id", audience.federationId)
         .eq("is_active", true);
-      return count ?? 0;
+      return ((data ?? []) as { id: string }[]).map((r) => r.id);
     }
     if (audience.kind === "delegation" && audience.gameId) {
       const { data } = await supabase
@@ -173,25 +173,25 @@ function MessagesPage() {
         .select("athlete_id")
         .eq("game_id", audience.gameId)
         .in("status", ["selected", "reserve"]);
-      const ids = new Set((data ?? []).map((r: { athlete_id: string }) => r.athlete_id));
-      return ids.size;
+      return Array.from(new Set(((data ?? []) as { athlete_id: string }[]).map((r) => r.athlete_id)));
     }
-    if (audience.kind === "staff") {
-      const { count } = await supabase
-        .from("coaches")
-        .select("id", { count: "exact", head: true })
-        .eq("is_active", true);
-      return count ?? 0;
-    }
-    return 0;
+    return [];
   };
 
   const startSend = async () => {
     if (!subject.trim() || !body.trim()) return toast.error("Sujet et corps requis");
     if (audience.kind === "delegation" && !audience.gameId) return toast.error("Games requis");
     if (audience.kind === "federation" && !audience.federationId) return toast.error("Fédération requise");
-    const c = await computeRecipients();
-    setRecipients(c);
+    if (audience.kind === "staff") {
+      const { count } = await supabase
+        .from("coaches")
+        .select("id", { count: "exact", head: true })
+        .eq("is_active", true);
+      setRecipients(count ?? 0);
+    } else {
+      const ids = await computeRecipientIds();
+      setRecipients(ids.length);
+    }
     setConfirmOpen(true);
   };
 
@@ -208,9 +208,26 @@ function MessagesPage() {
       recipients_count: recipients,
       sent_by: user?.id ?? null,
     };
-    const { error } = await supabase.from("messages_sent").insert(payload);
+    const { data: inserted, error } = await supabase
+      .from("messages_sent")
+      .insert(payload)
+      .select()
+      .single();
+    if (error || !inserted) {
+      setSending(false);
+      return toast.error("Échec", { description: error?.message });
+    }
+    // Track per-athlete recipients (skip "staff")
+    if (audience.kind !== "staff") {
+      const ids = await computeRecipientIds();
+      if (ids.length) {
+        const { error: e2 } = await supabase
+          .from("message_recipients")
+          .insert(ids.map((athlete_id) => ({ message_id: inserted.id, athlete_id })));
+        if (e2) toast.warning("Destinataires non liés", { description: e2.message });
+      }
+    }
     setSending(false);
-    if (error) return toast.error("Échec", { description: error.message });
     toast.success(`Message envoyé à ${recipients} destinataires`);
     setConfirmOpen(false);
     setSubject("");
