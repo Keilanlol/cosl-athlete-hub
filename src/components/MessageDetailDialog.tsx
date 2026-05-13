@@ -57,8 +57,8 @@ export function MessageDetailDialog({ messageId, onClose }: Props) {
         .from("message_recipients")
         .select("athlete:athletes(id,first_name,last_name)")
         .eq("message_id", messageId);
-      const list = ((rec ?? []) as Array<{ athlete: Recipient | null }>)
-        .map((r) => r.athlete)
+      const list = ((rec ?? []) as unknown as Array<{ athlete: Recipient | Recipient[] | null }>)
+        .map((r) => (Array.isArray(r.athlete) ? r.athlete[0] : r.athlete))
         .filter((x): x is Recipient => !!x)
         .sort((a, b) => a.last_name.localeCompare(b.last_name));
       setRecipients(list);
