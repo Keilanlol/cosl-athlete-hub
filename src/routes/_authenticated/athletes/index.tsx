@@ -4,7 +4,6 @@ import { Plus, Pencil, Search, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import {
-  ATHLETE_LEVELS,
   ATHLETE_STATUSES,
   GENDERS,
   athleteSchema,
@@ -14,8 +13,9 @@ import {
   type Club,
   type Discipline,
   type Federation,
-  type Sport,
 } from "@/lib/types";
+import { EditableSelect } from "@/components/EditableSelect";
+import { useAthleteLevels, useSports } from "@/hooks/useReferenceData";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
