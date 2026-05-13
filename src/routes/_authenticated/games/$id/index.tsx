@@ -18,6 +18,8 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useHashTab } from "@/hooks/useHashTab";
+import { EditableSelect } from "@/components/EditableSelect";
+import { useSports } from "@/hooks/useReferenceData";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -54,6 +56,10 @@ function GameOverviewPage() {
   // Add sport dialog
   const [sportDlgOpen, setSportDlgOpen] = useState(false);
   const [newSportId, setNewSportId] = useState<string>("");
+  const [newSportDiscIds, setNewSportDiscIds] = useState<string[]>([]);
+  const [newDiscName, setNewDiscName] = useState("");
+  const [newDiscGender, setNewDiscGender] = useState<Gender>("mixed");
+  const { add: addSportRef, remove: removeSportRef } = useSports();
 
   // Add quota dialog
   const [quotaDlgOpen, setQuotaDlgOpen] = useState(false);
@@ -147,14 +153,50 @@ function GameOverviewPage() {
 
   const addSport = async () => {
     if (!newSportId) return;
-    const { error } = await supabase.from("game_sports").insert({ game_id: id, sport_id: newSportId, is_active: true });
-    if (error) toast.error("Échec", { description: error.message });
-    else {
-      toast.success("Sport ajouté");
-      setSportDlgOpen(false);
-      setNewSportId("");
-      load();
+    const { data: gs, error } = await supabase
+      .from("game_sports")
+      .insert({ game_id: id, sport_id: newSportId, is_active: true })
+      .select()
+      .single();
+    if (error) {
+      toast.error("Échec", { description: error.message });
+      return;
     }
+    if (gs && newSportDiscIds.length) {
+      const { error: e2 } = await supabase.from("game_sport_disciplines").insert(
+        newSportDiscIds.map((d) => ({ game_sport_id: gs.id, discipline_id: d })),
+      );
+      if (e2) toast.error("Disciplines partiellement enregistrées", { description: e2.message });
+    }
+    toast.success("Sport ajouté");
+    setSportDlgOpen(false);
+    setNewSportId("");
+    setNewSportDiscIds([]);
+    load();
+  };
+
+  const createDiscipline = async (sportId: string, name: string, gender: Gender) => {
+    const trimmed = name.trim();
+    if (!sportId || !trimmed) return null;
+    const { data, error } = await supabase
+      .from("disciplines")
+      .insert({ sport_id: sportId, name: trimmed, gender })
+      .select()
+      .single();
+    if (error) {
+      toast.error("Échec", { description: error.message });
+      return null;
+    }
+    toast.success("Discipline ajoutée");
+    await load();
+    return data as Discipline;
+  };
+
+  const deleteDiscipline = async (discId: string) => {
+    const { error } = await supabase.from("disciplines").delete().eq("id", discId);
+    if (error) return toast.error("Échec", { description: error.message });
+    toast.success("Discipline supprimée");
+    await load();
   };
 
   const toggleSport = async (gs: GameSport) => {
@@ -390,24 +432,107 @@ function GameOverviewPage() {
       </TabsContent>
 
       {/* Add Sport Dialog */}
-      <Dialog open={sportDlgOpen} onOpenChange={setSportDlgOpen}>
-        <DialogContent>
+      <Dialog open={sportDlgOpen} onOpenChange={(o) => { setSportDlgOpen(o); if (!o) { setNewSportId(""); setNewSportDiscIds([]); } }}>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Ajouter un sport</DialogTitle>
-            <DialogDescription>Activer un sport pour ces Games.</DialogDescription>
+            <DialogDescription>
+              Activer un sport pour ces Games et choisir directement les disciplines admises.
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2">
-            <Label>Sport</Label>
-            <Select value={newSportId} onValueChange={setNewSportId}>
-              <SelectTrigger><SelectValue placeholder="Choisir…" /></SelectTrigger>
-              <SelectContent>
-                {availableSportsToAdd.length === 0 ? (
-                  <div className="p-2 text-sm text-slate-500">Tous les sports sont déjà ajoutés.</div>
-                ) : availableSportsToAdd.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>Sport *</Label>
+              <EditableSelect
+                value={newSportId}
+                onValueChange={(v) => { setNewSportId(v); setNewSportDiscIds([]); }}
+                placeholder="Choisir…"
+                emptyLabel="—"
+                addLabel="+ Ajouter un sport…"
+                manageTitle="Gérer les sports"
+                options={availableSportsToAdd.map((s) => ({ value: s.id, label: s.name }))}
+                onAdd={async (label) => {
+                  await addSportRef(label);
+                  await load();
+                }}
+                onDelete={async (sid) => {
+                  await removeSportRef(sid);
+                  await load();
+                }}
+              />
+            </div>
+
+            {newSportId && (
+              <div className="space-y-2">
+                <Label>Disciplines admises</Label>
+                <p className="text-xs text-slate-500">
+                  Cochez les disciplines admises (laisser vide = toutes admises par défaut).
+                </p>
+                <div className="max-h-56 overflow-y-auto space-y-1.5 rounded-md border border-slate-200 p-2">
+                  {disciplines.filter((d) => d.sport_id === newSportId).length === 0 && (
+                    <p className="text-xs text-slate-400 px-1 py-1">Aucune discipline pour ce sport.</p>
+                  )}
+                  {disciplines.filter((d) => d.sport_id === newSportId).map((d) => {
+                    const checked = newSportDiscIds.includes(d.id);
+                    return (
+                      <div key={d.id} className="flex items-center gap-2 rounded px-2 py-1 hover:bg-slate-50">
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(v) =>
+                            setNewSportDiscIds((p) => v ? [...p, d.id] : p.filter((x) => x !== d.id))
+                          }
+                        />
+                        <span className="flex-1 text-sm">{d.name}</span>
+                        <Badge variant="outline" className="text-xs">
+                          {d.gender === "male" ? "M" : d.gender === "female" ? "F" : "Mixte"}
+                        </Badge>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-slate-400 hover:text-red-600"
+                          onClick={() => deleteDiscipline(d.id)}
+                          aria-label="Supprimer la discipline"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Inline create */}
+                <div className="flex gap-2 pt-1">
+                  <Input
+                    placeholder="Nouvelle discipline"
+                    value={newDiscName}
+                    onChange={(e) => setNewDiscName(e.target.value)}
+                  />
+                  <Select value={newDiscGender} onValueChange={(v) => setNewDiscGender(v as Gender)}>
+                    <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {GENDERS.map((g) => (
+                        <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={async () => {
+                      const created = await createDiscipline(newSportId, newDiscName, newDiscGender);
+                      if (created) {
+                        setNewSportDiscIds((p) => [...p, created.id]);
+                        setNewDiscName("");
+                      }
+                    }}
+                    disabled={!newDiscName.trim()}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSportDlgOpen(false)}>Annuler</Button>
@@ -495,7 +620,7 @@ function GameOverviewPage() {
             {discDlg && disciplines.filter((d) => d.sport_id === discDlg.sport_id).map((d) => {
               const checked = discPicked.includes(d.id);
               return (
-                <label key={d.id} className="flex items-center gap-3 rounded-md border border-slate-200 px-3 py-2 cursor-pointer hover:bg-slate-50">
+                <div key={d.id} className="flex items-center gap-3 rounded-md border border-slate-200 px-3 py-2 hover:bg-slate-50">
                   <Checkbox
                     checked={checked}
                     onCheckedChange={(v) => {
@@ -506,13 +631,54 @@ function GameOverviewPage() {
                   <Badge variant="outline" className="text-xs">
                     {d.gender === "male" ? "Masculin" : d.gender === "female" ? "Féminin" : "Mixte"}
                   </Badge>
-                </label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-slate-400 hover:text-red-600"
+                    onClick={() => deleteDiscipline(d.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               );
             })}
             {discDlg && disciplines.filter((d) => d.sport_id === discDlg.sport_id).length === 0 && (
               <p className="text-sm text-slate-500">Ce sport n'a aucune discipline référencée.</p>
             )}
           </div>
+          {discDlg && (
+            <div className="flex gap-2 pt-1">
+              <Input
+                placeholder="Nouvelle discipline"
+                value={newDiscName}
+                onChange={(e) => setNewDiscName(e.target.value)}
+              />
+              <Select value={newDiscGender} onValueChange={(v) => setNewDiscGender(v as Gender)}>
+                <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {GENDERS.map((g) => (
+                    <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={async () => {
+                  if (!discDlg) return;
+                  const created = await createDiscipline(discDlg.sport_id, newDiscName, newDiscGender);
+                  if (created) {
+                    setDiscPicked((p) => [...p, created.id]);
+                    setNewDiscName("");
+                  }
+                }}
+                disabled={!newDiscName.trim()}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setDiscDlg(null)}>Annuler</Button>
             <Button onClick={saveDiscDlg} className="bg-indigo-500 hover:bg-indigo-600">Enregistrer</Button>
