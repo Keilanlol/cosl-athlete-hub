@@ -477,6 +477,44 @@ function GameOverviewPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Disciplines admises dialog */}
+      <Dialog open={!!discDlg} onOpenChange={(o) => !o && setDiscDlg(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Disciplines admises — {discDlg?.sport?.name}</DialogTitle>
+            <DialogDescription>
+              Sélectionnez les disciplines (et genre) admises pour ce sport à ces Games. Si aucune n'est cochée, toutes les disciplines du sport sont admises.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-80 overflow-y-auto space-y-2 py-2">
+            {discDlg && disciplines.filter((d) => d.sport_id === discDlg.sport_id).map((d) => {
+              const checked = discPicked.includes(d.id);
+              return (
+                <label key={d.id} className="flex items-center gap-3 rounded-md border border-slate-200 px-3 py-2 cursor-pointer hover:bg-slate-50">
+                  <Checkbox
+                    checked={checked}
+                    onCheckedChange={(v) => {
+                      setDiscPicked((prev) => v ? [...prev, d.id] : prev.filter((x) => x !== d.id));
+                    }}
+                  />
+                  <span className="flex-1 text-sm font-medium">{d.name}</span>
+                  <Badge variant="outline" className="text-xs">
+                    {d.gender === "male" ? "Masculin" : d.gender === "female" ? "Féminin" : "Mixte"}
+                  </Badge>
+                </label>
+              );
+            })}
+            {discDlg && disciplines.filter((d) => d.sport_id === discDlg.sport_id).length === 0 && (
+              <p className="text-sm text-slate-500">Ce sport n'a aucune discipline référencée.</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDiscDlg(null)}>Annuler</Button>
+            <Button onClick={saveDiscDlg} className="bg-indigo-500 hover:bg-indigo-600">Enregistrer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Tabs>
   );
 }
