@@ -1177,10 +1177,17 @@ function AthleteDetailPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>Type *</Label>
-                <Input
+                <EditableSelect
                   value={docForm.doc_type}
-                  onChange={(e) => setDocForm({ ...docForm, doc_type: e.target.value })}
-                  placeholder="ex: passeport"
+                  onValueChange={(v) => setDocForm({ ...docForm, doc_type: v })}
+                  options={docTypes
+                    .filter((t) => t.category === docForm.category)
+                    .map((t) => ({ value: t.code, label: t.label }))}
+                  emptyLabel="—"
+                  onAdd={(label) => addDocType(label, docForm.category)}
+                  onDelete={removeDocType}
+                  addLabel={`+ Ajouter un type (${docForm.category})…`}
+                  manageTitle={`Types — ${docForm.category}`}
                 />
               </div>
               <div className="space-y-1.5">
