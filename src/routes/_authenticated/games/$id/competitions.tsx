@@ -136,7 +136,48 @@ function CompetitionsPage() {
     setDelComp(null);
   };
 
-  const filteredResults = useMemo(() => {
+  const openComp = async (c: GameCompetition) => {
+    setViewComp(c);
+    setSelRows([]);
+    const query = supabase
+      .from("selections")
+      .select("athlete_id, athlete:athletes(first_name,last_name,cosl_id,gender)")
+      .eq("game_id", id)
+      .eq("sport_id", c.sport_id)
+      .in("status", ["selected", "reserve"]);
+    if (c.discipline_id) query.eq("discipline_id", c.discipline_id);
+    const { data } = await query;
+    setSelRows(((data ?? []) as unknown) as typeof selRows);
+  };
+
+  const compResults = useMemo(
+    () => (results ?? []).filter((r) => r.game_competition_id === viewComp?.id)
+      .sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999)),
+    [results, viewComp],
+  );
+
+  const submitResult = async () => {
+    if (!viewComp || !resultForm.athlete_id) return toast.error("Athlète requis");
+    const { error } = await supabase.from("athlete_results").insert({
+      athlete_id: resultForm.athlete_id,
+      game_id: id,
+      game_competition_id: viewComp.id,
+      sport_id: viewComp.sport_id,
+      discipline_id: viewComp.discipline_id,
+      result_date: viewComp.competition_date,
+      rank: resultForm.rank ? Number(resultForm.rank) : null,
+      medal: resultForm.medal || null,
+      score: resultForm.score || null,
+      unit: resultForm.unit || null,
+      is_national_record: resultForm.is_national_record,
+      is_personal_best: resultForm.is_personal_best,
+    });
+    if (error) return toast.error("Échec", { description: error.message });
+    toast.success("Résultat enregistré");
+    setResultDlgOpen(false);
+    setResultForm({ athlete_id: "", rank: "", medal: "", score: "", unit: "", is_national_record: false, is_personal_best: false });
+    await load();
+  };
     if (!results) return [];
     return results.filter((r) => {
       if (fSport !== ALL && r.sport_id !== fSport) return false;
