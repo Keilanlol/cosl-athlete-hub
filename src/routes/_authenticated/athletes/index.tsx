@@ -444,7 +444,7 @@ function AthletesPage() {
             <TableBody>
               {visible.map((a) => {
                 const lvl = ATHLETE_LEVELS.find((l) => l.value === a.level);
-                const kyc = a.athlete_kyc?.[0]?.global_status ?? "red";
+                const kyc = readKyc(a.athlete_kyc);
                 return (
                   <TableRow key={a.id}>
                     <TableCell className="font-mono text-xs">{a.cosl_id}</TableCell>
