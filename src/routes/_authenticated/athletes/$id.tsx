@@ -194,6 +194,17 @@ function AthleteDetailPage() {
   });
   const [apptDeleteId, setApptDeleteId] = useState<string | null>(null);
 
+  // Messages received
+  type AthleteMsg = {
+    id: string;
+    subject: string;
+    channel: string;
+    sent_at: string;
+    audience_segment: string;
+  };
+  const [athleteMessages, setAthleteMessages] = useState<AthleteMsg[] | null>(null);
+  const [openMsgId, setOpenMsgId] = useState<string | null>(null);
+
   const [refs, setRefs] = useState<{ sports: Sport[]; feds: Federation[]; clubs: Club[] }>({
     sports: [],
     feds: [],
