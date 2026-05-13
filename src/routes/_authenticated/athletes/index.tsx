@@ -55,12 +55,19 @@ export const Route = createFileRoute("/_authenticated/athletes/")({
   component: AthletesPage,
 });
 
+type KycEmbed = { global_status: string | null } | { global_status: string | null }[] | null;
 type AthleteRow = Athlete & {
   primary_sport: { name: string } | null;
   primary_federation: { acronym: string; name: string } | null;
   current_club: { name: string } | null;
-  athlete_kyc: { global_status: string | null }[] | null;
+  athlete_kyc: KycEmbed;
 };
+
+function readKyc(k: KycEmbed): string {
+  if (!k) return "red";
+  if (Array.isArray(k)) return k[0]?.global_status ?? "red";
+  return k.global_status ?? "red";
+}
 
 const ALL = "__all";
 
@@ -187,7 +194,7 @@ function AthletesPage() {
       if (fFed !== ALL && a.primary_federation_id !== fFed) return false;
       if (fStatus !== ALL && a.status !== fStatus) return false;
       if (fLevel !== ALL && a.level !== fLevel) return false;
-      const kyc = a.athlete_kyc?.[0]?.global_status ?? "red";
+      const kyc = readKyc(a.athlete_kyc);
       if (fKyc !== ALL && kyc !== fKyc) return false;
       if (q) {
         const hay = `${a.first_name} ${a.last_name} ${a.cosl_id} ${a.email ?? ""}`.toLowerCase();
@@ -437,7 +444,7 @@ function AthletesPage() {
             <TableBody>
               {visible.map((a) => {
                 const lvl = ATHLETE_LEVELS.find((l) => l.value === a.level);
-                const kyc = a.athlete_kyc?.[0]?.global_status ?? "red";
+                const kyc = readKyc(a.athlete_kyc);
                 return (
                   <TableRow key={a.id}>
                     <TableCell className="font-mono text-xs">{a.cosl_id}</TableCell>

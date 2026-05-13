@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import {
@@ -27,6 +27,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/_authenticated/games/$id/")({
@@ -44,6 +45,9 @@ function GameOverviewPage() {
   const [quotas, setQuotas] = useState<GameQuota[]>([]);
   const [kpi, setKpi] = useState({ selected: 0, accred: 0, plans: 0 });
   const [loading, setLoading] = useState(true);
+  const [gsDiscMap, setGsDiscMap] = useState<Record<string, string[]>>({});
+  const [discDlg, setDiscDlg] = useState<GameSport | null>(null);
+  const [discPicked, setDiscPicked] = useState<string[]>([]);
 
   // Add sport dialog
   const [sportDlgOpen, setSportDlgOpen] = useState(false);
@@ -62,7 +66,7 @@ function GameOverviewPage() {
 
   const load = async () => {
     setLoading(true);
-    const [gameRes, sportsRes, discRes, gsRes, qRes, selRes, accRes, tpRes] = await Promise.all([
+    const [gameRes, sportsRes, discRes, gsRes, qRes, selRes, accRes, tpRes, gsdRes] = await Promise.all([
       supabase.from("games").select("*").eq("id", id).maybeSingle(),
       supabase.from("sports").select("*").order("name"),
       supabase.from("disciplines").select("id,sport_id,name,gender").order("name"),
@@ -71,6 +75,7 @@ function GameOverviewPage() {
       supabase.from("selections").select("id", { count: "exact", head: true }).eq("game_id", id).in("status", ["selected", "reserve"]),
       supabase.from("accreditations").select("id", { count: "exact", head: true }).eq("game_id", id).eq("status", "validated"),
       supabase.from("travel_plans").select("id", { count: "exact", head: true }).eq("game_id", id),
+      supabase.from("game_sport_disciplines").select("game_sport_id,discipline_id"),
     ]);
     setLoading(false);
     if (gameRes.error) { toast.error("Erreur", { description: gameRes.error.message }); return; }
@@ -79,6 +84,11 @@ function GameOverviewPage() {
     setDisciplines((discRes.data ?? []) as Discipline[]);
     setGameSports((gsRes.data ?? []) as unknown as GameSport[]);
     setQuotas((qRes.data ?? []) as GameQuota[]);
+    const map: Record<string, string[]> = {};
+    ((gsdRes.data ?? []) as { game_sport_id: string; discipline_id: string }[]).forEach((r) => {
+      (map[r.game_sport_id] ||= []).push(r.discipline_id);
+    });
+    setGsDiscMap(map);
     setKpi({
       selected: selRes.count ?? 0,
       accred: accRes.count ?? 0,
@@ -126,10 +136,12 @@ function GameOverviewPage() {
     return sports.filter((s) => !used.has(s.id));
   }, [sports, gameSports]);
 
-  const availableDisciplines = useMemo(
-    () => disciplines.filter((d) => d.sport_id === quotaForm.sport_id),
-    [disciplines, quotaForm.sport_id],
-  );
+  const availableDisciplines = useMemo(() => {
+    const sportDiscs = disciplines.filter((d) => d.sport_id === quotaForm.sport_id);
+    const gs = gameSports.find((g) => g.sport_id === quotaForm.sport_id);
+    const allowed = gs ? gsDiscMap[gs.id] ?? [] : [];
+    return allowed.length === 0 ? sportDiscs : sportDiscs.filter((d) => allowed.includes(d.id));
+  }, [disciplines, quotaForm.sport_id, gameSports, gsDiscMap]);
 
   const addSport = async () => {
     if (!newSportId) return;
@@ -181,6 +193,36 @@ function GameOverviewPage() {
     const { error } = await supabase.from("game_quotas").delete().eq("id", q.id);
     if (error) toast.error("Échec", { description: error.message });
     else { toast.success("Quota supprimé"); load(); }
+  };
+
+  const openDiscDlg = (gs: GameSport) => {
+    setDiscDlg(gs);
+    setDiscPicked(gsDiscMap[gs.id] ?? []);
+  };
+
+  const saveDiscDlg = async () => {
+    if (!discDlg) return;
+    const current = new Set(gsDiscMap[discDlg.id] ?? []);
+    const next = new Set(discPicked);
+    const toAdd = [...next].filter((d) => !current.has(d));
+    const toRemove = [...current].filter((d) => !next.has(d));
+    if (toRemove.length) {
+      const { error } = await supabase
+        .from("game_sport_disciplines")
+        .delete()
+        .eq("game_sport_id", discDlg.id)
+        .in("discipline_id", toRemove);
+      if (error) return toast.error("Échec", { description: error.message });
+    }
+    if (toAdd.length) {
+      const { error } = await supabase.from("game_sport_disciplines").insert(
+        toAdd.map((d) => ({ game_sport_id: discDlg.id, discipline_id: d })),
+      );
+      if (error) return toast.error("Échec", { description: error.message });
+    }
+    toast.success("Disciplines admises mises à jour");
+    setDiscDlg(null);
+    load();
   };
 
   if (loading) return <Skeleton className="h-64 w-full" />;
@@ -244,18 +286,25 @@ function GameOverviewPage() {
               <TableBody>
                 {gameSports.map((gs) => {
                   const sportDiscs = disciplines.filter((d) => d.sport_id === gs.sport_id);
+                  const allowed = gsDiscMap[gs.id] ?? [];
+                  const shown = allowed.length === 0
+                    ? sportDiscs
+                    : sportDiscs.filter((d) => allowed.includes(d.id));
                   return (
                     <TableRow key={gs.id}>
                       <TableCell className="font-medium">{gs.sport?.name ?? sportName(gs.sport_id)}</TableCell>
                       <TableCell className="text-slate-600">
-                        {sportDiscs.length === 0
-                          ? <span className="text-slate-400">—</span>
+                        {shown.length === 0
+                          ? <span className="text-slate-400">Aucune discipline admise</span>
                           : <div className="flex flex-wrap gap-1">
-                              {sportDiscs.map((d) => (
+                              {shown.map((d) => (
                                 <Badge key={d.id} variant="outline" className="font-normal">
                                   {d.name} <span className="ml-1 text-xs text-slate-400">{d.gender}</span>
                                 </Badge>
                               ))}
+                              {allowed.length === 0 && (
+                                <span className="text-xs text-slate-400 ml-1">(toutes par défaut)</span>
+                              )}
                             </div>
                         }
                       </TableCell>
@@ -263,6 +312,9 @@ function GameOverviewPage() {
                         <Switch checked={!!gs.is_active} onCheckedChange={() => toggleSport(gs)} />
                       </TableCell>
                       <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" onClick={() => openDiscDlg(gs)} aria-label="Disciplines">
+                          <Settings2 className="h-4 w-4 text-indigo-600" />
+                        </Button>
                         <Button variant="ghost" size="icon" onClick={() => removeSport(gs)} aria-label="Retirer">
                           <Trash2 className="h-4 w-4 text-red-600" />
                         </Button>
@@ -424,6 +476,44 @@ function GameOverviewPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setQuotaDlgOpen(false)}>Annuler</Button>
             <Button onClick={addQuota} className="bg-indigo-500 hover:bg-indigo-600">Ajouter</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Disciplines admises dialog */}
+      <Dialog open={!!discDlg} onOpenChange={(o) => !o && setDiscDlg(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Disciplines admises — {discDlg?.sport?.name}</DialogTitle>
+            <DialogDescription>
+              Sélectionnez les disciplines (et genre) admises pour ce sport à ces Games. Si aucune n'est cochée, toutes les disciplines du sport sont admises.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-80 overflow-y-auto space-y-2 py-2">
+            {discDlg && disciplines.filter((d) => d.sport_id === discDlg.sport_id).map((d) => {
+              const checked = discPicked.includes(d.id);
+              return (
+                <label key={d.id} className="flex items-center gap-3 rounded-md border border-slate-200 px-3 py-2 cursor-pointer hover:bg-slate-50">
+                  <Checkbox
+                    checked={checked}
+                    onCheckedChange={(v) => {
+                      setDiscPicked((prev) => v ? [...prev, d.id] : prev.filter((x) => x !== d.id));
+                    }}
+                  />
+                  <span className="flex-1 text-sm font-medium">{d.name}</span>
+                  <Badge variant="outline" className="text-xs">
+                    {d.gender === "male" ? "Masculin" : d.gender === "female" ? "Féminin" : "Mixte"}
+                  </Badge>
+                </label>
+              );
+            })}
+            {discDlg && disciplines.filter((d) => d.sport_id === discDlg.sport_id).length === 0 && (
+              <p className="text-sm text-slate-500">Ce sport n'a aucune discipline référencée.</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDiscDlg(null)}>Annuler</Button>
+            <Button onClick={saveDiscDlg} className="bg-indigo-500 hover:bg-indigo-600">Enregistrer</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

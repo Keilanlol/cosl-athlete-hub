@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -71,6 +72,10 @@ function CompetitionsPage() {
     notes: "",
   });
   const [delComp, setDelComp] = useState<GameCompetition | null>(null);
+  const [viewComp, setViewComp] = useState<GameCompetition | null>(null);
+  const [selRows, setSelRows] = useState<Array<{ athlete_id: string; athlete: { first_name: string; last_name: string; cosl_id: string; gender: string } | null }>>([]);
+  const [resultDlgOpen, setResultDlgOpen] = useState(false);
+  const [resultForm, setResultForm] = useState({ athlete_id: "", rank: "", medal: "", score: "", unit: "", is_national_record: false, is_personal_best: false });
 
   const [fSport, setFSport] = useState(ALL);
   const [fMedal, setFMedal] = useState(ALL);
@@ -130,6 +135,49 @@ function CompetitionsPage() {
     if (error) toast.error("Échec", { description: error.message });
     else { toast.success("Épreuve supprimée"); load(); }
     setDelComp(null);
+  };
+
+  const openComp = async (c: GameCompetition) => {
+    setViewComp(c);
+    setSelRows([]);
+    let query = supabase
+      .from("selections")
+      .select("athlete_id, athlete:athletes(first_name,last_name,cosl_id,gender)")
+      .eq("game_id", id)
+      .eq("sport_id", c.sport_id)
+      .in("status", ["selected", "reserve"]);
+    if (c.discipline_id) query = query.eq("discipline_id", c.discipline_id);
+    const { data } = await query;
+    setSelRows(((data ?? []) as unknown) as typeof selRows);
+  };
+
+  const compResults = useMemo(
+    () => (results ?? []).filter((r) => r.game_competition_id === viewComp?.id)
+      .sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999)),
+    [results, viewComp],
+  );
+
+  const submitResult = async () => {
+    if (!viewComp || !resultForm.athlete_id) return toast.error("Athlète requis");
+    const { error } = await supabase.from("athlete_results").insert({
+      athlete_id: resultForm.athlete_id,
+      game_id: id,
+      game_competition_id: viewComp.id,
+      sport_id: viewComp.sport_id,
+      discipline_id: viewComp.discipline_id,
+      result_date: viewComp.competition_date,
+      rank: resultForm.rank ? Number(resultForm.rank) : null,
+      medal: resultForm.medal || null,
+      score: resultForm.score || null,
+      unit: resultForm.unit || null,
+      is_national_record: resultForm.is_national_record,
+      is_personal_best: resultForm.is_personal_best,
+    });
+    if (error) return toast.error("Échec", { description: error.message });
+    toast.success("Résultat enregistré");
+    setResultDlgOpen(false);
+    setResultForm({ athlete_id: "", rank: "", medal: "", score: "", unit: "", is_national_record: false, is_personal_best: false });
+    await load();
   };
 
   const filteredResults = useMemo(() => {
@@ -211,15 +259,15 @@ function CompetitionsPage() {
               </TableHeader>
               <TableBody>
                 {comps.map((c) => (
-                  <TableRow key={c.id}>
+                  <TableRow key={c.id} className="cursor-pointer hover:bg-slate-50" onClick={() => openComp(c)}>
                     <TableCell>{sports.find((s) => s.id === c.sport_id)?.name ?? "—"}</TableCell>
                     <TableCell>{disciplines.find((d) => d.id === c.discipline_id)?.name ?? "—"}</TableCell>
-                    <TableCell className="font-medium">{c.name}</TableCell>
+                    <TableCell className="font-medium text-indigo-700">{c.name}</TableCell>
                     <TableCell>{c.round ?? "—"}</TableCell>
                     <TableCell>{GENDERS.find((g) => g.value === c.gender)?.label ?? "—"}</TableCell>
                     <TableCell>{c.competition_date ?? "—"}</TableCell>
                     <TableCell>{c.venue ?? "—"}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <Button variant="ghost" size="icon" onClick={() => setDelComp(c)}>
                         <Trash2 className="h-4 w-4 text-red-600" />
                       </Button>
@@ -369,6 +417,152 @@ function CompetitionsPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setCompOpen(false)}>Annuler</Button>
             <Button onClick={submitComp} className="bg-indigo-500 hover:bg-indigo-600">Créer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Détail d'une épreuve */}
+      <Dialog open={!!viewComp} onOpenChange={(o) => !o && setViewComp(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{viewComp?.name}</DialogTitle>
+          </DialogHeader>
+          {viewComp && (
+            <div className="space-y-5">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                <div><div className="text-xs text-slate-500">Sport</div><div>{sports.find((s) => s.id === viewComp.sport_id)?.name ?? "—"}</div></div>
+                <div><div className="text-xs text-slate-500">Discipline</div><div>{disciplines.find((d) => d.id === viewComp.discipline_id)?.name ?? "—"}</div></div>
+                <div><div className="text-xs text-slate-500">Round</div><div>{viewComp.round ?? "—"}</div></div>
+                <div><div className="text-xs text-slate-500">Genre</div><div>{GENDERS.find((g) => g.value === viewComp.gender)?.label ?? "—"}</div></div>
+                <div><div className="text-xs text-slate-500">Date</div><div>{viewComp.competition_date ?? "—"}</div></div>
+                <div><div className="text-xs text-slate-500">Lieu</div><div>{viewComp.venue ?? "—"}</div></div>
+                <div><div className="text-xs text-slate-500">Catégorie</div><div>{viewComp.category ?? "—"}</div></div>
+              </div>
+
+              <section>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-semibold">Classement & médailles</h4>
+                  <Button size="sm" onClick={() => setResultDlgOpen(true)} className="bg-indigo-500 hover:bg-indigo-600">
+                    <Plus className="mr-1 h-3 w-3" /> Ajouter résultat
+                  </Button>
+                </div>
+                <div className="rounded-md border border-slate-200">
+                  {compResults.length === 0 ? (
+                    <p className="p-4 text-sm text-slate-500">Aucun résultat enregistré pour cette épreuve.</p>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-16">Rang</TableHead>
+                          <TableHead>Athlète</TableHead>
+                          <TableHead>Médaille</TableHead>
+                          <TableHead>Score</TableHead>
+                          <TableHead>RN/PB</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {compResults.map((r) => (
+                          <TableRow key={r.id} className={r.medal === "gold" ? "bg-amber-50" : ""}>
+                            <TableCell className="font-semibold">{r.rank ?? "—"}</TableCell>
+                            <TableCell>{r.athlete ? `${r.athlete.last_name} ${r.athlete.first_name}` : "—"} <span className="text-xs text-slate-400 ml-1">{r.athlete?.cosl_id}</span></TableCell>
+                            <TableCell>{medalBadge(r.medal)}</TableCell>
+                            <TableCell>{r.score ? `${r.score}${r.unit ? " " + r.unit : ""}` : "—"}</TableCell>
+                            <TableCell className="space-x-1">
+                              {r.is_national_record && <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">RN</Badge>}
+                              {r.is_personal_best && <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">PB</Badge>}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </div>
+              </section>
+
+              <section>
+                <h4 className="text-sm font-semibold mb-2">Participants sélectionnés ({selRows.length})</h4>
+                <div className="rounded-md border border-slate-200 max-h-56 overflow-auto">
+                  {selRows.length === 0 ? (
+                    <p className="p-4 text-sm text-slate-500">Aucune sélection liée à ce sport/discipline.</p>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Athlète</TableHead>
+                          <TableHead>COSL ID</TableHead>
+                          <TableHead>Genre</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {selRows.map((s) => (
+                          <TableRow key={s.athlete_id}>
+                            <TableCell>{s.athlete ? `${s.athlete.last_name} ${s.athlete.first_name}` : "—"}</TableCell>
+                            <TableCell className="font-mono text-xs">{s.athlete?.cosl_id ?? "—"}</TableCell>
+                            <TableCell><Badge variant="outline">{s.athlete?.gender}</Badge></TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </div>
+              </section>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Ajout résultat dans le détail d'une épreuve */}
+      <Dialog open={resultDlgOpen} onOpenChange={setResultDlgOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Ajouter un résultat</DialogTitle></DialogHeader>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="sm:col-span-2 space-y-1">
+              <Label>Athlète *</Label>
+              <Select value={resultForm.athlete_id} onValueChange={(v) => setResultForm({ ...resultForm, athlete_id: v })}>
+                <SelectTrigger><SelectValue placeholder="Choisir parmi les sélectionnés" /></SelectTrigger>
+                <SelectContent>
+                  {selRows.map((s) => (
+                    <SelectItem key={s.athlete_id} value={s.athlete_id}>
+                      {s.athlete ? `${s.athlete.last_name} ${s.athlete.first_name}` : s.athlete_id}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Rang</Label>
+              <Input type="number" min={1} value={resultForm.rank} onChange={(e) => setResultForm({ ...resultForm, rank: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <Label>Médaille</Label>
+              <Select value={resultForm.medal || "none"} onValueChange={(v) => setResultForm({ ...resultForm, medal: v === "none" ? "" : v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">—</SelectItem>
+                  {MEDAL_LABELS.map((m) => (<SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Score</Label>
+              <Input value={resultForm.score} onChange={(e) => setResultForm({ ...resultForm, score: e.target.value })} placeholder="10.18" />
+            </div>
+            <div className="space-y-1">
+              <Label>Unité</Label>
+              <Input value={resultForm.unit} onChange={(e) => setResultForm({ ...resultForm, unit: e.target.value })} placeholder="s, m, pts…" />
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox checked={resultForm.is_national_record} onCheckedChange={(v) => setResultForm({ ...resultForm, is_national_record: !!v })} />
+              Record national
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox checked={resultForm.is_personal_best} onCheckedChange={(v) => setResultForm({ ...resultForm, is_personal_best: !!v })} />
+              Record personnel
+            </label>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResultDlgOpen(false)}>Annuler</Button>
+            <Button onClick={submitResult} className="bg-indigo-500 hover:bg-indigo-600">Enregistrer</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
