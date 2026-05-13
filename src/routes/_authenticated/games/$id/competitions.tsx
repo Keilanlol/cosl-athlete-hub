@@ -71,6 +71,10 @@ function CompetitionsPage() {
     notes: "",
   });
   const [delComp, setDelComp] = useState<GameCompetition | null>(null);
+  const [viewComp, setViewComp] = useState<GameCompetition | null>(null);
+  const [selRows, setSelRows] = useState<Array<{ athlete_id: string; athlete: { first_name: string; last_name: string; cosl_id: string; gender: string } | null }>>([]);
+  const [resultDlgOpen, setResultDlgOpen] = useState(false);
+  const [resultForm, setResultForm] = useState({ athlete_id: "", rank: "", medal: "", score: "", unit: "", is_national_record: false, is_personal_best: false });
 
   const [fSport, setFSport] = useState(ALL);
   const [fMedal, setFMedal] = useState(ALL);
