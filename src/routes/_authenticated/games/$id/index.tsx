@@ -72,6 +72,69 @@ function GameOverviewPage() {
     qualification_criteria: "",
   });
 
+  // Quota details dialog
+  type QuotaAthlete = {
+    id: string; first_name: string; last_name: string; gender: Gender;
+    photo_url: string | null; primary_sport_id: string | null;
+    kyc: string; selection_status?: string | null;
+  };
+  const [detailsQuota, setDetailsQuota] = useState<GameQuota | null>(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [detailsIn, setDetailsIn] = useState<QuotaAthlete[]>([]);
+  const [detailsEligible, setDetailsEligible] = useState<QuotaAthlete[]>([]);
+
+  const openDetails = async (q: GameQuota) => {
+    setDetailsQuota(q);
+    setDetailsLoading(true);
+    setDetailsIn([]);
+    setDetailsEligible([]);
+
+    const [selRes, athRes, kycRes] = await Promise.all([
+      supabase.from("selections")
+        .select("status, athlete:athletes(id,first_name,last_name,gender,photo_url,primary_sport_id)")
+        .eq("game_id", id)
+        .eq("sport_id", q.sport_id),
+      supabase.from("athletes")
+        .select("id,first_name,last_name,gender,photo_url,primary_sport_id")
+        .eq("primary_sport_id", q.sport_id)
+        .eq("is_active", true),
+      supabase.from("athlete_kyc").select("athlete_id, global_status"),
+    ]);
+
+    const kycMap: Record<string, string> = {};
+    ((kycRes.data ?? []) as { athlete_id: string; global_status: string }[]).forEach((k) => {
+      kycMap[k.athlete_id] = k.global_status;
+    });
+
+    const sels = ((selRes.data ?? []) as unknown as Array<{
+      status: string;
+      athlete: { id: string; first_name: string; last_name: string; gender: Gender; photo_url: string | null; primary_sport_id: string | null } | null;
+    }>);
+
+    const matchesGender = (g: Gender | undefined) => q.gender === "mixed" ? true : g === q.gender;
+
+    const inQuota: QuotaAthlete[] = [];
+    const usedIds = new Set<string>();
+    for (const s of sels) {
+      if (!s.athlete) continue;
+      if (!["selected", "reserve"].includes(s.status)) continue;
+      if (!matchesGender(s.athlete.gender)) continue;
+      usedIds.add(s.athlete.id);
+      inQuota.push({ ...s.athlete, kyc: kycMap[s.athlete.id] ?? "red", selection_status: s.status });
+    }
+
+    const eligible: QuotaAthlete[] = [];
+    for (const a of (athRes.data ?? []) as QuotaAthlete[]) {
+      if (usedIds.has(a.id)) continue;
+      if (!matchesGender(a.gender)) continue;
+      eligible.push({ ...a, kyc: kycMap[a.id] ?? "red" });
+    }
+
+    setDetailsIn(inQuota);
+    setDetailsEligible(eligible);
+    setDetailsLoading(false);
+  };
+
   const load = async () => {
     setLoading(true);
     const [gameRes, sportsRes, discRes, gsRes, qRes, selRes, accRes, tpRes, gsdRes] = await Promise.all([
