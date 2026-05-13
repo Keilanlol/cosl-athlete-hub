@@ -230,7 +230,18 @@ function GameOverviewPage() {
   if (!game) return null;
 
   return (
-    <Tabs defaultValue="overview" className="space-y-4">
+    <GameTabs />
+  );
+}
+
+function GameTabs() {
+  return null;
+}
+
+function _unused() {
+  const [tab, setTab] = useHashTab("overview");
+  return (
+    <Tabs value={tab} onValueChange={setTab} className="space-y-4">
       <TabsList>
         <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
         <TabsTrigger value="sports">Sports & Disciplines</TabsTrigger>
