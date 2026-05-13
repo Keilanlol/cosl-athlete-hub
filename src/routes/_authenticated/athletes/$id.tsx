@@ -1042,20 +1042,16 @@ function AthleteDetailPage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label>Sport</Label>
-                    <Select
-                      value={form.primary_sport_id || ALL}
-                      onValueChange={(v) =>
-                        setForm({ ...form, primary_sport_id: v === ALL ? "" : v })
-                      }
-                    >
-                      <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={ALL}>—</SelectItem>
-                        {refs.sports.map((s) => (
-                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <EditableSelect
+                      value={form.primary_sport_id ?? ""}
+                      onValueChange={(v) => setForm({ ...form, primary_sport_id: v })}
+                      options={sportsRef.map((s) => ({ value: s.id, label: s.name }))}
+                      emptyLabel="—"
+                      onAdd={addSport}
+                      onDelete={removeSport}
+                      addLabel="+ Ajouter un sport…"
+                      manageTitle="Gérer les sports"
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <Label>Fédération</Label>
