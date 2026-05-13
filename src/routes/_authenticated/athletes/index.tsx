@@ -55,12 +55,19 @@ export const Route = createFileRoute("/_authenticated/athletes/")({
   component: AthletesPage,
 });
 
+type KycEmbed = { global_status: string | null } | { global_status: string | null }[] | null;
 type AthleteRow = Athlete & {
   primary_sport: { name: string } | null;
   primary_federation: { acronym: string; name: string } | null;
   current_club: { name: string } | null;
-  athlete_kyc: { global_status: string | null }[] | null;
+  athlete_kyc: KycEmbed;
 };
+
+function readKyc(k: KycEmbed): string {
+  if (!k) return "red";
+  if (Array.isArray(k)) return k[0]?.global_status ?? "red";
+  return k.global_status ?? "red";
+}
 
 const ALL = "__all";
 
