@@ -26,6 +26,7 @@ import {
   Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useHashTab } from "@/hooks/useHashTab";
 
 export const Route = createFileRoute("/_authenticated/games/$id/accreditations")({
   component: GameAccreditationsPage,
