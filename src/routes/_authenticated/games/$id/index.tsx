@@ -481,6 +481,9 @@ function GameOverviewPage() {
                         {q.qualification_deadline ? new Date(q.qualification_deadline).toLocaleDateString("fr-FR") : "—"}
                       </TableCell>
                       <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" onClick={() => openDetails(q)} aria-label="Détails">
+                          <Eye className="h-4 w-4 text-indigo-600" />
+                        </Button>
                         <Button variant="ghost" size="icon" onClick={() => removeQuota(q)} aria-label="Supprimer">
                           <Trash2 className="h-4 w-4 text-red-600" />
                         </Button>
