@@ -119,7 +119,8 @@ function kycBadge(s: string | null | undefined) {
 
 function AthletesPage() {
   const [rows, setRows] = useState<AthleteRow[] | null>(null);
-  const [sports, setSports] = useState<Sport[]>([]);
+  const { items: sports, add: addSport, remove: removeSport } = useSports();
+  const { items: levels, add: addLevel, remove: removeLevel } = useAthleteLevels();
   const [federations, setFederations] = useState<Federation[]>([]);
   const [clubs, setClubs] = useState<Club[]>([]);
   const [disciplines, setDisciplines] = useState<Discipline[]>([]);
@@ -158,14 +159,12 @@ function AthletesPage() {
   };
 
   const loadRefs = async () => {
-    const [sp, fd, cl, di, ad] = await Promise.all([
-      supabase.from("sports").select("*").order("name"),
+    const [fd, cl, di, ad] = await Promise.all([
       supabase.from("federations").select("*").order("acronym"),
       supabase.from("clubs").select("*").order("name"),
       supabase.from("disciplines").select("*").order("name"),
       supabase.from("athlete_disciplines").select("athlete_id, discipline_id"),
     ]);
-    setSports((sp.data ?? []) as Sport[]);
     setFederations((fd.data ?? []) as Federation[]);
     setClubs((cl.data ?? []) as Club[]);
     setDisciplines((di.data ?? []) as Discipline[]);
