@@ -442,7 +442,7 @@ function AthletesPage() {
             </TableHeader>
             <TableBody>
               {visible.map((a) => {
-                const lvl = ATHLETE_LEVELS.find((l) => l.value === a.level);
+                const lvl = levels.find((l) => l.code === a.level);
                 const kyc = readKyc(a.athlete_kyc);
                 return (
                   <TableRow key={a.id}>
