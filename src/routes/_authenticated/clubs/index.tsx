@@ -272,7 +272,15 @@ function ClubsPage() {
                 const f = fedMap.get(c.federation_id);
                 return (
                   <TableRow key={c.id}>
-                    <TableCell className="font-medium">{c.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <Link
+                        to="/clubs/$id"
+                        params={{ id: c.id }}
+                        className="text-indigo-600 hover:underline"
+                      >
+                        {c.name}
+                      </Link>
+                    </TableCell>
                     <TableCell>
                       {f ? (
                         <Badge variant="outline" className="font-mono">
