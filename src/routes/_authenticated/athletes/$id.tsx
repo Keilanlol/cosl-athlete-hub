@@ -122,6 +122,8 @@ function AthleteDetailPage() {
   const [club, setClub] = useState<Club | null>(null);
   const [docs, setDocs] = useState<AthleteDocument[] | null>(null);
   const [kyc, setKyc] = useState<AthleteKyc | null>(null);
+  const [kycNotesDraft, setKycNotesDraft] = useState<string>("");
+  useEffect(() => { setKycNotesDraft(kyc?.notes ?? ""); }, [kyc?.notes]);
   const [relations, setRelations] = useState<AthleteRelation[] | null>(null);
   const [selections, setSelections] = useState<Selection[] | null>(null);
   const [coaches, setCoaches] = useState<Coach[]>([]);
