@@ -45,6 +45,9 @@ function GameOverviewPage() {
   const [quotas, setQuotas] = useState<GameQuota[]>([]);
   const [kpi, setKpi] = useState({ selected: 0, accred: 0, plans: 0 });
   const [loading, setLoading] = useState(true);
+  const [gsDiscMap, setGsDiscMap] = useState<Record<string, string[]>>({});
+  const [discDlg, setDiscDlg] = useState<GameSport | null>(null);
+  const [discPicked, setDiscPicked] = useState<string[]>([]);
 
   // Add sport dialog
   const [sportDlgOpen, setSportDlgOpen] = useState(false);
