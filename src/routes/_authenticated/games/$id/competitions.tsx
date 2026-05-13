@@ -58,6 +58,8 @@ function CompetitionsPage() {
   const [results, setResults] = useState<ResultRow[] | null>(null);
   const [sports, setSports] = useState<Sport[]>([]);
   const [disciplines, setDisciplines] = useState<Discipline[]>([]);
+  const [allowedSportIds, setAllowedSportIds] = useState<Set<string>>(new Set());
+  const [allowedDisciplineIdsBySport, setAllowedDisciplineIdsBySport] = useState<Record<string, Set<string>>>({});
 
   const [compOpen, setCompOpen] = useState(false);
   const [compForm, setCompForm] = useState({
@@ -83,7 +85,7 @@ function CompetitionsPage() {
   const load = async () => {
     setComps(null);
     setResults(null);
-    const [{ data: c }, { data: r }, { data: sp }, { data: di }] = await Promise.all([
+    const [{ data: c }, { data: r }, { data: sp }, { data: di }, { data: gs }] = await Promise.all([
       supabase
         .from("game_competitions")
         .select("*")
@@ -98,11 +100,24 @@ function CompetitionsPage() {
         .order("rank", { ascending: true, nullsFirst: false }),
       supabase.from("sports").select("*").order("name"),
       supabase.from("disciplines").select("*").order("name"),
+      supabase
+        .from("game_sports")
+        .select("id, sport_id, is_active, game_sport_disciplines(discipline_id)")
+        .eq("game_id", id),
     ]);
     setComps((c ?? []) as GameCompetition[]);
     setResults((r ?? []) as ResultRow[]);
     setSports((sp ?? []) as Sport[]);
     setDisciplines((di ?? []) as Discipline[]);
+    const allowed = new Set<string>();
+    const byS: Record<string, Set<string>> = {};
+    ((gs ?? []) as Array<{ sport_id: string; is_active: boolean | null; game_sport_disciplines: Array<{ discipline_id: string }> }>).forEach((row) => {
+      if (row.is_active === false) return;
+      allowed.add(row.sport_id);
+      byS[row.sport_id] = new Set((row.game_sport_disciplines ?? []).map((d) => d.discipline_id));
+    });
+    setAllowedSportIds(allowed);
+    setAllowedDisciplineIdsBySport(byS);
   };
 
   useEffect(() => { load(); }, [id]);
@@ -223,7 +238,13 @@ function CompetitionsPage() {
     URL.revokeObjectURL(url);
   };
 
-  const compDisciplines = disciplines.filter((d) => !compForm.sport_id || d.sport_id === compForm.sport_id);
+  const allowedSports = sports.filter((s) => allowedSportIds.has(s.id));
+  const allowedDisciplinesForSport = compForm.sport_id ? (allowedDisciplineIdsBySport[compForm.sport_id] ?? new Set<string>()) : new Set<string>();
+  const compDisciplines = disciplines.filter((d) =>
+    compForm.sport_id
+      ? d.sport_id === compForm.sport_id && (allowedDisciplinesForSport.size === 0 || allowedDisciplinesForSport.has(d.id))
+      : false,
+  );
 
   return (
     <div className="space-y-8">
@@ -360,7 +381,11 @@ function CompetitionsPage() {
               <Select value={compForm.sport_id} onValueChange={(v) => setCompForm({ ...compForm, sport_id: v, discipline_id: "" })}>
                 <SelectTrigger><SelectValue placeholder="Choisir" /></SelectTrigger>
                 <SelectContent>
-                  {sports.map((s) => (<SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>))}
+                  {allowedSports.length === 0 ? (
+                    <div className="px-3 py-2 text-xs text-slate-500">Aucun sport admis. Configurez-les dans l'onglet Sports.</div>
+                  ) : (
+                    allowedSports.map((s) => (<SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>))
+                  )}
                 </SelectContent>
               </Select>
             </div>
