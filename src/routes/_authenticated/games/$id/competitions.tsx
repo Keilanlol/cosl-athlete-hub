@@ -58,6 +58,8 @@ function CompetitionsPage() {
   const [results, setResults] = useState<ResultRow[] | null>(null);
   const [sports, setSports] = useState<Sport[]>([]);
   const [disciplines, setDisciplines] = useState<Discipline[]>([]);
+  const [allowedSportIds, setAllowedSportIds] = useState<Set<string>>(new Set());
+  const [allowedDisciplineIdsBySport, setAllowedDisciplineIdsBySport] = useState<Record<string, Set<string>>>({});
 
   const [compOpen, setCompOpen] = useState(false);
   const [compForm, setCompForm] = useState({
