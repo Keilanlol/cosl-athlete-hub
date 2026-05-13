@@ -110,6 +110,7 @@ function kycPill(s: string | null | undefined) {
 function AthleteDetailPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
+  const [tab, setTab] = useHashTab("profil");
   const { items: levels, add: addLevel, remove: removeLevel } = useAthleteLevels();
   const { items: sportsRef, add: addSport, remove: removeSport } = useSports();
   const { items: docTypes, add: addDocType, remove: removeDocType } = useDocumentTypes();
