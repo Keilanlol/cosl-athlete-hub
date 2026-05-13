@@ -252,7 +252,7 @@ function AthleteDetailPage() {
       setClub((d ?? null) as Club | null);
     } else setClub(null);
 
-    const [{ data: dd }, { data: kk }, { data: rr }, { data: ss }, { data: rs }, { data: ap }] = await Promise.all([
+    const [{ data: dd }, { data: kk }, { data: rr }, { data: ss }, { data: rs }, { data: ap }, { data: mr }] = await Promise.all([
       supabase
         .from("athlete_documents")
         .select("*")
@@ -279,6 +279,10 @@ function AthleteDetailPage() {
         .select("*")
         .eq("athlete_id", id)
         .order("starts_at", { ascending: true }),
+      supabase
+        .from("message_recipients")
+        .select("message:messages_sent(id,subject,channel,sent_at,audience_segment)")
+        .eq("athlete_id", id),
     ]);
     setDocs((dd ?? []) as AthleteDocument[]);
     setKyc((kk ?? null) as AthleteKyc | null);
@@ -286,6 +290,11 @@ function AthleteDetailPage() {
     setSelections((ss ?? []) as Selection[]);
     setResults((rs ?? []) as ResultRow[]);
     setAppointments((ap ?? []) as Appointment[]);
+    const msgs = ((mr ?? []) as unknown as Array<{ message: AthleteMsg | AthleteMsg[] | null }>)
+      .map((r) => (Array.isArray(r.message) ? r.message[0] : r.message))
+      .filter((x): x is AthleteMsg => !!x)
+      .sort((a, b) => b.sent_at.localeCompare(a.sent_at));
+    setAthleteMessages(msgs);
   };
 
   useEffect(() => {
