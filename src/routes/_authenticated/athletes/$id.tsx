@@ -651,7 +651,7 @@ function AthleteDetailPage() {
                         <TableCell>
                           {DOCUMENT_CATEGORIES.find((c) => c.value === d.category)?.label ?? d.category}
                         </TableCell>
-                        <TableCell>{d.doc_type}</TableCell>
+                        <TableCell>{docTypes.find((t) => t.code === d.doc_type)?.label ?? d.doc_type}</TableCell>
                         <TableCell>
                           {d.file_url ? (
                             <a
