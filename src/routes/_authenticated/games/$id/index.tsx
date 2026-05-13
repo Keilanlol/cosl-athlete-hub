@@ -66,7 +66,7 @@ function GameOverviewPage() {
 
   const load = async () => {
     setLoading(true);
-    const [gameRes, sportsRes, discRes, gsRes, qRes, selRes, accRes, tpRes] = await Promise.all([
+    const [gameRes, sportsRes, discRes, gsRes, qRes, selRes, accRes, tpRes, gsdRes] = await Promise.all([
       supabase.from("games").select("*").eq("id", id).maybeSingle(),
       supabase.from("sports").select("*").order("name"),
       supabase.from("disciplines").select("id,sport_id,name,gender").order("name"),
@@ -75,6 +75,7 @@ function GameOverviewPage() {
       supabase.from("selections").select("id", { count: "exact", head: true }).eq("game_id", id).in("status", ["selected", "reserve"]),
       supabase.from("accreditations").select("id", { count: "exact", head: true }).eq("game_id", id).eq("status", "validated"),
       supabase.from("travel_plans").select("id", { count: "exact", head: true }).eq("game_id", id),
+      supabase.from("game_sport_disciplines").select("game_sport_id,discipline_id"),
     ]);
     setLoading(false);
     if (gameRes.error) { toast.error("Erreur", { description: gameRes.error.message }); return; }
@@ -83,6 +84,11 @@ function GameOverviewPage() {
     setDisciplines((discRes.data ?? []) as Discipline[]);
     setGameSports((gsRes.data ?? []) as unknown as GameSport[]);
     setQuotas((qRes.data ?? []) as GameQuota[]);
+    const map: Record<string, string[]> = {};
+    ((gsdRes.data ?? []) as { game_sport_id: string; discipline_id: string }[]).forEach((r) => {
+      (map[r.game_sport_id] ||= []).push(r.discipline_id);
+    });
+    setGsDiscMap(map);
     setKpi({
       selected: selRes.count ?? 0,
       accred: accRes.count ?? 0,
