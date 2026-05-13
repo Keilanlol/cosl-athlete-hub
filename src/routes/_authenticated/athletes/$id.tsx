@@ -4,7 +4,6 @@ import { ArrowLeft, Plus, Trash2, Upload, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import {
-  ATHLETE_LEVELS,
   ATHLETE_STATUSES,
   COACH_ROLES,
   DOCUMENT_CATEGORIES,
@@ -26,6 +25,12 @@ import {
   type Selection,
   type Sport,
 } from "@/lib/types";
+import { EditableSelect } from "@/components/EditableSelect";
+import {
+  useAthleteLevels,
+  useDocumentTypes,
+  useSports,
+} from "@/hooks/useReferenceData";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -94,6 +99,9 @@ function kycPill(s: string | null | undefined) {
 function AthleteDetailPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
+  const { items: levels, add: addLevel, remove: removeLevel } = useAthleteLevels();
+  const { items: sportsRef, add: addSport, remove: removeSport } = useSports();
+  const { items: docTypes, add: addDocType, remove: removeDocType } = useDocumentTypes();
   const [athlete, setAthlete] = useState<Athlete | null>(null);
   const [loading, setLoading] = useState(true);
   const [sport, setSport] = useState<Sport | null>(null);
@@ -517,7 +525,7 @@ function AthleteDetailPage() {
     );
   }
 
-  const lvl = ATHLETE_LEVELS.find((l) => l.value === athlete.level);
+  const lvl = levels.find((l) => l.code === athlete.level);
   const globalKyc = kyc?.global_status ?? "red";
 
   return (
@@ -643,7 +651,7 @@ function AthleteDetailPage() {
                         <TableCell>
                           {DOCUMENT_CATEGORIES.find((c) => c.value === d.category)?.label ?? d.category}
                         </TableCell>
-                        <TableCell>{d.doc_type}</TableCell>
+                        <TableCell>{docTypes.find((t) => t.code === d.doc_type)?.label ?? d.doc_type}</TableCell>
                         <TableCell>
                           {d.file_url ? (
                             <a
@@ -1034,20 +1042,16 @@ function AthleteDetailPage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label>Sport</Label>
-                    <Select
-                      value={form.primary_sport_id || ALL}
-                      onValueChange={(v) =>
-                        setForm({ ...form, primary_sport_id: v === ALL ? "" : v })
-                      }
-                    >
-                      <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={ALL}>—</SelectItem>
-                        {refs.sports.map((s) => (
-                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <EditableSelect
+                      value={form.primary_sport_id ?? ""}
+                      onValueChange={(v) => setForm({ ...form, primary_sport_id: v })}
+                      options={sportsRef.map((s) => ({ value: s.id, label: s.name }))}
+                      emptyLabel="—"
+                      onAdd={addSport}
+                      onDelete={removeSport}
+                      addLabel="+ Ajouter un sport…"
+                      manageTitle="Gérer les sports"
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <Label>Fédération</Label>
@@ -1105,23 +1109,18 @@ function AthleteDetailPage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label>Niveau</Label>
-                    <Select
-                      value={form.level || ALL}
+                    <EditableSelect
+                      value={form.level ?? ""}
                       onValueChange={(v) =>
-                        setForm({
-                          ...form,
-                          level: (v === ALL ? "" : v) as AthleteForm["level"],
-                        })
+                        setForm({ ...form, level: v as AthleteForm["level"] })
                       }
-                    >
-                      <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={ALL}>—</SelectItem>
-                        {ATHLETE_LEVELS.map((s) => (
-                          <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      options={levels.map((l) => ({ value: l.code, label: l.label }))}
+                      emptyLabel="—"
+                      onAdd={addLevel}
+                      onDelete={removeLevel}
+                      addLabel="+ Ajouter un niveau…"
+                      manageTitle="Gérer les niveaux"
+                    />
                   </div>
                 </div>
               </div>
@@ -1178,10 +1177,17 @@ function AthleteDetailPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>Type *</Label>
-                <Input
+                <EditableSelect
                   value={docForm.doc_type}
-                  onChange={(e) => setDocForm({ ...docForm, doc_type: e.target.value })}
-                  placeholder="ex: passeport"
+                  onValueChange={(v) => setDocForm({ ...docForm, doc_type: v })}
+                  options={docTypes
+                    .filter((t) => t.category === docForm.category)
+                    .map((t) => ({ value: t.code, label: t.label }))}
+                  emptyLabel="—"
+                  onAdd={(label) => addDocType(label, docForm.category)}
+                  onDelete={removeDocType}
+                  addLabel={`+ Ajouter un type (${docForm.category})…`}
+                  manageTitle={`Types — ${docForm.category}`}
                 />
               </div>
               <div className="space-y-1.5">

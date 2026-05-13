@@ -4,7 +4,6 @@ import { Plus, Pencil, Search, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import {
-  ATHLETE_LEVELS,
   ATHLETE_STATUSES,
   GENDERS,
   athleteSchema,
@@ -14,8 +13,9 @@ import {
   type Club,
   type Discipline,
   type Federation,
-  type Sport,
 } from "@/lib/types";
+import { EditableSelect } from "@/components/EditableSelect";
+import { useAthleteLevels, useSports } from "@/hooks/useReferenceData";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -119,7 +119,8 @@ function kycBadge(s: string | null | undefined) {
 
 function AthletesPage() {
   const [rows, setRows] = useState<AthleteRow[] | null>(null);
-  const [sports, setSports] = useState<Sport[]>([]);
+  const { items: sports, add: addSport, remove: removeSport } = useSports();
+  const { items: levels, add: addLevel, remove: removeLevel } = useAthleteLevels();
   const [federations, setFederations] = useState<Federation[]>([]);
   const [clubs, setClubs] = useState<Club[]>([]);
   const [disciplines, setDisciplines] = useState<Discipline[]>([]);
@@ -158,14 +159,12 @@ function AthletesPage() {
   };
 
   const loadRefs = async () => {
-    const [sp, fd, cl, di, ad] = await Promise.all([
-      supabase.from("sports").select("*").order("name"),
+    const [fd, cl, di, ad] = await Promise.all([
       supabase.from("federations").select("*").order("acronym"),
       supabase.from("clubs").select("*").order("name"),
       supabase.from("disciplines").select("*").order("name"),
       supabase.from("athlete_disciplines").select("athlete_id, discipline_id"),
     ]);
-    setSports((sp.data ?? []) as Sport[]);
     setFederations((fd.data ?? []) as Federation[]);
     setClubs((cl.data ?? []) as Club[]);
     setDisciplines((di.data ?? []) as Discipline[]);
@@ -392,8 +391,8 @@ function AthletesPage() {
           <SelectTrigger><SelectValue placeholder="Niveau" /></SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL}>Tous les niveaux</SelectItem>
-            {ATHLETE_LEVELS.map((s) => (
-              <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+            {levels.map((s) => (
+              <SelectItem key={s.code} value={s.code}>{s.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -443,7 +442,7 @@ function AthletesPage() {
             </TableHeader>
             <TableBody>
               {visible.map((a) => {
-                const lvl = ATHLETE_LEVELS.find((l) => l.value === a.level);
+                const lvl = levels.find((l) => l.code === a.level);
                 const kyc = readKyc(a.athlete_kyc);
                 return (
                   <TableRow key={a.id}>
@@ -477,7 +476,7 @@ function AthletesPage() {
                       {a.current_club?.name ?? "—"}
                     </TableCell>
                     <TableCell>{statusBadge(a.status)}</TableCell>
-                    <TableCell className="text-slate-600">{lvl?.label ?? "—"}</TableCell>
+                    <TableCell className="text-slate-600">{lvl?.label ?? a.level ?? "—"}</TableCell>
                     <TableCell>{kycBadge(kyc)}</TableCell>
                     <TableCell className="text-right">
                       <Button asChild variant="ghost" size="icon" aria-label="Voir">
@@ -615,20 +614,16 @@ function AthletesPage() {
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                   <div className="space-y-1.5">
                     <Label>Sport principal</Label>
-                    <Select
-                      value={form.primary_sport_id || ALL}
-                      onValueChange={(v) =>
-                        setForm({ ...form, primary_sport_id: v === ALL ? "" : v })
-                      }
-                    >
-                      <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={ALL}>—</SelectItem>
-                        {sports.map((s) => (
-                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <EditableSelect
+                      value={form.primary_sport_id ?? ""}
+                      onValueChange={(v) => setForm({ ...form, primary_sport_id: v })}
+                      options={sports.map((s) => ({ value: s.id, label: s.name }))}
+                      emptyLabel="—"
+                      onAdd={addSport}
+                      onDelete={removeSport}
+                      addLabel="+ Ajouter un sport…"
+                      manageTitle="Gérer les sports"
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <Label>Fédération</Label>
@@ -690,20 +685,18 @@ function AthletesPage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label>Niveau</Label>
-                    <Select
-                      value={form.level || ALL}
+                    <EditableSelect
+                      value={form.level ?? ""}
                       onValueChange={(v) =>
-                        setForm({ ...form, level: (v === ALL ? "" : v) as AthleteForm["level"] })
+                        setForm({ ...form, level: v as AthleteForm["level"] })
                       }
-                    >
-                      <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={ALL}>—</SelectItem>
-                        {ATHLETE_LEVELS.map((s) => (
-                          <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      options={levels.map((l) => ({ value: l.code, label: l.label }))}
+                      emptyLabel="—"
+                      onAdd={addLevel}
+                      onDelete={removeLevel}
+                      addLabel="+ Ajouter un niveau…"
+                      manageTitle="Gérer les niveaux"
+                    />
                   </div>
                 </div>
               </section>

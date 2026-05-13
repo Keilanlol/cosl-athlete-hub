@@ -119,7 +119,7 @@ export type Athlete = {
   primary_federation_id: string | null;
   current_club_id: string | null;
   status: AthleteStatus;
-  level: AthleteLevel | null;
+  level: string | null;
   size_clothing: string | null;
   size_shoes: string | null;
   size_gloves: string | null;
@@ -220,7 +220,9 @@ export const athleteSchema = z.object({
   current_club_id: z.string().uuid().optional().or(z.literal("")),
   status: z.enum(["active", "injured", "suspended", "retired", "ambassador"]),
   level: z
-    .enum(["elite", "promotion", "espoir", "olympic_contract"])
+    .string()
+    .trim()
+    .max(60)
     .optional()
     .or(z.literal("")),
   size_clothing: z.string().trim().max(20).optional().or(z.literal("")),
