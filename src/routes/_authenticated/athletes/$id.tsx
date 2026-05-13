@@ -178,6 +178,19 @@ function AthleteDetailPage() {
     end_date: "",
   });
 
+  // Agenda
+  const [appointments, setAppointments] = useState<Appointment[] | null>(null);
+  const [apptOpen, setApptOpen] = useState(false);
+  const [apptEditing, setApptEditing] = useState<Appointment | null>(null);
+  const [apptForm, setApptForm] = useState({
+    title: "",
+    description: "",
+    location: "",
+    starts_at: "",
+    ends_at: "",
+  });
+  const [apptDeleteId, setApptDeleteId] = useState<string | null>(null);
+
   const [refs, setRefs] = useState<{ sports: Sport[]; feds: Federation[]; clubs: Club[] }>({
     sports: [],
     feds: [],
