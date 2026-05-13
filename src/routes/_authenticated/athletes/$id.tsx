@@ -72,6 +72,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { EmptyState, TableSkeleton } from "@/components/DataTableShell";
 import { useHashTab } from "@/hooks/useHashTab";
+import { WeekAgenda } from "@/components/WeekAgenda";
 
 type Appointment = {
   id: string;
