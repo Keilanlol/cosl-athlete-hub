@@ -85,7 +85,7 @@ function CompetitionsPage() {
   const load = async () => {
     setComps(null);
     setResults(null);
-    const [{ data: c }, { data: r }, { data: sp }, { data: di }] = await Promise.all([
+    const [{ data: c }, { data: r }, { data: sp }, { data: di }, { data: gs }] = await Promise.all([
       supabase
         .from("game_competitions")
         .select("*")
@@ -100,11 +100,24 @@ function CompetitionsPage() {
         .order("rank", { ascending: true, nullsFirst: false }),
       supabase.from("sports").select("*").order("name"),
       supabase.from("disciplines").select("*").order("name"),
+      supabase
+        .from("game_sports")
+        .select("id, sport_id, is_active, game_sport_disciplines(discipline_id)")
+        .eq("game_id", id),
     ]);
     setComps((c ?? []) as GameCompetition[]);
     setResults((r ?? []) as ResultRow[]);
     setSports((sp ?? []) as Sport[]);
     setDisciplines((di ?? []) as Discipline[]);
+    const allowed = new Set<string>();
+    const byS: Record<string, Set<string>> = {};
+    ((gs ?? []) as Array<{ sport_id: string; is_active: boolean | null; game_sport_disciplines: Array<{ discipline_id: string }> }>).forEach((row) => {
+      if (row.is_active === false) return;
+      allowed.add(row.sport_id);
+      byS[row.sport_id] = new Set((row.game_sport_disciplines ?? []).map((d) => d.discipline_id));
+    });
+    setAllowedSportIds(allowed);
+    setAllowedDisciplineIdsBySport(byS);
   };
 
   useEffect(() => { load(); }, [id]);
