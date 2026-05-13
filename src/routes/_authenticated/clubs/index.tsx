@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Pencil, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
@@ -272,12 +272,22 @@ function ClubsPage() {
                 const f = fedMap.get(c.federation_id);
                 return (
                   <TableRow key={c.id}>
-                    <TableCell className="font-medium">{c.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <Link
+                        to="/clubs/$id"
+                        params={{ id: c.id }}
+                        className="text-indigo-600 hover:underline"
+                      >
+                        {c.name}
+                      </Link>
+                    </TableCell>
                     <TableCell>
                       {f ? (
-                        <Badge variant="outline" className="font-mono">
-                          {f.acronym}
-                        </Badge>
+                        <Link to="/federations/$id" params={{ id: f.id }}>
+                          <Badge variant="outline" className="font-mono hover:bg-slate-100">
+                            {f.acronym}
+                          </Badge>
+                        </Link>
                       ) : (
                         <span className="text-slate-400">—</span>
                       )}

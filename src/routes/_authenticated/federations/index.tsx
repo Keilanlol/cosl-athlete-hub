@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Pencil, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
@@ -259,9 +259,23 @@ function FederationsPage() {
               {visible.map((f) => (
                 <TableRow key={f.id}>
                   <TableCell className="font-mono text-sm font-medium">
-                    {f.acronym}
+                    <Link
+                      to="/federations/$id"
+                      params={{ id: f.id }}
+                      className="text-indigo-600 hover:underline"
+                    >
+                      {f.acronym}
+                    </Link>
                   </TableCell>
-                  <TableCell>{f.name}</TableCell>
+                  <TableCell>
+                    <Link
+                      to="/federations/$id"
+                      params={{ id: f.id }}
+                      className="hover:underline"
+                    >
+                      {f.name}
+                    </Link>
+                  </TableCell>
                   <TableCell className="text-slate-600">
                     {f.president_name ?? "—"}
                   </TableCell>
