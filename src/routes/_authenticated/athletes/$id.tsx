@@ -1465,7 +1465,74 @@ function AthleteDetailPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Result dialog */}
+      {/* Appointment dialog */}
+      <Dialog open={apptOpen} onOpenChange={(o) => { setApptOpen(o); if (!o) setApptEditing(null); }}>
+        <DialogContent className="max-w-lg">
+          <form onSubmit={submitAppt}>
+            <DialogHeader>
+              <DialogTitle>{apptEditing ? "Modifier le rendez-vous" : "Ajouter un rendez-vous"}</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-3 py-4">
+              <div className="space-y-1">
+                <Label>Titre *</Label>
+                <Input value={apptForm.title} onChange={(e) => setApptForm({ ...apptForm, title: e.target.value })} />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label>Début *</Label>
+                  <Input
+                    type="datetime-local"
+                    value={apptForm.starts_at}
+                    onChange={(e) => setApptForm({ ...apptForm, starts_at: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Fin</Label>
+                  <Input
+                    type="datetime-local"
+                    value={apptForm.ends_at}
+                    onChange={(e) => setApptForm({ ...apptForm, ends_at: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label>Lieu</Label>
+                <Input value={apptForm.location} onChange={(e) => setApptForm({ ...apptForm, location: e.target.value })} />
+              </div>
+              <div className="space-y-1">
+                <Label>Description</Label>
+                <Textarea
+                  value={apptForm.description}
+                  onChange={(e) => setApptForm({ ...apptForm, description: e.target.value })}
+                  rows={3}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setApptOpen(false)}>Annuler</Button>
+              <Button type="submit" className="bg-indigo-500 hover:bg-indigo-600">
+                {apptEditing ? "Enregistrer" : "Ajouter"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!apptDeleteId} onOpenChange={(o) => !o && setApptDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer ce rendez-vous ?</AlertDialogTitle>
+            <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={deleteAppt} className="bg-red-600 hover:bg-red-700">
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <Dialog open={resultOpen} onOpenChange={setResultOpen}>
         <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Ajouter un résultat</DialogTitle></DialogHeader>
