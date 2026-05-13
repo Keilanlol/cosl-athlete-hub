@@ -140,13 +140,13 @@ function CompetitionsPage() {
   const openComp = async (c: GameCompetition) => {
     setViewComp(c);
     setSelRows([]);
-    const query = supabase
+    let query = supabase
       .from("selections")
       .select("athlete_id, athlete:athletes(first_name,last_name,cosl_id,gender)")
       .eq("game_id", id)
       .eq("sport_id", c.sport_id)
       .in("status", ["selected", "reserve"]);
-    if (c.discipline_id) query.eq("discipline_id", c.discipline_id);
+    if (c.discipline_id) query = query.eq("discipline_id", c.discipline_id);
     const { data } = await query;
     setSelRows(((data ?? []) as unknown) as typeof selRows);
   };
