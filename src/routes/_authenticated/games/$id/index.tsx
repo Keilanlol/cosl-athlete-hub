@@ -39,6 +39,7 @@ type Discipline = { id: string; sport_id: string; name: string; gender: Gender }
 
 function GameOverviewPage() {
   const { id } = Route.useParams();
+  const [tab, setTab] = useHashTab("overview");
   const [game, setGame] = useState<Game | null>(null);
   const [sports, setSports] = useState<Sport[]>([]);
   const [disciplines, setDisciplines] = useState<Discipline[]>([]);
