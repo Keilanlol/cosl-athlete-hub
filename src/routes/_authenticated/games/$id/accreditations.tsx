@@ -82,6 +82,7 @@ type Accreditation = {
 
 function GameAccreditationsPage() {
   const { id: gameId } = Route.useParams();
+  const [tab, setTab] = useHashTab("list");
   const [types, setTypes] = useState<AccType[] | null>(null);
   const [accreds, setAccreds] = useState<Accreditation[] | null>(null);
   const [athletes, setAthletes] = useState<Athlete[]>([]);
