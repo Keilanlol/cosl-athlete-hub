@@ -381,7 +381,11 @@ function CompetitionsPage() {
               <Select value={compForm.sport_id} onValueChange={(v) => setCompForm({ ...compForm, sport_id: v, discipline_id: "" })}>
                 <SelectTrigger><SelectValue placeholder="Choisir" /></SelectTrigger>
                 <SelectContent>
-                  {sports.map((s) => (<SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>))}
+                  {allowedSports.length === 0 ? (
+                    <div className="px-3 py-2 text-xs text-slate-500">Aucun sport admis. Configurez-les dans l'onglet Sports.</div>
+                  ) : (
+                    allowedSports.map((s) => (<SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>))
+                  )}
                 </SelectContent>
               </Select>
             </div>
