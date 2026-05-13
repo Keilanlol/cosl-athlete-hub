@@ -284,18 +284,25 @@ function GameOverviewPage() {
               <TableBody>
                 {gameSports.map((gs) => {
                   const sportDiscs = disciplines.filter((d) => d.sport_id === gs.sport_id);
+                  const allowed = gsDiscMap[gs.id] ?? [];
+                  const shown = allowed.length === 0
+                    ? sportDiscs
+                    : sportDiscs.filter((d) => allowed.includes(d.id));
                   return (
                     <TableRow key={gs.id}>
                       <TableCell className="font-medium">{gs.sport?.name ?? sportName(gs.sport_id)}</TableCell>
                       <TableCell className="text-slate-600">
-                        {sportDiscs.length === 0
-                          ? <span className="text-slate-400">—</span>
+                        {shown.length === 0
+                          ? <span className="text-slate-400">Aucune discipline admise</span>
                           : <div className="flex flex-wrap gap-1">
-                              {sportDiscs.map((d) => (
+                              {shown.map((d) => (
                                 <Badge key={d.id} variant="outline" className="font-normal">
                                   {d.name} <span className="ml-1 text-xs text-slate-400">{d.gender}</span>
                                 </Badge>
                               ))}
+                              {allowed.length === 0 && (
+                                <span className="text-xs text-slate-400 ml-1">(toutes par défaut)</span>
+                              )}
                             </div>
                         }
                       </TableCell>
@@ -303,6 +310,9 @@ function GameOverviewPage() {
                         <Switch checked={!!gs.is_active} onCheckedChange={() => toggleSport(gs)} />
                       </TableCell>
                       <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" onClick={() => openDiscDlg(gs)} aria-label="Disciplines">
+                          <Settings2 className="h-4 w-4 text-indigo-600" />
+                        </Button>
                         <Button variant="ghost" size="icon" onClick={() => removeSport(gs)} aria-label="Retirer">
                           <Trash2 className="h-4 w-4 text-red-600" />
                         </Button>
