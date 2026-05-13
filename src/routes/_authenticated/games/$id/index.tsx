@@ -136,10 +136,12 @@ function GameOverviewPage() {
     return sports.filter((s) => !used.has(s.id));
   }, [sports, gameSports]);
 
-  const availableDisciplines = useMemo(
-    () => disciplines.filter((d) => d.sport_id === quotaForm.sport_id),
-    [disciplines, quotaForm.sport_id],
-  );
+  const availableDisciplines = useMemo(() => {
+    const sportDiscs = disciplines.filter((d) => d.sport_id === quotaForm.sport_id);
+    const gs = gameSports.find((g) => g.sport_id === quotaForm.sport_id);
+    const allowed = gs ? gsDiscMap[gs.id] ?? [] : [];
+    return allowed.length === 0 ? sportDiscs : sportDiscs.filter((d) => allowed.includes(d.id));
+  }, [disciplines, quotaForm.sport_id, gameSports, gsDiscMap]);
 
   const addSport = async () => {
     if (!newSportId) return;
