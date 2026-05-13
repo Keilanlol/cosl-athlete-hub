@@ -321,7 +321,7 @@ ${accreds.map((a) => `  <accreditation status="${a.status}">
         <Button variant="outline" onClick={exportXml}><Download className="mr-2 h-4 w-4" /> XML</Button>
       </div>
 
-      <Tabs defaultValue="list" className="space-y-4">
+      <Tabs value={tab} onValueChange={setTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="list">Liste des accréditations</TabsTrigger>
           <TabsTrigger value="types">Types d'accréditation</TabsTrigger>
