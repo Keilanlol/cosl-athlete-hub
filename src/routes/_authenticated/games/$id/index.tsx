@@ -33,6 +33,45 @@ import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 
+type AthItem = {
+  id: string; first_name: string; last_name: string; gender: Gender;
+  photo_url: string | null; kyc: string; selection_status?: string | null;
+};
+
+function AthleteList({ items, emptyLabel, showStatus }: { items: AthItem[]; emptyLabel: string; showStatus?: boolean }) {
+  if (items.length === 0) return <p className="p-6 text-sm text-slate-500 text-center">{emptyLabel}</p>;
+  return (
+    <div className="max-h-96 overflow-y-auto divide-y divide-slate-100 rounded-md border border-slate-200">
+      {items.map((a) => {
+        const initials = `${a.first_name?.[0] ?? ""}${a.last_name?.[0] ?? ""}`;
+        const kycCls =
+          a.kyc === "green" ? "bg-emerald-100 text-emerald-700" :
+          a.kyc === "orange" ? "bg-amber-100 text-amber-700" :
+          "bg-red-100 text-red-700";
+        const kycLabel = a.kyc === "green" ? "KYC valide" : a.kyc === "orange" ? "KYC en attente" : "KYC invalide";
+        return (
+          <div key={a.id} className="flex items-center gap-3 px-3 py-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-xs font-medium text-slate-700 overflow-hidden">
+              {a.photo_url ? <img src={a.photo_url} alt="" className="h-full w-full object-cover" /> : initials}
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-slate-900">{a.first_name} {a.last_name}</p>
+              <p className="text-xs text-slate-500">{a.gender}</p>
+            </div>
+            {showStatus && a.selection_status && (
+              <Badge variant="outline" className="capitalize">{a.selection_status === "selected" ? "Sélectionné" : "Réserviste"}</Badge>
+            )}
+            <Badge className={`${kycCls} hover:${kycCls}`}>
+              {a.kyc === "green" ? <CheckCircle2 className="mr-1 h-3 w-3" /> : <AlertCircle className="mr-1 h-3 w-3" />}
+              {kycLabel}
+            </Badge>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export const Route = createFileRoute("/_authenticated/games/$id/")({
   component: GameOverviewPage,
 });
@@ -812,41 +851,3 @@ function Info({ label, value }: { label: string; value: string | null | undefine
   );
 }
 
-type AthItem = {
-  id: string; first_name: string; last_name: string; gender: Gender;
-  photo_url: string | null; kyc: string; selection_status?: string | null;
-};
-
-function AthleteList({ items, emptyLabel, showStatus }: { items: AthItem[]; emptyLabel: string; showStatus?: boolean }) {
-  if (items.length === 0) return <p className="p-6 text-sm text-slate-500 text-center">{emptyLabel}</p>;
-  return (
-    <div className="max-h-96 overflow-y-auto divide-y divide-slate-100 rounded-md border border-slate-200">
-      {items.map((a) => {
-        const initials = `${a.first_name?.[0] ?? ""}${a.last_name?.[0] ?? ""}`;
-        const kycCls =
-          a.kyc === "green" ? "bg-emerald-100 text-emerald-700" :
-          a.kyc === "orange" ? "bg-amber-100 text-amber-700" :
-          "bg-red-100 text-red-700";
-        const kycLabel = a.kyc === "green" ? "KYC valide" : a.kyc === "orange" ? "KYC en attente" : "KYC invalide";
-        return (
-          <div key={a.id} className="flex items-center gap-3 px-3 py-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-xs font-medium text-slate-700 overflow-hidden">
-              {a.photo_url ? <img src={a.photo_url} alt="" className="h-full w-full object-cover" /> : initials}
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium text-slate-900">{a.first_name} {a.last_name}</p>
-              <p className="text-xs text-slate-500">{a.gender}</p>
-            </div>
-            {showStatus && a.selection_status && (
-              <Badge variant="outline" className="capitalize">{a.selection_status === "selected" ? "Sélectionné" : "Réserviste"}</Badge>
-            )}
-            <Badge className={`${kycCls} hover:${kycCls}`}>
-              {a.kyc === "green" ? <CheckCircle2 className="mr-1 h-3 w-3" /> : <AlertCircle className="mr-1 h-3 w-3" />}
-              {kycLabel}
-            </Badge>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
