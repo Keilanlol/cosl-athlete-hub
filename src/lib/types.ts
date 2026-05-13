@@ -119,7 +119,7 @@ export type Athlete = {
   primary_federation_id: string | null;
   current_club_id: string | null;
   status: AthleteStatus;
-  level: AthleteLevel | null;
+  level: string | null;
   size_clothing: string | null;
   size_shoes: string | null;
   size_gloves: string | null;
