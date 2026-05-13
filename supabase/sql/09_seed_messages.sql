@@ -100,7 +100,7 @@ VALUES
 
 -- Msg 1 (Convocation JPEE) : tous les sélectionnés/réserves JPEE 2027
 INSERT INTO public.message_recipients (message_id, athlete_id)
-SELECT 'ffffffff-0000-0000-0000-000000000001', DISTINCT s.athlete_id
+SELECT DISTINCT 'ffffffff-0000-0000-0000-000000000001', s.athlete_id
 FROM public.selections s
 WHERE s.game_id = '77777777-0000-0000-0000-000000000001'
   AND s.status IN ('selected','reserve')
@@ -108,7 +108,7 @@ ON CONFLICT DO NOTHING;
 
 -- Msg 2 (Sélection confirmée) : sélectionnés JPEE 2027 uniquement
 INSERT INTO public.message_recipients (message_id, athlete_id)
-SELECT 'ffffffff-0000-0000-0000-000000000002', DISTINCT s.athlete_id
+SELECT DISTINCT 'ffffffff-0000-0000-0000-000000000002', s.athlete_id
 FROM public.selections s
 WHERE s.game_id = '77777777-0000-0000-0000-000000000001'
   AND s.status = 'selected'
@@ -132,7 +132,7 @@ ON CONFLICT DO NOTHING;
 
 -- Msg 4 (Briefing pré-départ JPEE) : même audience que msg 1
 INSERT INTO public.message_recipients (message_id, athlete_id)
-SELECT 'ffffffff-0000-0000-0000-000000000004', DISTINCT s.athlete_id
+SELECT DISTINCT 'ffffffff-0000-0000-0000-000000000004', s.athlete_id
 FROM public.selections s
 WHERE s.game_id = '77777777-0000-0000-0000-000000000001'
   AND s.status IN ('selected','reserve')
@@ -140,7 +140,7 @@ ON CONFLICT DO NOTHING;
 
 -- Msg 5 (Bilan JOJ 2026) : sélectionnés JOJ 2026
 INSERT INTO public.message_recipients (message_id, athlete_id)
-SELECT 'ffffffff-0000-0000-0000-000000000005', DISTINCT s.athlete_id
+SELECT DISTINCT 'ffffffff-0000-0000-0000-000000000005', s.athlete_id
 FROM public.selections s
 WHERE s.game_id = '77777777-0000-0000-0000-000000000005'
   AND s.status IN ('selected','reserve')
