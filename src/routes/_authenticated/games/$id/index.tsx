@@ -193,7 +193,35 @@ function GameOverviewPage() {
     else { toast.success("Quota supprimé"); load(); }
   };
 
-  if (loading) return <Skeleton className="h-64 w-full" />;
+  const openDiscDlg = (gs: GameSport) => {
+    setDiscDlg(gs);
+    setDiscPicked(gsDiscMap[gs.id] ?? []);
+  };
+
+  const saveDiscDlg = async () => {
+    if (!discDlg) return;
+    const current = new Set(gsDiscMap[discDlg.id] ?? []);
+    const next = new Set(discPicked);
+    const toAdd = [...next].filter((d) => !current.has(d));
+    const toRemove = [...current].filter((d) => !next.has(d));
+    if (toRemove.length) {
+      const { error } = await supabase
+        .from("game_sport_disciplines")
+        .delete()
+        .eq("game_sport_id", discDlg.id)
+        .in("discipline_id", toRemove);
+      if (error) return toast.error("Échec", { description: error.message });
+    }
+    if (toAdd.length) {
+      const { error } = await supabase.from("game_sport_disciplines").insert(
+        toAdd.map((d) => ({ game_sport_id: discDlg.id, discipline_id: d })),
+      );
+      if (error) return toast.error("Échec", { description: error.message });
+    }
+    toast.success("Disciplines admises mises à jour");
+    setDiscDlg(null);
+    load();
+  };
   if (!game) return null;
 
   return (
