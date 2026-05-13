@@ -122,6 +122,8 @@ function AthleteDetailPage() {
   const [club, setClub] = useState<Club | null>(null);
   const [docs, setDocs] = useState<AthleteDocument[] | null>(null);
   const [kyc, setKyc] = useState<AthleteKyc | null>(null);
+  const [kycNotesDraft, setKycNotesDraft] = useState<string>("");
+  useEffect(() => { setKycNotesDraft(kyc?.notes ?? ""); }, [kyc?.notes]);
   const [relations, setRelations] = useState<AthleteRelation[] | null>(null);
   const [selections, setSelections] = useState<Selection[] | null>(null);
   const [coaches, setCoaches] = useState<Coach[]>([]);
@@ -835,14 +837,33 @@ function AthleteDetailPage() {
                 />
               </div>
             </div>
-            <div>
+            <div className="space-y-2">
               <Label>Notes</Label>
               <Textarea
-                defaultValue={kyc?.notes ?? ""}
-                onBlur={(e) => {
-                  if ((kyc?.notes ?? "") !== e.target.value) updateKyc({ notes: e.target.value });
-                }}
+                value={kycNotesDraft}
+                onChange={(e) => setKycNotesDraft(e.target.value)}
+                rows={4}
               />
+              {(kycNotesDraft !== (kyc?.notes ?? "")) && (
+                <div className="flex justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setKycNotesDraft(kyc?.notes ?? "")}
+                  >
+                    Annuler
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="bg-indigo-500 hover:bg-indigo-600"
+                    onClick={() => updateKyc({ notes: kycNotesDraft.trim() ? kycNotesDraft : null })}
+                  >
+                    Enregistrer
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </TabsContent>
