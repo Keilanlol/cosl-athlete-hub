@@ -476,7 +476,7 @@ function AthletesPage() {
                       {a.current_club?.name ?? "—"}
                     </TableCell>
                     <TableCell>{statusBadge(a.status)}</TableCell>
-                    <TableCell className="text-slate-600">{lvl?.label ?? "—"}</TableCell>
+                    <TableCell className="text-slate-600">{lvl?.label ?? a.level ?? "—"}</TableCell>
                     <TableCell>{kycBadge(kyc)}</TableCell>
                     <TableCell className="text-right">
                       <Button asChild variant="ghost" size="icon" aria-label="Voir">
