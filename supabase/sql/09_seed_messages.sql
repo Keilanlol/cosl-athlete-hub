@@ -159,7 +159,7 @@ SELECT 'ffffffff-0000-0000-0000-000000000007'::uuid, a.id
 FROM public.athletes a
 JOIN public.federations f ON f.id = a.primary_federation_id
 WHERE a.is_active = true
-  AND (f.code = 'FLA' OR f.name ILIKE '%athlétisme%')
+  AND (f.acronym = 'FLA' OR f.name ILIKE '%athlétisme%')
 ON CONFLICT DO NOTHING;
 
 -- 4) Synchroniser recipients_count avec le nombre réel de destinataires
