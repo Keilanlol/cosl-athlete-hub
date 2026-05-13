@@ -391,8 +391,8 @@ function AthletesPage() {
           <SelectTrigger><SelectValue placeholder="Niveau" /></SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL}>Tous les niveaux</SelectItem>
-            {ATHLETE_LEVELS.map((s) => (
-              <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+            {levels.map((s) => (
+              <SelectItem key={s.code} value={s.code}>{s.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
