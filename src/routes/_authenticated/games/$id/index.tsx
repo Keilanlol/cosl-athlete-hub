@@ -751,6 +751,45 @@ function GameOverviewPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Quota details dialog */}
+      <Dialog open={!!detailsQuota} onOpenChange={(o) => !o && setDetailsQuota(null)}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              Quota — {detailsQuota && sportName(detailsQuota.sport_id)}
+              {detailsQuota?.discipline_id ? ` · ${discName(detailsQuota.discipline_id)}` : ""}
+              {detailsQuota && <Badge variant="outline" className="ml-2">{detailsQuota.gender}</Badge>}
+            </DialogTitle>
+            <DialogDescription>
+              {detailsQuota && (
+                <>
+                  {detailsIn.length}/{detailsQuota.quota_max} placés ·{" "}
+                  {detailsEligible.length} athlète(s) éligible(s) supplémentaire(s)
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          {detailsLoading ? (
+            <Skeleton className="h-48 w-full" />
+          ) : (
+            <Tabs defaultValue="in" className="space-y-3">
+              <TabsList>
+                <TabsTrigger value="in">Dans le quota ({detailsIn.length})</TabsTrigger>
+                <TabsTrigger value="eligible">Éligibles ({detailsEligible.length})</TabsTrigger>
+              </TabsList>
+              <TabsContent value="in">
+                <AthleteList items={detailsIn} emptyLabel="Aucun athlète sélectionné dans ce quota." showStatus />
+              </TabsContent>
+              <TabsContent value="eligible">
+                <AthleteList items={detailsEligible} emptyLabel="Aucun athlète éligible." />
+              </TabsContent>
+            </Tabs>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDetailsQuota(null)}>Fermer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Tabs>
   );
 }
