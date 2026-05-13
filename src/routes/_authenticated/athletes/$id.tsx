@@ -500,6 +500,39 @@ function AthleteDetailPage() {
     loadAll();
   };
 
+  const submitAppt = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!apptForm.title.trim() || !apptForm.starts_at) {
+      toast.error("Titre et date de début requis");
+      return;
+    }
+    const payload = {
+      athlete_id: id,
+      title: apptForm.title.trim(),
+      description: apptForm.description.trim() || null,
+      location: apptForm.location.trim() || null,
+      starts_at: new Date(apptForm.starts_at).toISOString(),
+      ends_at: apptForm.ends_at ? new Date(apptForm.ends_at).toISOString() : null,
+    };
+    const { error } = apptEditing
+      ? await supabase.from("athlete_appointments").update(payload).eq("id", apptEditing.id)
+      : await supabase.from("athlete_appointments").insert(payload);
+    if (error) return toast.error("Échec", { description: error.message });
+    toast.success(apptEditing ? "Rendez-vous mis à jour" : "Rendez-vous ajouté");
+    setApptOpen(false);
+    setApptEditing(null);
+    loadAll();
+  };
+
+  const deleteAppt = async () => {
+    if (!apptDeleteId) return;
+    const { error } = await supabase.from("athlete_appointments").delete().eq("id", apptDeleteId);
+    setApptDeleteId(null);
+    if (error) return toast.error("Échec", { description: error.message });
+    toast.success("Rendez-vous supprimé");
+    loadAll();
+  };
+
   const submitResult = async () => {
     if (!resultForm.game_id) return toast.error("Games requis");
     const payload = {
