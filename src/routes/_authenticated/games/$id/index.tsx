@@ -56,6 +56,10 @@ function GameOverviewPage() {
   // Add sport dialog
   const [sportDlgOpen, setSportDlgOpen] = useState(false);
   const [newSportId, setNewSportId] = useState<string>("");
+  const [newSportDiscIds, setNewSportDiscIds] = useState<string[]>([]);
+  const [newDiscName, setNewDiscName] = useState("");
+  const [newDiscGender, setNewDiscGender] = useState<Gender>("mixed");
+  const { add: addSportRef, remove: removeSportRef } = useSports();
 
   // Add quota dialog
   const [quotaDlgOpen, setQuotaDlgOpen] = useState(false);
