@@ -222,6 +222,8 @@ function GameOverviewPage() {
     setDiscDlg(null);
     load();
   };
+
+  if (loading) return <Skeleton className="h-64 w-full" />;
   if (!game) return null;
 
   return (
