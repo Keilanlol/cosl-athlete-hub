@@ -258,15 +258,15 @@ function CompetitionsPage() {
               </TableHeader>
               <TableBody>
                 {comps.map((c) => (
-                  <TableRow key={c.id}>
+                  <TableRow key={c.id} className="cursor-pointer hover:bg-slate-50" onClick={() => openComp(c)}>
                     <TableCell>{sports.find((s) => s.id === c.sport_id)?.name ?? "—"}</TableCell>
                     <TableCell>{disciplines.find((d) => d.id === c.discipline_id)?.name ?? "—"}</TableCell>
-                    <TableCell className="font-medium">{c.name}</TableCell>
+                    <TableCell className="font-medium text-indigo-700">{c.name}</TableCell>
                     <TableCell>{c.round ?? "—"}</TableCell>
                     <TableCell>{GENDERS.find((g) => g.value === c.gender)?.label ?? "—"}</TableCell>
                     <TableCell>{c.competition_date ?? "—"}</TableCell>
                     <TableCell>{c.venue ?? "—"}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <Button variant="ghost" size="icon" onClick={() => setDelComp(c)}>
                         <Trash2 className="h-4 w-4 text-red-600" />
                       </Button>
