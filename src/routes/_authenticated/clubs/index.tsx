@@ -283,9 +283,11 @@ function ClubsPage() {
                     </TableCell>
                     <TableCell>
                       {f ? (
-                        <Badge variant="outline" className="font-mono">
-                          {f.acronym}
-                        </Badge>
+                        <Link to="/federations/$id" params={{ id: f.id }}>
+                          <Badge variant="outline" className="font-mono hover:bg-slate-100">
+                            {f.acronym}
+                          </Badge>
+                        </Link>
                       ) : (
                         <span className="text-slate-400">—</span>
                       )}
