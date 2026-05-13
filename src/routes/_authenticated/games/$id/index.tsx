@@ -620,7 +620,7 @@ function GameOverviewPage() {
             {discDlg && disciplines.filter((d) => d.sport_id === discDlg.sport_id).map((d) => {
               const checked = discPicked.includes(d.id);
               return (
-                <label key={d.id} className="flex items-center gap-3 rounded-md border border-slate-200 px-3 py-2 cursor-pointer hover:bg-slate-50">
+                <div key={d.id} className="flex items-center gap-3 rounded-md border border-slate-200 px-3 py-2 hover:bg-slate-50">
                   <Checkbox
                     checked={checked}
                     onCheckedChange={(v) => {
@@ -631,13 +631,54 @@ function GameOverviewPage() {
                   <Badge variant="outline" className="text-xs">
                     {d.gender === "male" ? "Masculin" : d.gender === "female" ? "Féminin" : "Mixte"}
                   </Badge>
-                </label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-slate-400 hover:text-red-600"
+                    onClick={() => deleteDiscipline(d.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               );
             })}
             {discDlg && disciplines.filter((d) => d.sport_id === discDlg.sport_id).length === 0 && (
               <p className="text-sm text-slate-500">Ce sport n'a aucune discipline référencée.</p>
             )}
           </div>
+          {discDlg && (
+            <div className="flex gap-2 pt-1">
+              <Input
+                placeholder="Nouvelle discipline"
+                value={newDiscName}
+                onChange={(e) => setNewDiscName(e.target.value)}
+              />
+              <Select value={newDiscGender} onValueChange={(v) => setNewDiscGender(v as Gender)}>
+                <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {GENDERS.map((g) => (
+                    <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={async () => {
+                  if (!discDlg) return;
+                  const created = await createDiscipline(discDlg.sport_id, newDiscName, newDiscGender);
+                  if (created) {
+                    setDiscPicked((p) => [...p, created.id]);
+                    setNewDiscName("");
+                  }
+                }}
+                disabled={!newDiscName.trim()}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setDiscDlg(null)}>Annuler</Button>
             <Button onClick={saveDiscDlg} className="bg-indigo-500 hover:bg-indigo-600">Enregistrer</Button>
