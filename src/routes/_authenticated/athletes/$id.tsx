@@ -71,6 +71,17 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { EmptyState, TableSkeleton } from "@/components/DataTableShell";
+import { useHashTab } from "@/hooks/useHashTab";
+
+type Appointment = {
+  id: string;
+  athlete_id: string;
+  title: string;
+  description: string | null;
+  location: string | null;
+  starts_at: string;
+  ends_at: string | null;
+};
 
 export const Route = createFileRoute("/_authenticated/athletes/$id")({
   component: AthleteDetailPage,
@@ -99,6 +110,7 @@ function kycPill(s: string | null | undefined) {
 function AthleteDetailPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
+  const [tab, setTab] = useHashTab("profil");
   const { items: levels, add: addLevel, remove: removeLevel } = useAthleteLevels();
   const { items: sportsRef, add: addSport, remove: removeSport } = useSports();
   const { items: docTypes, add: addDocType, remove: removeDocType } = useDocumentTypes();
@@ -166,6 +178,19 @@ function AthleteDetailPage() {
     end_date: "",
   });
 
+  // Agenda
+  const [appointments, setAppointments] = useState<Appointment[] | null>(null);
+  const [apptOpen, setApptOpen] = useState(false);
+  const [apptEditing, setApptEditing] = useState<Appointment | null>(null);
+  const [apptForm, setApptForm] = useState({
+    title: "",
+    description: "",
+    location: "",
+    starts_at: "",
+    ends_at: "",
+  });
+  const [apptDeleteId, setApptDeleteId] = useState<string | null>(null);
+
   const [refs, setRefs] = useState<{ sports: Sport[]; feds: Federation[]; clubs: Club[] }>({
     sports: [],
     feds: [],
@@ -213,7 +238,7 @@ function AthleteDetailPage() {
       setClub((d ?? null) as Club | null);
     } else setClub(null);
 
-    const [{ data: dd }, { data: kk }, { data: rr }, { data: ss }, { data: rs }] = await Promise.all([
+    const [{ data: dd }, { data: kk }, { data: rr }, { data: ss }, { data: rs }, { data: ap }] = await Promise.all([
       supabase
         .from("athlete_documents")
         .select("*")
@@ -235,12 +260,18 @@ function AthleteDetailPage() {
         .select("*, game:games(name,edition_year), game_competition:game_competitions(name), sport:sports(name), discipline:disciplines(name)")
         .eq("athlete_id", id)
         .order("result_date", { ascending: false, nullsFirst: false }),
+      supabase
+        .from("athlete_appointments")
+        .select("*")
+        .eq("athlete_id", id)
+        .order("starts_at", { ascending: true }),
     ]);
     setDocs((dd ?? []) as AthleteDocument[]);
     setKyc((kk ?? null) as AthleteKyc | null);
     setRelations((rr ?? []) as AthleteRelation[]);
     setSelections((ss ?? []) as Selection[]);
     setResults((rs ?? []) as ResultRow[]);
+    setAppointments((ap ?? []) as Appointment[]);
   };
 
   useEffect(() => {
@@ -469,6 +500,39 @@ function AthleteDetailPage() {
     loadAll();
   };
 
+  const submitAppt = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!apptForm.title.trim() || !apptForm.starts_at) {
+      toast.error("Titre et date de début requis");
+      return;
+    }
+    const payload = {
+      athlete_id: id,
+      title: apptForm.title.trim(),
+      description: apptForm.description.trim() || null,
+      location: apptForm.location.trim() || null,
+      starts_at: new Date(apptForm.starts_at).toISOString(),
+      ends_at: apptForm.ends_at ? new Date(apptForm.ends_at).toISOString() : null,
+    };
+    const { error } = apptEditing
+      ? await supabase.from("athlete_appointments").update(payload).eq("id", apptEditing.id)
+      : await supabase.from("athlete_appointments").insert(payload);
+    if (error) return toast.error("Échec", { description: error.message });
+    toast.success(apptEditing ? "Rendez-vous mis à jour" : "Rendez-vous ajouté");
+    setApptOpen(false);
+    setApptEditing(null);
+    loadAll();
+  };
+
+  const deleteAppt = async () => {
+    if (!apptDeleteId) return;
+    const { error } = await supabase.from("athlete_appointments").delete().eq("id", apptDeleteId);
+    setApptDeleteId(null);
+    if (error) return toast.error("Échec", { description: error.message });
+    toast.success("Rendez-vous supprimé");
+    loadAll();
+  };
+
   const submitResult = async () => {
     if (!resultForm.game_id) return toast.error("Games requis");
     const payload = {
@@ -568,7 +632,7 @@ function AthleteDetailPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="profil" className="space-y-4">
+      <Tabs value={tab} onValueChange={setTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="profil">Profil</TabsTrigger>
           <TabsTrigger value="sportif">Sportif</TabsTrigger>
@@ -576,6 +640,7 @@ function AthleteDetailPage() {
           <TabsTrigger value="kyc">KYC</TabsTrigger>
           <TabsTrigger value="relations">Relations</TabsTrigger>
           <TabsTrigger value="selections">Sélections</TabsTrigger>
+          <TabsTrigger value="agenda">Agenda</TabsTrigger>
           <TabsTrigger value="palmares">Palmarès</TabsTrigger>
         </TabsList>
 
@@ -866,6 +931,85 @@ function AthleteDetailPage() {
                 </TableBody>
               </Table>
             )}
+          </div>
+        </TabsContent>
+
+
+        <TabsContent value="agenda">
+          <div className="space-y-3">
+            <div className="flex justify-end">
+              <Button
+                onClick={() => {
+                  setApptEditing(null);
+                  setApptForm({ title: "", description: "", location: "", starts_at: "", ends_at: "" });
+                  setApptOpen(true);
+                }}
+                className="bg-indigo-500 hover:bg-indigo-600"
+              >
+                <Plus className="mr-2 h-4 w-4" /> Ajouter un rendez-vous
+              </Button>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-white">
+              {appointments === null ? (
+                <TableSkeleton cols={5} />
+              ) : appointments.length === 0 ? (
+                <div className="p-6"><EmptyState message="Aucun rendez-vous." /></div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Début</TableHead>
+                      <TableHead>Fin</TableHead>
+                      <TableHead>Titre</TableHead>
+                      <TableHead>Lieu</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead className="w-24 text-right"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {appointments.map((a) => {
+                      const fmt = (s: string | null) =>
+                        s ? new Date(s).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }) : "—";
+                      return (
+                        <TableRow key={a.id}>
+                          <TableCell>{fmt(a.starts_at)}</TableCell>
+                          <TableCell>{fmt(a.ends_at)}</TableCell>
+                          <TableCell className="font-medium">{a.title}</TableCell>
+                          <TableCell>{a.location ?? "—"}</TableCell>
+                          <TableCell className="max-w-xs truncate text-slate-600">{a.description ?? "—"}</TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setApptEditing(a);
+                                setApptForm({
+                                  title: a.title,
+                                  description: a.description ?? "",
+                                  location: a.location ?? "",
+                                  starts_at: a.starts_at.slice(0, 16),
+                                  ends_at: a.ends_at ? a.ends_at.slice(0, 16) : "",
+                                });
+                                setApptOpen(true);
+                              }}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setApptDeleteId(a.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-600" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
           </div>
         </TabsContent>
 
@@ -1321,7 +1465,74 @@ function AthleteDetailPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Result dialog */}
+      {/* Appointment dialog */}
+      <Dialog open={apptOpen} onOpenChange={(o) => { setApptOpen(o); if (!o) setApptEditing(null); }}>
+        <DialogContent className="max-w-lg">
+          <form onSubmit={submitAppt}>
+            <DialogHeader>
+              <DialogTitle>{apptEditing ? "Modifier le rendez-vous" : "Ajouter un rendez-vous"}</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-3 py-4">
+              <div className="space-y-1">
+                <Label>Titre *</Label>
+                <Input value={apptForm.title} onChange={(e) => setApptForm({ ...apptForm, title: e.target.value })} />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label>Début *</Label>
+                  <Input
+                    type="datetime-local"
+                    value={apptForm.starts_at}
+                    onChange={(e) => setApptForm({ ...apptForm, starts_at: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Fin</Label>
+                  <Input
+                    type="datetime-local"
+                    value={apptForm.ends_at}
+                    onChange={(e) => setApptForm({ ...apptForm, ends_at: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label>Lieu</Label>
+                <Input value={apptForm.location} onChange={(e) => setApptForm({ ...apptForm, location: e.target.value })} />
+              </div>
+              <div className="space-y-1">
+                <Label>Description</Label>
+                <Textarea
+                  value={apptForm.description}
+                  onChange={(e) => setApptForm({ ...apptForm, description: e.target.value })}
+                  rows={3}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setApptOpen(false)}>Annuler</Button>
+              <Button type="submit" className="bg-indigo-500 hover:bg-indigo-600">
+                {apptEditing ? "Enregistrer" : "Ajouter"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!apptDeleteId} onOpenChange={(o) => !o && setApptDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer ce rendez-vous ?</AlertDialogTitle>
+            <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={deleteAppt} className="bg-red-600 hover:bg-red-700">
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <Dialog open={resultOpen} onOpenChange={setResultOpen}>
         <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Ajouter un résultat</DialogTitle></DialogHeader>

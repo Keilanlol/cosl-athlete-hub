@@ -26,6 +26,7 @@ import {
   Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useHashTab } from "@/hooks/useHashTab";
 
 export const Route = createFileRoute("/_authenticated/games/$id/accreditations")({
   component: GameAccreditationsPage,
@@ -81,6 +82,7 @@ type Accreditation = {
 
 function GameAccreditationsPage() {
   const { id: gameId } = Route.useParams();
+  const [tab, setTab] = useHashTab("list");
   const [types, setTypes] = useState<AccType[] | null>(null);
   const [accreds, setAccreds] = useState<Accreditation[] | null>(null);
   const [athletes, setAthletes] = useState<Athlete[]>([]);
@@ -319,7 +321,7 @@ ${accreds.map((a) => `  <accreditation status="${a.status}">
         <Button variant="outline" onClick={exportXml}><Download className="mr-2 h-4 w-4" /> XML</Button>
       </div>
 
-      <Tabs defaultValue="list" className="space-y-4">
+      <Tabs value={tab} onValueChange={setTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="list">Liste des accréditations</TabsTrigger>
           <TabsTrigger value="types">Types d'accréditation</TabsTrigger>

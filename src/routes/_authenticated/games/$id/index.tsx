@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useHashTab } from "@/hooks/useHashTab";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -38,6 +39,7 @@ type Discipline = { id: string; sport_id: string; name: string; gender: Gender }
 
 function GameOverviewPage() {
   const { id } = Route.useParams();
+  const [tab, setTab] = useHashTab("overview");
   const [game, setGame] = useState<Game | null>(null);
   const [sports, setSports] = useState<Sport[]>([]);
   const [disciplines, setDisciplines] = useState<Discipline[]>([]);
@@ -229,7 +231,7 @@ function GameOverviewPage() {
   if (!game) return null;
 
   return (
-    <Tabs defaultValue="overview" className="space-y-4">
+    <Tabs value={tab} onValueChange={setTab} className="space-y-4">
       <TabsList>
         <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
         <TabsTrigger value="sports">Sports & Disciplines</TabsTrigger>
