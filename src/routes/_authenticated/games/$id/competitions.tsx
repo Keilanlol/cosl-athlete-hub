@@ -178,6 +178,8 @@ function CompetitionsPage() {
     setResultForm({ athlete_id: "", rank: "", medal: "", score: "", unit: "", is_national_record: false, is_personal_best: false });
     await load();
   };
+
+  const filteredResults = useMemo(() => {
     if (!results) return [];
     return results.filter((r) => {
       if (fSport !== ALL && r.sport_id !== fSport) return false;
