@@ -901,6 +901,85 @@ function AthleteDetailPage() {
           </div>
         </TabsContent>
 
+
+        <TabsContent value="agenda">
+          <div className="space-y-3">
+            <div className="flex justify-end">
+              <Button
+                onClick={() => {
+                  setApptEditing(null);
+                  setApptForm({ title: "", description: "", location: "", starts_at: "", ends_at: "" });
+                  setApptOpen(true);
+                }}
+                className="bg-indigo-500 hover:bg-indigo-600"
+              >
+                <Plus className="mr-2 h-4 w-4" /> Ajouter un rendez-vous
+              </Button>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-white">
+              {appointments === null ? (
+                <TableSkeleton cols={5} />
+              ) : appointments.length === 0 ? (
+                <div className="p-6"><EmptyState message="Aucun rendez-vous." /></div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Début</TableHead>
+                      <TableHead>Fin</TableHead>
+                      <TableHead>Titre</TableHead>
+                      <TableHead>Lieu</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead className="w-24 text-right"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {appointments.map((a) => {
+                      const fmt = (s: string | null) =>
+                        s ? new Date(s).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }) : "—";
+                      return (
+                        <TableRow key={a.id}>
+                          <TableCell>{fmt(a.starts_at)}</TableCell>
+                          <TableCell>{fmt(a.ends_at)}</TableCell>
+                          <TableCell className="font-medium">{a.title}</TableCell>
+                          <TableCell>{a.location ?? "—"}</TableCell>
+                          <TableCell className="max-w-xs truncate text-slate-600">{a.description ?? "—"}</TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setApptEditing(a);
+                                setApptForm({
+                                  title: a.title,
+                                  description: a.description ?? "",
+                                  location: a.location ?? "",
+                                  starts_at: a.starts_at.slice(0, 16),
+                                  ends_at: a.ends_at ? a.ends_at.slice(0, 16) : "",
+                                });
+                                setApptOpen(true);
+                              }}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setApptDeleteId(a.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-600" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+          </div>
+        </TabsContent>
+
         <TabsContent value="palmares">
           <div className="space-y-4">
             {(() => {
