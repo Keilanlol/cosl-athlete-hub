@@ -645,6 +645,7 @@ function AthleteDetailPage() {
           <TabsTrigger value="selections">Sélections</TabsTrigger>
           <TabsTrigger value="agenda">Agenda</TabsTrigger>
           <TabsTrigger value="palmares">Palmarès</TabsTrigger>
+          <TabsTrigger value="messages">Messages</TabsTrigger>
         </TabsList>
 
         <TabsContent value="profil">
