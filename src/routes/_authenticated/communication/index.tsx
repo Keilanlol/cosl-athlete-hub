@@ -1,15 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Mail, BellRing, MailOpen, Eye } from "lucide-react";
+import { Mail, BellRing, MailOpen, Send } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { type MessageSent } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/DataTableShell";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { MessageDetailDialog } from "@/components/MessageDetailDialog";
 
 export const Route = createFileRoute("/_authenticated/communication/")({
   component: CommunicationDashboard,
@@ -20,6 +22,7 @@ function CommunicationDashboard() {
   const [unread, setUnread] = useState(0);
   const [latest, setLatest] = useState<MessageSent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [openMsgId, setOpenMsgId] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -59,9 +62,16 @@ function CommunicationDashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Communication</h1>
-        <p className="text-sm text-slate-500">Tableau de bord des envois et notifications.</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">Communication</h1>
+          <p className="text-sm text-slate-500">Tableau de bord des envois et notifications.</p>
+        </div>
+        <Link to="/communication/messages">
+          <Button className="bg-indigo-500 hover:bg-indigo-600">
+            <Send className="mr-2 h-4 w-4" /> Envoyer un message
+          </Button>
+        </Link>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -107,12 +117,15 @@ function CommunicationDashboard() {
                   <TableHead>Audience</TableHead>
                   <TableHead>Canal</TableHead>
                   <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {latest.map((m) => (
-                  <TableRow key={m.id}>
+                  <TableRow
+                    key={m.id}
+                    className="cursor-pointer hover:bg-slate-50"
+                    onClick={() => setOpenMsgId(m.id)}
+                  >
                     <TableCell className="font-medium">{m.subject}</TableCell>
                     <TableCell>{m.recipients_count}</TableCell>
                     <TableCell className="text-xs text-slate-500">{m.audience_segment}</TableCell>
@@ -120,14 +133,6 @@ function CommunicationDashboard() {
                       <Badge variant="outline">{m.channel}</Badge>
                     </TableCell>
                     <TableCell>{fmt(m.sent_at)}</TableCell>
-                    <TableCell className="text-right">
-                      <Link
-                        to="/communication/messages"
-                        className="inline-flex items-center text-sm text-indigo-600 hover:underline"
-                      >
-                        <Eye className="mr-1 h-4 w-4" /> Voir
-                      </Link>
-                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -135,6 +140,8 @@ function CommunicationDashboard() {
           )}
         </div>
       </div>
+
+      <MessageDetailDialog messageId={openMsgId} onClose={() => setOpenMsgId(null)} />
     </div>
   );
 }
