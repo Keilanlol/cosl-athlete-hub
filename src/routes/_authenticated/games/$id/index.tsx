@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, Settings2 } from "lucide-react";
+import { Plus, Trash2, Settings2, Eye, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import {
@@ -71,6 +71,69 @@ function GameOverviewPage() {
     qualification_deadline: "",
     qualification_criteria: "",
   });
+
+  // Quota details dialog
+  type QuotaAthlete = {
+    id: string; first_name: string; last_name: string; gender: Gender;
+    photo_url: string | null; primary_sport_id: string | null;
+    kyc: string; selection_status?: string | null;
+  };
+  const [detailsQuota, setDetailsQuota] = useState<GameQuota | null>(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [detailsIn, setDetailsIn] = useState<QuotaAthlete[]>([]);
+  const [detailsEligible, setDetailsEligible] = useState<QuotaAthlete[]>([]);
+
+  const openDetails = async (q: GameQuota) => {
+    setDetailsQuota(q);
+    setDetailsLoading(true);
+    setDetailsIn([]);
+    setDetailsEligible([]);
+
+    const [selRes, athRes, kycRes] = await Promise.all([
+      supabase.from("selections")
+        .select("status, athlete:athletes(id,first_name,last_name,gender,photo_url,primary_sport_id)")
+        .eq("game_id", id)
+        .eq("sport_id", q.sport_id),
+      supabase.from("athletes")
+        .select("id,first_name,last_name,gender,photo_url,primary_sport_id")
+        .eq("primary_sport_id", q.sport_id)
+        .eq("is_active", true),
+      supabase.from("athlete_kyc").select("athlete_id, global_status"),
+    ]);
+
+    const kycMap: Record<string, string> = {};
+    ((kycRes.data ?? []) as { athlete_id: string; global_status: string }[]).forEach((k) => {
+      kycMap[k.athlete_id] = k.global_status;
+    });
+
+    const sels = ((selRes.data ?? []) as unknown as Array<{
+      status: string;
+      athlete: { id: string; first_name: string; last_name: string; gender: Gender; photo_url: string | null; primary_sport_id: string | null } | null;
+    }>);
+
+    const matchesGender = (g: Gender | undefined) => q.gender === "mixed" ? true : g === q.gender;
+
+    const inQuota: QuotaAthlete[] = [];
+    const usedIds = new Set<string>();
+    for (const s of sels) {
+      if (!s.athlete) continue;
+      if (!["selected", "reserve"].includes(s.status)) continue;
+      if (!matchesGender(s.athlete.gender)) continue;
+      usedIds.add(s.athlete.id);
+      inQuota.push({ ...s.athlete, kyc: kycMap[s.athlete.id] ?? "red", selection_status: s.status });
+    }
+
+    const eligible: QuotaAthlete[] = [];
+    for (const a of (athRes.data ?? []) as QuotaAthlete[]) {
+      if (usedIds.has(a.id)) continue;
+      if (!matchesGender(a.gender)) continue;
+      eligible.push({ ...a, kyc: kycMap[a.id] ?? "red" });
+    }
+
+    setDetailsIn(inQuota);
+    setDetailsEligible(eligible);
+    setDetailsLoading(false);
+  };
 
   const load = async () => {
     setLoading(true);
@@ -418,6 +481,9 @@ function GameOverviewPage() {
                         {q.qualification_deadline ? new Date(q.qualification_deadline).toLocaleDateString("fr-FR") : "—"}
                       </TableCell>
                       <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" onClick={() => openDetails(q)} aria-label="Détails">
+                          <Eye className="h-4 w-4 text-indigo-600" />
+                        </Button>
                         <Button variant="ghost" size="icon" onClick={() => removeQuota(q)} aria-label="Supprimer">
                           <Trash2 className="h-4 w-4 text-red-600" />
                         </Button>
@@ -685,6 +751,45 @@ function GameOverviewPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Quota details dialog */}
+      <Dialog open={!!detailsQuota} onOpenChange={(o) => !o && setDetailsQuota(null)}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              Quota — {detailsQuota && sportName(detailsQuota.sport_id)}
+              {detailsQuota?.discipline_id ? ` · ${discName(detailsQuota.discipline_id)}` : ""}
+              {detailsQuota && <Badge variant="outline" className="ml-2">{detailsQuota.gender}</Badge>}
+            </DialogTitle>
+            <DialogDescription>
+              {detailsQuota && (
+                <>
+                  {detailsIn.length}/{detailsQuota.quota_max} placés ·{" "}
+                  {detailsEligible.length} athlète(s) éligible(s) supplémentaire(s)
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          {detailsLoading ? (
+            <Skeleton className="h-48 w-full" />
+          ) : (
+            <Tabs defaultValue="in" className="space-y-3">
+              <TabsList>
+                <TabsTrigger value="in">Dans le quota ({detailsIn.length})</TabsTrigger>
+                <TabsTrigger value="eligible">Éligibles ({detailsEligible.length})</TabsTrigger>
+              </TabsList>
+              <TabsContent value="in">
+                <AthleteList items={detailsIn} emptyLabel="Aucun athlète sélectionné dans ce quota." showStatus />
+              </TabsContent>
+              <TabsContent value="eligible">
+                <AthleteList items={detailsEligible} emptyLabel="Aucun athlète éligible." />
+              </TabsContent>
+            </Tabs>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDetailsQuota(null)}>Fermer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Tabs>
   );
 }
@@ -703,6 +808,45 @@ function Info({ label, value }: { label: string; value: string | null | undefine
     <div>
       <dt className="text-xs uppercase tracking-wide text-slate-500">{label}</dt>
       <dd className="text-slate-900">{value || "—"}</dd>
+    </div>
+  );
+}
+
+type AthItem = {
+  id: string; first_name: string; last_name: string; gender: Gender;
+  photo_url: string | null; kyc: string; selection_status?: string | null;
+};
+
+function AthleteList({ items, emptyLabel, showStatus }: { items: AthItem[]; emptyLabel: string; showStatus?: boolean }) {
+  if (items.length === 0) return <p className="p-6 text-sm text-slate-500 text-center">{emptyLabel}</p>;
+  return (
+    <div className="max-h-96 overflow-y-auto divide-y divide-slate-100 rounded-md border border-slate-200">
+      {items.map((a) => {
+        const initials = `${a.first_name?.[0] ?? ""}${a.last_name?.[0] ?? ""}`;
+        const kycCls =
+          a.kyc === "green" ? "bg-emerald-100 text-emerald-700" :
+          a.kyc === "orange" ? "bg-amber-100 text-amber-700" :
+          "bg-red-100 text-red-700";
+        const kycLabel = a.kyc === "green" ? "KYC valide" : a.kyc === "orange" ? "KYC en attente" : "KYC invalide";
+        return (
+          <div key={a.id} className="flex items-center gap-3 px-3 py-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-xs font-medium text-slate-700 overflow-hidden">
+              {a.photo_url ? <img src={a.photo_url} alt="" className="h-full w-full object-cover" /> : initials}
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-slate-900">{a.first_name} {a.last_name}</p>
+              <p className="text-xs text-slate-500">{a.gender}</p>
+            </div>
+            {showStatus && a.selection_status && (
+              <Badge variant="outline" className="capitalize">{a.selection_status === "selected" ? "Sélectionné" : "Réserviste"}</Badge>
+            )}
+            <Badge className={`${kycCls} hover:${kycCls}`}>
+              {a.kyc === "green" ? <CheckCircle2 className="mr-1 h-3 w-3" /> : <AlertCircle className="mr-1 h-3 w-3" />}
+              {kycLabel}
+            </Badge>
+          </div>
+        );
+      })}
     </div>
   );
 }
