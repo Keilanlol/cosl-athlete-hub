@@ -525,7 +525,7 @@ function AthleteDetailPage() {
     );
   }
 
-  const lvl = ATHLETE_LEVELS.find((l) => l.value === athlete.level);
+  const lvl = levels.find((l) => l.code === athlete.level);
   const globalKyc = kyc?.global_status ?? "red";
 
   return (
