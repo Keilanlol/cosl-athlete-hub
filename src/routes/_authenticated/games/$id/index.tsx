@@ -153,14 +153,50 @@ function GameOverviewPage() {
 
   const addSport = async () => {
     if (!newSportId) return;
-    const { error } = await supabase.from("game_sports").insert({ game_id: id, sport_id: newSportId, is_active: true });
-    if (error) toast.error("Échec", { description: error.message });
-    else {
-      toast.success("Sport ajouté");
-      setSportDlgOpen(false);
-      setNewSportId("");
-      load();
+    const { data: gs, error } = await supabase
+      .from("game_sports")
+      .insert({ game_id: id, sport_id: newSportId, is_active: true })
+      .select()
+      .single();
+    if (error) {
+      toast.error("Échec", { description: error.message });
+      return;
     }
+    if (gs && newSportDiscIds.length) {
+      const { error: e2 } = await supabase.from("game_sport_disciplines").insert(
+        newSportDiscIds.map((d) => ({ game_sport_id: gs.id, discipline_id: d })),
+      );
+      if (e2) toast.error("Disciplines partiellement enregistrées", { description: e2.message });
+    }
+    toast.success("Sport ajouté");
+    setSportDlgOpen(false);
+    setNewSportId("");
+    setNewSportDiscIds([]);
+    load();
+  };
+
+  const createDiscipline = async (sportId: string, name: string, gender: Gender) => {
+    const trimmed = name.trim();
+    if (!sportId || !trimmed) return null;
+    const { data, error } = await supabase
+      .from("disciplines")
+      .insert({ sport_id: sportId, name: trimmed, gender })
+      .select()
+      .single();
+    if (error) {
+      toast.error("Échec", { description: error.message });
+      return null;
+    }
+    toast.success("Discipline ajoutée");
+    await load();
+    return data as Discipline;
+  };
+
+  const deleteDiscipline = async (discId: string) => {
+    const { error } = await supabase.from("disciplines").delete().eq("id", discId);
+    if (error) return toast.error("Échec", { description: error.message });
+    toast.success("Discipline supprimée");
+    await load();
   };
 
   const toggleSport = async (gs: GameSport) => {
