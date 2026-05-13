@@ -238,7 +238,13 @@ function CompetitionsPage() {
     URL.revokeObjectURL(url);
   };
 
-  const compDisciplines = disciplines.filter((d) => !compForm.sport_id || d.sport_id === compForm.sport_id);
+  const allowedSports = sports.filter((s) => allowedSportIds.has(s.id));
+  const allowedDisciplinesForSport = compForm.sport_id ? (allowedDisciplineIdsBySport[compForm.sport_id] ?? new Set<string>()) : new Set<string>();
+  const compDisciplines = disciplines.filter((d) =>
+    compForm.sport_id
+      ? d.sport_id === compForm.sport_id && (allowedDisciplinesForSport.size === 0 || allowedDisciplinesForSport.has(d.id))
+      : false,
+  );
 
   return (
     <div className="space-y-8">
