@@ -420,6 +420,152 @@ function CompetitionsPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Détail d'une épreuve */}
+      <Dialog open={!!viewComp} onOpenChange={(o) => !o && setViewComp(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{viewComp?.name}</DialogTitle>
+          </DialogHeader>
+          {viewComp && (
+            <div className="space-y-5">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                <div><div className="text-xs text-slate-500">Sport</div><div>{sports.find((s) => s.id === viewComp.sport_id)?.name ?? "—"}</div></div>
+                <div><div className="text-xs text-slate-500">Discipline</div><div>{disciplines.find((d) => d.id === viewComp.discipline_id)?.name ?? "—"}</div></div>
+                <div><div className="text-xs text-slate-500">Round</div><div>{viewComp.round ?? "—"}</div></div>
+                <div><div className="text-xs text-slate-500">Genre</div><div>{GENDERS.find((g) => g.value === viewComp.gender)?.label ?? "—"}</div></div>
+                <div><div className="text-xs text-slate-500">Date</div><div>{viewComp.competition_date ?? "—"}</div></div>
+                <div><div className="text-xs text-slate-500">Lieu</div><div>{viewComp.venue ?? "—"}</div></div>
+                <div><div className="text-xs text-slate-500">Catégorie</div><div>{viewComp.category ?? "—"}</div></div>
+              </div>
+
+              <section>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-semibold">Classement & médailles</h4>
+                  <Button size="sm" onClick={() => setResultDlgOpen(true)} className="bg-indigo-500 hover:bg-indigo-600">
+                    <Plus className="mr-1 h-3 w-3" /> Ajouter résultat
+                  </Button>
+                </div>
+                <div className="rounded-md border border-slate-200">
+                  {compResults.length === 0 ? (
+                    <p className="p-4 text-sm text-slate-500">Aucun résultat enregistré pour cette épreuve.</p>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-16">Rang</TableHead>
+                          <TableHead>Athlète</TableHead>
+                          <TableHead>Médaille</TableHead>
+                          <TableHead>Score</TableHead>
+                          <TableHead>RN/PB</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {compResults.map((r) => (
+                          <TableRow key={r.id} className={r.medal === "gold" ? "bg-amber-50" : ""}>
+                            <TableCell className="font-semibold">{r.rank ?? "—"}</TableCell>
+                            <TableCell>{r.athlete ? `${r.athlete.last_name} ${r.athlete.first_name}` : "—"} <span className="text-xs text-slate-400 ml-1">{r.athlete?.cosl_id}</span></TableCell>
+                            <TableCell>{medalBadge(r.medal)}</TableCell>
+                            <TableCell>{r.score ? `${r.score}${r.unit ? " " + r.unit : ""}` : "—"}</TableCell>
+                            <TableCell className="space-x-1">
+                              {r.is_national_record && <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">RN</Badge>}
+                              {r.is_personal_best && <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">PB</Badge>}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </div>
+              </section>
+
+              <section>
+                <h4 className="text-sm font-semibold mb-2">Participants sélectionnés ({selRows.length})</h4>
+                <div className="rounded-md border border-slate-200 max-h-56 overflow-auto">
+                  {selRows.length === 0 ? (
+                    <p className="p-4 text-sm text-slate-500">Aucune sélection liée à ce sport/discipline.</p>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Athlète</TableHead>
+                          <TableHead>COSL ID</TableHead>
+                          <TableHead>Genre</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {selRows.map((s) => (
+                          <TableRow key={s.athlete_id}>
+                            <TableCell>{s.athlete ? `${s.athlete.last_name} ${s.athlete.first_name}` : "—"}</TableCell>
+                            <TableCell className="font-mono text-xs">{s.athlete?.cosl_id ?? "—"}</TableCell>
+                            <TableCell><Badge variant="outline">{s.athlete?.gender}</Badge></TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </div>
+              </section>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Ajout résultat dans le détail d'une épreuve */}
+      <Dialog open={resultDlgOpen} onOpenChange={setResultDlgOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Ajouter un résultat</DialogTitle></DialogHeader>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="sm:col-span-2 space-y-1">
+              <Label>Athlète *</Label>
+              <Select value={resultForm.athlete_id} onValueChange={(v) => setResultForm({ ...resultForm, athlete_id: v })}>
+                <SelectTrigger><SelectValue placeholder="Choisir parmi les sélectionnés" /></SelectTrigger>
+                <SelectContent>
+                  {selRows.map((s) => (
+                    <SelectItem key={s.athlete_id} value={s.athlete_id}>
+                      {s.athlete ? `${s.athlete.last_name} ${s.athlete.first_name}` : s.athlete_id}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Rang</Label>
+              <Input type="number" min={1} value={resultForm.rank} onChange={(e) => setResultForm({ ...resultForm, rank: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <Label>Médaille</Label>
+              <Select value={resultForm.medal || "none"} onValueChange={(v) => setResultForm({ ...resultForm, medal: v === "none" ? "" : v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">—</SelectItem>
+                  {MEDAL_LABELS.map((m) => (<SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Score</Label>
+              <Input value={resultForm.score} onChange={(e) => setResultForm({ ...resultForm, score: e.target.value })} placeholder="10.18" />
+            </div>
+            <div className="space-y-1">
+              <Label>Unité</Label>
+              <Input value={resultForm.unit} onChange={(e) => setResultForm({ ...resultForm, unit: e.target.value })} placeholder="s, m, pts…" />
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox checked={resultForm.is_national_record} onCheckedChange={(v) => setResultForm({ ...resultForm, is_national_record: !!v })} />
+              Record national
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox checked={resultForm.is_personal_best} onCheckedChange={(v) => setResultForm({ ...resultForm, is_personal_best: !!v })} />
+              Record personnel
+            </label>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResultDlgOpen(false)}>Annuler</Button>
+            <Button onClick={submitResult} className="bg-indigo-500 hover:bg-indigo-600">Enregistrer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <AlertDialog open={!!delComp} onOpenChange={(o) => !o && setDelComp(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
