@@ -100,7 +100,7 @@ VALUES
 
 -- Msg 1 (Convocation JPEE) : tous les sélectionnés/réserves JPEE 2027
 INSERT INTO public.message_recipients (message_id, athlete_id)
-SELECT DISTINCT 'ffffffff-0000-0000-0000-000000000001', s.athlete_id
+SELECT DISTINCT 'ffffffff-0000-0000-0000-000000000001'::uuid, s.athlete_id
 FROM public.selections s
 WHERE s.game_id = '77777777-0000-0000-0000-000000000001'
   AND s.status IN ('selected','reserve')
@@ -108,7 +108,7 @@ ON CONFLICT DO NOTHING;
 
 -- Msg 2 (Sélection confirmée) : sélectionnés JPEE 2027 uniquement
 INSERT INTO public.message_recipients (message_id, athlete_id)
-SELECT DISTINCT 'ffffffff-0000-0000-0000-000000000002', s.athlete_id
+SELECT DISTINCT 'ffffffff-0000-0000-0000-000000000002'::uuid, s.athlete_id
 FROM public.selections s
 WHERE s.game_id = '77777777-0000-0000-0000-000000000001'
   AND s.status = 'selected'
@@ -116,7 +116,7 @@ ON CONFLICT DO NOTHING;
 
 -- Msg 3 (Documents manquants) : 8 athlètes spécifiques
 INSERT INTO public.message_recipients (message_id, athlete_id)
-SELECT 'ffffffff-0000-0000-0000-000000000003', a.id
+SELECT 'ffffffff-0000-0000-0000-000000000003'::uuid, a.id
 FROM public.athletes a
 WHERE a.id IN (
   '66666666-0000-0000-0000-000000000004',
@@ -132,7 +132,7 @@ ON CONFLICT DO NOTHING;
 
 -- Msg 4 (Briefing pré-départ JPEE) : même audience que msg 1
 INSERT INTO public.message_recipients (message_id, athlete_id)
-SELECT DISTINCT 'ffffffff-0000-0000-0000-000000000004', s.athlete_id
+SELECT DISTINCT 'ffffffff-0000-0000-0000-000000000004'::uuid, s.athlete_id
 FROM public.selections s
 WHERE s.game_id = '77777777-0000-0000-0000-000000000001'
   AND s.status IN ('selected','reserve')
@@ -140,7 +140,7 @@ ON CONFLICT DO NOTHING;
 
 -- Msg 5 (Bilan JOJ 2026) : sélectionnés JOJ 2026
 INSERT INTO public.message_recipients (message_id, athlete_id)
-SELECT DISTINCT 'ffffffff-0000-0000-0000-000000000005', s.athlete_id
+SELECT DISTINCT 'ffffffff-0000-0000-0000-000000000005'::uuid, s.athlete_id
 FROM public.selections s
 WHERE s.game_id = '77777777-0000-0000-0000-000000000005'
   AND s.status IN ('selected','reserve')
@@ -148,14 +148,14 @@ ON CONFLICT DO NOTHING;
 
 -- Msg 6 (Newsletter) : tous les athlètes actifs
 INSERT INTO public.message_recipients (message_id, athlete_id)
-SELECT 'ffffffff-0000-0000-0000-000000000006', a.id
+SELECT 'ffffffff-0000-0000-0000-000000000006'::uuid, a.id
 FROM public.athletes a
 WHERE a.is_active = true
 ON CONFLICT DO NOTHING;
 
 -- Msg 7 (Rappel médical FLA) : athlètes affiliés à la FLA (Athlétisme)
 INSERT INTO public.message_recipients (message_id, athlete_id)
-SELECT 'ffffffff-0000-0000-0000-000000000007', a.id
+SELECT 'ffffffff-0000-0000-0000-000000000007'::uuid, a.id
 FROM public.athletes a
 JOIN public.federations f ON f.id = a.primary_federation_id
 WHERE a.is_active = true
