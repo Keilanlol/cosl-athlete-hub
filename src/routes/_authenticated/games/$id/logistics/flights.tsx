@@ -252,6 +252,18 @@ function FlightsPage() {
     return coaches.map((c) => ({ id: c.id, label: `${c.last_name} ${c.first_name}` }));
   }, [paxForm.kind, athletes, coaches]);
 
+  const filteredFlights = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return flights;
+    return flights.filter(
+      (f) =>
+        f.flight_number.toLowerCase().includes(q) ||
+        (f.airline ?? "").toLowerCase().includes(q) ||
+        f.departure_airport.toLowerCase().includes(q) ||
+        f.arrival_airport.toLowerCase().includes(q),
+    );
+  }, [flights, search]);
+
   return (
     <div className="space-y-6">
       <LogisticsTabs id={id} />
