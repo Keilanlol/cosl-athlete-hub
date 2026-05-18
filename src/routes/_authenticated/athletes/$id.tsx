@@ -460,6 +460,13 @@ function AthleteDetailPage() {
 
   const deleteDoc = async () => {
     if (!docDeleteId) return;
+    const target = (docs ?? []).find((d) => d.id === docDeleteId);
+    if (target?.file_url) {
+      const storagePath = pathFromSignedUrl(target.file_url, "documents");
+      if (storagePath) {
+        await supabase.storage.from("documents").remove([storagePath]);
+      }
+    }
     const { error } = await supabase
       .from("athlete_documents")
       .delete()
