@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, Pencil, Download, Upload, FileText, Check, X } from "lucide-react";
+import { Plus, Trash2, Pencil, Download, FileText, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useHashTab } from "@/hooks/useHashTab";
+import { FileUpload } from "@/components/FileUpload";
 
 export const Route = createFileRoute("/_authenticated/games/$id/accreditations")({
   component: GameAccreditationsPage,
@@ -236,26 +237,23 @@ function GameAccreditationsPage() {
   // ==== Drawer actions ====
   const current = (accreds ?? []).find((a) => a.id === openId) ?? null;
 
-  const uploadDoc = async (docType: string, file: File) => {
+  const uploadDoc = async (docType: string, url: string, fileName: string) => {
     if (!current) return;
-    const path = `${gameId}/${current.id}/${Date.now()}-${file.name}`;
-    const { error: upErr } = await supabase.storage
-      .from("accreditation-docs").upload(path, file, { upsert: false });
-    if (upErr) { toast.error("Upload échoué", { description: upErr.message }); return; }
-    const { data: pub } = supabase.storage.from("accreditation-docs").getPublicUrl(path);
-    // Upsert document row by accreditation_id + doc_type
     const existing = current.docs.find((d) => d.doc_type === docType);
+    const payload = {
+      accreditation_id: current.id,
+      doc_type: docType,
+      file_name: fileName,
+      file_url: url,
+      status: "pending",
+      uploaded_at: new Date().toISOString(),
+    };
     if (existing) {
-      await supabase.from("accreditation_documents").update({
-        file_name: file.name, file_url: pub.publicUrl, status: "pending",
-      }).eq("id", existing.id);
+      await supabase.from("accreditation_documents").update(payload).eq("id", existing.id);
     } else {
-      await supabase.from("accreditation_documents").insert({
-        accreditation_id: current.id, doc_type: docType,
-        file_name: file.name, file_url: pub.publicUrl, status: "pending",
-      });
+      await supabase.from("accreditation_documents").insert(payload);
     }
-    toast.success("Document téléversé");
+    toast.success("Document enregistré");
     load();
   };
 
@@ -623,7 +621,7 @@ function AccredDrawerBody({
 }: {
   accreditation: Accreditation;
   completeness: number;
-  onUpload: (docType: string, file: File) => void;
+  onUpload: (docType: string, url: string, fileName: string) => void;
   onDocStatus: (doc: AccDoc, status: string) => void;
   onSubmit: () => void;
   onValidate: () => void;
@@ -669,31 +667,28 @@ function AccredDrawerBody({
               const doc = docMap.get(dt);
               const sb = doc ? DOC_STATUSES[doc.status] : DOC_STATUSES.missing;
               return (
-                <li key={dt} className="flex items-center gap-3 rounded border border-slate-200 p-3">
-                  <FileText className="h-4 w-4 text-slate-400 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">{dt}</p>
-                    {doc?.file_name && (
-                      <p className="text-xs text-slate-500 truncate">
-                        {doc.file_url ? <a href={doc.file_url} target="_blank" rel="noreferrer" className="hover:underline">{doc.file_name}</a> : doc.file_name}
-                      </p>
-                    )}
+                <li key={dt} className="flex flex-col gap-2 rounded border border-slate-200 p-3 sm:flex-row sm:items-start">
+                  <FileText className="h-4 w-4 text-slate-400 shrink-0 mt-1" />
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium flex-1">{dt}</p>
+                      <Badge className={`${sb.cls} hover:${sb.cls}`}>{sb.label}</Badge>
+                      {doc && doc.status !== "valid" && (
+                        <Button size="icon" variant="ghost" onClick={() => onDocStatus(doc, "valid")} aria-label="Valider"><Check className="h-4 w-4 text-emerald-600" /></Button>
+                      )}
+                      {doc && doc.status !== "rejected" && (
+                        <Button size="icon" variant="ghost" onClick={() => onDocStatus(doc, "rejected")} aria-label="Rejeter"><X className="h-4 w-4 text-red-600" /></Button>
+                      )}
+                    </div>
+                    <FileUpload
+                      bucket="documents"
+                      path={`accreditations/${a.id}/${dt}/${Date.now()}_`}
+                      accept="image/jpeg,image/png,image/webp,application/pdf"
+                      currentUrl={doc?.file_url ?? null}
+                      currentName={doc?.file_name ?? null}
+                      onUploaded={(url, fileName) => onUpload(dt, url, fileName)}
+                    />
                   </div>
-                  <Badge className={`${sb.cls} hover:${sb.cls}`}>{sb.label}</Badge>
-                  <label className="cursor-pointer">
-                    <input type="file" className="hidden" onChange={(e) => {
-                      const f = e.target.files?.[0]; if (f) onUpload(dt, f); e.target.value = "";
-                    }} />
-                    <span className="inline-flex h-8 items-center rounded-md border border-slate-200 px-2 text-xs hover:bg-slate-50">
-                      <Upload className="mr-1 h-3 w-3" /> Téléverser
-                    </span>
-                  </label>
-                  {doc && doc.status !== "valid" && (
-                    <Button size="icon" variant="ghost" onClick={() => onDocStatus(doc, "valid")} aria-label="Valider"><Check className="h-4 w-4 text-emerald-600" /></Button>
-                  )}
-                  {doc && doc.status !== "rejected" && (
-                    <Button size="icon" variant="ghost" onClick={() => onDocStatus(doc, "rejected")} aria-label="Rejeter"><X className="h-4 w-4 text-red-600" /></Button>
-                  )}
                 </li>
               );
             })}

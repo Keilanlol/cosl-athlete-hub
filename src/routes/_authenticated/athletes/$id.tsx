@@ -74,6 +74,7 @@ import { EmptyState, TableSkeleton } from "@/components/DataTableShell";
 import { useHashTab } from "@/hooks/useHashTab";
 import { WeekAgenda } from "@/components/WeekAgenda";
 import { MessageDetailDialog } from "@/components/MessageDetailDialog";
+import { FileUpload, pathFromSignedUrl } from "@/components/FileUpload";
 
 type Appointment = {
   id: string;
@@ -459,6 +460,13 @@ function AthleteDetailPage() {
 
   const deleteDoc = async () => {
     if (!docDeleteId) return;
+    const target = (docs ?? []).find((d) => d.id === docDeleteId);
+    if (target?.file_url) {
+      const storagePath = pathFromSignedUrl(target.file_url, "documents");
+      if (storagePath) {
+        await supabase.storage.from("documents").remove([storagePath]);
+      }
+    }
     const { error } = await supabase
       .from("athlete_documents")
       .delete()
@@ -743,18 +751,27 @@ function AthleteDetailPage() {
                         </TableCell>
                         <TableCell>{docTypes.find((t) => t.code === d.doc_type)?.label ?? d.doc_type}</TableCell>
                         <TableCell>
-                          {d.file_url ? (
-                            <a
-                              href={d.file_url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-indigo-600 hover:underline"
-                            >
-                              {d.file_name}
-                            </a>
-                          ) : (
-                            d.file_name
-                          )}
+                          <div className="flex items-center gap-2">
+                            {d.file_url && /\.(png|jpe?g|webp|gif)(\?|$)/i.test(d.file_url) && (
+                              <img
+                                src={d.file_url}
+                                alt=""
+                                className="h-10 w-10 rounded object-cover border border-slate-200"
+                              />
+                            )}
+                            {d.file_url ? (
+                              <a
+                                href={d.file_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-indigo-600 hover:underline"
+                              >
+                                {d.file_name}
+                              </a>
+                            ) : (
+                              d.file_name
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>{d.issued_date ?? "—"}</TableCell>
                         <TableCell>{d.expiry_date ?? "—"}</TableCell>
@@ -1393,13 +1410,24 @@ function AthleteDetailPage() {
                 <Input
                   value={docForm.file_name}
                   onChange={(e) => setDocForm({ ...docForm, file_name: e.target.value })}
+                  placeholder="Renseigné automatiquement après upload"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>URL du fichier</Label>
-                <Input
-                  value={docForm.file_url}
-                  onChange={(e) => setDocForm({ ...docForm, file_url: e.target.value })}
+                <Label>Fichier</Label>
+                <FileUpload
+                  bucket="documents"
+                  path={`athletes/${id}/${docForm.category}/${Date.now()}_`}
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
+                  currentUrl={docForm.file_url || null}
+                  currentName={docForm.file_name || null}
+                  onUploaded={(url, fileName) => {
+                    setDocForm((prev) => ({
+                      ...prev,
+                      file_url: url,
+                      file_name: prev.file_name || fileName,
+                    }));
+                  }}
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
