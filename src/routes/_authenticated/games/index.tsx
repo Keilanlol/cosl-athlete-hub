@@ -403,7 +403,19 @@ function GamesListPage() {
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="host_city">Ville hôte</Label>
-                  <Input id="host_city" value={form.host_city} onChange={(e) => setForm({ ...form, host_city: e.target.value })} />
+                  <AddressSearch
+                    id="host_city"
+                    value={form.host_city}
+                    onChange={(v) => setForm({ ...form, host_city: v })}
+                    onSelect={(r) =>
+                      setForm({
+                        ...form,
+                        host_city: r.city ?? r.display_name,
+                        host_country: r.country ?? form.host_country,
+                      })
+                    }
+                    placeholder="Luxembourg, Paris…"
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="organizer">Organisateur</Label>
