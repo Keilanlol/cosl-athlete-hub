@@ -60,6 +60,17 @@ function MessagesPage() {
   const [tplEdit, setTplEdit] = useState<MessageTemplate | null>(null);
   const [tplForm, setTplForm] = useState<TemplateForm>(emptyTpl);
   const [tplDel, setTplDel] = useState<MessageTemplate | null>(null);
+  const [tplSearch, setTplSearch] = useState("");
+
+  const filteredTemplates = useMemo(() => {
+    const q = tplSearch.trim().toLowerCase();
+    if (!q) return templates;
+    return templates.filter(
+      (t) =>
+        t.name.toLowerCase().includes(q) ||
+        (t.subject ?? "").toLowerCase().includes(q),
+    );
+  }, [templates, tplSearch]);
 
   // Send block
   const [selectedTplId, setSelectedTplId] = useState<string>("none");
