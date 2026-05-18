@@ -157,12 +157,14 @@ function GameAccreditationsPage() {
 
   const filteredAccreds = useMemo(() => {
     if (!accreds) return [];
+    const q = search.trim().toLowerCase();
     return accreds.filter((a) => {
       if (catFilter !== "all" && a.type?.category !== catFilter) return false;
       if (statusFilter !== "all" && a.status !== statusFilter) return false;
+      if (q && !a.full_name.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [accreds, catFilter, statusFilter]);
+  }, [accreds, catFilter, statusFilter, search]);
 
   // ==== Types CRUD ====
   const openCreateType = () => {
