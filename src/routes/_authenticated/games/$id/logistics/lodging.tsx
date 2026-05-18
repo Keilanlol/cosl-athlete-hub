@@ -137,6 +137,7 @@ function LodgingPage() {
   }, [rooms]);
 
   const filteredGroups = useMemo(() => {
+    const q = search.trim().toLowerCase();
     return groupedRooms.filter((g) => {
       if (filterAcc !== "all" && g.accId !== filterAcc) return false;
       if (filterType !== "all" && !g.items.some((i) => (i.room_type ?? "") === filterType))
@@ -149,9 +150,14 @@ function LodgingPage() {
         });
         if (!hasSport) return false;
       }
+      if (q) {
+        const inRoom = g.roomNo.toLowerCase().includes(q);
+        const inOccupant = g.items.some((i) => occupantLabel(i).toLowerCase().includes(q));
+        if (!inRoom && !inOccupant) return false;
+      }
       return true;
     });
-  }, [groupedRooms, filterAcc, filterType, filterSport, athletes]);
+  }, [groupedRooms, filterAcc, filterType, filterSport, athletes, search, occupantLabel]);
 
   const accName = (aid: string) => accs.find((x) => x.id === aid)?.name ?? "—";
 
