@@ -621,7 +621,7 @@ function AccredDrawerBody({
 }: {
   accreditation: Accreditation;
   completeness: number;
-  onUpload: (docType: string, file: File) => void;
+  onUpload: (docType: string, url: string, fileName: string) => void;
   onDocStatus: (doc: AccDoc, status: string) => void;
   onSubmit: () => void;
   onValidate: () => void;
