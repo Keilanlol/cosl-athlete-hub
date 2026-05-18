@@ -77,9 +77,16 @@ function NotificationsPage() {
         if (filterType !== "all" && n.notification_type !== filterType) return false;
         if (filterRead === "read" && !n.is_read) return false;
         if (filterRead === "unread" && n.is_read) return false;
+        const q = search.trim().toLowerCase();
+        if (
+          q &&
+          !n.message.toLowerCase().includes(q) &&
+          !n.notification_type.toLowerCase().includes(q)
+        )
+          return false;
         return true;
       }),
-    [notifs, filterType, filterRead],
+    [notifs, filterType, filterRead, search],
   );
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
