@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { type LocalTransport } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AddressSearch } from "@/components/AddressSearch";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -173,11 +174,21 @@ function TransportPage() {
             </div>
             <div className="space-y-1">
               <Label>Pickup</Label>
-              <Input value={form.pickup_location} onChange={(e) => setForm({ ...form, pickup_location: e.target.value })} />
+              <AddressSearch
+                value={form.pickup_location}
+                onChange={(v) => setForm({ ...form, pickup_location: v })}
+                onSelect={(r) => setForm({ ...form, pickup_location: r.display_name })}
+                placeholder="Point de pickup"
+              />
             </div>
             <div className="space-y-1">
               <Label>Dropoff</Label>
-              <Input value={form.dropoff_location} onChange={(e) => setForm({ ...form, dropoff_location: e.target.value })} />
+              <AddressSearch
+                value={form.dropoff_location}
+                onChange={(v) => setForm({ ...form, dropoff_location: v })}
+                onSelect={(r) => setForm({ ...form, dropoff_location: r.display_name })}
+                placeholder="Point de dropoff"
+              />
             </div>
             <div className="sm:col-span-2 space-y-1">
               <Label>Heure de pickup</Label>

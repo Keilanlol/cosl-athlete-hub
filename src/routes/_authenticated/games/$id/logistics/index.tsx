@@ -13,6 +13,7 @@ import {
 } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AddressSearch } from "@/components/AddressSearch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -290,16 +291,20 @@ function TravelPlansPage() {
             </div>
             <div className="space-y-1">
               <Label>Lieu de départ</Label>
-              <Input
+              <AddressSearch
                 value={form.departure_point}
-                onChange={(e) => setForm({ ...form, departure_point: e.target.value })}
+                onChange={(v) => setForm({ ...form, departure_point: v })}
+                onSelect={(r) => setForm({ ...form, departure_point: r.display_name })}
+                placeholder="Aéroport, gare, adresse…"
               />
             </div>
             <div className="space-y-1">
               <Label>Lieu d'arrivée</Label>
-              <Input
+              <AddressSearch
                 value={form.arrival_point}
-                onChange={(e) => setForm({ ...form, arrival_point: e.target.value })}
+                onChange={(v) => setForm({ ...form, arrival_point: v })}
+                onSelect={(r) => setForm({ ...form, arrival_point: r.display_name })}
+                placeholder="Aéroport, gare, adresse…"
               />
             </div>
             <div className="space-y-1">

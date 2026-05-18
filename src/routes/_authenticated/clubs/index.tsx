@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import type { Club, Federation } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AddressSearch } from "@/components/AddressSearch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -382,10 +383,12 @@ function ClubsPage() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="caddr">Adresse</Label>
-                <Input
+                <AddressSearch
                   id="caddr"
                   value={form.address}
-                  onChange={(e) => setForm({ ...form, address: e.target.value })}
+                  onChange={(v) => setForm({ ...form, address: v })}
+                  onSelect={(r) => setForm({ ...form, address: r.display_name })}
+                  placeholder="Rue, ville, pays…"
                 />
               </div>
               <div className="space-y-1.5">

@@ -12,6 +12,7 @@ import {
 } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AddressSearch } from "@/components/AddressSearch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -403,7 +404,19 @@ function GamesListPage() {
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="host_city">Ville hôte</Label>
-                  <Input id="host_city" value={form.host_city} onChange={(e) => setForm({ ...form, host_city: e.target.value })} />
+                  <AddressSearch
+                    id="host_city"
+                    value={form.host_city}
+                    onChange={(v) => setForm({ ...form, host_city: v })}
+                    onSelect={(r) =>
+                      setForm({
+                        ...form,
+                        host_city: r.city ?? r.display_name,
+                        host_country: r.country ?? form.host_country,
+                      })
+                    }
+                    placeholder="Luxembourg, Paris…"
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="organizer">Organisateur</Label>

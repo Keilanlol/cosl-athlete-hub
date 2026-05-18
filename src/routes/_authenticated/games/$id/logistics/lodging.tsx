@@ -11,6 +11,7 @@ import {
 } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AddressSearch } from "@/components/AddressSearch";
 import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
@@ -394,7 +395,12 @@ function LodgingPage() {
             </div>
             <div className="space-y-1">
               <Label>Ville</Label>
-              <Input value={accForm.city} onChange={(e) => setAccForm({ ...accForm, city: e.target.value })} />
+              <AddressSearch
+                value={accForm.city}
+                onChange={(v) => setAccForm({ ...accForm, city: v })}
+                onSelect={(r) => setAccForm({ ...accForm, city: r.city ?? r.display_name })}
+                placeholder="Ville ou adresse de l'hébergement"
+              />
             </div>
             <div className="space-y-1">
               <Label>Capacité (nb chambres)</Label>
