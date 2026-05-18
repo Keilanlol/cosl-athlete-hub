@@ -744,18 +744,27 @@ function AthleteDetailPage() {
                         </TableCell>
                         <TableCell>{docTypes.find((t) => t.code === d.doc_type)?.label ?? d.doc_type}</TableCell>
                         <TableCell>
-                          {d.file_url ? (
-                            <a
-                              href={d.file_url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-indigo-600 hover:underline"
-                            >
-                              {d.file_name}
-                            </a>
-                          ) : (
-                            d.file_name
-                          )}
+                          <div className="flex items-center gap-2">
+                            {d.file_url && /\.(png|jpe?g|webp|gif)(\?|$)/i.test(d.file_url) && (
+                              <img
+                                src={d.file_url}
+                                alt=""
+                                className="h-10 w-10 rounded object-cover border border-slate-200"
+                              />
+                            )}
+                            {d.file_url ? (
+                              <a
+                                href={d.file_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-indigo-600 hover:underline"
+                              >
+                                {d.file_name}
+                              </a>
+                            ) : (
+                              d.file_name
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>{d.issued_date ?? "—"}</TableCell>
                         <TableCell>{d.expiry_date ?? "—"}</TableCell>
