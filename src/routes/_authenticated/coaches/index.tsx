@@ -139,6 +139,8 @@ function CoachesPage() {
     let r = rows.slice();
     if (roleFilter !== "all") r = r.filter((c) => c.role === roleFilter);
     if (fedFilter !== "all") r = r.filter((c) => c.federation_id === fedFilter);
+    if (activeFilter === "active") r = r.filter((c) => c.is_active);
+    if (activeFilter === "inactive") r = r.filter((c) => !c.is_active);
     if (q)
       r = r.filter((c) =>
         `${c.first_name} ${c.last_name}`.toLowerCase().includes(q),
@@ -150,7 +152,9 @@ function CoachesPage() {
       return sort.dir === "asc" ? cmp : -cmp;
     });
     return r;
-  }, [rows, search, roleFilter, fedFilter, sort]);
+  }, [rows, search, roleFilter, fedFilter, activeFilter, sort]);
+
+  useEffect(() => { setPage(1); }, [search, roleFilter, fedFilter, activeFilter]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
