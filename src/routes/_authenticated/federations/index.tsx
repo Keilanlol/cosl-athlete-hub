@@ -74,6 +74,7 @@ function FederationsPage() {
     dir: "asc",
   });
   const [page, setPage] = useState(1);
+  const [olympicFilter, setOlympicFilter] = useState<string>("all");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Federation | null>(null);
   const [form, setForm] = useState(empty);
