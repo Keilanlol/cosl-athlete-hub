@@ -79,6 +79,7 @@ function CoachesPage() {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [fedFilter, setFedFilter] = useState<string>("all");
+  const [activeFilter, setActiveFilter] = useState<string>("all");
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
     key: "last_name",
     dir: "asc",
