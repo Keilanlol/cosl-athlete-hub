@@ -31,6 +31,9 @@ function NotificationsPage() {
   const [page, setPage] = useState(1);
   const [filterType, setFilterType] = useState<string>("all");
   const [filterRead, setFilterRead] = useState<string>("all");
+  const [search, setSearch] = useState("");
+
+  useEffect(() => { setPage(1); }, [search, filterType, filterRead]);
 
   const load = async () => {
     setLoading(true);
