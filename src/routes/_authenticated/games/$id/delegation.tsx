@@ -123,6 +123,7 @@ function DelegationPage() {
 
   const filtered = useMemo(() => {
     if (!members) return [];
+    const q = search.trim().toLowerCase();
     return members.filter((m) => {
       const t = m.athlete_id ? "athlete" : "coach";
       if (typeFilter !== "all" && t !== typeFilter) return false;
@@ -130,9 +131,15 @@ function DelegationPage() {
         const sid = m.athlete?.primary_sport_id ?? null;
         if (sid !== sportFilter) return false;
       }
+      if (q) {
+        const name = m.athlete
+          ? `${m.athlete.first_name} ${m.athlete.last_name}`
+          : `${m.coach?.first_name ?? ""} ${m.coach?.last_name ?? ""}`;
+        if (!name.toLowerCase().includes(q)) return false;
+      }
       return true;
     });
-  }, [members, typeFilter, sportFilter]);
+  }, [members, typeFilter, sportFilter, search]);
 
   const saveChief = async () => {
     if (!delegation) return;
