@@ -433,7 +433,12 @@ function CompetitionsPage() {
             </div>
             <div className="sm:col-span-2 space-y-1">
               <Label>Lieu</Label>
-              <Input value={compForm.venue} onChange={(e) => setCompForm({ ...compForm, venue: e.target.value })} />
+              <AddressSearch
+                value={compForm.venue}
+                onChange={(v) => setCompForm({ ...compForm, venue: v })}
+                onSelect={(r) => setCompForm({ ...compForm, venue: r.display_name })}
+                placeholder="Stade, salle, lieu de l'épreuve…"
+              />
             </div>
             <div className="sm:col-span-2 space-y-1">
               <Label>Notes</Label>
