@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Upload, FileText, X, Eye } from "lucide-react";
+import { Upload, FileText, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
