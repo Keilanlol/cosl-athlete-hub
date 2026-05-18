@@ -49,10 +49,14 @@ function AdminUsersPage() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<CreateForm>(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [confirmDel, setConfirmDel] = useState<UserProfile | null>(null);
+
+  useEffect(() => { setPage(1); }, [search, roleFilter]);
 
   const isAdmin = role === "admin";
 
