@@ -667,31 +667,28 @@ function AccredDrawerBody({
               const doc = docMap.get(dt);
               const sb = doc ? DOC_STATUSES[doc.status] : DOC_STATUSES.missing;
               return (
-                <li key={dt} className="flex items-center gap-3 rounded border border-slate-200 p-3">
-                  <FileText className="h-4 w-4 text-slate-400 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">{dt}</p>
-                    {doc?.file_name && (
-                      <p className="text-xs text-slate-500 truncate">
-                        {doc.file_url ? <a href={doc.file_url} target="_blank" rel="noreferrer" className="hover:underline">{doc.file_name}</a> : doc.file_name}
-                      </p>
-                    )}
+                <li key={dt} className="flex flex-col gap-2 rounded border border-slate-200 p-3 sm:flex-row sm:items-start">
+                  <FileText className="h-4 w-4 text-slate-400 shrink-0 mt-1" />
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium flex-1">{dt}</p>
+                      <Badge className={`${sb.cls} hover:${sb.cls}`}>{sb.label}</Badge>
+                      {doc && doc.status !== "valid" && (
+                        <Button size="icon" variant="ghost" onClick={() => onDocStatus(doc, "valid")} aria-label="Valider"><Check className="h-4 w-4 text-emerald-600" /></Button>
+                      )}
+                      {doc && doc.status !== "rejected" && (
+                        <Button size="icon" variant="ghost" onClick={() => onDocStatus(doc, "rejected")} aria-label="Rejeter"><X className="h-4 w-4 text-red-600" /></Button>
+                      )}
+                    </div>
+                    <FileUpload
+                      bucket="documents"
+                      path={`accreditations/${a.id}/${dt}/${Date.now()}_`}
+                      accept="image/jpeg,image/png,image/webp,application/pdf"
+                      currentUrl={doc?.file_url ?? null}
+                      currentName={doc?.file_name ?? null}
+                      onUploaded={(url, fileName) => onUpload(dt, url, fileName)}
+                    />
                   </div>
-                  <Badge className={`${sb.cls} hover:${sb.cls}`}>{sb.label}</Badge>
-                  <label className="cursor-pointer">
-                    <input type="file" className="hidden" onChange={(e) => {
-                      const f = e.target.files?.[0]; if (f) onUpload(dt, f); e.target.value = "";
-                    }} />
-                    <span className="inline-flex h-8 items-center rounded-md border border-slate-200 px-2 text-xs hover:bg-slate-50">
-                      <Upload className="mr-1 h-3 w-3" /> Téléverser
-                    </span>
-                  </label>
-                  {doc && doc.status !== "valid" && (
-                    <Button size="icon" variant="ghost" onClick={() => onDocStatus(doc, "valid")} aria-label="Valider"><Check className="h-4 w-4 text-emerald-600" /></Button>
-                  )}
-                  {doc && doc.status !== "rejected" && (
-                    <Button size="icon" variant="ghost" onClick={() => onDocStatus(doc, "rejected")} aria-label="Rejeter"><X className="h-4 w-4 text-red-600" /></Button>
-                  )}
                 </li>
               );
             })}
