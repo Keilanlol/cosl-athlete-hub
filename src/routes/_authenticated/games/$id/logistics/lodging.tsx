@@ -74,6 +74,7 @@ function LodgingPage() {
   const [filterAcc, setFilterAcc] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
   const [filterSport, setFilterSport] = useState<string>("all");
+  const [search, setSearch] = useState("");
   const [confirmDel, setConfirmDel] = useState<RoomingAssignment | null>(null);
 
   const load = async () => {
