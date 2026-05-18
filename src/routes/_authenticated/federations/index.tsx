@@ -106,9 +106,12 @@ function FederationsPage() {
       ? rows.filter(
           (f) =>
             f.name.toLowerCase().includes(q) ||
-            f.acronym.toLowerCase().includes(q),
+            f.acronym.toLowerCase().includes(q) ||
+            (f.president_name ?? "").toLowerCase().includes(q),
         )
       : rows.slice();
+    if (olympicFilter === "olympic") r = r.filter((f) => f.is_olympic);
+    if (olympicFilter === "non") r = r.filter((f) => !f.is_olympic);
     r.sort((a, b) => {
       const av = (a[sort.key] ?? "").toString().toLowerCase();
       const bv = (b[sort.key] ?? "").toString().toLowerCase();
@@ -116,7 +119,9 @@ function FederationsPage() {
       return sort.dir === "asc" ? cmp : -cmp;
     });
     return r;
-  }, [rows, search, sort]);
+  }, [rows, search, olympicFilter, sort]);
+
+  useEffect(() => { setPage(1); }, [search, olympicFilter]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
