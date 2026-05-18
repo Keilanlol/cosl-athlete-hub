@@ -262,10 +262,22 @@ function MessagesPage() {
             <Plus className="mr-2 h-4 w-4" /> Créer template
           </Button>
         </div>
+        <div className="flex items-center gap-3">
+          <div className="relative max-w-sm flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              placeholder="Rechercher un template…"
+              value={tplSearch}
+              onChange={(e) => setTplSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <span className="text-sm text-slate-500">{filteredTemplates.length} résultat(s)</span>
+        </div>
         <div className="rounded-lg border border-slate-200 bg-white">
           {loading ? (
             <TableSkeleton cols={5} />
-          ) : templates.length === 0 ? (
+          ) : filteredTemplates.length === 0 ? (
             <div className="p-6"><EmptyState message="Aucun template." /></div>
           ) : (
             <Table>
@@ -279,7 +291,7 @@ function MessagesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {templates.map((t) => (
+                {filteredTemplates.map((t) => (
                   <TableRow key={t.id}>
                     <TableCell className="font-medium">{t.name}</TableCell>
                     <TableCell>{t.subject}</TableCell>
