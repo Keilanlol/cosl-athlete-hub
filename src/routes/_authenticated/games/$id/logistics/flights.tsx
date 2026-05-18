@@ -312,7 +312,7 @@ function FlightsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {flights.map((f) => (
+              {filteredFlights.map((f) => (
                 <TableRow
                   key={f.id}
                   className="cursor-pointer hover:bg-slate-50"
