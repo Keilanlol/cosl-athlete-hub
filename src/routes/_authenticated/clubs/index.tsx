@@ -70,6 +70,7 @@ function ClubsPage() {
   const [feds, setFeds] = useState<Federation[]>([]);
   const [search, setSearch] = useState("");
   const [fedFilter, setFedFilter] = useState<string>("all");
+  const [cityFilter, setCityFilter] = useState<string>("all");
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
     key: "name",
     dir: "asc",
