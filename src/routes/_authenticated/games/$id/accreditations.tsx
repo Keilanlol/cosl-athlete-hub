@@ -93,6 +93,7 @@ function GameAccreditationsPage() {
   // Filters
   const [catFilter, setCatFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [search, setSearch] = useState("");
 
   // Type dialog
   const [typeOpen, setTypeOpen] = useState(false);
