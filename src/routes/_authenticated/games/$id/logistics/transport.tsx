@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { type LocalTransport } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AddressSearch } from "@/components/AddressSearch";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
