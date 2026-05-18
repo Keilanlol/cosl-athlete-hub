@@ -242,6 +242,15 @@ function ClubsPage() {
             ))}
           </SelectContent>
         </Select>
+        <Select value={cityFilter} onValueChange={setCityFilter}>
+          <SelectTrigger className="w-[200px]"><SelectValue placeholder="Toutes villes" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Toutes villes</SelectItem>
+            {cities.map((c) => (
+              <SelectItem key={c} value={c}>{c}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <span className="text-sm text-slate-500">{filtered.length} résultat(s)</span>
       </div>
 
