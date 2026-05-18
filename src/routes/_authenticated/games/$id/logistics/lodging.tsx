@@ -395,7 +395,12 @@ function LodgingPage() {
             </div>
             <div className="space-y-1">
               <Label>Ville</Label>
-              <Input value={accForm.city} onChange={(e) => setAccForm({ ...accForm, city: e.target.value })} />
+              <AddressSearch
+                value={accForm.city}
+                onChange={(v) => setAccForm({ ...accForm, city: v })}
+                onSelect={(r) => setAccForm({ ...accForm, city: r.city ?? r.display_name })}
+                placeholder="Ville ou adresse de l'hébergement"
+              />
             </div>
             <div className="space-y-1">
               <Label>Capacité (nb chambres)</Label>
