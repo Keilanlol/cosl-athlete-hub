@@ -75,10 +75,20 @@ function AdminUsersPage() {
     if (isAdmin) load();
   }, [isAdmin]);
 
-  const totalPages = Math.max(1, Math.ceil(users.length / PAGE_SIZE));
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return users.filter((u) => {
+      if (roleFilter !== "all" && u.role !== roleFilter) return false;
+      if (q && !`${u.username} ${u.full_name} ${u.email ?? ""}`.toLowerCase().includes(q))
+        return false;
+      return true;
+    });
+  }, [users, search, roleFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paged = useMemo(
-    () => users.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-    [users, page],
+    () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filtered, page],
   );
 
   const submit = async () => {
