@@ -278,10 +278,23 @@ function FlightsPage() {
         </Button>
       </div>
 
+      <div className="flex items-center gap-3">
+        <div className="relative max-w-sm flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Input
+            placeholder="Rechercher vol, compagnie, aéroport…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <span className="text-sm text-slate-500">{filteredFlights.length} résultat(s)</span>
+      </div>
+
       <div className="rounded-lg border border-slate-200 bg-white">
         {loading ? (
           <TableSkeleton cols={8} />
-        ) : flights.length === 0 ? (
+        ) : filteredFlights.length === 0 ? (
           <div className="p-6"><EmptyState message="Aucun vol enregistré." /></div>
         ) : (
           <Table>
