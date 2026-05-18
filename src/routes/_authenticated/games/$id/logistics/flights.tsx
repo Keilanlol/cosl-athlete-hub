@@ -69,6 +69,7 @@ function FlightsPage() {
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [coaches, setCoaches] = useState<Coach[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
   const [dlgOpen, setDlgOpen] = useState(false);
   const [form, setForm] = useState<FlightForm>(emptyFlight);
