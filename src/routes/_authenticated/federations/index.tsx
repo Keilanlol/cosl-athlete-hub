@@ -221,6 +221,14 @@ function FederationsPage() {
             className="pl-9"
           />
         </div>
+        <Select value={olympicFilter} onValueChange={setOlympicFilter}>
+          <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Toutes les fédérations</SelectItem>
+            <SelectItem value="olympic">Olympiques</SelectItem>
+            <SelectItem value="non">Non olympiques</SelectItem>
+          </SelectContent>
+        </Select>
         <span className="text-sm text-slate-500">{filtered.length} résultat(s)</span>
       </div>
 
