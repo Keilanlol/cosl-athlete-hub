@@ -280,6 +280,14 @@ function CoachesPage() {
             ))}
           </SelectContent>
         </Select>
+        <Select value={activeFilter} onValueChange={setActiveFilter}>
+          <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous</SelectItem>
+            <SelectItem value="active">Actifs</SelectItem>
+            <SelectItem value="inactive">Inactifs</SelectItem>
+          </SelectContent>
+        </Select>
         <span className="text-sm text-slate-500">{filtered.length} résultat(s)</span>
       </div>
 
