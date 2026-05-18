@@ -74,6 +74,7 @@ import { EmptyState, TableSkeleton } from "@/components/DataTableShell";
 import { useHashTab } from "@/hooks/useHashTab";
 import { WeekAgenda } from "@/components/WeekAgenda";
 import { MessageDetailDialog } from "@/components/MessageDetailDialog";
+import { FileUpload, pathFromSignedUrl } from "@/components/FileUpload";
 
 type Appointment = {
   id: string;
