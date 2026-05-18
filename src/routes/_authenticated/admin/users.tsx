@@ -169,10 +169,32 @@ function AdminUsersPage() {
         </Button>
       </div>
 
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Input
+            placeholder="Rechercher (username, nom, email)…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Select value={roleFilter} onValueChange={setRoleFilter}>
+          <SelectTrigger className="sm:w-56"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous les rôles</SelectItem>
+            {USER_ROLES.map((r) => (
+              <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-sm text-slate-500 sm:ml-auto">{filtered.length} utilisateur(s)</p>
+      </div>
+
       <div className="rounded-lg border border-slate-200 bg-white">
         {loading ? (
           <TableSkeleton cols={6} />
-        ) : users.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="p-6"><EmptyState message="Aucun utilisateur." /></div>
         ) : (
           <Table>
