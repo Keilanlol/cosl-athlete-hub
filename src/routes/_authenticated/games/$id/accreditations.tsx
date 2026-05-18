@@ -237,26 +237,23 @@ function GameAccreditationsPage() {
   // ==== Drawer actions ====
   const current = (accreds ?? []).find((a) => a.id === openId) ?? null;
 
-  const uploadDoc = async (docType: string, file: File) => {
+  const uploadDoc = async (docType: string, url: string, fileName: string) => {
     if (!current) return;
-    const path = `${gameId}/${current.id}/${Date.now()}-${file.name}`;
-    const { error: upErr } = await supabase.storage
-      .from("accreditation-docs").upload(path, file, { upsert: false });
-    if (upErr) { toast.error("Upload échoué", { description: upErr.message }); return; }
-    const { data: pub } = supabase.storage.from("accreditation-docs").getPublicUrl(path);
-    // Upsert document row by accreditation_id + doc_type
     const existing = current.docs.find((d) => d.doc_type === docType);
+    const payload = {
+      accreditation_id: current.id,
+      doc_type: docType,
+      file_name: fileName,
+      file_url: url,
+      status: "pending",
+      uploaded_at: new Date().toISOString(),
+    };
     if (existing) {
-      await supabase.from("accreditation_documents").update({
-        file_name: file.name, file_url: pub.publicUrl, status: "pending",
-      }).eq("id", existing.id);
+      await supabase.from("accreditation_documents").update(payload).eq("id", existing.id);
     } else {
-      await supabase.from("accreditation_documents").insert({
-        accreditation_id: current.id, doc_type: docType,
-        file_name: file.name, file_url: pub.publicUrl, status: "pending",
-      });
+      await supabase.from("accreditation_documents").insert(payload);
     }
-    toast.success("Document téléversé");
+    toast.success("Document enregistré");
     load();
   };
 
