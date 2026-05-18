@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, X, Pencil, Check } from "lucide-react";
+import { Plus, Trash2, X, Pencil, Check, Search } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import {
@@ -69,6 +69,7 @@ function FlightsPage() {
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [coaches, setCoaches] = useState<Coach[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
   const [dlgOpen, setDlgOpen] = useState(false);
   const [form, setForm] = useState<FlightForm>(emptyFlight);
@@ -251,6 +252,18 @@ function FlightsPage() {
     return coaches.map((c) => ({ id: c.id, label: `${c.last_name} ${c.first_name}` }));
   }, [paxForm.kind, athletes, coaches]);
 
+  const filteredFlights = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return flights;
+    return flights.filter(
+      (f) =>
+        f.flight_number.toLowerCase().includes(q) ||
+        (f.airline ?? "").toLowerCase().includes(q) ||
+        f.departure_airport.toLowerCase().includes(q) ||
+        f.arrival_airport.toLowerCase().includes(q),
+    );
+  }, [flights, search]);
+
   return (
     <div className="space-y-6">
       <LogisticsTabs id={id} />
@@ -265,10 +278,23 @@ function FlightsPage() {
         </Button>
       </div>
 
+      <div className="flex items-center gap-3">
+        <div className="relative max-w-sm flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Input
+            placeholder="Rechercher vol, compagnie, aéroport…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <span className="text-sm text-slate-500">{filteredFlights.length} résultat(s)</span>
+      </div>
+
       <div className="rounded-lg border border-slate-200 bg-white">
         {loading ? (
           <TableSkeleton cols={8} />
-        ) : flights.length === 0 ? (
+        ) : filteredFlights.length === 0 ? (
           <div className="p-6"><EmptyState message="Aucun vol enregistré." /></div>
         ) : (
           <Table>
@@ -286,7 +312,7 @@ function FlightsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {flights.map((f) => (
+              {filteredFlights.map((f) => (
                 <TableRow
                   key={f.id}
                   className="cursor-pointer hover:bg-slate-50"

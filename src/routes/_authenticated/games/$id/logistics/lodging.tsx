@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, Download, Building2 } from "lucide-react";
+import { Plus, Trash2, Download, Building2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import {
@@ -74,6 +74,7 @@ function LodgingPage() {
   const [filterAcc, setFilterAcc] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
   const [filterSport, setFilterSport] = useState<string>("all");
+  const [search, setSearch] = useState("");
   const [confirmDel, setConfirmDel] = useState<RoomingAssignment | null>(null);
 
   const load = async () => {
@@ -136,6 +137,7 @@ function LodgingPage() {
   }, [rooms]);
 
   const filteredGroups = useMemo(() => {
+    const q = search.trim().toLowerCase();
     return groupedRooms.filter((g) => {
       if (filterAcc !== "all" && g.accId !== filterAcc) return false;
       if (filterType !== "all" && !g.items.some((i) => (i.room_type ?? "") === filterType))
@@ -148,9 +150,14 @@ function LodgingPage() {
         });
         if (!hasSport) return false;
       }
+      if (q) {
+        const inRoom = g.roomNo.toLowerCase().includes(q);
+        const inOccupant = g.items.some((i) => occupantLabel(i).toLowerCase().includes(q));
+        if (!inRoom && !inOccupant) return false;
+      }
       return true;
     });
-  }, [groupedRooms, filterAcc, filterType, filterSport, athletes]);
+  }, [groupedRooms, filterAcc, filterType, filterSport, athletes, search, occupantLabel]);
 
   const accName = (aid: string) => accs.find((x) => x.id === aid)?.name ?? "—";
 
@@ -301,7 +308,16 @@ function LodgingPage() {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative max-w-sm flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              placeholder="Rechercher chambre, occupant…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
           <Select value={filterAcc} onValueChange={setFilterAcc}>
             <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
             <SelectContent>

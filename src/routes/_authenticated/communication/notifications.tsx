@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { CheckCheck } from "lucide-react";
+import { CheckCheck, Search } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { type Notification } from "@/lib/types";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -30,6 +31,9 @@ function NotificationsPage() {
   const [page, setPage] = useState(1);
   const [filterType, setFilterType] = useState<string>("all");
   const [filterRead, setFilterRead] = useState<string>("all");
+  const [search, setSearch] = useState("");
+
+  useEffect(() => { setPage(1); }, [search, filterType, filterRead]);
 
   const load = async () => {
     setLoading(true);
@@ -73,9 +77,16 @@ function NotificationsPage() {
         if (filterType !== "all" && n.notification_type !== filterType) return false;
         if (filterRead === "read" && !n.is_read) return false;
         if (filterRead === "unread" && n.is_read) return false;
+        const q = search.trim().toLowerCase();
+        if (
+          q &&
+          !n.message.toLowerCase().includes(q) &&
+          !n.notification_type.toLowerCase().includes(q)
+        )
+          return false;
         return true;
       }),
-    [notifs, filterType, filterRead],
+    [notifs, filterType, filterRead, search],
   );
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -113,7 +124,16 @@ function NotificationsPage() {
         </Button>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative max-w-sm flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Input
+            placeholder="Rechercher dans les messages…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
         <Select value={filterType} onValueChange={setFilterType}>
           <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
           <SelectContent>

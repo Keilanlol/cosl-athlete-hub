@@ -70,6 +70,7 @@ function ClubsPage() {
   const [feds, setFeds] = useState<Federation[]>([]);
   const [search, setSearch] = useState("");
   const [fedFilter, setFedFilter] = useState<string>("all");
+  const [cityFilter, setCityFilter] = useState<string>("all");
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
     key: "name",
     dir: "asc",
@@ -108,11 +109,20 @@ function ClubsPage() {
     load();
   }, []);
 
+  const cities = useMemo(
+    () =>
+      Array.from(
+        new Set((rows ?? []).map((c) => c.city).filter((v): v is string => !!v)),
+      ).sort(),
+    [rows],
+  );
+
   const filtered = useMemo(() => {
     if (!rows) return [];
     const q = search.trim().toLowerCase();
     let r = rows.slice();
     if (fedFilter !== "all") r = r.filter((c) => c.federation_id === fedFilter);
+    if (cityFilter !== "all") r = r.filter((c) => c.city === cityFilter);
     if (q) r = r.filter((c) => c.name.toLowerCase().includes(q));
     r.sort((a, b) => {
       const av = (a[sort.key] ?? "").toString().toLowerCase();
@@ -121,7 +131,9 @@ function ClubsPage() {
       return sort.dir === "asc" ? cmp : -cmp;
     });
     return r;
-  }, [rows, search, fedFilter, sort]);
+  }, [rows, search, fedFilter, cityFilter, sort]);
+
+  useEffect(() => { setPage(1); }, [search, fedFilter, cityFilter]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -227,6 +239,15 @@ function ClubsPage() {
               <SelectItem key={f.id} value={f.id}>
                 {f.acronym} — {f.name}
               </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={cityFilter} onValueChange={setCityFilter}>
+          <SelectTrigger className="w-[200px]"><SelectValue placeholder="Toutes villes" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Toutes villes</SelectItem>
+            {cities.map((c) => (
+              <SelectItem key={c} value={c}>{c}</SelectItem>
             ))}
           </SelectContent>
         </Select>

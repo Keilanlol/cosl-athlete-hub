@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, Pencil, Download, UserCircle } from "lucide-react";
+import { Plus, Trash2, Pencil, Download, UserCircle, Search } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -64,6 +64,7 @@ function DelegationPage() {
 
   const [typeFilter, setTypeFilter] = useState("all");
   const [sportFilter, setSportFilter] = useState("all");
+  const [search, setSearch] = useState("");
 
   // Chief / Manager dialogs
   const [chiefOpen, setChiefOpen] = useState(false);
@@ -122,6 +123,7 @@ function DelegationPage() {
 
   const filtered = useMemo(() => {
     if (!members) return [];
+    const q = search.trim().toLowerCase();
     return members.filter((m) => {
       const t = m.athlete_id ? "athlete" : "coach";
       if (typeFilter !== "all" && t !== typeFilter) return false;
@@ -129,9 +131,15 @@ function DelegationPage() {
         const sid = m.athlete?.primary_sport_id ?? null;
         if (sid !== sportFilter) return false;
       }
+      if (q) {
+        const name = m.athlete
+          ? `${m.athlete.first_name} ${m.athlete.last_name}`
+          : `${m.coach?.first_name ?? ""} ${m.coach?.last_name ?? ""}`;
+        if (!name.toLowerCase().includes(q)) return false;
+      }
       return true;
     });
-  }, [members, typeFilter, sportFilter]);
+  }, [members, typeFilter, sportFilter, search]);
 
   const saveChief = async () => {
     if (!delegation) return;
@@ -259,6 +267,15 @@ function DelegationPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
+        <div className="relative max-w-sm flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Input
+            placeholder="Rechercher par nom…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
         <Select value={typeFilter} onValueChange={setTypeFilter}>
           <SelectTrigger className="w-40"><SelectValue placeholder="Type" /></SelectTrigger>
           <SelectContent>

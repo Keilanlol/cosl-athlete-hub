@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, ShieldAlert } from "lucide-react";
+import { Plus, ShieldAlert, Search } from "lucide-react";
 import { toast } from "sonner";
 import { supabase, usernameToEmail } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
@@ -49,10 +49,14 @@ function AdminUsersPage() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<CreateForm>(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [confirmDel, setConfirmDel] = useState<UserProfile | null>(null);
+
+  useEffect(() => { setPage(1); }, [search, roleFilter]);
 
   const isAdmin = role === "admin";
 
@@ -71,10 +75,20 @@ function AdminUsersPage() {
     if (isAdmin) load();
   }, [isAdmin]);
 
-  const totalPages = Math.max(1, Math.ceil(users.length / PAGE_SIZE));
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return users.filter((u) => {
+      if (roleFilter !== "all" && u.role !== roleFilter) return false;
+      if (q && !`${u.username} ${u.full_name} ${u.email ?? ""}`.toLowerCase().includes(q))
+        return false;
+      return true;
+    });
+  }, [users, search, roleFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paged = useMemo(
-    () => users.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-    [users, page],
+    () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filtered, page],
   );
 
   const submit = async () => {
@@ -155,10 +169,32 @@ function AdminUsersPage() {
         </Button>
       </div>
 
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Input
+            placeholder="Rechercher (username, nom, email)…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Select value={roleFilter} onValueChange={setRoleFilter}>
+          <SelectTrigger className="sm:w-56"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous les rôles</SelectItem>
+            {USER_ROLES.map((r) => (
+              <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-sm text-slate-500 sm:ml-auto">{filtered.length} utilisateur(s)</p>
+      </div>
+
       <div className="rounded-lg border border-slate-200 bg-white">
         {loading ? (
           <TableSkeleton cols={6} />
-        ) : users.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="p-6"><EmptyState message="Aucun utilisateur." /></div>
         ) : (
           <Table>
