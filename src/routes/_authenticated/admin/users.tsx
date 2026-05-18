@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, ShieldAlert } from "lucide-react";
+import { Plus, ShieldAlert, Search } from "lucide-react";
 import { toast } from "sonner";
 import { supabase, usernameToEmail } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
