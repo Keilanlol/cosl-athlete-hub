@@ -64,6 +64,7 @@ function DelegationPage() {
 
   const [typeFilter, setTypeFilter] = useState("all");
   const [sportFilter, setSportFilter] = useState("all");
+  const [search, setSearch] = useState("");
 
   // Chief / Manager dialogs
   const [chiefOpen, setChiefOpen] = useState(false);
