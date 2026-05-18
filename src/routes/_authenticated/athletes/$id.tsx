@@ -1394,13 +1394,24 @@ function AthleteDetailPage() {
                 <Input
                   value={docForm.file_name}
                   onChange={(e) => setDocForm({ ...docForm, file_name: e.target.value })}
+                  placeholder="Renseigné automatiquement après upload"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>URL du fichier</Label>
-                <Input
-                  value={docForm.file_url}
-                  onChange={(e) => setDocForm({ ...docForm, file_url: e.target.value })}
+                <Label>Fichier</Label>
+                <FileUpload
+                  bucket="documents"
+                  path={`athletes/${id}/${docForm.category}/${Date.now()}_`}
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
+                  currentUrl={docForm.file_url || null}
+                  currentName={docForm.file_name || null}
+                  onUploaded={(url, fileName) => {
+                    setDocForm((prev) => ({
+                      ...prev,
+                      file_url: url,
+                      file_name: prev.file_name || fileName,
+                    }));
+                  }}
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
