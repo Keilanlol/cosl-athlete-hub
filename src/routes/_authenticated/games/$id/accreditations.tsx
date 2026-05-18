@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useHashTab } from "@/hooks/useHashTab";
+import { FileUpload } from "@/components/FileUpload";
 
 export const Route = createFileRoute("/_authenticated/games/$id/accreditations")({
   component: GameAccreditationsPage,
