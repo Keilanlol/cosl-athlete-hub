@@ -109,11 +109,20 @@ function ClubsPage() {
     load();
   }, []);
 
+  const cities = useMemo(
+    () =>
+      Array.from(
+        new Set((rows ?? []).map((c) => c.city).filter((v): v is string => !!v)),
+      ).sort(),
+    [rows],
+  );
+
   const filtered = useMemo(() => {
     if (!rows) return [];
     const q = search.trim().toLowerCase();
     let r = rows.slice();
     if (fedFilter !== "all") r = r.filter((c) => c.federation_id === fedFilter);
+    if (cityFilter !== "all") r = r.filter((c) => c.city === cityFilter);
     if (q) r = r.filter((c) => c.name.toLowerCase().includes(q));
     r.sort((a, b) => {
       const av = (a[sort.key] ?? "").toString().toLowerCase();
@@ -122,7 +131,9 @@ function ClubsPage() {
       return sort.dir === "asc" ? cmp : -cmp;
     });
     return r;
-  }, [rows, search, fedFilter, sort]);
+  }, [rows, search, fedFilter, cityFilter, sort]);
+
+  useEffect(() => { setPage(1); }, [search, fedFilter, cityFilter]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
