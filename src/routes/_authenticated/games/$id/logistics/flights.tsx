@@ -87,6 +87,7 @@ function FlightsPage() {
   const [editPaxId, setEditPaxId] = useState<string | null>(null);
   const [editSeat, setEditSeat] = useState("");
   const [editBag, setEditBag] = useState("");
+  const [paxSearch, setPaxSearch] = useState("");
 
   const startEditPax = (p: FlightPassenger) => {
     setEditPaxId(p.id);
