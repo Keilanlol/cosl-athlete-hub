@@ -522,17 +522,31 @@ function FlightsPage() {
             </div>
             <div className="space-y-1">
               <Label>Personne</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  placeholder={`Rechercher ${paxForm.kind === "athlete" ? "un athlète" : "un encadrant"}…`}
+                  value={paxSearch}
+                  onChange={(e) => setPaxSearch(e.target.value)}
+                  className="pl-9 mb-2"
+                />
+              </div>
               <Select
                 value={paxForm.person_id}
                 onValueChange={(v) => setPaxForm({ ...paxForm, person_id: v })}
               >
                 <SelectTrigger><SelectValue placeholder="Choisir" /></SelectTrigger>
                 <SelectContent>
-                  {personOptions.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
-                  ))}
+                  {personOptions.length === 0 ? (
+                    <div className="px-2 py-1.5 text-sm text-slate-500">Aucun résultat</div>
+                  ) : (
+                    personOptions.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
+              <p className="text-xs text-slate-500">{personOptions.length} résultat(s)</p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1">
