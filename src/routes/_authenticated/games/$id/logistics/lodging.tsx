@@ -518,9 +518,10 @@ function LodgingPage() {
         <DialogContent className="max-w-xl">
           <DialogHeader><DialogTitle>Créer une chambre</DialogTitle></DialogHeader>
           <p className="text-xs text-slate-500">
-            Crée la chambre avec un premier occupant. Vous pourrez ensuite ajouter
-            d'autres occupants (athlètes et/ou encadrants) via le bouton "Occupants".
+            Définissez la chambre et ses dates. Ajoutez ensuite les occupants
+            (athlètes et/ou encadrants) via le bouton "Occupants".
           </p>
+
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="sm:col-span-2 space-y-1">
               <Label>Hébergement</Label>
