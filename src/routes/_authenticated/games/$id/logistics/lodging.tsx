@@ -92,7 +92,7 @@ function LodgingPage() {
   const [drawer, setDrawer] = useState<DrawerState>(null);
   const [paxKind, setPaxKind] = useState<"athlete" | "coach">("athlete");
   const [paxId, setPaxId] = useState<string>("");
-  const [paxSearch, setPaxSearch] = useState("");
+  
 
   const load = async () => {
     setLoading(true);
