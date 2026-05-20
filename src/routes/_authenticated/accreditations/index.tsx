@@ -1,6 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Search, ExternalLink } from "lucide-react";
+import { Search } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { Input } from "@/components/ui/input";
@@ -49,6 +49,7 @@ type Row = {
 };
 
 function GlobalAccreditationsPage() {
+  const navigate = useNavigate();
   const [rows, setRows] = useState<Row[] | null>(null);
   const [search, setSearch] = useState("");
   const [gameFilter, setGameFilter] = useState("all");
@@ -144,7 +145,6 @@ function GlobalAccreditationsPage() {
                 <TableHead>Type</TableHead>
                 <TableHead>Statut</TableHead>
                 <TableHead>Complétude</TableHead>
-                <TableHead className="w-24 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -155,7 +155,11 @@ function GlobalAccreditationsPage() {
                 const valid = r.docs.filter((d) => d.status === "valid").length;
                 const pct = total > 0 ? Math.round((valid / total) * 100) : 0;
                 return (
-                  <TableRow key={r.id}>
+                  <TableRow
+                    key={r.id}
+                    onClick={() => r.game && navigate({ to: "/games/$id/accreditations", params: { id: r.game.id } })}
+                    className={r.game ? "cursor-pointer hover:bg-slate-50" : ""}
+                  >
                     <TableCell className="text-slate-600">{r.game?.short_name ?? r.game?.name ?? "—"}</TableCell>
                     <TableCell className="font-medium">{r.full_name}</TableCell>
                     <TableCell>{cat ? <Badge variant="outline">{cat.label}</Badge> : "—"}</TableCell>
@@ -166,17 +170,6 @@ function GlobalAccreditationsPage() {
                         <Progress value={pct} className="h-2 flex-1" />
                         <span className="text-xs text-slate-600">{pct}%</span>
                       </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {r.game && (
-                        <Link
-                          to="/games/$id/accreditations"
-                          params={{ id: r.game.id }}
-                          className="inline-flex items-center gap-1 text-sm text-indigo-600 hover:underline"
-                        >
-                          Détail <ExternalLink className="h-3 w-3" />
-                        </Link>
-                      )}
                     </TableCell>
                   </TableRow>
                 );

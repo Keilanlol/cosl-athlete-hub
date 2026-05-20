@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Pencil, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
@@ -73,6 +73,7 @@ function roleLabel(v: string) {
 }
 
 function CoachesPage() {
+  const navigate = useNavigate();
   const [rows, setRows] = useState<Coach[] | null>(null);
   const [feds, setFeds] = useState<Federation[]>([]);
   const [clubs, setClubs] = useState<Club[]>([]);
@@ -342,13 +343,13 @@ function CoachesPage() {
                 const f = c.federation_id ? fedMap.get(c.federation_id) : null;
                 const cl = c.club_id ? clubMap.get(c.club_id) : null;
                 return (
-                  <TableRow key={c.id}>
+                  <TableRow
+                    key={c.id}
+                    onClick={() => navigate({ to: "/coaches/$id", params: { id: c.id } })}
+                    className="cursor-pointer hover:bg-slate-50"
+                  >
                     <TableCell>{c.first_name}</TableCell>
-                    <TableCell className="font-medium">
-                      <Link to="/coaches/$id" params={{ id: c.id }} className="text-indigo-600 hover:underline">
-                        {c.last_name}
-                      </Link>
-                    </TableCell>
+                    <TableCell className="font-medium">{c.last_name}</TableCell>
                     <TableCell className="text-slate-600">{c.email ?? "—"}</TableCell>
                     <TableCell className="text-slate-600">{c.phone ?? "—"}</TableCell>
                     <TableCell>
@@ -373,7 +374,7 @@ function CoachesPage() {
                         <Badge variant="outline">Inactif</Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <Button
                         variant="ghost"
                         size="icon"

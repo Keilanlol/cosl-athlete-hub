@@ -418,7 +418,7 @@ function ClubDetailPage() {
                 <Link
                   to="/federations/$id"
                   params={{ id: fed.id }}
-                  className="inline-flex items-center gap-1 text-indigo-600 hover:underline"
+                  className="inline-flex items-center gap-1 text-slate-600 hover:underline"
                 >
                   <Building2 className="h-3.5 w-3.5" />
                   {fed.acronym} — {fed.name}
@@ -552,15 +552,13 @@ function ClubDetailPage() {
                 </TableHeader>
                 <TableBody>
                   {athletes.map((a) => (
-                    <TableRow key={a.id}>
+                    <TableRow
+                      key={a.id}
+                      onClick={() => navigate({ to: "/athletes/$id", params: { id: a.id } })}
+                      className="cursor-pointer hover:bg-slate-50"
+                    >
                       <TableCell className="font-medium">
-                        <Link
-                          to="/athletes/$id"
-                          params={{ id: a.id }}
-                          className="text-indigo-600 hover:underline"
-                        >
-                          {a.first_name} {a.last_name}
-                        </Link>
+                        {a.first_name} {a.last_name}
                       </TableCell>
                       <TableCell className="text-slate-600">
                         {a.primary_sport?.name ?? "—"}
@@ -572,7 +570,7 @@ function ClubDetailPage() {
                       <TableCell className="font-mono text-xs text-slate-500">
                         {a.cosl_id || "—"}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -622,7 +620,7 @@ function ClubDetailPage() {
                       onClick={() => navigate({ to: "/clubs/members/$memberId", params: { memberId: m.id } })}
                       className="cursor-pointer hover:bg-slate-50"
                     >
-                      <TableCell className="font-medium text-indigo-600">
+                      <TableCell className="font-medium">
                         {m.first_name} {m.last_name}
                       </TableCell>
                       <TableCell>
@@ -702,15 +700,13 @@ function ClubDetailPage() {
                   {coaches.map((c) => {
                     const role = COACH_ROLES.find((r) => r.value === c.role)?.label ?? c.role;
                     return (
-                      <TableRow key={c.id}>
+                      <TableRow
+                        key={c.id}
+                        onClick={() => navigate({ to: "/coaches/$id", params: { id: c.id } })}
+                        className="cursor-pointer hover:bg-slate-50"
+                      >
                         <TableCell className="font-medium">
-                          <Link
-                            to="/coaches/$id"
-                            params={{ id: c.id }}
-                            className="text-indigo-600 hover:underline"
-                          >
-                            {c.first_name} {c.last_name}
-                          </Link>
+                          {c.first_name} {c.last_name}
                         </TableCell>
                         <TableCell className="text-slate-600">{role}</TableCell>
                         <TableCell className="text-slate-600">{c.email ?? "—"}</TableCell>
