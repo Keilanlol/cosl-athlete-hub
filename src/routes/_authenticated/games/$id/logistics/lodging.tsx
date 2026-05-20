@@ -247,20 +247,28 @@ function LodgingPage() {
     );
     if (dup) return toast.error("Déjà présent dans la chambre");
 
-    const { error } = await supabase.from("rooming_assignments").insert({
-      accommodation_id: drawer.accId,
-      room_number: drawer.roomNo,
-      room_type: drawer.roomType,
-      check_in: drawer.checkIn,
-      check_out: drawer.checkOut,
+    // Réutiliser une éventuelle ligne placeholder (sans occupant)
+    const placeholder = drawer.items.find((i) => !i.athlete_id && !i.coach_id);
+    const patch = {
       athlete_id: paxKind === "athlete" ? paxId : null,
       coach_id: paxKind === "coach" ? paxId : null,
-    });
+    };
+    const { error } = placeholder
+      ? await supabase.from("rooming_assignments").update(patch).eq("id", placeholder.id)
+      : await supabase.from("rooming_assignments").insert({
+          accommodation_id: drawer.accId,
+          room_number: drawer.roomNo,
+          room_type: drawer.roomType,
+          check_in: drawer.checkIn,
+          check_out: drawer.checkOut,
+          ...patch,
+        });
     if (error) return toast.error("Échec", { description: error.message });
     toast.success("Occupant ajouté");
     setPaxId("");
     load();
   };
+
 
   const removeOccupant = async (occ: RoomingAssignment) => {
     const { error } = await supabase
