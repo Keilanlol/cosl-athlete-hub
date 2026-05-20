@@ -228,7 +228,7 @@ function CoachDetailPage() {
                 <Link
                   to="/clubs/$id"
                   params={{ id: club.id }}
-                  className="text-sm text-indigo-600 hover:underline"
+                  className="text-sm text-slate-600 hover:underline"
                 >
                   {club.name}
                 </Link>
