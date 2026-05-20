@@ -195,7 +195,7 @@ function MembersPage() {
                     onClick={onRowClick}
                     className="cursor-pointer hover:bg-slate-50"
                   >
-                    <TableCell className="font-medium text-indigo-600">
+                    <TableCell className="font-medium">
                       {m.first_name} {m.last_name}
                     </TableCell>
                     <TableCell>
