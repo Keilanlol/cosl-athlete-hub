@@ -262,7 +262,6 @@ function LodgingPage() {
     if (error) return toast.error("Échec", { description: error.message });
     toast.success("Occupant ajouté");
     setPaxId("");
-    setPaxSearch("");
     load();
   };
 
