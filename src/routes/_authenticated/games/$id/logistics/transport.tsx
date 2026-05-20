@@ -180,7 +180,6 @@ function TransportPage() {
     toast.success("Passager ajouté");
     setPaxOpen(false);
     setPaxForm({ kind: "athlete", person_id: "", seat: "" });
-    setPaxSearch("");
     openDrawer(drawer);
     load();
   };
