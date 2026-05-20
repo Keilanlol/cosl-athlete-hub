@@ -700,15 +700,13 @@ function ClubDetailPage() {
                   {coaches.map((c) => {
                     const role = COACH_ROLES.find((r) => r.value === c.role)?.label ?? c.role;
                     return (
-                      <TableRow key={c.id}>
+                      <TableRow
+                        key={c.id}
+                        onClick={() => navigate({ to: "/coaches/$id", params: { id: c.id } })}
+                        className="cursor-pointer hover:bg-slate-50"
+                      >
                         <TableCell className="font-medium">
-                          <Link
-                            to="/coaches/$id"
-                            params={{ id: c.id }}
-                            className="text-indigo-600 hover:underline"
-                          >
-                            {c.first_name} {c.last_name}
-                          </Link>
+                          {c.first_name} {c.last_name}
                         </TableCell>
                         <TableCell className="text-slate-600">{role}</TableCell>
                         <TableCell className="text-slate-600">{c.email ?? "—"}</TableCell>
