@@ -5,19 +5,46 @@ import {
   Shield,
   Users,
   UserCog,
+  UserRound,
   Mail,
   Phone,
   MapPin,
   Trophy,
   Building2,
+  Plus,
+  Pencil,
+  Trash2,
+  UserMinus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import type { Athlete, Club, Coach, Federation, Sport } from "@/lib/types";
-import { ATHLETE_STATUSES, COACH_ROLES } from "@/lib/types";
+import type {
+  Athlete,
+  Club,
+  ClubMember,
+  Coach,
+  Federation,
+  Sport,
+} from "@/lib/types";
+import {
+  ATHLETE_STATUSES,
+  CLUB_MEMBER_ROLES,
+  COACH_ROLES,
+} from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
@@ -27,7 +54,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { EmptyState } from "@/components/DataTableShell";
+import { AddressSearch } from "@/components/AddressSearch";
+import { PersonCombobox } from "@/components/PersonCombobox";
+import { confirmAction } from "@/components/ConfirmDialog";
 
 export const Route = createFileRoute("/_authenticated/clubs/$id")({
   component: ClubDetailPage,
@@ -40,6 +78,10 @@ type AthleteRow = Athlete & {
 function statusBadge(s: string) {
   const m = ATHLETE_STATUSES.find((x) => x.value === s);
   return <Badge className={`${m?.cls ?? ""} hover:${m?.cls ?? ""}`}>{m?.label ?? s}</Badge>;
+}
+
+function memberRoleLabel(role: string) {
+  return CLUB_MEMBER_ROLES.find((r) => r.value === role)?.label ?? role;
 }
 
 function StatCard({
@@ -77,40 +119,75 @@ function ageOf(birth: string | null) {
   return Math.floor(ms / (365.25 * 24 * 3600 * 1000));
 }
 
+const emptyMember = {
+  first_name: "",
+  last_name: "",
+  role: "president",
+  email: "",
+  phone: "",
+  address: "",
+  start_date: "",
+  end_date: "",
+  notes: "",
+  is_active: true,
+};
+
 function ClubDetailPage() {
   const { id } = Route.useParams();
   const [club, setClub] = useState<Club | null>(null);
   const [fed, setFed] = useState<Federation | null>(null);
   const [coaches, setCoaches] = useState<Coach[]>([]);
   const [athletes, setAthletes] = useState<AthleteRow[]>([]);
+  const [members, setMembers] = useState<ClubMember[]>([]);
   const [, setSports] = useState<Sport[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Add athlete dialog
+  const [athleteOpen, setAthleteOpen] = useState(false);
+  const [athletePool, setAthletePool] = useState<AthleteRow[]>([]);
+  const [selectedAthleteId, setSelectedAthleteId] = useState("");
+  const [athleteSaving, setAthleteSaving] = useState(false);
+
+  // Member dialog
+  const [memberOpen, setMemberOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<ClubMember | null>(null);
+  const [memberForm, setMemberForm] = useState(emptyMember);
+  const [memberSaving, setMemberSaving] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    const cl = await supabase.from("clubs").select("*").eq("id", id).maybeSingle();
+    if (cl.error) toast.error("Erreur de chargement", { description: cl.error.message });
+    const c = (cl.data ?? null) as Club | null;
+    setClub(c);
+    const [f, co, a, sp, m] = await Promise.all([
+      c
+        ? supabase.from("federations").select("*").eq("id", c.federation_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+      supabase.from("coaches").select("*").eq("club_id", id).order("last_name"),
+      supabase
+        .from("athletes")
+        .select("*, primary_sport:sports!athletes_primary_sport_id_fkey(name)")
+        .eq("current_club_id", id)
+        .order("last_name"),
+      supabase.from("sports").select("*"),
+      supabase
+        .from("club_members")
+        .select("*")
+        .eq("club_id", id)
+        .order("created_at", { ascending: false }),
+    ]);
+    setFed(((f as { data: Federation | null }).data ?? null) as Federation | null);
+    setCoaches((co.data ?? []) as Coach[]);
+    setAthletes((a.data ?? []) as AthleteRow[]);
+    setSports((sp.data ?? []) as Sport[]);
+    setMembers((m.data ?? []) as ClubMember[]);
+    setLoading(false);
+  };
+
   useEffect(() => {
-    (async () => {
-      setLoading(true);
-      const cl = await supabase.from("clubs").select("*").eq("id", id).maybeSingle();
-      if (cl.error) toast.error("Erreur de chargement", { description: cl.error.message });
-      const c = (cl.data ?? null) as Club | null;
-      setClub(c);
-      const [f, co, a, sp] = await Promise.all([
-        c
-          ? supabase.from("federations").select("*").eq("id", c.federation_id).maybeSingle()
-          : Promise.resolve({ data: null }),
-        supabase.from("coaches").select("*").eq("club_id", id).order("last_name"),
-        supabase
-          .from("athletes")
-          .select("*, primary_sport:sports!athletes_primary_sport_id_fkey(name)")
-          .eq("current_club_id", id)
-          .order("last_name"),
-        supabase.from("sports").select("*"),
-      ]);
-      setFed(((f as { data: Federation | null }).data ?? null) as Federation | null);
-      setCoaches((co.data ?? []) as Coach[]);
-      setAthletes((a.data ?? []) as AthleteRow[]);
-      setSports((sp.data ?? []) as Sport[]);
-      setLoading(false);
-    })();
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const stats = useMemo(() => {
@@ -127,13 +204,138 @@ function ClubDetailPage() {
     return {
       athletes: athletes.length,
       coaches: coaches.length,
+      members: members.length,
       active,
       male,
       female,
       avgAge,
       sportCounts: Array.from(sportCounts.entries()).sort((a, b) => b[1] - a[1]),
     };
-  }, [athletes, coaches]);
+  }, [athletes, coaches, members]);
+
+  // ---------- Athlete CRUD ----------
+  const openAddAthlete = async () => {
+    setSelectedAthleteId("");
+    setAthleteOpen(true);
+    // Load athletes not yet in this club
+    const { data, error } = await supabase
+      .from("athletes")
+      .select("id, first_name, last_name, current_club_id, cosl_id, gender, birth_date, status, primary_sport:sports!athletes_primary_sport_id_fkey(name)")
+      .or(`current_club_id.is.null,current_club_id.neq.${id}`)
+      .order("last_name");
+    if (error) toast.error("Erreur", { description: error.message });
+    setAthletePool((data ?? []) as unknown as AthleteRow[]);
+  };
+
+  const submitAddAthlete = async () => {
+    if (!selectedAthleteId) {
+      toast.error("Sélectionnez un adhérent");
+      return;
+    }
+    setAthleteSaving(true);
+    const { error } = await supabase
+      .from("athletes")
+      .update({ current_club_id: id })
+      .eq("id", selectedAthleteId);
+    setAthleteSaving(false);
+    if (error) {
+      toast.error("Échec", { description: error.message });
+      return;
+    }
+    toast.success("Adhérent ajouté au club");
+    setAthleteOpen(false);
+    load();
+  };
+
+  const removeAthlete = async (a: AthleteRow) => {
+    const ok = await confirmAction({
+      title: `Retirer ${a.first_name} ${a.last_name} ?`,
+      description: "L'adhérent ne sera plus rattaché à ce club.",
+      confirmLabel: "Retirer",
+      destructive: true,
+    });
+    if (!ok) return;
+    const { error } = await supabase
+      .from("athletes")
+      .update({ current_club_id: null })
+      .eq("id", a.id);
+    if (error) {
+      toast.error("Suppression impossible", { description: error.message });
+    } else {
+      toast.success("Adhérent retiré");
+      load();
+    }
+  };
+
+  // ---------- Member CRUD ----------
+  const openCreateMember = () => {
+    setEditingMember(null);
+    setMemberForm(emptyMember);
+    setMemberOpen(true);
+  };
+  const openEditMember = (m: ClubMember) => {
+    setEditingMember(m);
+    setMemberForm({
+      first_name: m.first_name,
+      last_name: m.last_name,
+      role: m.role,
+      email: m.email ?? "",
+      phone: m.phone ?? "",
+      address: m.address ?? "",
+      start_date: m.start_date ?? "",
+      end_date: m.end_date ?? "",
+      notes: m.notes ?? "",
+      is_active: m.is_active ?? true,
+    });
+    setMemberOpen(true);
+  };
+  const submitMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!memberForm.first_name.trim() || !memberForm.last_name.trim()) {
+      toast.error("Prénom et nom requis");
+      return;
+    }
+    setMemberSaving(true);
+    const payload = {
+      club_id: id,
+      first_name: memberForm.first_name.trim(),
+      last_name: memberForm.last_name.trim(),
+      role: memberForm.role,
+      email: memberForm.email.trim() || null,
+      phone: memberForm.phone.trim() || null,
+      address: memberForm.address.trim() || null,
+      start_date: memberForm.start_date || null,
+      end_date: memberForm.end_date || null,
+      notes: memberForm.notes.trim() || null,
+      is_active: memberForm.is_active,
+    };
+    const { error } = editingMember
+      ? await supabase.from("club_members").update(payload).eq("id", editingMember.id)
+      : await supabase.from("club_members").insert(payload);
+    setMemberSaving(false);
+    if (error) {
+      toast.error("Échec de l'enregistrement", { description: error.message });
+      return;
+    }
+    toast.success(editingMember ? "Membre modifié" : "Membre ajouté");
+    setMemberOpen(false);
+    load();
+  };
+  const removeMember = async (m: ClubMember) => {
+    const ok = await confirmAction({
+      title: `Supprimer ${m.first_name} ${m.last_name} ?`,
+      description: "Ce membre sera retiré du club.",
+      confirmLabel: "Supprimer",
+      destructive: true,
+    });
+    if (!ok) return;
+    const { error } = await supabase.from("club_members").delete().eq("id", m.id);
+    if (error) toast.error("Suppression impossible", { description: error.message });
+    else {
+      toast.success("Membre supprimé");
+      load();
+    }
+  };
 
   if (loading) return <div className="p-6 text-slate-500">Chargement…</div>;
   if (!club) {
@@ -148,6 +350,14 @@ function ClubDetailPage() {
       </div>
     );
   }
+
+  const president =
+    members.find((m) => m.role === "president" && (m.is_active ?? true)) ?? null;
+
+  const athletePoolOptions = athletePool.map((a) => ({
+    id: a.id,
+    label: `${a.first_name} ${a.last_name}${a.cosl_id ? ` (${a.cosl_id})` : ""}`,
+  }));
 
   return (
     <div className="space-y-6">
@@ -184,7 +394,7 @@ function ClubDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
         <StatCard
           icon={Users}
           label="Adhérents"
@@ -192,6 +402,7 @@ function ClubDetailPage() {
           hint={`${stats.active} actif(s)`}
         />
         <StatCard icon={UserCog} label="Encadrement" value={stats.coaches} />
+        <StatCard icon={UserRound} label="Membres" value={stats.members} />
         <StatCard
           icon={Trophy}
           label="Sports"
@@ -212,16 +423,22 @@ function ClubDetailPage() {
           </CardHeader>
           <CardContent className="grid gap-3 text-sm md:grid-cols-2">
             <div>
-              <div className="text-xs uppercase tracking-wide text-slate-500">Adresse</div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">Président</div>
               <div className="text-slate-900">
-                {club.address ?? "—"}
-                {club.city ? `, ${club.city}` : ""}
+                {president ? `${president.first_name} ${president.last_name}` : "—"}
               </div>
             </div>
             <div>
               <div className="text-xs uppercase tracking-wide text-slate-500">Fédération</div>
               <div className="text-slate-900">
                 {fed ? `${fed.acronym} — ${fed.name}` : "—"}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">Adresse</div>
+              <div className="text-slate-900">
+                {club.address ?? "—"}
+                {club.city ? `, ${club.city}` : ""}
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -265,10 +482,17 @@ function ClubDetailPage() {
       <Tabs defaultValue="athletes">
         <TabsList>
           <TabsTrigger value="athletes">Adhérents ({athletes.length})</TabsTrigger>
+          <TabsTrigger value="members">Membres ({members.length})</TabsTrigger>
           <TabsTrigger value="coaches">Encadrement ({coaches.length})</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="athletes" className="mt-4">
+        {/* ============ ATHLETES ============ */}
+        <TabsContent value="athletes" className="mt-4 space-y-3">
+          <div className="flex justify-end">
+            <Button onClick={openAddAthlete} className="bg-indigo-500 hover:bg-indigo-600">
+              <Plus className="mr-2 h-4 w-4" /> Ajouter un adhérent
+            </Button>
+          </div>
           <div className="rounded-lg border border-slate-200 bg-white">
             {athletes.length === 0 ? (
               <div className="p-6">
@@ -283,6 +507,7 @@ function ClubDetailPage() {
                     <TableHead>Âge</TableHead>
                     <TableHead>Statut</TableHead>
                     <TableHead>COSL ID</TableHead>
+                    <TableHead className="w-16 text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -307,6 +532,16 @@ function ClubDetailPage() {
                       <TableCell className="font-mono text-xs text-slate-500">
                         {a.cosl_id || "—"}
                       </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeAthlete(a)}
+                          aria-label="Retirer du club"
+                        >
+                          <UserMinus className="h-4 w-4 text-red-600" />
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -315,6 +550,93 @@ function ClubDetailPage() {
           </div>
         </TabsContent>
 
+        {/* ============ MEMBERS ============ */}
+        <TabsContent value="members" className="mt-4 space-y-3">
+          <div className="flex justify-end">
+            <Button onClick={openCreateMember} className="bg-indigo-500 hover:bg-indigo-600">
+              <Plus className="mr-2 h-4 w-4" /> Ajouter un membre
+            </Button>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-white">
+            {members.length === 0 ? (
+              <div className="p-6">
+                <EmptyState message="Aucun membre enregistré (président, trésorier…)." />
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nom</TableHead>
+                    <TableHead>Fonction</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Téléphone</TableHead>
+                    <TableHead>Mandat</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead className="w-24 text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {members.map((m) => (
+                    <TableRow key={m.id}>
+                      <TableCell className="font-medium">
+                        {m.first_name} {m.last_name}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{memberRoleLabel(m.role)}</Badge>
+                      </TableCell>
+                      <TableCell className="text-slate-600">
+                        {m.email ? (
+                          <a
+                            href={`mailto:${m.email}`}
+                            className="text-indigo-600 hover:underline"
+                          >
+                            {m.email}
+                          </a>
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
+                      <TableCell className="text-slate-600">{m.phone ?? "—"}</TableCell>
+                      <TableCell className="text-xs text-slate-500">
+                        {m.start_date ?? "—"}
+                        {m.end_date ? ` → ${m.end_date}` : ""}
+                      </TableCell>
+                      <TableCell>
+                        {(m.is_active ?? true) ? (
+                          <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                            Actif
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline">Inactif</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openEditMember(m)}
+                          aria-label="Modifier"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeMember(m)}
+                          aria-label="Supprimer"
+                        >
+                          <Trash2 className="h-4 w-4 text-red-600" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* ============ COACHES ============ */}
         <TabsContent value="coaches" className="mt-4">
           <div className="rounded-lg border border-slate-200 bg-white">
             {coaches.length === 0 ? (
@@ -361,6 +683,215 @@ function ClubDetailPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* ============ Add athlete dialog ============ */}
+      <Dialog open={athleteOpen} onOpenChange={setAthleteOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Ajouter un adhérent</DialogTitle>
+            <DialogDescription>
+              Rattacher un athlète existant au club {club.name}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-1.5">
+              <Label>Athlète</Label>
+              <PersonCombobox
+                value={selectedAthleteId}
+                onChange={setSelectedAthleteId}
+                options={athletePoolOptions}
+                placeholder="Choisir un athlète…"
+                searchPlaceholder="Rechercher par nom ou COSL ID…"
+                emptyMessage="Aucun athlète disponible."
+              />
+              <p className="text-xs text-slate-500">
+                Seuls les athlètes sans club ou rattachés à un autre club sont listés.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setAthleteOpen(false)}
+              disabled={athleteSaving}
+            >
+              Annuler
+            </Button>
+            <Button
+              type="button"
+              onClick={submitAddAthlete}
+              disabled={athleteSaving || !selectedAthleteId}
+              className="bg-indigo-500 hover:bg-indigo-600"
+            >
+              {athleteSaving ? "Ajout…" : "Ajouter"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ============ Member dialog ============ */}
+      <Dialog open={memberOpen} onOpenChange={setMemberOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <form onSubmit={submitMember}>
+            <DialogHeader>
+              <DialogTitle>
+                {editingMember ? "Modifier le membre" : "Ajouter un membre"}
+              </DialogTitle>
+              <DialogDescription>
+                Membre du bureau du club {club.name}.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="cmfname">Prénom *</Label>
+                  <Input
+                    id="cmfname"
+                    value={memberForm.first_name}
+                    onChange={(e) =>
+                      setMemberForm({ ...memberForm, first_name: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="cmlname">Nom *</Label>
+                  <Input
+                    id="cmlname"
+                    value={memberForm.last_name}
+                    onChange={(e) =>
+                      setMemberForm({ ...memberForm, last_name: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="cmrole">Fonction *</Label>
+                <Select
+                  value={memberForm.role}
+                  onValueChange={(v) => setMemberForm({ ...memberForm, role: v })}
+                >
+                  <SelectTrigger id="cmrole">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CLUB_MEMBER_ROLES.map((r) => (
+                      <SelectItem key={r.value} value={r.value}>
+                        {r.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="cmemail">Email</Label>
+                  <Input
+                    id="cmemail"
+                    type="email"
+                    value={memberForm.email}
+                    onChange={(e) =>
+                      setMemberForm({ ...memberForm, email: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="cmphone">Téléphone</Label>
+                  <Input
+                    id="cmphone"
+                    value={memberForm.phone}
+                    onChange={(e) =>
+                      setMemberForm({ ...memberForm, phone: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="cmaddr">Adresse</Label>
+                <AddressSearch
+                  id="cmaddr"
+                  value={memberForm.address}
+                  onChange={(v) => setMemberForm({ ...memberForm, address: v })}
+                  onSelect={(r) =>
+                    setMemberForm({ ...memberForm, address: r.display_name })
+                  }
+                  placeholder="Rue, ville, pays…"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="cmstart">Début de mandat</Label>
+                  <Input
+                    id="cmstart"
+                    type="date"
+                    value={memberForm.start_date}
+                    onChange={(e) =>
+                      setMemberForm({ ...memberForm, start_date: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="cmend">Fin de mandat</Label>
+                  <Input
+                    id="cmend"
+                    type="date"
+                    value={memberForm.end_date}
+                    onChange={(e) =>
+                      setMemberForm({ ...memberForm, end_date: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="cmnotes">Notes</Label>
+                <Textarea
+                  id="cmnotes"
+                  rows={3}
+                  value={memberForm.notes}
+                  onChange={(e) =>
+                    setMemberForm({ ...memberForm, notes: e.target.value })
+                  }
+                />
+              </div>
+              <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
+                <Label htmlFor="cmactive" className="cursor-pointer">
+                  Membre actif
+                </Label>
+                <Switch
+                  id="cmactive"
+                  checked={memberForm.is_active}
+                  onCheckedChange={(v) =>
+                    setMemberForm({ ...memberForm, is_active: v })
+                  }
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setMemberOpen(false)}
+                disabled={memberSaving}
+              >
+                Annuler
+              </Button>
+              <Button
+                type="submit"
+                disabled={memberSaving}
+                className="bg-indigo-500 hover:bg-indigo-600"
+              >
+                {memberSaving
+                  ? "Enregistrement…"
+                  : editingMember
+                  ? "Enregistrer"
+                  : "Ajouter"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

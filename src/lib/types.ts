@@ -69,6 +69,32 @@ export const FEDERATION_MEMBER_ROLES = [
   { value: "other", label: "Autre" },
 ] as const;
 
+export type ClubMember = {
+  id: string;
+  club_id: string;
+  first_name: string;
+  last_name: string;
+  role: string;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  notes: string | null;
+  is_active: boolean | null;
+  created_at: string;
+};
+
+export const CLUB_MEMBER_ROLES = [
+  { value: "president", label: "Président" },
+  { value: "vice_president", label: "Vice-président" },
+  { value: "secretary", label: "Secrétaire" },
+  { value: "treasurer", label: "Trésorier" },
+  { value: "board_member", label: "Membre du bureau" },
+  { value: "head_coach", label: "Entraîneur principal" },
+  { value: "other", label: "Autre" },
+] as const;
+
 export type Sport = {
   id: string;
   name: string;
