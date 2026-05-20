@@ -159,22 +159,40 @@ function SelectionsPage() {
       toast.error("Athlète et sport requis"); return;
     }
     setSaving(true);
-    const { error } = await supabase.from("selections").insert({
-      game_id: gameId,
-      athlete_id: form.athlete_id,
-      sport_id: form.sport_id,
-      discipline_id: form.discipline_id || null,
-      status: "pre_selected",
-    });
+    const { error } = editingId
+      ? await supabase.from("selections").update({
+          athlete_id: form.athlete_id,
+          sport_id: form.sport_id,
+          discipline_id: form.discipline_id || null,
+        }).eq("id", editingId)
+      : await supabase.from("selections").insert({
+          game_id: gameId,
+          athlete_id: form.athlete_id,
+          sport_id: form.sport_id,
+          discipline_id: form.discipline_id || null,
+          status: "pre_selected",
+        });
     setSaving(false);
     if (error) {
       toast.error("Échec", { description: error.message });
       return;
     }
-    toast.success("Athlète pré-sélectionné");
+    toast.success(editingId ? "Sélection mise à jour" : "Athlète pré-sélectionné");
     setOpen(false);
+    setEditingId(null);
     setForm({ athlete_id: "", sport_id: "", discipline_id: "" });
     load();
+  };
+
+  const openEdit = (sel: Selection) => {
+    if (sel.is_locked) { toast.error("Sélection verrouillée"); return; }
+    setEditingId(sel.id);
+    setForm({
+      athlete_id: sel.athlete_id,
+      sport_id: sel.sport_id,
+      discipline_id: sel.discipline_id ?? "",
+    });
+    setOpen(true);
   };
 
   const changeStatus = async (sel: Selection, newStatus: string) => {
