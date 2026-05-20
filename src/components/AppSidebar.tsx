@@ -5,6 +5,7 @@ import {
   Building2,
   Shield,
   UserCog,
+  UserRound,
   Trophy,
   BadgeCheck,
   Plane,
