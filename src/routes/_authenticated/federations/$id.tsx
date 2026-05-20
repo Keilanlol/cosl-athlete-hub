@@ -581,15 +581,13 @@ function FederationDetailPage() {
                   {clubs.map((c) => {
                     const n = athletes.filter((a) => a.current_club?.id === c.id).length;
                     return (
-                      <TableRow key={c.id}>
-                        <TableCell className="font-medium">
-                          <Link
-                            to="/clubs/$id"
-                            params={{ id: c.id }}
-                            className="text-indigo-600 hover:underline"
-                          >
-                            {c.name}
-                          </Link>
+                      <TableRow
+                        key={c.id}
+                        onClick={() => navigate({ to: "/clubs/$id", params: { id: c.id } })}
+                        className="cursor-pointer hover:bg-slate-50"
+                      >
+                        <TableCell className="font-medium text-indigo-600">
+                          {c.name}
                         </TableCell>
                         <TableCell className="text-slate-600">{c.city ?? "—"}</TableCell>
                         <TableCell className="text-slate-600">{c.email ?? "—"}</TableCell>
@@ -597,7 +595,7 @@ function FederationDetailPage() {
                         <TableCell className="text-right">
                           <Badge variant="outline">{n}</Badge>
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                           <Button
                             variant="ghost"
                             size="icon"
