@@ -457,7 +457,7 @@ function TransportPage() {
         open={paxOpen}
         onOpenChange={(o) => {
           setPaxOpen(o);
-          if (!o) { setPaxSearch(""); setPaxForm({ kind: "athlete", person_id: "", seat: "" }); }
+          if (!o) { setPaxForm({ kind: "athlete", person_id: "", seat: "" }); }
         }}
       >
         <DialogContent>
