@@ -140,7 +140,7 @@ function FederationDetailPage() {
   const [coaches, setCoaches] = useState<Coach[]>([]);
   const [athletes, setAthletes] = useState<AthleteRow[]>([]);
   const [members, setMembers] = useState<FederationMember[]>([]);
-  const [sports, setSports] = useState<Sport[]>([]);
+  const [, setSports] = useState<Sport[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Club dialog
