@@ -552,15 +552,13 @@ function ClubDetailPage() {
                 </TableHeader>
                 <TableBody>
                   {athletes.map((a) => (
-                    <TableRow key={a.id}>
+                    <TableRow
+                      key={a.id}
+                      onClick={() => navigate({ to: "/athletes/$id", params: { id: a.id } })}
+                      className="cursor-pointer hover:bg-slate-50"
+                    >
                       <TableCell className="font-medium">
-                        <Link
-                          to="/athletes/$id"
-                          params={{ id: a.id }}
-                          className="text-indigo-600 hover:underline"
-                        >
-                          {a.first_name} {a.last_name}
-                        </Link>
+                        {a.first_name} {a.last_name}
                       </TableCell>
                       <TableCell className="text-slate-600">
                         {a.primary_sport?.name ?? "—"}
@@ -572,7 +570,7 @@ function ClubDetailPage() {
                       <TableCell className="font-mono text-xs text-slate-500">
                         {a.cosl_id || "—"}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <Button
                           variant="ghost"
                           size="icon"
