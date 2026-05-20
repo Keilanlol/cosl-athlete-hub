@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Plus, Trash2, X, Pencil, Check, Search } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { confirmAction } from "@/components/ConfirmDialog";
 import {
   type Flight,
   type FlightPassenger,
@@ -219,6 +220,7 @@ function FlightsPage() {
   };
 
   const removePax = async (pid: string) => {
+    if (!(await confirmAction({ title: "Retirer ce passager ?", confirmLabel: "Retirer" }))) return;
     const { error } = await supabase.from("flight_passengers").delete().eq("id", pid);
     if (error) return toast.error("Échec", { description: error.message });
     toast.success("Passager retiré");

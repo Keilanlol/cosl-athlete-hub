@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Plus, Trash2, Settings2, Eye, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { confirmAction } from "@/components/ConfirmDialog";
 import {
   type Game,
   type GameQuota,
@@ -295,6 +296,7 @@ function GameOverviewPage() {
   };
 
   const deleteDiscipline = async (discId: string) => {
+    if (!(await confirmAction({ title: "Supprimer cette discipline ?", confirmLabel: "Supprimer" }))) return;
     const { error } = await supabase.from("disciplines").delete().eq("id", discId);
     if (error) return toast.error("Échec", { description: error.message });
     toast.success("Discipline supprimée");
@@ -302,12 +304,17 @@ function GameOverviewPage() {
   };
 
   const toggleSport = async (gs: GameSport) => {
+    if (gs.is_active) {
+      const ok = await confirmAction({ title: "Désactiver ce sport ?", description: "Le sport ne sera plus actif pour ces Games.", confirmLabel: "Désactiver" });
+      if (!ok) return;
+    }
     const { error } = await supabase.from("game_sports").update({ is_active: !gs.is_active }).eq("id", gs.id);
     if (error) toast.error("Échec", { description: error.message });
     else load();
   };
 
   const removeSport = async (gs: GameSport) => {
+    if (!(await confirmAction({ title: "Retirer ce sport ?", confirmLabel: "Retirer" }))) return;
     const { error } = await supabase.from("game_sports").delete().eq("id", gs.id);
     if (error) toast.error("Échec", { description: error.message });
     else { toast.success("Sport retiré"); load(); }
@@ -336,6 +343,7 @@ function GameOverviewPage() {
   };
 
   const removeQuota = async (q: GameQuota) => {
+    if (!(await confirmAction({ title: "Supprimer ce quota ?", confirmLabel: "Supprimer" }))) return;
     const { error } = await supabase.from("game_quotas").delete().eq("id", q.id);
     if (error) toast.error("Échec", { description: error.message });
     else { toast.success("Quota supprimé"); load(); }

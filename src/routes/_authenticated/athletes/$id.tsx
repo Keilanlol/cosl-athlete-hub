@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Plus, Trash2, Upload, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { confirmAction } from "@/components/ConfirmDialog";
 import {
   ATHLETE_STATUSES,
   COACH_ROLES,
@@ -526,6 +527,7 @@ function AthleteDetailPage() {
   };
 
   const deleteRel = async (relId: string) => {
+    if (!(await confirmAction({ title: "Supprimer cette relation ?", confirmLabel: "Supprimer" }))) return;
     const { error } = await supabase.from("athlete_relations").delete().eq("id", relId);
     if (error) return toast.error("Échec", { description: error.message });
     toast.success("Relation supprimée");

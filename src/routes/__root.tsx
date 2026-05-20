@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-router";
 
 import { Toaster } from "@/components/ui/sonner";
+import { ConfirmHost } from "@/components/ConfirmDialog";
 import { AuthProvider } from "@/contexts/AuthContext";
 
 function NotFoundComponent() {
@@ -75,6 +76,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <Outlet />
+        <ConfirmHost />
         <Toaster richColors position="top-right" />
       </AuthProvider>
     </QueryClientProvider>

@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
+import { confirmAction } from "@/components/ConfirmDialog";
 
 export type EditableOption = { value: string; label: string };
 
@@ -91,6 +92,13 @@ export function EditableSelect({
 
   const handleDelete = async (v: string) => {
     if (!onDelete) return;
+    const opt = options.find((o) => o.value === v);
+    const ok = await confirmAction({
+      title: "Supprimer cet élément ?",
+      description: `Voulez-vous vraiment supprimer « ${opt?.label ?? v} » ?`,
+      confirmLabel: "Supprimer",
+    });
+    if (!ok) return;
     setBusy(true);
     try {
       await onDelete(v);
