@@ -67,6 +67,7 @@ const empty = {
 };
 
 function FederationsPage() {
+  const navigate = useNavigate();
   const [rows, setRows] = useState<Federation[] | null>(null);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
