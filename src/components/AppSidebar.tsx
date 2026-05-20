@@ -39,6 +39,7 @@ const groups: { label: string; items: Item[] }[] = [
       { title: "Fédérations", url: "/federations", icon: Building2 },
       { title: "Clubs", url: "/clubs", icon: Shield },
       { title: "Encadrement", url: "/coaches", icon: UserCog },
+      { title: "Membres", url: "/members", icon: UserRound },
     ],
   },
   {
