@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Plus, Trash2, Pencil, Download, FileText, Check, X, Search } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { confirmAction } from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -205,6 +206,7 @@ function GameAccreditationsPage() {
     setTypeOpen(false); load();
   };
   const removeType = async (t: AccType) => {
+    if (!(await confirmAction({ title: "Supprimer ce type d'accréditation ?", description: `« ${t.code} » sera supprimé.`, confirmLabel: "Supprimer" }))) return;
     const { error } = await supabase.from("accreditation_types").delete().eq("id", t.id);
     if (error) toast.error("Échec", { description: error.message });
     else { toast.success("Type supprimé"); load(); }

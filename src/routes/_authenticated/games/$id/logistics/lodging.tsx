@@ -271,6 +271,7 @@ function LodgingPage() {
 
 
   const removeOccupant = async (occ: RoomingAssignment) => {
+    if (!(await confirmAction({ title: "Retirer cet occupant ?", confirmLabel: "Retirer" }))) return;
     // Si c'est le dernier occupant réel, conserver la chambre en transformant
     // la ligne en placeholder (sans occupant) plutôt que de la supprimer.
     const roomItems = rooms.filter(
