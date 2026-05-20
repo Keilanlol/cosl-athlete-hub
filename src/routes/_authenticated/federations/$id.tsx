@@ -923,6 +923,27 @@ function FederationDetailPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
+              {!editingMember && allPersons.length > 0 && (
+                <div className="space-y-1.5 rounded-md border border-dashed border-slate-300 bg-slate-50 p-3">
+                  <Label className="text-xs uppercase tracking-wide text-slate-500">
+                    Choisir un membre déjà enregistré (optionnel)
+                  </Label>
+                  <PersonCombobox
+                    value={pickedPersonId}
+                    onChange={onPickPerson}
+                    options={allPersons.map((p) => ({
+                      id: p.id,
+                      label: `${p.first_name} ${p.last_name}${p.email ? ` — ${p.email}` : ""}`,
+                    }))}
+                    placeholder="Sélectionner pour pré-remplir…"
+                    searchPlaceholder="Rechercher un membre existant…"
+                    emptyMessage="Aucun membre trouvé."
+                  />
+                  <p className="text-xs text-slate-500">
+                    Ou laissez vide et remplissez les champs ci-dessous pour créer un nouveau membre.
+                  </p>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="mfname">Prénom *</Label>
