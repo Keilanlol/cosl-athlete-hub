@@ -43,6 +43,32 @@ export const COACH_ROLES = [
   { value: "official", label: "Officiel" },
 ] as const;
 
+export type FederationMember = {
+  id: string;
+  federation_id: string;
+  first_name: string;
+  last_name: string;
+  role: string;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  notes: string | null;
+  is_active: boolean | null;
+  created_at: string;
+};
+
+export const FEDERATION_MEMBER_ROLES = [
+  { value: "president", label: "Président" },
+  { value: "vice_president", label: "Vice-président" },
+  { value: "secretary_general", label: "Secrétaire général" },
+  { value: "treasurer", label: "Trésorier" },
+  { value: "board_member", label: "Membre du bureau" },
+  { value: "delegate", label: "Délégué" },
+  { value: "other", label: "Autre" },
+] as const;
+
 export type Sport = {
   id: string;
   name: string;

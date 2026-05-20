@@ -1,13 +1,49 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Building2, Users, Shield, UserCog, Mail, Phone, Globe, Trophy } from "lucide-react";
+import {
+  ArrowLeft,
+  Building2,
+  Users,
+  Shield,
+  UserCog,
+  Mail,
+  Phone,
+  Globe,
+  Trophy,
+  Plus,
+  Pencil,
+  Trash2,
+  UserRound,
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import type { Athlete, Club, Coach, Federation, Sport } from "@/lib/types";
-import { ATHLETE_STATUSES, COACH_ROLES } from "@/lib/types";
+import type {
+  Athlete,
+  Club,
+  Coach,
+  Federation,
+  FederationMember,
+  Sport,
+} from "@/lib/types";
+import {
+  ATHLETE_STATUSES,
+  COACH_ROLES,
+  FEDERATION_MEMBER_ROLES,
+} from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
@@ -17,7 +53,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { EmptyState } from "@/components/DataTableShell";
+import { AddressSearch } from "@/components/AddressSearch";
+import { confirmAction } from "@/components/ConfirmDialog";
 
 export const Route = createFileRoute("/_authenticated/federations/$id")({
   component: FederationDetailPage,
@@ -31,6 +77,10 @@ type AthleteRow = Athlete & {
 function statusBadge(s: string) {
   const m = ATHLETE_STATUSES.find((x) => x.value === s);
   return <Badge className={`${m?.cls ?? ""} hover:${m?.cls ?? ""}`}>{m?.label ?? s}</Badge>;
+}
+
+function memberRoleLabel(role: string) {
+  return FEDERATION_MEMBER_ROLES.find((r) => r.value === role)?.label ?? role;
 }
 
 function StatCard({
@@ -60,40 +110,113 @@ function StatCard({
   );
 }
 
+// ---------- Club form ----------
+const emptyClub = {
+  name: "",
+  city: "",
+  address: "",
+  email: "",
+  phone: "",
+};
+
+// ---------- Member form ----------
+const emptyMember = {
+  first_name: "",
+  last_name: "",
+  role: "president",
+  email: "",
+  phone: "",
+  address: "",
+  start_date: "",
+  end_date: "",
+  notes: "",
+  is_active: true,
+};
+
 function FederationDetailPage() {
   const { id } = Route.useParams();
   const [fed, setFed] = useState<Federation | null>(null);
   const [clubs, setClubs] = useState<Club[]>([]);
   const [coaches, setCoaches] = useState<Coach[]>([]);
   const [athletes, setAthletes] = useState<AthleteRow[]>([]);
-  const [sports, setSports] = useState<Sport[]>([]);
+  const [members, setMembers] = useState<FederationMember[]>([]);
+  const [, setSports] = useState<Sport[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Club dialog
+  const [clubOpen, setClubOpen] = useState(false);
+  const [editingClub, setEditingClub] = useState<Club | null>(null);
+  const [clubForm, setClubForm] = useState(emptyClub);
+  const [clubSaving, setClubSaving] = useState(false);
+
+  // Member dialog
+  const [memberOpen, setMemberOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<FederationMember | null>(null);
+  const [memberForm, setMemberForm] = useState(emptyMember);
+  const [memberSaving, setMemberSaving] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    // First load federation + clubs to know which clubs belong
+    const [f, c, sp, m] = await Promise.all([
+      supabase.from("federations").select("*").eq("id", id).maybeSingle(),
+      supabase.from("clubs").select("*").eq("federation_id", id).order("name"),
+      supabase.from("sports").select("*"),
+      supabase
+        .from("federation_members")
+        .select("*")
+        .eq("federation_id", id)
+        .order("created_at", { ascending: false }),
+    ]);
+    if (f.error) toast.error("Erreur de chargement", { description: f.error.message });
+    setFed((f.data ?? null) as Federation | null);
+    const clubsData = (c.data ?? []) as Club[];
+    setClubs(clubsData);
+    setSports((sp.data ?? []) as Sport[]);
+    setMembers((m.data ?? []) as FederationMember[]);
+
+    const clubIds = clubsData.map((cl) => cl.id);
+    // Athletes: those rattached to fed OR member of one of its clubs
+    const athletesQuery = supabase
+      .from("athletes")
+      .select(
+        "*, primary_sport:sports!athletes_primary_sport_id_fkey(name), current_club:clubs!athletes_current_club_id_fkey(id,name)",
+      )
+      .order("last_name");
+    if (clubIds.length > 0) {
+      athletesQuery.or(
+        `primary_federation_id.eq.${id},current_club_id.in.(${clubIds.join(",")})`,
+      );
+    } else {
+      athletesQuery.eq("primary_federation_id", id);
+    }
+
+    // Coaches: those of the fed OR of one of its clubs
+    const coachesQuery = supabase.from("coaches").select("*").order("last_name");
+    if (clubIds.length > 0) {
+      coachesQuery.or(
+        `federation_id.eq.${id},club_id.in.(${clubIds.join(",")})`,
+      );
+    } else {
+      coachesQuery.eq("federation_id", id);
+    }
+
+    const [a, co] = await Promise.all([athletesQuery, coachesQuery]);
+    setAthletes((a.data ?? []) as AthleteRow[]);
+    setCoaches((co.data ?? []) as Coach[]);
+    setLoading(false);
+  };
+
   useEffect(() => {
-    (async () => {
-      setLoading(true);
-      const [f, c, co, a, sp] = await Promise.all([
-        supabase.from("federations").select("*").eq("id", id).maybeSingle(),
-        supabase.from("clubs").select("*").eq("federation_id", id).order("name"),
-        supabase.from("coaches").select("*").eq("federation_id", id).order("last_name"),
-        supabase
-          .from("athletes")
-          .select(
-            "*, primary_sport:sports!athletes_primary_sport_id_fkey(name), current_club:clubs!athletes_current_club_id_fkey(id,name)",
-          )
-          .eq("primary_federation_id", id)
-          .order("last_name"),
-        supabase.from("sports").select("*"),
-      ]);
-      if (f.error) toast.error("Erreur de chargement", { description: f.error.message });
-      setFed((f.data ?? null) as Federation | null);
-      setClubs((c.data ?? []) as Club[]);
-      setCoaches((co.data ?? []) as Coach[]);
-      setAthletes((a.data ?? []) as AthleteRow[]);
-      setSports((sp.data ?? []) as Sport[]);
-      setLoading(false);
-    })();
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  const clubMap = useMemo(() => {
+    const m = new Map<string, Club>();
+    clubs.forEach((c) => m.set(c.id, c));
+    return m;
+  }, [clubs]);
 
   const stats = useMemo(() => {
     const active = athletes.filter((a) => a.status === "active").length;
@@ -106,10 +229,149 @@ function FederationDetailPage() {
       clubs: clubs.length,
       coaches: coaches.length,
       athletes: athletes.length,
+      members: members.length,
       active,
       sportCounts: Array.from(sportCounts.entries()).sort((a, b) => b[1] - a[1]),
     };
-  }, [clubs, coaches, athletes]);
+  }, [clubs, coaches, athletes, members]);
+
+  // ---------- Club CRUD ----------
+  const openCreateClub = () => {
+    setEditingClub(null);
+    setClubForm(emptyClub);
+    setClubOpen(true);
+  };
+  const openEditClub = (c: Club) => {
+    setEditingClub(c);
+    setClubForm({
+      name: c.name,
+      city: c.city ?? "",
+      address: c.address ?? "",
+      email: c.email ?? "",
+      phone: c.phone ?? "",
+    });
+    setClubOpen(true);
+  };
+  const submitClub = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!clubForm.name.trim()) {
+      toast.error("Nom requis");
+      return;
+    }
+    setClubSaving(true);
+    const payload = {
+      name: clubForm.name.trim(),
+      federation_id: id,
+      city: clubForm.city.trim() || null,
+      address: clubForm.address.trim() || null,
+      email: clubForm.email.trim() || null,
+      phone: clubForm.phone.trim() || null,
+    };
+    const { error } = editingClub
+      ? await supabase.from("clubs").update(payload).eq("id", editingClub.id)
+      : await supabase.from("clubs").insert(payload);
+    setClubSaving(false);
+    if (error) {
+      toast.error("Échec de l'enregistrement", { description: error.message });
+      return;
+    }
+    toast.success(editingClub ? "Club modifié" : "Club ajouté");
+    setClubOpen(false);
+    load();
+  };
+  const removeClub = async (c: Club) => {
+    const ok = await confirmAction({
+      title: `Retirer ${c.name} ?`,
+      description:
+        "Le club sera supprimé de la fédération. Cette action est irréversible.",
+      confirmLabel: "Retirer",
+      destructive: true,
+    });
+    if (!ok) return;
+    const { error } = await supabase.from("clubs").delete().eq("id", c.id);
+    if (error) {
+      toast.error("Suppression impossible", { description: error.message });
+    } else {
+      toast.success("Club retiré");
+      load();
+    }
+  };
+
+  // ---------- Member CRUD ----------
+  const openCreateMember = () => {
+    setEditingMember(null);
+    setMemberForm(emptyMember);
+    setMemberOpen(true);
+  };
+  const openEditMember = (m: FederationMember) => {
+    setEditingMember(m);
+    setMemberForm({
+      first_name: m.first_name,
+      last_name: m.last_name,
+      role: m.role,
+      email: m.email ?? "",
+      phone: m.phone ?? "",
+      address: m.address ?? "",
+      start_date: m.start_date ?? "",
+      end_date: m.end_date ?? "",
+      notes: m.notes ?? "",
+      is_active: m.is_active ?? true,
+    });
+    setMemberOpen(true);
+  };
+  const submitMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!memberForm.first_name.trim() || !memberForm.last_name.trim()) {
+      toast.error("Prénom et nom requis");
+      return;
+    }
+    setMemberSaving(true);
+    const payload = {
+      federation_id: id,
+      first_name: memberForm.first_name.trim(),
+      last_name: memberForm.last_name.trim(),
+      role: memberForm.role,
+      email: memberForm.email.trim() || null,
+      phone: memberForm.phone.trim() || null,
+      address: memberForm.address.trim() || null,
+      start_date: memberForm.start_date || null,
+      end_date: memberForm.end_date || null,
+      notes: memberForm.notes.trim() || null,
+      is_active: memberForm.is_active,
+    };
+    const { error } = editingMember
+      ? await supabase
+          .from("federation_members")
+          .update(payload)
+          .eq("id", editingMember.id)
+      : await supabase.from("federation_members").insert(payload);
+    setMemberSaving(false);
+    if (error) {
+      toast.error("Échec de l'enregistrement", { description: error.message });
+      return;
+    }
+    toast.success(editingMember ? "Membre modifié" : "Membre ajouté");
+    setMemberOpen(false);
+    load();
+  };
+  const removeMember = async (m: FederationMember) => {
+    const ok = await confirmAction({
+      title: `Supprimer ${m.first_name} ${m.last_name} ?`,
+      description: "Ce membre sera retiré de la fédération.",
+      confirmLabel: "Supprimer",
+      destructive: true,
+    });
+    if (!ok) return;
+    const { error } = await supabase
+      .from("federation_members")
+      .delete()
+      .eq("id", m.id);
+    if (error) toast.error("Suppression impossible", { description: error.message });
+    else {
+      toast.success("Membre supprimé");
+      load();
+    }
+  };
 
   if (loading) {
     return <div className="p-6 text-slate-500">Chargement…</div>;
@@ -126,6 +388,10 @@ function FederationDetailPage() {
       </div>
     );
   }
+
+  // President from members table, fallback to fed.president_name
+  const president =
+    members.find((m) => m.role === "president" && (m.is_active ?? true)) ?? null;
 
   return (
     <div className="space-y-6">
@@ -162,18 +428,19 @@ function FederationDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
         <StatCard icon={Shield} label="Clubs" value={stats.clubs} />
         <StatCard
           icon={Users}
-          label="Athlètes"
+          label="Adhérents"
           value={stats.athletes}
           hint={`${stats.active} actif(s)`}
         />
-        <StatCard icon={UserCog} label="Encadrement" value={stats.coaches} />
+        <StatCard icon={UserCog} label="Encadrants" value={stats.coaches} />
+        <StatCard icon={UserRound} label="Membres" value={stats.members} />
         <StatCard
           icon={Trophy}
-          label="Sports représentés"
+          label="Sports"
           value={stats.sportCounts.length}
         />
       </div>
@@ -186,7 +453,11 @@ function FederationDetailPage() {
           <CardContent className="grid gap-3 text-sm md:grid-cols-2">
             <div>
               <div className="text-xs uppercase tracking-wide text-slate-500">Président</div>
-              <div className="text-slate-900">{fed.president_name ?? "—"}</div>
+              <div className="text-slate-900">
+                {president
+                  ? `${president.first_name} ${president.last_name}`
+                  : fed.president_name ?? "—"}
+              </div>
             </div>
             <div>
               <div className="text-xs uppercase tracking-wide text-slate-500">
@@ -235,11 +506,18 @@ function FederationDetailPage() {
       <Tabs defaultValue="clubs">
         <TabsList>
           <TabsTrigger value="clubs">Clubs ({clubs.length})</TabsTrigger>
-          <TabsTrigger value="athletes">Athlètes ({athletes.length})</TabsTrigger>
-          <TabsTrigger value="coaches">Encadrement ({coaches.length})</TabsTrigger>
+          <TabsTrigger value="athletes">Adhérents ({athletes.length})</TabsTrigger>
+          <TabsTrigger value="members">Membres ({members.length})</TabsTrigger>
+          <TabsTrigger value="coaches">Encadrants ({coaches.length})</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="clubs" className="mt-4">
+        {/* ============ CLUBS ============ */}
+        <TabsContent value="clubs" className="mt-4 space-y-3">
+          <div className="flex justify-end">
+            <Button onClick={openCreateClub} className="bg-indigo-500 hover:bg-indigo-600">
+              <Plus className="mr-2 h-4 w-4" /> Ajouter un club
+            </Button>
+          </div>
           <div className="rounded-lg border border-slate-200 bg-white">
             {clubs.length === 0 ? (
               <div className="p-6">
@@ -253,14 +531,15 @@ function FederationDetailPage() {
                     <TableHead>Ville</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Téléphone</TableHead>
-                    <TableHead className="text-right">Athlètes</TableHead>
+                    <TableHead className="text-right">Adhérents</TableHead>
+                    <TableHead className="w-24 text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {clubs.map((c) => {
                     const n = athletes.filter((a) => a.current_club?.id === c.id).length;
                     return (
-                      <TableRow key={c.id} className="cursor-pointer">
+                      <TableRow key={c.id}>
                         <TableCell className="font-medium">
                           <Link
                             to="/clubs/$id"
@@ -276,6 +555,24 @@ function FederationDetailPage() {
                         <TableCell className="text-right">
                           <Badge variant="outline">{n}</Badge>
                         </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openEditClub(c)}
+                            aria-label="Modifier"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeClub(c)}
+                            aria-label="Retirer"
+                          >
+                            <Trash2 className="h-4 w-4 text-red-600" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     );
                   })}
@@ -285,11 +582,12 @@ function FederationDetailPage() {
           </div>
         </TabsContent>
 
+        {/* ============ ATHLETES (Adhérents) ============ */}
         <TabsContent value="athletes" className="mt-4">
           <div className="rounded-lg border border-slate-200 bg-white">
             {athletes.length === 0 ? (
               <div className="p-6">
-                <EmptyState message="Aucun athlète rattaché." />
+                <EmptyState message="Aucun adhérent dans les clubs de cette fédération." />
               </div>
             ) : (
               <Table>
@@ -332,6 +630,93 @@ function FederationDetailPage() {
           </div>
         </TabsContent>
 
+        {/* ============ MEMBERS ============ */}
+        <TabsContent value="members" className="mt-4 space-y-3">
+          <div className="flex justify-end">
+            <Button onClick={openCreateMember} className="bg-indigo-500 hover:bg-indigo-600">
+              <Plus className="mr-2 h-4 w-4" /> Ajouter un membre
+            </Button>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-white">
+            {members.length === 0 ? (
+              <div className="p-6">
+                <EmptyState message="Aucun membre enregistré (président, trésorier…)." />
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nom</TableHead>
+                    <TableHead>Fonction</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Téléphone</TableHead>
+                    <TableHead>Mandat</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead className="w-24 text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {members.map((m) => (
+                    <TableRow key={m.id}>
+                      <TableCell className="font-medium">
+                        {m.first_name} {m.last_name}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{memberRoleLabel(m.role)}</Badge>
+                      </TableCell>
+                      <TableCell className="text-slate-600">
+                        {m.email ? (
+                          <a
+                            href={`mailto:${m.email}`}
+                            className="text-indigo-600 hover:underline"
+                          >
+                            {m.email}
+                          </a>
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
+                      <TableCell className="text-slate-600">{m.phone ?? "—"}</TableCell>
+                      <TableCell className="text-xs text-slate-500">
+                        {m.start_date ?? "—"}
+                        {m.end_date ? ` → ${m.end_date}` : ""}
+                      </TableCell>
+                      <TableCell>
+                        {(m.is_active ?? true) ? (
+                          <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                            Actif
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline">Inactif</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openEditMember(m)}
+                          aria-label="Modifier"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeMember(m)}
+                          aria-label="Supprimer"
+                        >
+                          <Trash2 className="h-4 w-4 text-red-600" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* ============ COACHES ============ */}
         <TabsContent value="coaches" className="mt-4">
           <div className="rounded-lg border border-slate-200 bg-white">
             {coaches.length === 0 ? (
@@ -344,6 +729,7 @@ function FederationDetailPage() {
                   <TableRow>
                     <TableHead>Nom</TableHead>
                     <TableHead>Rôle</TableHead>
+                    <TableHead>Club</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Téléphone</TableHead>
                     <TableHead>Statut</TableHead>
@@ -352,12 +738,26 @@ function FederationDetailPage() {
                 <TableBody>
                   {coaches.map((c) => {
                     const role = COACH_ROLES.find((r) => r.value === c.role)?.label ?? c.role;
+                    const club = c.club_id ? clubMap.get(c.club_id) : null;
                     return (
                       <TableRow key={c.id}>
                         <TableCell className="font-medium">
                           {c.first_name} {c.last_name}
                         </TableCell>
                         <TableCell className="text-slate-600">{role}</TableCell>
+                        <TableCell className="text-slate-600">
+                          {club ? (
+                            <Link
+                              to="/clubs/$id"
+                              params={{ id: club.id }}
+                              className="text-indigo-600 hover:underline"
+                            >
+                              {club.name}
+                            </Link>
+                          ) : (
+                            "—"
+                          )}
+                        </TableCell>
                         <TableCell className="text-slate-600">{c.email ?? "—"}</TableCell>
                         <TableCell className="text-slate-600">{c.phone ?? "—"}</TableCell>
                         <TableCell>
@@ -378,6 +778,251 @@ function FederationDetailPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* ============ Club dialog ============ */}
+      <Dialog open={clubOpen} onOpenChange={setClubOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <form onSubmit={submitClub}>
+            <DialogHeader>
+              <DialogTitle>
+                {editingClub ? "Modifier le club" : "Ajouter un club"}
+              </DialogTitle>
+              <DialogDescription>
+                Le club sera rattaché à la fédération {fed.acronym}.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="fcname">Nom *</Label>
+                <Input
+                  id="fcname"
+                  value={clubForm.name}
+                  onChange={(e) => setClubForm({ ...clubForm, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="fccity">Ville</Label>
+                  <Input
+                    id="fccity"
+                    value={clubForm.city}
+                    onChange={(e) => setClubForm({ ...clubForm, city: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="fcphone">Téléphone</Label>
+                  <Input
+                    id="fcphone"
+                    value={clubForm.phone}
+                    onChange={(e) => setClubForm({ ...clubForm, phone: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="fcaddr">Adresse</Label>
+                <AddressSearch
+                  id="fcaddr"
+                  value={clubForm.address}
+                  onChange={(v) => setClubForm({ ...clubForm, address: v })}
+                  onSelect={(r) => setClubForm({ ...clubForm, address: r.display_name })}
+                  placeholder="Rue, ville, pays…"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="fcemail">Email</Label>
+                <Input
+                  id="fcemail"
+                  type="email"
+                  value={clubForm.email}
+                  onChange={(e) => setClubForm({ ...clubForm, email: e.target.value })}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setClubOpen(false)}
+                disabled={clubSaving}
+              >
+                Annuler
+              </Button>
+              <Button
+                type="submit"
+                disabled={clubSaving}
+                className="bg-indigo-500 hover:bg-indigo-600"
+              >
+                {clubSaving ? "Enregistrement…" : editingClub ? "Enregistrer" : "Ajouter"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ============ Member dialog ============ */}
+      <Dialog open={memberOpen} onOpenChange={setMemberOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <form onSubmit={submitMember}>
+            <DialogHeader>
+              <DialogTitle>
+                {editingMember ? "Modifier le membre" : "Ajouter un membre"}
+              </DialogTitle>
+              <DialogDescription>
+                Membre du bureau de la fédération {fed.acronym}.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="mfname">Prénom *</Label>
+                  <Input
+                    id="mfname"
+                    value={memberForm.first_name}
+                    onChange={(e) =>
+                      setMemberForm({ ...memberForm, first_name: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="mlname">Nom *</Label>
+                  <Input
+                    id="mlname"
+                    value={memberForm.last_name}
+                    onChange={(e) =>
+                      setMemberForm({ ...memberForm, last_name: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="mrole">Fonction *</Label>
+                <Select
+                  value={memberForm.role}
+                  onValueChange={(v) => setMemberForm({ ...memberForm, role: v })}
+                >
+                  <SelectTrigger id="mrole">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FEDERATION_MEMBER_ROLES.map((r) => (
+                      <SelectItem key={r.value} value={r.value}>
+                        {r.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="memail">Email</Label>
+                  <Input
+                    id="memail"
+                    type="email"
+                    value={memberForm.email}
+                    onChange={(e) =>
+                      setMemberForm({ ...memberForm, email: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="mphone">Téléphone</Label>
+                  <Input
+                    id="mphone"
+                    value={memberForm.phone}
+                    onChange={(e) =>
+                      setMemberForm({ ...memberForm, phone: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="maddr">Adresse</Label>
+                <AddressSearch
+                  id="maddr"
+                  value={memberForm.address}
+                  onChange={(v) => setMemberForm({ ...memberForm, address: v })}
+                  onSelect={(r) =>
+                    setMemberForm({ ...memberForm, address: r.display_name })
+                  }
+                  placeholder="Rue, ville, pays…"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="mstart">Début de mandat</Label>
+                  <Input
+                    id="mstart"
+                    type="date"
+                    value={memberForm.start_date}
+                    onChange={(e) =>
+                      setMemberForm({ ...memberForm, start_date: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="mend">Fin de mandat</Label>
+                  <Input
+                    id="mend"
+                    type="date"
+                    value={memberForm.end_date}
+                    onChange={(e) =>
+                      setMemberForm({ ...memberForm, end_date: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="mnotes">Notes</Label>
+                <Textarea
+                  id="mnotes"
+                  rows={3}
+                  value={memberForm.notes}
+                  onChange={(e) =>
+                    setMemberForm({ ...memberForm, notes: e.target.value })
+                  }
+                />
+              </div>
+              <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
+                <Label htmlFor="mactive" className="cursor-pointer">
+                  Membre actif
+                </Label>
+                <Switch
+                  id="mactive"
+                  checked={memberForm.is_active}
+                  onCheckedChange={(v) =>
+                    setMemberForm({ ...memberForm, is_active: v })
+                  }
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setMemberOpen(false)}
+                disabled={memberSaving}
+              >
+                Annuler
+              </Button>
+              <Button
+                type="submit"
+                disabled={memberSaving}
+                className="bg-indigo-500 hover:bg-indigo-600"
+              >
+                {memberSaving
+                  ? "Enregistrement…"
+                  : editingMember
+                  ? "Enregistrer"
+                  : "Ajouter"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
