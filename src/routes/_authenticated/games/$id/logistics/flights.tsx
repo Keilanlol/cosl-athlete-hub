@@ -248,14 +248,10 @@ function FlightsPage() {
   };
 
   const personOptions = useMemo(() => {
-    const q = paxSearch.trim().toLowerCase();
-    const list =
-      paxForm.kind === "athlete"
-        ? athletes.map((a) => ({ id: a.id, label: `${a.last_name} ${a.first_name}` }))
-        : coaches.map((c) => ({ id: c.id, label: `${c.last_name} ${c.first_name}` }));
-    if (!q) return list;
-    return list.filter((p) => p.label.toLowerCase().includes(q));
-  }, [paxForm.kind, athletes, coaches, paxSearch]);
+    return paxForm.kind === "athlete"
+      ? athletes.map((a) => ({ id: a.id, label: `${a.last_name} ${a.first_name}` }))
+      : coaches.map((c) => ({ id: c.id, label: `${c.last_name} ${c.first_name}` }));
+  }, [paxForm.kind, athletes, coaches]);
 
   const filteredFlights = useMemo(() => {
     const q = search.trim().toLowerCase();
