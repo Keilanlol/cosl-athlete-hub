@@ -77,6 +77,7 @@ const empty = {
 };
 
 function GamesListPage() {
+  const navigate = useNavigate();
   const [rows, setRows] = useState<Game[] | null>(null);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
