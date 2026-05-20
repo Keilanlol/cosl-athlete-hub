@@ -124,11 +124,19 @@ function SelectionsPage() {
   const selectedCount = (rows ?? []).filter((r) => r.status === "selected").length;
   const pct = quotaSum > 0 ? Math.min(100, (selectedCount / quotaSum) * 100) : 0;
 
+  const gameSports = useMemo(
+    () => sports.filter((s) => gameSportIds.includes(s.id)),
+    [sports, gameSportIds],
+  );
+
   const availableAthletes = useMemo(() => {
     const used = new Set((rows ?? []).map((r) => r.athlete_id));
-    const q = "";
-    return athletes.filter((a) => !used.has(a.id) || form.athlete_id === a.id).slice(0, 200).filter(() => q || true);
-  }, [athletes, rows, form.athlete_id]);
+    const sportSet = new Set(gameSportIds);
+    return athletes
+      .filter((a) => !used.has(a.id) || form.athlete_id === a.id)
+      .filter((a) => a.primary_sport_id && sportSet.has(a.primary_sport_id))
+      .slice(0, 200);
+  }, [athletes, rows, form.athlete_id, gameSportIds]);
 
   const formDisciplines = useMemo(
     () => disciplines.filter((d) => d.sport_id === form.sport_id),
