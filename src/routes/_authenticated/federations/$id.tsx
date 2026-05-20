@@ -659,7 +659,13 @@ function FederationDetailPage() {
                   {members.map((m) => (
                     <TableRow key={m.id}>
                       <TableCell className="font-medium">
-                        {m.first_name} {m.last_name}
+                        <Link
+                          to="/federations/members/$memberId"
+                          params={{ memberId: m.id }}
+                          className="text-indigo-600 hover:underline"
+                        >
+                          {m.first_name} {m.last_name}
+                        </Link>
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">{memberRoleLabel(m.role)}</Badge>
@@ -742,7 +748,13 @@ function FederationDetailPage() {
                     return (
                       <TableRow key={c.id}>
                         <TableCell className="font-medium">
-                          {c.first_name} {c.last_name}
+                          <Link
+                            to="/coaches/$id"
+                            params={{ id: c.id }}
+                            className="text-indigo-600 hover:underline"
+                          >
+                            {c.first_name} {c.last_name}
+                          </Link>
                         </TableCell>
                         <TableCell className="text-slate-600">{role}</TableCell>
                         <TableCell className="text-slate-600">

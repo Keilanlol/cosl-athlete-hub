@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Pencil, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
@@ -344,7 +344,11 @@ function CoachesPage() {
                 return (
                   <TableRow key={c.id}>
                     <TableCell>{c.first_name}</TableCell>
-                    <TableCell className="font-medium">{c.last_name}</TableCell>
+                    <TableCell className="font-medium">
+                      <Link to="/coaches/$id" params={{ id: c.id }} className="text-indigo-600 hover:underline">
+                        {c.last_name}
+                      </Link>
+                    </TableCell>
                     <TableCell className="text-slate-600">{c.email ?? "—"}</TableCell>
                     <TableCell className="text-slate-600">{c.phone ?? "—"}</TableCell>
                     <TableCell>
