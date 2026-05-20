@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Search, Lock } from "lucide-react";
+import { Plus, Search, Lock, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -69,6 +69,7 @@ function SelectionsPage() {
   const [kycFilter, setKycFilter] = useState("all");
 
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [form, setForm] = useState({ athlete_id: "", sport_id: "", discipline_id: "" });
   const [saving, setSaving] = useState(false);
@@ -158,22 +159,40 @@ function SelectionsPage() {
       toast.error("Athlète et sport requis"); return;
     }
     setSaving(true);
-    const { error } = await supabase.from("selections").insert({
-      game_id: gameId,
-      athlete_id: form.athlete_id,
-      sport_id: form.sport_id,
-      discipline_id: form.discipline_id || null,
-      status: "pre_selected",
-    });
+    const { error } = editingId
+      ? await supabase.from("selections").update({
+          athlete_id: form.athlete_id,
+          sport_id: form.sport_id,
+          discipline_id: form.discipline_id || null,
+        }).eq("id", editingId)
+      : await supabase.from("selections").insert({
+          game_id: gameId,
+          athlete_id: form.athlete_id,
+          sport_id: form.sport_id,
+          discipline_id: form.discipline_id || null,
+          status: "pre_selected",
+        });
     setSaving(false);
     if (error) {
       toast.error("Échec", { description: error.message });
       return;
     }
-    toast.success("Athlète pré-sélectionné");
+    toast.success(editingId ? "Sélection mise à jour" : "Athlète pré-sélectionné");
     setOpen(false);
+    setEditingId(null);
     setForm({ athlete_id: "", sport_id: "", discipline_id: "" });
     load();
+  };
+
+  const openEdit = (sel: Selection) => {
+    if (sel.is_locked) { toast.error("Sélection verrouillée"); return; }
+    setEditingId(sel.id);
+    setForm({
+      athlete_id: sel.athlete_id,
+      sport_id: sel.sport_id,
+      discipline_id: sel.discipline_id ?? "",
+    });
+    setOpen(true);
   };
 
   const changeStatus = async (sel: Selection, newStatus: string) => {
@@ -242,7 +261,7 @@ function SelectionsPage() {
             <SelectItem value="red">Invalide</SelectItem>
           </SelectContent>
         </Select>
-        <Button onClick={() => setOpen(true)} className="ml-auto bg-indigo-500 hover:bg-indigo-600">
+        <Button onClick={() => { setEditingId(null); setForm({ athlete_id: "", sport_id: "", discipline_id: "" }); setOpen(true); }} className="ml-auto bg-indigo-500 hover:bg-indigo-600">
           <Plus className="mr-2 h-4 w-4" /> Ajouter une sélection
         </Button>
       </div>
@@ -293,14 +312,19 @@ function SelectionsPage() {
                           <Lock className="mr-1 h-3 w-3" /> Verrouillé
                         </span>
                       ) : (
-                        <Select value={r.status} onValueChange={(v) => changeStatus(r, v)}>
-                          <SelectTrigger className="ml-auto h-8 w-40"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {SELECTION_STATUSES.map((s) => (
-                              <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <div className="flex items-center justify-end gap-2">
+                          <Select value={r.status} onValueChange={(v) => changeStatus(r, v)}>
+                            <SelectTrigger className="h-8 w-40"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {SELECTION_STATUSES.map((s) => (
+                                <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(r)} title="Modifier">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </div>
                       )}
                     </TableCell>
                   </TableRow>
@@ -311,12 +335,12 @@ function SelectionsPage() {
         )}
       </div>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setEditingId(null); setForm({ athlete_id: "", sport_id: "", discipline_id: "" }); } }}>
         <DialogContent>
           <form onSubmit={submit}>
             <DialogHeader>
-              <DialogTitle>Ajouter une sélection</DialogTitle>
-              <DialogDescription>L'athlète sera créé en statut Pré-sélectionné.</DialogDescription>
+              <DialogTitle>{editingId ? "Modifier la sélection" : "Ajouter une sélection"}</DialogTitle>
+              <DialogDescription>{editingId ? "Modifiez l'athlète, le sport ou la discipline." : "L'athlète sera créé en statut Pré-sélectionné."}</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="space-y-1.5">
@@ -378,7 +402,7 @@ function SelectionsPage() {
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
               <Button type="submit" disabled={saving} className="bg-indigo-500 hover:bg-indigo-600">
-                {saving ? "Enregistrement…" : "Ajouter"}
+                {saving ? "Enregistrement…" : editingId ? "Enregistrer" : "Ajouter"}
               </Button>
             </DialogFooter>
           </form>
