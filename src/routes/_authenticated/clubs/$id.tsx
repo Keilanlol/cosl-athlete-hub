@@ -617,20 +617,18 @@ function ClubDetailPage() {
                 </TableHeader>
                 <TableBody>
                   {members.map((m) => (
-                    <TableRow key={m.id}>
-                      <TableCell className="font-medium">
-                        <Link
-                          to="/clubs/members/$memberId"
-                          params={{ memberId: m.id }}
-                          className="text-indigo-600 hover:underline"
-                        >
-                          {m.first_name} {m.last_name}
-                        </Link>
+                    <TableRow
+                      key={m.id}
+                      onClick={() => navigate({ to: "/clubs/members/$memberId", params: { memberId: m.id } })}
+                      className="cursor-pointer hover:bg-slate-50"
+                    >
+                      <TableCell className="font-medium text-indigo-600">
+                        {m.first_name} {m.last_name}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">{memberRoleLabel(m.role)}</Badge>
                       </TableCell>
-                      <TableCell className="text-slate-600">
+                      <TableCell className="text-slate-600" onClick={(e) => e.stopPropagation()}>
                         {m.email ? (
                           <a
                             href={`mailto:${m.email}`}
@@ -656,7 +654,7 @@ function ClubDetailPage() {
                           <Badge variant="outline">Inactif</Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <Button
                           variant="ghost"
                           size="icon"
