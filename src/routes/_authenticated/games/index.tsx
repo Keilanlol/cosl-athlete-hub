@@ -306,16 +306,13 @@ function GamesListPage() {
                 const t = GAME_TYPES.find((x) => x.value === g.game_type);
                 const s = GAME_STATUSES.find((x) => x.value === g.status);
                 return (
-                  <TableRow key={g.id}>
+                  <TableRow
+                    key={g.id}
+                    onClick={() => navigate({ to: "/games/$id", params: { id: g.id } })}
+                    className="cursor-pointer hover:bg-slate-50"
+                  >
                     <TableCell className="font-medium">
-                      <Link
-                        to="/games/$id"
-                        params={{ id: g.id }}
-                        className="text-indigo-600 hover:underline inline-flex items-center gap-1"
-                      >
-                        {g.name}
-                        <ExternalLink className="h-3 w-3" />
-                      </Link>
+                      {g.name}
                       {g.short_name && (
                         <span className="ml-2 text-xs text-slate-500">{g.short_name}</span>
                       )}
@@ -331,7 +328,7 @@ function GamesListPage() {
                     <TableCell>
                       {s && <Badge className={`${s.cls} hover:${s.cls}`}>{s.label}</Badge>}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <Button variant="ghost" size="icon" onClick={() => openEdit(g)} aria-label="Modifier">
                         <Pencil className="h-4 w-4" />
                       </Button>
