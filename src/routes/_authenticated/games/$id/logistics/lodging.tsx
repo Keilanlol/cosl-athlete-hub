@@ -316,11 +316,6 @@ function LodgingPage() {
     return list.filter((p) => !taken.has(p.id));
   }, [paxKind, athletes, coaches, drawer]);
 
-  const newRoomPersonOptions = useMemo(() => {
-    if (roomForm.kind === "athlete")
-      return athletes.map((a) => ({ id: a.id, label: `${a.last_name} ${a.first_name}` }));
-    return coaches.map((c) => ({ id: c.id, label: `${c.last_name} ${c.first_name}` }));
-  }, [roomForm.kind, athletes, coaches]);
 
   const roomTypes = useMemo(() => {
     const set = new Set<string>();
