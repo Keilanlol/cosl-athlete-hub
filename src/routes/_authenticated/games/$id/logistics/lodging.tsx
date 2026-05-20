@@ -45,8 +45,6 @@ type RoomForm = {
   room_type: string;
   check_in: string;
   check_out: string;
-  kind: "athlete" | "coach";
-  occupant: string;
 };
 
 const emptyAcc: AccForm = { name: "", type: "", city: "", total_rooms: "" };
@@ -56,9 +54,8 @@ const emptyRoom: RoomForm = {
   room_type: "",
   check_in: "",
   check_out: "",
-  kind: "athlete",
-  occupant: "",
 };
+
 
 type DrawerState = {
   accId: string;
