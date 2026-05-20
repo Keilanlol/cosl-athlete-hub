@@ -261,7 +261,7 @@ function SelectionsPage() {
             <SelectItem value="red">Invalide</SelectItem>
           </SelectContent>
         </Select>
-        <Button onClick={() => setOpen(true)} className="ml-auto bg-indigo-500 hover:bg-indigo-600">
+        <Button onClick={() => { setEditingId(null); setForm({ athlete_id: "", sport_id: "", discipline_id: "" }); setOpen(true); }} className="ml-auto bg-indigo-500 hover:bg-indigo-600">
           <Plus className="mr-2 h-4 w-4" /> Ajouter une sélection
         </Button>
       </div>
