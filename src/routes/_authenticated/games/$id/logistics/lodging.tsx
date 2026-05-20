@@ -94,14 +94,24 @@ function LodgingPage() {
 
   const load = async () => {
     setLoading(true);
-    const { data: sel } = await supabase
-      .from("selections")
-      .select("athlete_id")
+    const { data: gs } = await supabase
+      .from("game_sports")
+      .select("sport_id")
       .eq("game_id", id)
-      .eq("status", "selected");
-    const selIds = Array.from(
-      new Set(((sel ?? []) as { athlete_id: string }[]).map((s) => s.athlete_id)),
-    );
+      .eq("is_active", true);
+    const sportIds = ((gs ?? []) as { sport_id: string }[]).map((r) => r.sport_id);
+    let selIds: string[] = [];
+    if (sportIds.length) {
+      const { data: sel } = await supabase
+        .from("selections")
+        .select("athlete_id")
+        .eq("game_id", id)
+        .eq("status", "selected")
+        .in("sport_id", sportIds);
+      selIds = Array.from(
+        new Set(((sel ?? []) as { athlete_id: string }[]).map((s) => s.athlete_id)),
+      );
+    }
     const [{ data: a }, { data: at }, { data: co }] = await Promise.all([
       supabase.from("accommodations").select("*").eq("game_id", id).order("name"),
       selIds.length
