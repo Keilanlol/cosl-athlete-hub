@@ -58,6 +58,7 @@ function SelectionsPage() {
   const [rows, setRows] = useState<Selection[] | null>(null);
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [sports, setSports] = useState<Sport[]>([]);
+  const [gameSportIds, setGameSportIds] = useState<string[]>([]);
   const [disciplines, setDisciplines] = useState<Discipline[]>([]);
   const [kycMap, setKycMap] = useState<Record<string, string>>({});
   const [quotaSum, setQuotaSum] = useState(0);
@@ -74,13 +75,14 @@ function SelectionsPage() {
 
   const load = async () => {
     setRows(null);
-    const [selRes, athRes, sportsRes, discRes, kycRes, qRes] = await Promise.all([
+    const [selRes, athRes, sportsRes, gsRes, discRes, kycRes, qRes] = await Promise.all([
       supabase.from("selections")
         .select("*, athlete:athletes(id,first_name,last_name,gender,photo_url,primary_sport_id), sport:sports(id,name), discipline:disciplines(id,sport_id,name,gender)")
         .eq("game_id", gameId)
         .order("created_at", { ascending: false }),
       supabase.from("athletes").select("id,first_name,last_name,gender,photo_url,primary_sport_id").eq("is_active", true).order("last_name"),
       supabase.from("sports").select("id,name").order("name"),
+      supabase.from("game_sports").select("sport_id").eq("game_id", gameId).eq("is_active", true),
       supabase.from("disciplines").select("id,sport_id,name,gender").order("name"),
       supabase.from("athlete_kyc").select("athlete_id, global_status"),
       supabase.from("game_quotas").select("quota_max").eq("game_id", gameId),
@@ -89,6 +91,7 @@ function SelectionsPage() {
     setRows(((selRes.data ?? []) as unknown) as Selection[]);
     setAthletes((athRes.data ?? []) as Athlete[]);
     setSports((sportsRes.data ?? []) as Sport[]);
+    setGameSportIds(((gsRes.data ?? []) as { sport_id: string }[]).map((g) => g.sport_id));
     setDisciplines((discRes.data ?? []) as Discipline[]);
     const map: Record<string, string> = {};
     ((kycRes.data ?? []) as { athlete_id: string; global_status: string }[]).forEach((k) => {
