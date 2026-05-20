@@ -13,6 +13,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedMembersIndexRouteImport } from './routes/_authenticated/members/index'
 import { Route as AuthenticatedLogisticsIndexRouteImport } from './routes/_authenticated/logistics/index'
 import { Route as AuthenticatedGamesIndexRouteImport } from './routes/_authenticated/games/index'
 import { Route as AuthenticatedFederationsIndexRouteImport } from './routes/_authenticated/federations/index'
@@ -60,6 +61,12 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedMembersIndexRoute =
+  AuthenticatedMembersIndexRouteImport.update({
+    id: '/members/',
+    path: '/members/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedLogisticsIndexRoute =
   AuthenticatedLogisticsIndexRouteImport.update({
     id: '/logistics/',
@@ -236,6 +243,7 @@ export interface FileRoutesByFullPath {
   '/federations/': typeof AuthenticatedFederationsIndexRoute
   '/games/': typeof AuthenticatedGamesIndexRoute
   '/logistics/': typeof AuthenticatedLogisticsIndexRoute
+  '/members/': typeof AuthenticatedMembersIndexRoute
   '/clubs/members/$memberId': typeof AuthenticatedClubsMembersMemberIdRoute
   '/federations/members/$memberId': typeof AuthenticatedFederationsMembersMemberIdRoute
   '/games/$id/accreditations': typeof AuthenticatedGamesIdAccreditationsRoute
@@ -267,6 +275,7 @@ export interface FileRoutesByTo {
   '/federations': typeof AuthenticatedFederationsIndexRoute
   '/games': typeof AuthenticatedGamesIndexRoute
   '/logistics': typeof AuthenticatedLogisticsIndexRoute
+  '/members': typeof AuthenticatedMembersIndexRoute
   '/clubs/members/$memberId': typeof AuthenticatedClubsMembersMemberIdRoute
   '/federations/members/$memberId': typeof AuthenticatedFederationsMembersMemberIdRoute
   '/games/$id/accreditations': typeof AuthenticatedGamesIdAccreditationsRoute
@@ -301,6 +310,7 @@ export interface FileRoutesById {
   '/_authenticated/federations/': typeof AuthenticatedFederationsIndexRoute
   '/_authenticated/games/': typeof AuthenticatedGamesIndexRoute
   '/_authenticated/logistics/': typeof AuthenticatedLogisticsIndexRoute
+  '/_authenticated/members/': typeof AuthenticatedMembersIndexRoute
   '/_authenticated/clubs/members/$memberId': typeof AuthenticatedClubsMembersMemberIdRoute
   '/_authenticated/federations/members/$memberId': typeof AuthenticatedFederationsMembersMemberIdRoute
   '/_authenticated/games/$id/accreditations': typeof AuthenticatedGamesIdAccreditationsRoute
@@ -335,6 +345,7 @@ export interface FileRouteTypes {
     | '/federations/'
     | '/games/'
     | '/logistics/'
+    | '/members/'
     | '/clubs/members/$memberId'
     | '/federations/members/$memberId'
     | '/games/$id/accreditations'
@@ -366,6 +377,7 @@ export interface FileRouteTypes {
     | '/federations'
     | '/games'
     | '/logistics'
+    | '/members'
     | '/clubs/members/$memberId'
     | '/federations/members/$memberId'
     | '/games/$id/accreditations'
@@ -399,6 +411,7 @@ export interface FileRouteTypes {
     | '/_authenticated/federations/'
     | '/_authenticated/games/'
     | '/_authenticated/logistics/'
+    | '/_authenticated/members/'
     | '/_authenticated/clubs/members/$memberId'
     | '/_authenticated/federations/members/$memberId'
     | '/_authenticated/games/$id/accreditations'
@@ -446,6 +459,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/members/': {
+      id: '/_authenticated/members/'
+      path: '/members'
+      fullPath: '/members/'
+      preLoaderRoute: typeof AuthenticatedMembersIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/logistics/': {
@@ -690,6 +710,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedFederationsIndexRoute: typeof AuthenticatedFederationsIndexRoute
   AuthenticatedGamesIndexRoute: typeof AuthenticatedGamesIndexRoute
   AuthenticatedLogisticsIndexRoute: typeof AuthenticatedLogisticsIndexRoute
+  AuthenticatedMembersIndexRoute: typeof AuthenticatedMembersIndexRoute
   AuthenticatedClubsMembersMemberIdRoute: typeof AuthenticatedClubsMembersMemberIdRoute
   AuthenticatedFederationsMembersMemberIdRoute: typeof AuthenticatedFederationsMembersMemberIdRoute
 }
@@ -714,6 +735,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedFederationsIndexRoute: AuthenticatedFederationsIndexRoute,
   AuthenticatedGamesIndexRoute: AuthenticatedGamesIndexRoute,
   AuthenticatedLogisticsIndexRoute: AuthenticatedLogisticsIndexRoute,
+  AuthenticatedMembersIndexRoute: AuthenticatedMembersIndexRoute,
   AuthenticatedClubsMembersMemberIdRoute:
     AuthenticatedClubsMembersMemberIdRoute,
   AuthenticatedFederationsMembersMemberIdRoute:
