@@ -642,15 +642,13 @@ function FederationDetailPage() {
                 </TableHeader>
                 <TableBody>
                   {athletes.map((a) => (
-                    <TableRow key={a.id}>
+                    <TableRow
+                      key={a.id}
+                      onClick={() => navigate({ to: "/athletes/$id", params: { id: a.id } })}
+                      className="cursor-pointer hover:bg-slate-50"
+                    >
                       <TableCell className="font-medium">
-                        <Link
-                          to="/athletes/$id"
-                          params={{ id: a.id }}
-                          className="text-indigo-600 hover:underline"
-                        >
-                          {a.first_name} {a.last_name}
-                        </Link>
+                        {a.first_name} {a.last_name}
                       </TableCell>
                       <TableCell className="text-slate-600">
                         {a.primary_sport?.name ?? "—"}
