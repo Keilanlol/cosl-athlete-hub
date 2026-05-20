@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { LogisticsTabs } from "@/components/LogisticsTabs";
 import { TableSkeleton, EmptyState } from "@/components/DataTableShell";
+import { PersonCombobox } from "@/components/PersonCombobox";
 
 export const Route = createFileRoute("/_authenticated/games/$id/logistics/transport")({
   component: TransportPage,
