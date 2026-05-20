@@ -402,7 +402,7 @@ function SelectionsPage() {
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
               <Button type="submit" disabled={saving} className="bg-indigo-500 hover:bg-indigo-600">
-                {saving ? "Enregistrement…" : "Ajouter"}
+                {saving ? "Enregistrement…" : editingId ? "Enregistrer" : "Ajouter"}
               </Button>
             </DialogFooter>
           </form>
