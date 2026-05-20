@@ -204,7 +204,6 @@ function LodgingPage() {
   const submitRoom = async () => {
     if (!roomForm.accommodation_id) return toast.error("Hébergement requis");
     if (!roomForm.room_number.trim()) return toast.error("N° de chambre requis");
-    if (!roomForm.occupant) return toast.error("Premier occupant requis");
     if (!roomForm.check_in || !roomForm.check_out) return toast.error("Dates requises");
     if (roomForm.check_in > roomForm.check_out)
       return toast.error("Check-in après check-out");
@@ -215,8 +214,8 @@ function LodgingPage() {
       room_type: roomForm.room_type.trim() || null,
       check_in: roomForm.check_in,
       check_out: roomForm.check_out,
-      athlete_id: roomForm.kind === "athlete" ? roomForm.occupant : null,
-      coach_id: roomForm.kind === "coach" ? roomForm.occupant : null,
+      athlete_id: null,
+      coach_id: null,
     };
     const { error } = await supabase.from("rooming_assignments").insert(payload);
     if (error) return toast.error("Échec", { description: error.message });
@@ -225,6 +224,7 @@ function LodgingPage() {
     setRoomForm(emptyRoom);
     load();
   };
+
 
   const removeRoom = async () => {
     if (!confirmDel) return;
