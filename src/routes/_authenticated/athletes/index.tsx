@@ -118,6 +118,7 @@ function kycBadge(s: string | null | undefined) {
 }
 
 function AthletesPage() {
+  const navigate = useNavigate();
   const [rows, setRows] = useState<AthleteRow[] | null>(null);
   const { items: sports, add: addSport, remove: removeSport } = useSports();
   const { items: levels, add: addLevel, remove: removeLevel } = useAthleteLevels();
