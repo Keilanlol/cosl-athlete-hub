@@ -335,12 +335,12 @@ function SelectionsPage() {
         )}
       </div>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setEditingId(null); setForm({ athlete_id: "", sport_id: "", discipline_id: "" }); } }}>
         <DialogContent>
           <form onSubmit={submit}>
             <DialogHeader>
-              <DialogTitle>Ajouter une sélection</DialogTitle>
-              <DialogDescription>L'athlète sera créé en statut Pré-sélectionné.</DialogDescription>
+              <DialogTitle>{editingId ? "Modifier la sélection" : "Ajouter une sélection"}</DialogTitle>
+              <DialogDescription>{editingId ? "Modifiez l'athlète, le sport ou la discipline." : "L'athlète sera créé en statut Pré-sélectionné."}</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="space-y-1.5">
