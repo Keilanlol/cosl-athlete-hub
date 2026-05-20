@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, Download, Building2, Search, Users } from "lucide-react";
+import { Plus, Trash2, Download, Building2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { confirmAction } from "@/components/ConfirmDialog";
@@ -455,12 +455,26 @@ function LodgingPage() {
                   <TableHead>Occupants</TableHead>
                   <TableHead>Check-in</TableHead>
                   <TableHead>Check-out</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredGroups.map((g) => (
-                  <TableRow key={`${g.accId}-${g.roomNo}`}>
+                  <TableRow
+                    key={`${g.accId}-${g.roomNo}`}
+                    onClick={() => {
+                      setDrawer({
+                        accId: g.accId,
+                        roomNo: g.roomNo,
+                        roomType: g.items[0]?.room_type ?? null,
+                        checkIn: g.items[0]?.check_in ?? "",
+                        checkOut: g.items[0]?.check_out ?? "",
+                        items: g.items,
+                      });
+                      setPaxKind("athlete");
+                      setPaxId("");
+                    }}
+                    className="cursor-pointer hover:bg-slate-50"
+                  >
                     <TableCell>{accName(g.accId)}</TableCell>
                     <TableCell className="font-medium">{g.roomNo}</TableCell>
                     <TableCell>{g.items[0]?.room_type ?? "—"}</TableCell>
@@ -487,27 +501,6 @@ function LodgingPage() {
 
                     <TableCell>{g.items[0]?.check_in ?? "—"}</TableCell>
                     <TableCell>{g.items[0]?.check_out ?? "—"}</TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setDrawer({
-                            accId: g.accId,
-                            roomNo: g.roomNo,
-                            roomType: g.items[0]?.room_type ?? null,
-                            checkIn: g.items[0]?.check_in ?? "",
-                            checkOut: g.items[0]?.check_out ?? "",
-                            items: g.items,
-                          });
-                          setPaxKind("athlete");
-                          setPaxId("");
-                          
-                        }}
-                      >
-                        <Users className="mr-2 h-4 w-4" /> Occupants
-                      </Button>
-                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -554,7 +547,7 @@ function LodgingPage() {
           <DialogHeader><DialogTitle>Créer une chambre</DialogTitle></DialogHeader>
           <p className="text-xs text-slate-500">
             Définissez la chambre et ses dates. Ajoutez ensuite les occupants
-            (athlètes et/ou encadrants) via le bouton "Occupants".
+            (athlètes et/ou encadrants) en cliquant sur la ligne de la chambre.
           </p>
 
           <div className="grid gap-3 sm:grid-cols-2">

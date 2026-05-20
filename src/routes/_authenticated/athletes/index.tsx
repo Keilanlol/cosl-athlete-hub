@@ -1,6 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Search, Eye } from "lucide-react";
+import { Plus, Pencil, Search } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import {
@@ -118,6 +118,7 @@ function kycBadge(s: string | null | undefined) {
 }
 
 function AthletesPage() {
+  const navigate = useNavigate();
   const [rows, setRows] = useState<AthleteRow[] | null>(null);
   const { items: sports, add: addSport, remove: removeSport } = useSports();
   const { items: levels, add: addLevel, remove: removeLevel } = useAthleteLevels();
@@ -445,7 +446,11 @@ function AthletesPage() {
                 const lvl = levels.find((l) => l.code === a.level);
                 const kyc = readKyc(a.athlete_kyc);
                 return (
-                  <TableRow key={a.id}>
+                  <TableRow
+                    key={a.id}
+                    onClick={() => navigate({ to: "/athletes/$id", params: { id: a.id } })}
+                    className="cursor-pointer hover:bg-slate-50"
+                  >
                     <TableCell className="font-mono text-xs">{a.cosl_id}</TableCell>
                     <TableCell>
                       <div className="h-8 w-8 overflow-hidden rounded-full bg-slate-200">
@@ -478,12 +483,7 @@ function AthletesPage() {
                     <TableCell>{statusBadge(a.status)}</TableCell>
                     <TableCell className="text-slate-600">{lvl?.label ?? a.level ?? "—"}</TableCell>
                     <TableCell>{kycBadge(kyc)}</TableCell>
-                    <TableCell className="text-right">
-                      <Button asChild variant="ghost" size="icon" aria-label="Voir">
-                        <Link to="/athletes/$id" params={{ id: a.id }}>
-                          <Eye className="h-4 w-4" />
-                        </Link>
-                      </Button>
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <Button
                         variant="ghost"
                         size="icon"
