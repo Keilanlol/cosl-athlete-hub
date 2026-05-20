@@ -278,25 +278,13 @@ function FederationsPage() {
             </TableHeader>
             <TableBody>
               {visible.map((f) => (
-                <TableRow key={f.id}>
-                  <TableCell className="font-mono text-sm font-medium">
-                    <Link
-                      to="/federations/$id"
-                      params={{ id: f.id }}
-                      className="text-indigo-600 hover:underline"
-                    >
-                      {f.acronym}
-                    </Link>
-                  </TableCell>
-                  <TableCell>
-                    <Link
-                      to="/federations/$id"
-                      params={{ id: f.id }}
-                      className="hover:underline"
-                    >
-                      {f.name}
-                    </Link>
-                  </TableCell>
+                <TableRow
+                  key={f.id}
+                  onClick={() => navigate({ to: "/federations/$id", params: { id: f.id } })}
+                  className="cursor-pointer hover:bg-slate-50"
+                >
+                  <TableCell className="font-mono text-sm font-medium">{f.acronym}</TableCell>
+                  <TableCell>{f.name}</TableCell>
                   <TableCell className="text-slate-600">
                     {f.president_name ?? "—"}
                   </TableCell>
@@ -315,7 +303,7 @@ function FederationsPage() {
                       <Badge variant="outline">Non</Badge>
                     )}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                     <Button
                       variant="ghost"
                       size="icon"
