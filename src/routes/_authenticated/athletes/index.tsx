@@ -446,7 +446,11 @@ function AthletesPage() {
                 const lvl = levels.find((l) => l.code === a.level);
                 const kyc = readKyc(a.athlete_kyc);
                 return (
-                  <TableRow key={a.id}>
+                  <TableRow
+                    key={a.id}
+                    onClick={() => navigate({ to: "/athletes/$id", params: { id: a.id } })}
+                    className="cursor-pointer hover:bg-slate-50"
+                  >
                     <TableCell className="font-mono text-xs">{a.cosl_id}</TableCell>
                     <TableCell>
                       <div className="h-8 w-8 overflow-hidden rounded-full bg-slate-200">
@@ -479,12 +483,7 @@ function AthletesPage() {
                     <TableCell>{statusBadge(a.status)}</TableCell>
                     <TableCell className="text-slate-600">{lvl?.label ?? a.level ?? "—"}</TableCell>
                     <TableCell>{kycBadge(kyc)}</TableCell>
-                    <TableCell className="text-right">
-                      <Button asChild variant="ghost" size="icon" aria-label="Voir">
-                        <Link to="/athletes/$id" params={{ id: a.id }}>
-                          <Eye className="h-4 w-4" />
-                        </Link>
-                      </Button>
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <Button
                         variant="ghost"
                         size="icon"
