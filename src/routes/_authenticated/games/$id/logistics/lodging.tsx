@@ -300,7 +300,6 @@ function LodgingPage() {
   };
 
   const personOptions = useMemo(() => {
-    const q = paxSearch.trim().toLowerCase();
     const taken = new Set<string>();
     drawer?.items.forEach((i) => {
       if (paxKind === "athlete" && i.athlete_id) taken.add(i.athlete_id);
@@ -310,8 +309,8 @@ function LodgingPage() {
       paxKind === "athlete"
         ? athletes.map((a) => ({ id: a.id, label: `${a.last_name} ${a.first_name}` }))
         : coaches.map((c) => ({ id: c.id, label: `${c.last_name} ${c.first_name}` }));
-    return list.filter((p) => !taken.has(p.id) && (q === "" || p.label.toLowerCase().includes(q)));
-  }, [paxKind, paxSearch, athletes, coaches, drawer]);
+    return list.filter((p) => !taken.has(p.id));
+  }, [paxKind, athletes, coaches, drawer]);
 
   const newRoomPersonOptions = useMemo(() => {
     if (roomForm.kind === "athlete")
