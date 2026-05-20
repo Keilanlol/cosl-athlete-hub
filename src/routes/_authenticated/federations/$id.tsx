@@ -165,7 +165,7 @@ function FederationDetailPage() {
   const load = async () => {
     setLoading(true);
     // First load federation + clubs to know which clubs belong
-    const [f, c, sp, m] = await Promise.all([
+    const [f, c, sp, m, fm, cm] = await Promise.all([
       supabase.from("federations").select("*").eq("id", id).maybeSingle(),
       supabase.from("clubs").select("*").eq("federation_id", id).order("name"),
       supabase.from("sports").select("*"),
@@ -174,6 +174,14 @@ function FederationDetailPage() {
         .select("*")
         .eq("federation_id", id)
         .order("created_at", { ascending: false }),
+      supabase
+        .from("federation_members")
+        .select("id,first_name,last_name,email,phone,address")
+        .order("last_name"),
+      supabase
+        .from("club_members")
+        .select("id,first_name,last_name,email,phone,address")
+        .order("last_name"),
     ]);
     if (f.error) toast.error("Erreur de chargement", { description: f.error.message });
     setFed((f.data ?? null) as Federation | null);
@@ -181,6 +189,20 @@ function FederationDetailPage() {
     setClubs(clubsData);
     setSports((sp.data ?? []) as Sport[]);
     setMembers((m.data ?? []) as FederationMember[]);
+    // Merge & dedupe by name+email
+    const merged = [
+      ...((fm.data ?? []) as Array<typeof allPersons[number]>),
+      ...((cm.data ?? []) as Array<typeof allPersons[number]>),
+    ];
+    const seen = new Set<string>();
+    const dedup: typeof allPersons = [];
+    for (const p of merged) {
+      const key = `${p.first_name.trim().toLowerCase()}|${p.last_name.trim().toLowerCase()}|${(p.email ?? "").trim().toLowerCase()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      dedup.push(p);
+    }
+    setAllPersons(dedup);
 
     const clubIds = clubsData.map((cl) => cl.id);
     // Athletes: those rattached to fed OR member of one of its clubs
