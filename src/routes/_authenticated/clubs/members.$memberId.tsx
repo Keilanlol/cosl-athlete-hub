@@ -137,7 +137,7 @@ function ClubMemberDetailPage() {
     const ok = await confirmAction({
       title: "Supprimer ce membre ?",
       description: "Cette action est irréversible.",
-      confirmText: "Supprimer",
+      confirmLabel: "Supprimer",
       destructive: true,
     });
     if (!ok) return;

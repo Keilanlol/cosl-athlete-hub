@@ -95,19 +95,12 @@ function CoachDetailPage() {
     setFed((f.data ?? null) as Federation | null);
     setClub((cl.data ?? null) as Club | null);
     setAthletes(
-      ((rel.data ?? []) as Array<{
-        relation_role: string;
-        start_date: string;
-        end_date: string | null;
-        athlete: Athlete | null;
-      }>)
-        .filter((r) => r.athlete)
-        .map((r) => ({
-          ...(r.athlete as Athlete),
-          relation_role: r.relation_role,
-          start_date: r.start_date,
-          end_date: r.end_date,
-        })),
+      (rel.data ?? [])
+        .flatMap((r: { relation_role: string; start_date: string; end_date: string | null; athlete: Athlete | Athlete[] | null }) => {
+          const a = Array.isArray(r.athlete) ? r.athlete[0] : r.athlete;
+          if (!a) return [];
+          return [{ ...a, relation_role: r.relation_role, start_date: r.start_date, end_date: r.end_date }];
+        }),
     );
     setFeds((fedsAll.data ?? []) as Federation[]);
     setClubs((clubsAll.data ?? []) as Club[]);
@@ -163,7 +156,7 @@ function CoachDetailPage() {
     const ok = await confirmAction({
       title: "Supprimer cet encadrant ?",
       description: "Cette action est irréversible.",
-      confirmText: "Supprimer",
+      confirmLabel: "Supprimer",
       destructive: true,
     });
     if (!ok) return;
