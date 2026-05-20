@@ -296,7 +296,7 @@ function LodgingPage() {
       accName(g.accId),
       g.roomNo,
       g.items[0]?.room_type ?? "",
-      g.items.map((i) => `${occupantLabel(i)}${i.coach_id ? " (encadrant)" : ""}`).join(" | "),
+      g.items.filter((i) => i.athlete_id || i.coach_id).map((i) => `${occupantLabel(i)}${i.coach_id ? " (encadrant)" : ""}`).join(" | "),
       g.items[0]?.check_in ?? "",
       g.items[0]?.check_out ?? "",
     ]);
