@@ -542,25 +542,6 @@ function LodgingPage() {
               <Input value={roomForm.room_type} onChange={(e) => setRoomForm({ ...roomForm, room_type: e.target.value })} placeholder="single, double, suite…" />
             </div>
             <div className="space-y-1">
-              <Label>Profil 1er occupant</Label>
-              <Select value={roomForm.kind} onValueChange={(v) => setRoomForm({ ...roomForm, kind: v as "athlete" | "coach", occupant: "" })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="athlete">Athlète</SelectItem>
-                  <SelectItem value="coach">Encadrant</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label>1er occupant</Label>
-              <PersonCombobox
-                value={roomForm.occupant}
-                onChange={(id) => setRoomForm({ ...roomForm, occupant: id })}
-                options={newRoomPersonOptions}
-                searchPlaceholder={`Rechercher ${roomForm.kind === "athlete" ? "un athlète" : "un encadrant"}…`}
-              />
-            </div>
-            <div className="space-y-1">
               <Label>Check-in</Label>
               <Input type="date" value={roomForm.check_in} onChange={(e) => setRoomForm({ ...roomForm, check_in: e.target.value })} />
             </div>
