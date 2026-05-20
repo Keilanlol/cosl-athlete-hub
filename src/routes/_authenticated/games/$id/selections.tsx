@@ -58,6 +58,7 @@ function SelectionsPage() {
   const [rows, setRows] = useState<Selection[] | null>(null);
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [sports, setSports] = useState<Sport[]>([]);
+  const [gameSportIds, setGameSportIds] = useState<string[]>([]);
   const [disciplines, setDisciplines] = useState<Discipline[]>([]);
   const [kycMap, setKycMap] = useState<Record<string, string>>({});
   const [quotaSum, setQuotaSum] = useState(0);
@@ -74,13 +75,14 @@ function SelectionsPage() {
 
   const load = async () => {
     setRows(null);
-    const [selRes, athRes, sportsRes, discRes, kycRes, qRes] = await Promise.all([
+    const [selRes, athRes, sportsRes, gsRes, discRes, kycRes, qRes] = await Promise.all([
       supabase.from("selections")
         .select("*, athlete:athletes(id,first_name,last_name,gender,photo_url,primary_sport_id), sport:sports(id,name), discipline:disciplines(id,sport_id,name,gender)")
         .eq("game_id", gameId)
         .order("created_at", { ascending: false }),
       supabase.from("athletes").select("id,first_name,last_name,gender,photo_url,primary_sport_id").eq("is_active", true).order("last_name"),
       supabase.from("sports").select("id,name").order("name"),
+      supabase.from("game_sports").select("sport_id").eq("game_id", gameId).eq("is_active", true),
       supabase.from("disciplines").select("id,sport_id,name,gender").order("name"),
       supabase.from("athlete_kyc").select("athlete_id, global_status"),
       supabase.from("game_quotas").select("quota_max").eq("game_id", gameId),
@@ -89,6 +91,7 @@ function SelectionsPage() {
     setRows(((selRes.data ?? []) as unknown) as Selection[]);
     setAthletes((athRes.data ?? []) as Athlete[]);
     setSports((sportsRes.data ?? []) as Sport[]);
+    setGameSportIds(((gsRes.data ?? []) as { sport_id: string }[]).map((g) => g.sport_id));
     setDisciplines((discRes.data ?? []) as Discipline[]);
     const map: Record<string, string> = {};
     ((kycRes.data ?? []) as { athlete_id: string; global_status: string }[]).forEach((k) => {
@@ -121,11 +124,19 @@ function SelectionsPage() {
   const selectedCount = (rows ?? []).filter((r) => r.status === "selected").length;
   const pct = quotaSum > 0 ? Math.min(100, (selectedCount / quotaSum) * 100) : 0;
 
+  const gameSports = useMemo(
+    () => sports.filter((s) => gameSportIds.includes(s.id)),
+    [sports, gameSportIds],
+  );
+
   const availableAthletes = useMemo(() => {
     const used = new Set((rows ?? []).map((r) => r.athlete_id));
-    const q = "";
-    return athletes.filter((a) => !used.has(a.id) || form.athlete_id === a.id).slice(0, 200).filter(() => q || true);
-  }, [athletes, rows, form.athlete_id]);
+    const sportSet = new Set(gameSportIds);
+    return athletes
+      .filter((a) => !used.has(a.id) || form.athlete_id === a.id)
+      .filter((a) => a.primary_sport_id && sportSet.has(a.primary_sport_id))
+      .slice(0, 200);
+  }, [athletes, rows, form.athlete_id, gameSportIds]);
 
   const formDisciplines = useMemo(
     () => disciplines.filter((d) => d.sport_id === form.sport_id),
@@ -212,7 +223,7 @@ function SelectionsPage() {
           <SelectTrigger className="w-44"><SelectValue placeholder="Sport" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tous sports</SelectItem>
-            {sports.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+            {gameSports.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -346,7 +357,7 @@ function SelectionsPage() {
                   <Select value={form.sport_id} onValueChange={(v) => setForm({ ...form, sport_id: v, discipline_id: "" })}>
                     <SelectTrigger><SelectValue placeholder="Sport…" /></SelectTrigger>
                     <SelectContent>
-                      {sports.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                      {gameSports.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
