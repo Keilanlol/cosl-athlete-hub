@@ -223,7 +223,7 @@ function SelectionsPage() {
           <SelectTrigger className="w-44"><SelectValue placeholder="Sport" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tous sports</SelectItem>
-            {sports.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+            {gameSports.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -357,7 +357,7 @@ function SelectionsPage() {
                   <Select value={form.sport_id} onValueChange={(v) => setForm({ ...form, sport_id: v, discipline_id: "" })}>
                     <SelectTrigger><SelectValue placeholder="Sport…" /></SelectTrigger>
                     <SelectContent>
-                      {sports.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                      {gameSports.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
