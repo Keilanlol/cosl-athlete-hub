@@ -73,6 +73,7 @@ function roleLabel(v: string) {
 }
 
 function CoachesPage() {
+  const navigate = useNavigate();
   const [rows, setRows] = useState<Coach[] | null>(null);
   const [feds, setFeds] = useState<Federation[]>([]);
   const [clubs, setClubs] = useState<Club[]>([]);
