@@ -45,8 +45,6 @@ type RoomForm = {
   room_type: string;
   check_in: string;
   check_out: string;
-  kind: "athlete" | "coach";
-  occupant: string;
 };
 
 const emptyAcc: AccForm = { name: "", type: "", city: "", total_rooms: "" };
@@ -56,9 +54,8 @@ const emptyRoom: RoomForm = {
   room_type: "",
   check_in: "",
   check_out: "",
-  kind: "athlete",
-  occupant: "",
 };
+
 
 type DrawerState = {
   accId: string;
@@ -207,7 +204,6 @@ function LodgingPage() {
   const submitRoom = async () => {
     if (!roomForm.accommodation_id) return toast.error("Hébergement requis");
     if (!roomForm.room_number.trim()) return toast.error("N° de chambre requis");
-    if (!roomForm.occupant) return toast.error("Premier occupant requis");
     if (!roomForm.check_in || !roomForm.check_out) return toast.error("Dates requises");
     if (roomForm.check_in > roomForm.check_out)
       return toast.error("Check-in après check-out");
@@ -218,8 +214,8 @@ function LodgingPage() {
       room_type: roomForm.room_type.trim() || null,
       check_in: roomForm.check_in,
       check_out: roomForm.check_out,
-      athlete_id: roomForm.kind === "athlete" ? roomForm.occupant : null,
-      coach_id: roomForm.kind === "coach" ? roomForm.occupant : null,
+      athlete_id: null,
+      coach_id: null,
     };
     const { error } = await supabase.from("rooming_assignments").insert(payload);
     if (error) return toast.error("Échec", { description: error.message });
@@ -228,6 +224,7 @@ function LodgingPage() {
     setRoomForm(emptyRoom);
     load();
   };
+
 
   const removeRoom = async () => {
     if (!confirmDel) return;
@@ -250,30 +247,48 @@ function LodgingPage() {
     );
     if (dup) return toast.error("Déjà présent dans la chambre");
 
-    const { error } = await supabase.from("rooming_assignments").insert({
-      accommodation_id: drawer.accId,
-      room_number: drawer.roomNo,
-      room_type: drawer.roomType,
-      check_in: drawer.checkIn,
-      check_out: drawer.checkOut,
+    // Réutiliser une éventuelle ligne placeholder (sans occupant)
+    const placeholder = drawer.items.find((i) => !i.athlete_id && !i.coach_id);
+    const patch = {
       athlete_id: paxKind === "athlete" ? paxId : null,
       coach_id: paxKind === "coach" ? paxId : null,
-    });
+    };
+    const { error } = placeholder
+      ? await supabase.from("rooming_assignments").update(patch).eq("id", placeholder.id)
+      : await supabase.from("rooming_assignments").insert({
+          accommodation_id: drawer.accId,
+          room_number: drawer.roomNo,
+          room_type: drawer.roomType,
+          check_in: drawer.checkIn,
+          check_out: drawer.checkOut,
+          ...patch,
+        });
     if (error) return toast.error("Échec", { description: error.message });
     toast.success("Occupant ajouté");
     setPaxId("");
     load();
   };
 
+
   const removeOccupant = async (occ: RoomingAssignment) => {
-    const { error } = await supabase
-      .from("rooming_assignments")
-      .delete()
-      .eq("id", occ.id);
+    // Si c'est le dernier occupant réel, conserver la chambre en transformant
+    // la ligne en placeholder (sans occupant) plutôt que de la supprimer.
+    const roomItems = rooms.filter(
+      (r) => r.accommodation_id === occ.accommodation_id && r.room_number === occ.room_number,
+    );
+    const realCount = roomItems.filter((r) => r.athlete_id || r.coach_id).length;
+    const { error } =
+      realCount <= 1
+        ? await supabase
+            .from("rooming_assignments")
+            .update({ athlete_id: null, coach_id: null })
+            .eq("id", occ.id)
+        : await supabase.from("rooming_assignments").delete().eq("id", occ.id);
     if (error) return toast.error("Échec", { description: error.message });
     toast.success("Occupant retiré");
     load();
   };
+
 
   const exportCsv = () => {
     const header = ["Hébergement", "Chambre", "Type", "Occupants", "Check-in", "Check-out"];
@@ -281,7 +296,7 @@ function LodgingPage() {
       accName(g.accId),
       g.roomNo,
       g.items[0]?.room_type ?? "",
-      g.items.map((i) => `${occupantLabel(i)}${i.coach_id ? " (encadrant)" : ""}`).join(" | "),
+      g.items.filter((i) => i.athlete_id || i.coach_id).map((i) => `${occupantLabel(i)}${i.coach_id ? " (encadrant)" : ""}`).join(" | "),
       g.items[0]?.check_in ?? "",
       g.items[0]?.check_out ?? "",
     ]);
@@ -311,11 +326,6 @@ function LodgingPage() {
     return list.filter((p) => !taken.has(p.id));
   }, [paxKind, athletes, coaches, drawer]);
 
-  const newRoomPersonOptions = useMemo(() => {
-    if (roomForm.kind === "athlete")
-      return athletes.map((a) => ({ id: a.id, label: `${a.last_name} ${a.first_name}` }));
-    return coaches.map((c) => ({ id: c.id, label: `${c.last_name} ${c.first_name}` }));
-  }, [roomForm.kind, athletes, coaches]);
 
   const roomTypes = useMemo(() => {
     const set = new Set<string>();
@@ -434,7 +444,7 @@ function LodgingPage() {
                     <TableCell>{g.items[0]?.room_type ?? "—"}</TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
-                        {g.items.map((it) => (
+                        {g.items.filter((it) => it.athlete_id || it.coach_id).map((it) => (
                           <Badge
                             key={it.id}
                             variant="secondary"
@@ -447,9 +457,12 @@ function LodgingPage() {
                             {occupantLabel(it)} · {it.coach_id ? "encadrant" : "athlète"}
                           </Badge>
                         ))}
-                        <Badge variant="outline">{g.items.length}</Badge>
+                        <Badge variant="outline">
+                          {g.items.filter((it) => it.athlete_id || it.coach_id).length}
+                        </Badge>
                       </div>
                     </TableCell>
+
                     <TableCell>{g.items[0]?.check_in ?? "—"}</TableCell>
                     <TableCell>{g.items[0]?.check_out ?? "—"}</TableCell>
                     <TableCell className="text-right">
@@ -518,9 +531,10 @@ function LodgingPage() {
         <DialogContent className="max-w-xl">
           <DialogHeader><DialogTitle>Créer une chambre</DialogTitle></DialogHeader>
           <p className="text-xs text-slate-500">
-            Crée la chambre avec un premier occupant. Vous pourrez ensuite ajouter
-            d'autres occupants (athlètes et/ou encadrants) via le bouton "Occupants".
+            Définissez la chambre et ses dates. Ajoutez ensuite les occupants
+            (athlètes et/ou encadrants) via le bouton "Occupants".
           </p>
+
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="sm:col-span-2 space-y-1">
               <Label>Hébergement</Label>
@@ -540,25 +554,6 @@ function LodgingPage() {
             <div className="space-y-1">
               <Label>Type</Label>
               <Input value={roomForm.room_type} onChange={(e) => setRoomForm({ ...roomForm, room_type: e.target.value })} placeholder="single, double, suite…" />
-            </div>
-            <div className="space-y-1">
-              <Label>Profil 1er occupant</Label>
-              <Select value={roomForm.kind} onValueChange={(v) => setRoomForm({ ...roomForm, kind: v as "athlete" | "coach", occupant: "" })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="athlete">Athlète</SelectItem>
-                  <SelectItem value="coach">Encadrant</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label>1er occupant</Label>
-              <PersonCombobox
-                value={roomForm.occupant}
-                onChange={(id) => setRoomForm({ ...roomForm, occupant: id })}
-                options={newRoomPersonOptions}
-                searchPlaceholder={`Rechercher ${roomForm.kind === "athlete" ? "un athlète" : "un encadrant"}…`}
-              />
             </div>
             <div className="space-y-1">
               <Label>Check-in</Label>
@@ -590,42 +585,48 @@ function LodgingPage() {
                 {drawer.roomType ? ` · ${drawer.roomType}` : ""}
               </div>
 
-              <div className="space-y-2">
-                <div className="text-sm font-medium text-slate-700">
-                  Occupants ({drawer.items.length})
-                </div>
-                {drawer.items.length === 0 ? (
-                  <p className="text-xs text-slate-500">Aucun occupant.</p>
-                ) : (
-                  <ul className="divide-y rounded-md border">
-                    {drawer.items.map((it) => (
-                      <li key={it.id} className="flex items-center justify-between p-2">
-                        <div className="flex items-center gap-2">
-                          <Badge
-                            variant="secondary"
-                            className={
-                              it.coach_id
-                                ? "bg-amber-100 text-amber-800"
-                                : "bg-indigo-100 text-indigo-800"
-                            }
-                          >
-                            {it.coach_id ? "Encadrant" : "Athlète"}
-                          </Badge>
-                          <span className="text-sm">{occupantLabel(it)}</span>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-red-600 hover:text-red-700"
-                          onClick={() => removeOccupant(it)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+              {(() => {
+                const real = drawer.items.filter((i) => i.athlete_id || i.coach_id);
+                return (
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium text-slate-700">
+                      Occupants ({real.length})
+                    </div>
+                    {real.length === 0 ? (
+                      <p className="text-xs text-slate-500">Aucun occupant.</p>
+                    ) : (
+                      <ul className="divide-y rounded-md border">
+                        {real.map((it) => (
+                          <li key={it.id} className="flex items-center justify-between p-2">
+                            <div className="flex items-center gap-2">
+                              <Badge
+                                variant="secondary"
+                                className={
+                                  it.coach_id
+                                    ? "bg-amber-100 text-amber-800"
+                                    : "bg-indigo-100 text-indigo-800"
+                                }
+                              >
+                                {it.coach_id ? "Encadrant" : "Athlète"}
+                              </Badge>
+                              <span className="text-sm">{occupantLabel(it)}</span>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-red-600 hover:text-red-700"
+                              onClick={() => removeOccupant(it)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                );
+              })()}
+
 
               <div className="space-y-2 rounded-md border p-3">
                 <div className="text-sm font-medium text-slate-700">Ajouter un occupant</div>
