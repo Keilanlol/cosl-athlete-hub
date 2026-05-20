@@ -418,7 +418,7 @@ function ClubDetailPage() {
                 <Link
                   to="/federations/$id"
                   params={{ id: fed.id }}
-                  className="inline-flex items-center gap-1 text-indigo-600 hover:underline"
+                  className="inline-flex items-center gap-1 text-slate-600 hover:underline"
                 >
                   <Building2 className="h-3.5 w-3.5" />
                   {fed.acronym} — {fed.name}
