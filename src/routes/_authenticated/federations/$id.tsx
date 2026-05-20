@@ -64,6 +64,7 @@ import {
 } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/DataTableShell";
 import { AddressSearch } from "@/components/AddressSearch";
+import { PersonCombobox } from "@/components/PersonCombobox";
 import { confirmAction } from "@/components/ConfirmDialog";
 
 export const Route = createFileRoute("/_authenticated/federations/$id")({
