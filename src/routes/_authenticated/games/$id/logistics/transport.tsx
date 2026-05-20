@@ -229,18 +229,14 @@ function TransportPage() {
   }, [passengers]);
 
   const personOptions = useMemo(() => {
-    const q = paxSearch.trim().toLowerCase();
-    const list =
-      paxForm.kind === "athlete"
-        ? athletes
-            .filter((a) => !takenIds.athlete.has(a.id))
-            .map((a) => ({ id: a.id, label: `${a.last_name} ${a.first_name}` }))
-        : coaches
-            .filter((c) => !takenIds.coach.has(c.id))
-            .map((c) => ({ id: c.id, label: `${c.last_name} ${c.first_name}` }));
-    if (!q) return list;
-    return list.filter((p) => p.label.toLowerCase().includes(q));
-  }, [paxForm.kind, athletes, coaches, paxSearch, takenIds]);
+    return paxForm.kind === "athlete"
+      ? athletes
+          .filter((a) => !takenIds.athlete.has(a.id))
+          .map((a) => ({ id: a.id, label: `${a.last_name} ${a.first_name}` }))
+      : coaches
+          .filter((c) => !takenIds.coach.has(c.id))
+          .map((c) => ({ id: c.id, label: `${c.last_name} ${c.first_name}` }));
+  }, [paxForm.kind, athletes, coaches, takenIds]);
 
   const fmtDt = (s: string) =>
     new Date(s).toLocaleString("fr-FR", {
