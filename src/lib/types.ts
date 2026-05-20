@@ -463,6 +463,16 @@ export type LocalTransport = {
   notes: string | null;
 };
 
+export type LocalTransportPassenger = {
+  id: string;
+  local_transport_id: string;
+  athlete_id: string | null;
+  coach_id: string | null;
+  seat: string | null;
+  notes: string | null;
+  created_at: string;
+};
+
 
 // Communication
 export type MessageTemplate = {
