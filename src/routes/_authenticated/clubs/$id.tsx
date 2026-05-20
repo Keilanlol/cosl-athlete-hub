@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
@@ -134,11 +134,16 @@ const emptyMember = {
 
 function ClubDetailPage() {
   const { id } = Route.useParams();
+  const navigate = useNavigate();
   const [club, setClub] = useState<Club | null>(null);
   const [fed, setFed] = useState<Federation | null>(null);
   const [coaches, setCoaches] = useState<Coach[]>([]);
   const [athletes, setAthletes] = useState<AthleteRow[]>([]);
   const [members, setMembers] = useState<ClubMember[]>([]);
+  const [allPersons, setAllPersons] = useState<
+    Array<{ id: string; first_name: string; last_name: string; email: string | null; phone: string | null; address: string | null }>
+  >([]);
+  const [pickedPersonId, setPickedPersonId] = useState("");
   const [, setSports] = useState<Sport[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -160,7 +165,7 @@ function ClubDetailPage() {
     if (cl.error) toast.error("Erreur de chargement", { description: cl.error.message });
     const c = (cl.data ?? null) as Club | null;
     setClub(c);
-    const [f, co, a, sp, m] = await Promise.all([
+    const [f, co, a, sp, m, fm, cm] = await Promise.all([
       c
         ? supabase.from("federations").select("*").eq("id", c.federation_id).maybeSingle()
         : Promise.resolve({ data: null }),
@@ -176,12 +181,33 @@ function ClubDetailPage() {
         .select("*")
         .eq("club_id", id)
         .order("created_at", { ascending: false }),
+      supabase
+        .from("federation_members")
+        .select("id,first_name,last_name,email,phone,address")
+        .order("last_name"),
+      supabase
+        .from("club_members")
+        .select("id,first_name,last_name,email,phone,address")
+        .order("last_name"),
     ]);
     setFed(((f as { data: Federation | null }).data ?? null) as Federation | null);
     setCoaches((co.data ?? []) as Coach[]);
     setAthletes((a.data ?? []) as AthleteRow[]);
     setSports((sp.data ?? []) as Sport[]);
     setMembers((m.data ?? []) as ClubMember[]);
+    const merged = [
+      ...((fm.data ?? []) as Array<typeof allPersons[number]>),
+      ...((cm.data ?? []) as Array<typeof allPersons[number]>),
+    ];
+    const seen = new Set<string>();
+    const dedup: typeof allPersons = [];
+    for (const p of merged) {
+      const key = `${p.first_name.trim().toLowerCase()}|${p.last_name.trim().toLowerCase()}|${(p.email ?? "").trim().toLowerCase()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      dedup.push(p);
+    }
+    setAllPersons(dedup);
     setLoading(false);
   };
 
@@ -271,7 +297,21 @@ function ClubDetailPage() {
   const openCreateMember = () => {
     setEditingMember(null);
     setMemberForm(emptyMember);
+    setPickedPersonId("");
     setMemberOpen(true);
+  };
+  const onPickPerson = (pid: string) => {
+    setPickedPersonId(pid);
+    const p = allPersons.find((x) => x.id === pid);
+    if (!p) return;
+    setMemberForm((f) => ({
+      ...f,
+      first_name: p.first_name,
+      last_name: p.last_name,
+      email: p.email ?? "",
+      phone: p.phone ?? "",
+      address: p.address ?? "",
+    }));
   };
   const openEditMember = (m: ClubMember) => {
     setEditingMember(m);
@@ -577,20 +617,18 @@ function ClubDetailPage() {
                 </TableHeader>
                 <TableBody>
                   {members.map((m) => (
-                    <TableRow key={m.id}>
-                      <TableCell className="font-medium">
-                        <Link
-                          to="/clubs/members/$memberId"
-                          params={{ memberId: m.id }}
-                          className="text-indigo-600 hover:underline"
-                        >
-                          {m.first_name} {m.last_name}
-                        </Link>
+                    <TableRow
+                      key={m.id}
+                      onClick={() => navigate({ to: "/clubs/members/$memberId", params: { memberId: m.id } })}
+                      className="cursor-pointer hover:bg-slate-50"
+                    >
+                      <TableCell className="font-medium text-indigo-600">
+                        {m.first_name} {m.last_name}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">{memberRoleLabel(m.role)}</Badge>
                       </TableCell>
-                      <TableCell className="text-slate-600">
+                      <TableCell className="text-slate-600" onClick={(e) => e.stopPropagation()}>
                         {m.email ? (
                           <a
                             href={`mailto:${m.email}`}
@@ -616,7 +654,7 @@ function ClubDetailPage() {
                           <Badge variant="outline">Inactif</Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -755,6 +793,27 @@ function ClubDetailPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
+              {!editingMember && allPersons.length > 0 && (
+                <div className="space-y-1.5 rounded-md border border-dashed border-slate-300 bg-slate-50 p-3">
+                  <Label className="text-xs uppercase tracking-wide text-slate-500">
+                    Choisir un membre déjà enregistré (optionnel)
+                  </Label>
+                  <PersonCombobox
+                    value={pickedPersonId}
+                    onChange={onPickPerson}
+                    options={allPersons.map((p) => ({
+                      id: p.id,
+                      label: `${p.first_name} ${p.last_name}${p.email ? ` — ${p.email}` : ""}`,
+                    }))}
+                    placeholder="Sélectionner pour pré-remplir…"
+                    searchPlaceholder="Rechercher un membre existant…"
+                    emptyMessage="Aucun membre trouvé."
+                  />
+                  <p className="text-xs text-slate-500">
+                    Ou laissez vide et remplissez les champs ci-dessous pour créer un nouveau membre.
+                  </p>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="cmfname">Prénom *</Label>

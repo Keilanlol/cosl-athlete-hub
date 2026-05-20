@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
@@ -63,6 +63,7 @@ import {
 } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/DataTableShell";
 import { AddressSearch } from "@/components/AddressSearch";
+import { PersonCombobox } from "@/components/PersonCombobox";
 import { confirmAction } from "@/components/ConfirmDialog";
 
 export const Route = createFileRoute("/_authenticated/federations/$id")({
@@ -135,11 +136,16 @@ const emptyMember = {
 
 function FederationDetailPage() {
   const { id } = Route.useParams();
+  const navigate = useNavigate();
   const [fed, setFed] = useState<Federation | null>(null);
   const [clubs, setClubs] = useState<Club[]>([]);
   const [coaches, setCoaches] = useState<Coach[]>([]);
   const [athletes, setAthletes] = useState<AthleteRow[]>([]);
   const [members, setMembers] = useState<FederationMember[]>([]);
+  const [allPersons, setAllPersons] = useState<
+    Array<{ id: string; first_name: string; last_name: string; email: string | null; phone: string | null; address: string | null }>
+  >([]);
+  const [pickedPersonId, setPickedPersonId] = useState("");
   const [, setSports] = useState<Sport[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -158,7 +164,7 @@ function FederationDetailPage() {
   const load = async () => {
     setLoading(true);
     // First load federation + clubs to know which clubs belong
-    const [f, c, sp, m] = await Promise.all([
+    const [f, c, sp, m, fm, cm] = await Promise.all([
       supabase.from("federations").select("*").eq("id", id).maybeSingle(),
       supabase.from("clubs").select("*").eq("federation_id", id).order("name"),
       supabase.from("sports").select("*"),
@@ -167,6 +173,14 @@ function FederationDetailPage() {
         .select("*")
         .eq("federation_id", id)
         .order("created_at", { ascending: false }),
+      supabase
+        .from("federation_members")
+        .select("id,first_name,last_name,email,phone,address")
+        .order("last_name"),
+      supabase
+        .from("club_members")
+        .select("id,first_name,last_name,email,phone,address")
+        .order("last_name"),
     ]);
     if (f.error) toast.error("Erreur de chargement", { description: f.error.message });
     setFed((f.data ?? null) as Federation | null);
@@ -174,6 +188,20 @@ function FederationDetailPage() {
     setClubs(clubsData);
     setSports((sp.data ?? []) as Sport[]);
     setMembers((m.data ?? []) as FederationMember[]);
+    // Merge & dedupe by name+email
+    const merged = [
+      ...((fm.data ?? []) as Array<typeof allPersons[number]>),
+      ...((cm.data ?? []) as Array<typeof allPersons[number]>),
+    ];
+    const seen = new Set<string>();
+    const dedup: typeof allPersons = [];
+    for (const p of merged) {
+      const key = `${p.first_name.trim().toLowerCase()}|${p.last_name.trim().toLowerCase()}|${(p.email ?? "").trim().toLowerCase()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      dedup.push(p);
+    }
+    setAllPersons(dedup);
 
     const clubIds = clubsData.map((cl) => cl.id);
     // Athletes: those rattached to fed OR member of one of its clubs
@@ -301,7 +329,21 @@ function FederationDetailPage() {
   const openCreateMember = () => {
     setEditingMember(null);
     setMemberForm(emptyMember);
+    setPickedPersonId("");
     setMemberOpen(true);
+  };
+  const onPickPerson = (pid: string) => {
+    setPickedPersonId(pid);
+    const p = allPersons.find((x) => x.id === pid);
+    if (!p) return;
+    setMemberForm((f) => ({
+      ...f,
+      first_name: p.first_name,
+      last_name: p.last_name,
+      email: p.email ?? "",
+      phone: p.phone ?? "",
+      address: p.address ?? "",
+    }));
   };
   const openEditMember = (m: FederationMember) => {
     setEditingMember(m);
@@ -539,15 +581,13 @@ function FederationDetailPage() {
                   {clubs.map((c) => {
                     const n = athletes.filter((a) => a.current_club?.id === c.id).length;
                     return (
-                      <TableRow key={c.id}>
-                        <TableCell className="font-medium">
-                          <Link
-                            to="/clubs/$id"
-                            params={{ id: c.id }}
-                            className="text-indigo-600 hover:underline"
-                          >
-                            {c.name}
-                          </Link>
+                      <TableRow
+                        key={c.id}
+                        onClick={() => navigate({ to: "/clubs/$id", params: { id: c.id } })}
+                        className="cursor-pointer hover:bg-slate-50"
+                      >
+                        <TableCell className="font-medium text-indigo-600">
+                          {c.name}
                         </TableCell>
                         <TableCell className="text-slate-600">{c.city ?? "—"}</TableCell>
                         <TableCell className="text-slate-600">{c.email ?? "—"}</TableCell>
@@ -555,7 +595,7 @@ function FederationDetailPage() {
                         <TableCell className="text-right">
                           <Badge variant="outline">{n}</Badge>
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -657,20 +697,18 @@ function FederationDetailPage() {
                 </TableHeader>
                 <TableBody>
                   {members.map((m) => (
-                    <TableRow key={m.id}>
-                      <TableCell className="font-medium">
-                        <Link
-                          to="/federations/members/$memberId"
-                          params={{ memberId: m.id }}
-                          className="text-indigo-600 hover:underline"
-                        >
-                          {m.first_name} {m.last_name}
-                        </Link>
+                    <TableRow
+                      key={m.id}
+                      onClick={() => navigate({ to: "/federations/members/$memberId", params: { memberId: m.id } })}
+                      className="cursor-pointer hover:bg-slate-50"
+                    >
+                      <TableCell className="font-medium text-indigo-600">
+                        {m.first_name} {m.last_name}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">{memberRoleLabel(m.role)}</Badge>
                       </TableCell>
-                      <TableCell className="text-slate-600">
+                      <TableCell className="text-slate-600" onClick={(e) => e.stopPropagation()}>
                         {m.email ? (
                           <a
                             href={`mailto:${m.email}`}
@@ -696,7 +734,7 @@ function FederationDetailPage() {
                           <Badge variant="outline">Inactif</Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -885,6 +923,27 @@ function FederationDetailPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
+              {!editingMember && allPersons.length > 0 && (
+                <div className="space-y-1.5 rounded-md border border-dashed border-slate-300 bg-slate-50 p-3">
+                  <Label className="text-xs uppercase tracking-wide text-slate-500">
+                    Choisir un membre déjà enregistré (optionnel)
+                  </Label>
+                  <PersonCombobox
+                    value={pickedPersonId}
+                    onChange={onPickPerson}
+                    options={allPersons.map((p) => ({
+                      id: p.id,
+                      label: `${p.first_name} ${p.last_name}${p.email ? ` — ${p.email}` : ""}`,
+                    }))}
+                    placeholder="Sélectionner pour pré-remplir…"
+                    searchPlaceholder="Rechercher un membre existant…"
+                    emptyMessage="Aucun membre trouvé."
+                  />
+                  <p className="text-xs text-slate-500">
+                    Ou laissez vide et remplissez les champs ci-dessous pour créer un nouveau membre.
+                  </p>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="mfname">Prénom *</Label>
