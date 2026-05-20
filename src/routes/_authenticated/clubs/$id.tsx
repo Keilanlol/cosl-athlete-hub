@@ -165,7 +165,7 @@ function ClubDetailPage() {
     if (cl.error) toast.error("Erreur de chargement", { description: cl.error.message });
     const c = (cl.data ?? null) as Club | null;
     setClub(c);
-    const [f, co, a, sp, m] = await Promise.all([
+    const [f, co, a, sp, m, fm, cm] = await Promise.all([
       c
         ? supabase.from("federations").select("*").eq("id", c.federation_id).maybeSingle()
         : Promise.resolve({ data: null }),
@@ -181,12 +181,33 @@ function ClubDetailPage() {
         .select("*")
         .eq("club_id", id)
         .order("created_at", { ascending: false }),
+      supabase
+        .from("federation_members")
+        .select("id,first_name,last_name,email,phone,address")
+        .order("last_name"),
+      supabase
+        .from("club_members")
+        .select("id,first_name,last_name,email,phone,address")
+        .order("last_name"),
     ]);
     setFed(((f as { data: Federation | null }).data ?? null) as Federation | null);
     setCoaches((co.data ?? []) as Coach[]);
     setAthletes((a.data ?? []) as AthleteRow[]);
     setSports((sp.data ?? []) as Sport[]);
     setMembers((m.data ?? []) as ClubMember[]);
+    const merged = [
+      ...((fm.data ?? []) as Array<typeof allPersons[number]>),
+      ...((cm.data ?? []) as Array<typeof allPersons[number]>),
+    ];
+    const seen = new Set<string>();
+    const dedup: typeof allPersons = [];
+    for (const p of merged) {
+      const key = `${p.first_name.trim().toLowerCase()}|${p.last_name.trim().toLowerCase()}|${(p.email ?? "").trim().toLowerCase()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      dedup.push(p);
+    }
+    setAllPersons(dedup);
     setLoading(false);
   };
 
