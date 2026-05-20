@@ -434,7 +434,7 @@ function LodgingPage() {
                     <TableCell>{g.items[0]?.room_type ?? "—"}</TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
-                        {g.items.map((it) => (
+                        {g.items.filter((it) => it.athlete_id || it.coach_id).map((it) => (
                           <Badge
                             key={it.id}
                             variant="secondary"
@@ -447,9 +447,12 @@ function LodgingPage() {
                             {occupantLabel(it)} · {it.coach_id ? "encadrant" : "athlète"}
                           </Badge>
                         ))}
-                        <Badge variant="outline">{g.items.length}</Badge>
+                        <Badge variant="outline">
+                          {g.items.filter((it) => it.athlete_id || it.coach_id).length}
+                        </Badge>
                       </div>
                     </TableCell>
+
                     <TableCell>{g.items[0]?.check_in ?? "—"}</TableCell>
                     <TableCell>{g.items[0]?.check_out ?? "—"}</TableCell>
                     <TableCell className="text-right">
