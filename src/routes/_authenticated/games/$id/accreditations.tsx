@@ -206,7 +206,7 @@ function GameAccreditationsPage() {
     setTypeOpen(false); load();
   };
   const removeType = async (t: AccType) => {
-    if (!(await confirmAction({ title: "Supprimer ce type d'accréditation ?", description: `« ${t.code} » sera supprimé.`, confirmLabel: "Supprimer" }))) return;
+    if (!(await confirmAction({ title: "Supprimer ce type d'accréditation ?", description: `« ${t.type_code} » sera supprimé.`, confirmLabel: "Supprimer" }))) return;
     const { error } = await supabase.from("accreditation_types").delete().eq("id", t.id);
     if (error) toast.error("Échec", { description: error.message });
     else { toast.success("Type supprimé"); load(); }

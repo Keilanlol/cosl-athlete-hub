@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Plus, Trash2, Download, Building2, Search, Users } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { confirmAction } from "@/components/ConfirmDialog";
 import {
   type Accommodation,
   type RoomingAssignment,
