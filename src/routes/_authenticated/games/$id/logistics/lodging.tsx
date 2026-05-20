@@ -585,42 +585,48 @@ function LodgingPage() {
                 {drawer.roomType ? ` · ${drawer.roomType}` : ""}
               </div>
 
-              <div className="space-y-2">
-                <div className="text-sm font-medium text-slate-700">
-                  Occupants ({drawer.items.length})
-                </div>
-                {drawer.items.length === 0 ? (
-                  <p className="text-xs text-slate-500">Aucun occupant.</p>
-                ) : (
-                  <ul className="divide-y rounded-md border">
-                    {drawer.items.map((it) => (
-                      <li key={it.id} className="flex items-center justify-between p-2">
-                        <div className="flex items-center gap-2">
-                          <Badge
-                            variant="secondary"
-                            className={
-                              it.coach_id
-                                ? "bg-amber-100 text-amber-800"
-                                : "bg-indigo-100 text-indigo-800"
-                            }
-                          >
-                            {it.coach_id ? "Encadrant" : "Athlète"}
-                          </Badge>
-                          <span className="text-sm">{occupantLabel(it)}</span>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-red-600 hover:text-red-700"
-                          onClick={() => removeOccupant(it)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+              {(() => {
+                const real = drawer.items.filter((i) => i.athlete_id || i.coach_id);
+                return (
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium text-slate-700">
+                      Occupants ({real.length})
+                    </div>
+                    {real.length === 0 ? (
+                      <p className="text-xs text-slate-500">Aucun occupant.</p>
+                    ) : (
+                      <ul className="divide-y rounded-md border">
+                        {real.map((it) => (
+                          <li key={it.id} className="flex items-center justify-between p-2">
+                            <div className="flex items-center gap-2">
+                              <Badge
+                                variant="secondary"
+                                className={
+                                  it.coach_id
+                                    ? "bg-amber-100 text-amber-800"
+                                    : "bg-indigo-100 text-indigo-800"
+                                }
+                              >
+                                {it.coach_id ? "Encadrant" : "Athlète"}
+                              </Badge>
+                              <span className="text-sm">{occupantLabel(it)}</span>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-red-600 hover:text-red-700"
+                              onClick={() => removeOccupant(it)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                );
+              })()}
+
 
               <div className="space-y-2 rounded-md border p-3">
                 <div className="text-sm font-medium text-slate-700">Ajouter un occupant</div>
