@@ -148,8 +148,22 @@ function FlightsPage() {
       setCounts({});
     }
 
+    const { data: sel } = await supabase
+      .from("selections")
+      .select("athlete_id")
+      .eq("game_id", id)
+      .eq("status", "selected");
+    const selIds = Array.from(
+      new Set(((sel ?? []) as { athlete_id: string }[]).map((s) => s.athlete_id)),
+    );
     const [{ data: a }, { data: co }] = await Promise.all([
-      supabase.from("athletes").select("*").eq("is_active", true).order("last_name"),
+      selIds.length
+        ? supabase
+            .from("athletes")
+            .select("*")
+            .in("id", selIds)
+            .order("last_name")
+        : Promise.resolve({ data: [] as Athlete[] }),
       supabase.from("coaches").select("*").eq("is_active", true).order("last_name"),
     ]);
     setAthletes((a ?? []) as Athlete[]);
