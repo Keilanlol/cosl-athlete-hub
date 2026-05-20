@@ -554,14 +554,12 @@ function LodgingPage() {
             </div>
             <div className="space-y-1">
               <Label>1er occupant</Label>
-              <Select value={roomForm.occupant} onValueChange={(v) => setRoomForm({ ...roomForm, occupant: v })}>
-                <SelectTrigger><SelectValue placeholder="Choisir" /></SelectTrigger>
-                <SelectContent>
-                  {newRoomPersonOptions.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <PersonCombobox
+                value={roomForm.occupant}
+                onChange={(id) => setRoomForm({ ...roomForm, occupant: id })}
+                options={newRoomPersonOptions}
+                searchPlaceholder={`Rechercher ${roomForm.kind === "athlete" ? "un athlète" : "un encadrant"}…`}
+              />
             </div>
             <div className="space-y-1">
               <Label>Check-in</Label>
