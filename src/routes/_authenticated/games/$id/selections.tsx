@@ -69,6 +69,7 @@ function SelectionsPage() {
   const [kycFilter, setKycFilter] = useState("all");
 
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [form, setForm] = useState({ athlete_id: "", sport_id: "", discipline_id: "" });
   const [saving, setSaving] = useState(false);
