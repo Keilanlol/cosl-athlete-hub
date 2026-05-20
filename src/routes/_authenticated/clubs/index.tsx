@@ -294,17 +294,13 @@ function ClubsPage() {
               {visible.map((c) => {
                 const f = fedMap.get(c.federation_id);
                 return (
-                  <TableRow key={c.id}>
-                    <TableCell className="font-medium">
-                      <Link
-                        to="/clubs/$id"
-                        params={{ id: c.id }}
-                        className="text-indigo-600 hover:underline"
-                      >
-                        {c.name}
-                      </Link>
-                    </TableCell>
-                    <TableCell>
+                  <TableRow
+                    key={c.id}
+                    onClick={() => navigate({ to: "/clubs/$id", params: { id: c.id } })}
+                    className="cursor-pointer hover:bg-slate-50"
+                  >
+                    <TableCell className="font-medium">{c.name}</TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       {f ? (
                         <Link to="/federations/$id" params={{ id: f.id }}>
                           <Badge variant="outline" className="font-mono hover:bg-slate-100">
@@ -318,7 +314,7 @@ function ClubsPage() {
                     <TableCell className="text-slate-600">{c.city ?? "—"}</TableCell>
                     <TableCell className="text-slate-600">{c.email ?? "—"}</TableCell>
                     <TableCell className="text-slate-600">{c.phone ?? "—"}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <Button
                         variant="ghost"
                         size="icon"
