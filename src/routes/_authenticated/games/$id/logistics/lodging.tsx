@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, Download, Building2, Search } from "lucide-react";
+import { Plus, Trash2, Download, Building2, Search, Users } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import {
@@ -13,9 +13,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AddressSearch } from "@/components/AddressSearch";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle,
+} from "@/components/ui/sheet";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -38,11 +42,10 @@ type RoomForm = {
   accommodation_id: string;
   room_number: string;
   room_type: string;
-  kind: "athlete" | "coach";
-  occupant1: string;
-  occupant2: string;
   check_in: string;
   check_out: string;
+  kind: "athlete" | "coach";
+  occupant: string;
 };
 
 const emptyAcc: AccForm = { name: "", type: "", city: "", total_rooms: "" };
@@ -50,12 +53,20 @@ const emptyRoom: RoomForm = {
   accommodation_id: "",
   room_number: "",
   room_type: "",
-  kind: "athlete",
-  occupant1: "",
-  occupant2: "",
   check_in: "",
   check_out: "",
+  kind: "athlete",
+  occupant: "",
 };
+
+type DrawerState = {
+  accId: string;
+  roomNo: string;
+  roomType: string | null;
+  checkIn: string;
+  checkOut: string;
+  items: RoomingAssignment[];
+} | null;
 
 function LodgingPage() {
   const { id } = Route.useParams();
@@ -76,6 +87,11 @@ function LodgingPage() {
   const [filterSport, setFilterSport] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [confirmDel, setConfirmDel] = useState<RoomingAssignment | null>(null);
+
+  const [drawer, setDrawer] = useState<DrawerState>(null);
+  const [paxKind, setPaxKind] = useState<"athlete" | "coach">("athlete");
+  const [paxId, setPaxId] = useState<string>("");
+  const [paxSearch, setPaxSearch] = useState("");
 
   const load = async () => {
     setLoading(true);
@@ -103,6 +119,16 @@ function LodgingPage() {
 
   useEffect(() => { load(); }, [id]);
 
+  // Keep drawer in sync with reloaded rooms
+  useEffect(() => {
+    if (!drawer) return;
+    const items = rooms.filter(
+      (r) => r.accommodation_id === drawer.accId && r.room_number === drawer.roomNo,
+    );
+    setDrawer((d) => (d ? { ...d, items } : d));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rooms]);
+
   const sports = useMemo(() => {
     const ids = new Set<string>();
     athletes.forEach((a) => a.primary_sport_id && ids.add(a.primary_sport_id));
@@ -121,7 +147,6 @@ function LodgingPage() {
     return "—";
   };
 
-  // Group rooms by (accommodation_id, room_number) to display two occupants
   const groupedRooms = useMemo(() => {
     const map = new Map<string, RoomingAssignment[]>();
     rooms.forEach((r) => {
@@ -181,35 +206,23 @@ function LodgingPage() {
   const submitRoom = async () => {
     if (!roomForm.accommodation_id) return toast.error("Hébergement requis");
     if (!roomForm.room_number.trim()) return toast.error("N° de chambre requis");
-    if (!roomForm.occupant1) return toast.error("Occupant requis");
+    if (!roomForm.occupant) return toast.error("Premier occupant requis");
     if (!roomForm.check_in || !roomForm.check_out) return toast.error("Dates requises");
     if (roomForm.check_in > roomForm.check_out)
       return toast.error("Check-in après check-out");
 
-    const base = {
+    const payload = {
       accommodation_id: roomForm.accommodation_id,
       room_number: roomForm.room_number.trim(),
       room_type: roomForm.room_type.trim() || null,
       check_in: roomForm.check_in,
       check_out: roomForm.check_out,
+      athlete_id: roomForm.kind === "athlete" ? roomForm.occupant : null,
+      coach_id: roomForm.kind === "coach" ? roomForm.occupant : null,
     };
-    const inserts: Array<typeof base & { athlete_id: string | null; coach_id: string | null }> = [];
-    const occA = roomForm.occupant1;
-    inserts.push({
-      ...base,
-      athlete_id: roomForm.kind === "athlete" ? occA : null,
-      coach_id: roomForm.kind === "coach" ? occA : null,
-    });
-    if (roomForm.occupant2) {
-      inserts.push({
-        ...base,
-        athlete_id: roomForm.kind === "athlete" ? roomForm.occupant2 : null,
-        coach_id: roomForm.kind === "coach" ? roomForm.occupant2 : null,
-      });
-    }
-    const { error } = await supabase.from("rooming_assignments").insert(inserts);
+    const { error } = await supabase.from("rooming_assignments").insert(payload);
     if (error) return toast.error("Échec", { description: error.message });
-    toast.success("Chambre attribuée");
+    toast.success("Chambre créée");
     setRoomOpen(false);
     setRoomForm(emptyRoom);
     load();
@@ -222,18 +235,53 @@ function LodgingPage() {
       .delete()
       .eq("id", confirmDel.id);
     if (error) toast.error("Échec", { description: error.message });
-    else { toast.success("Attribution supprimée"); load(); }
+    else { toast.success("Occupant retiré"); load(); }
     setConfirmDel(null);
   };
 
+  const addOccupantToRoom = async () => {
+    if (!drawer) return;
+    if (!paxId) return toast.error("Choisir une personne");
+    const dup = drawer.items.some(
+      (i) =>
+        (paxKind === "athlete" && i.athlete_id === paxId) ||
+        (paxKind === "coach" && i.coach_id === paxId),
+    );
+    if (dup) return toast.error("Déjà présent dans la chambre");
+
+    const { error } = await supabase.from("rooming_assignments").insert({
+      accommodation_id: drawer.accId,
+      room_number: drawer.roomNo,
+      room_type: drawer.roomType,
+      check_in: drawer.checkIn,
+      check_out: drawer.checkOut,
+      athlete_id: paxKind === "athlete" ? paxId : null,
+      coach_id: paxKind === "coach" ? paxId : null,
+    });
+    if (error) return toast.error("Échec", { description: error.message });
+    toast.success("Occupant ajouté");
+    setPaxId("");
+    setPaxSearch("");
+    load();
+  };
+
+  const removeOccupant = async (occ: RoomingAssignment) => {
+    const { error } = await supabase
+      .from("rooming_assignments")
+      .delete()
+      .eq("id", occ.id);
+    if (error) return toast.error("Échec", { description: error.message });
+    toast.success("Occupant retiré");
+    load();
+  };
+
   const exportCsv = () => {
-    const header = ["Hébergement", "Chambre", "Type", "Occupant 1", "Occupant 2", "Check-in", "Check-out"];
+    const header = ["Hébergement", "Chambre", "Type", "Occupants", "Check-in", "Check-out"];
     const rows = filteredGroups.map((g) => [
       accName(g.accId),
       g.roomNo,
       g.items[0]?.room_type ?? "",
-      g.items[0] ? occupantLabel(g.items[0]) : "",
-      g.items[1] ? occupantLabel(g.items[1]) : "",
+      g.items.map((i) => `${occupantLabel(i)}${i.coach_id ? " (encadrant)" : ""}`).join(" | "),
       g.items[0]?.check_in ?? "",
       g.items[0]?.check_out ?? "",
     ]);
@@ -251,6 +299,20 @@ function LodgingPage() {
   };
 
   const personOptions = useMemo(() => {
+    const q = paxSearch.trim().toLowerCase();
+    const taken = new Set<string>();
+    drawer?.items.forEach((i) => {
+      if (paxKind === "athlete" && i.athlete_id) taken.add(i.athlete_id);
+      if (paxKind === "coach" && i.coach_id) taken.add(i.coach_id);
+    });
+    const list =
+      paxKind === "athlete"
+        ? athletes.map((a) => ({ id: a.id, label: `${a.last_name} ${a.first_name}` }))
+        : coaches.map((c) => ({ id: c.id, label: `${c.last_name} ${c.first_name}` }));
+    return list.filter((p) => !taken.has(p.id) && (q === "" || p.label.toLowerCase().includes(q)));
+  }, [paxKind, paxSearch, athletes, coaches, drawer]);
+
+  const newRoomPersonOptions = useMemo(() => {
     if (roomForm.kind === "athlete")
       return athletes.map((a) => ({ id: a.id, label: `${a.last_name} ${a.first_name}` }));
     return coaches.map((c) => ({ id: c.id, label: `${c.last_name} ${c.first_name}` }));
@@ -303,7 +365,7 @@ function LodgingPage() {
               <Download className="mr-2 h-4 w-4" /> Exporter CSV
             </Button>
             <Button onClick={() => setRoomOpen(true)} className="bg-indigo-500 hover:bg-indigo-600" size="sm">
-              <Plus className="mr-2 h-4 w-4" /> Attribuer une chambre
+              <Plus className="mr-2 h-4 w-4" /> Créer une chambre
             </Button>
           </div>
         </div>
@@ -349,7 +411,7 @@ function LodgingPage() {
 
         <div className="rounded-lg border border-slate-200 bg-white">
           {loading ? (
-            <TableSkeleton cols={7} />
+            <TableSkeleton cols={6} />
           ) : filteredGroups.length === 0 ? (
             <div className="p-6"><EmptyState message="Aucune attribution." /></div>
           ) : (
@@ -359,8 +421,7 @@ function LodgingPage() {
                   <TableHead>Hébergement</TableHead>
                   <TableHead>Chambre</TableHead>
                   <TableHead>Type</TableHead>
-                  <TableHead>Occupant 1</TableHead>
-                  <TableHead>Occupant 2</TableHead>
+                  <TableHead>Occupants</TableHead>
                   <TableHead>Check-in</TableHead>
                   <TableHead>Check-out</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -372,22 +433,46 @@ function LodgingPage() {
                     <TableCell>{accName(g.accId)}</TableCell>
                     <TableCell className="font-medium">{g.roomNo}</TableCell>
                     <TableCell>{g.items[0]?.room_type ?? "—"}</TableCell>
-                    <TableCell>{g.items[0] ? occupantLabel(g.items[0]) : "—"}</TableCell>
-                    <TableCell>{g.items[1] ? occupantLabel(g.items[1]) : "—"}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {g.items.map((it) => (
+                          <Badge
+                            key={it.id}
+                            variant="secondary"
+                            className={
+                              it.coach_id
+                                ? "bg-amber-100 text-amber-800"
+                                : "bg-indigo-100 text-indigo-800"
+                            }
+                          >
+                            {occupantLabel(it)} · {it.coach_id ? "encadrant" : "athlète"}
+                          </Badge>
+                        ))}
+                        <Badge variant="outline">{g.items.length}</Badge>
+                      </div>
+                    </TableCell>
                     <TableCell>{g.items[0]?.check_in ?? "—"}</TableCell>
                     <TableCell>{g.items[0]?.check_out ?? "—"}</TableCell>
                     <TableCell className="text-right">
-                      {g.items.map((it) => (
-                        <Button
-                          key={it.id}
-                          variant="ghost"
-                          size="icon"
-                          className="text-red-600 hover:text-red-700"
-                          onClick={() => setConfirmDel(it)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      ))}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setDrawer({
+                            accId: g.accId,
+                            roomNo: g.roomNo,
+                            roomType: g.items[0]?.room_type ?? null,
+                            checkIn: g.items[0]?.check_in ?? "",
+                            checkOut: g.items[0]?.check_out ?? "",
+                            items: g.items,
+                          });
+                          setPaxKind("athlete");
+                          setPaxId("");
+                          setPaxSearch("");
+                        }}
+                      >
+                        <Users className="mr-2 h-4 w-4" /> Occupants
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -432,7 +517,11 @@ function LodgingPage() {
 
       <Dialog open={roomOpen} onOpenChange={setRoomOpen}>
         <DialogContent className="max-w-xl">
-          <DialogHeader><DialogTitle>Attribuer une chambre</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Créer une chambre</DialogTitle></DialogHeader>
+          <p className="text-xs text-slate-500">
+            Crée la chambre avec un premier occupant. Vous pourrez ensuite ajouter
+            d'autres occupants (athlètes et/ou encadrants) via le bouton "Occupants".
+          </p>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="sm:col-span-2 space-y-1">
               <Label>Hébergement</Label>
@@ -451,35 +540,24 @@ function LodgingPage() {
             </div>
             <div className="space-y-1">
               <Label>Type</Label>
-              <Input value={roomForm.room_type} onChange={(e) => setRoomForm({ ...roomForm, room_type: e.target.value })} placeholder="single, double…" />
+              <Input value={roomForm.room_type} onChange={(e) => setRoomForm({ ...roomForm, room_type: e.target.value })} placeholder="single, double, suite…" />
             </div>
             <div className="space-y-1">
-              <Label>Profil occupants</Label>
-              <Select value={roomForm.kind} onValueChange={(v) => setRoomForm({ ...roomForm, kind: v as "athlete" | "coach", occupant1: "", occupant2: "" })}>
+              <Label>Profil 1er occupant</Label>
+              <Select value={roomForm.kind} onValueChange={(v) => setRoomForm({ ...roomForm, kind: v as "athlete" | "coach", occupant: "" })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="athlete">Athlètes</SelectItem>
-                  <SelectItem value="coach">Encadrants</SelectItem>
+                  <SelectItem value="athlete">Athlète</SelectItem>
+                  <SelectItem value="coach">Encadrant</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1">
-              <Label>Occupant 1</Label>
-              <Select value={roomForm.occupant1} onValueChange={(v) => setRoomForm({ ...roomForm, occupant1: v })}>
+              <Label>1er occupant</Label>
+              <Select value={roomForm.occupant} onValueChange={(v) => setRoomForm({ ...roomForm, occupant: v })}>
                 <SelectTrigger><SelectValue placeholder="Choisir" /></SelectTrigger>
                 <SelectContent>
-                  {personOptions.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label>Occupant 2 (optionnel)</Label>
-              <Select value={roomForm.occupant2} onValueChange={(v) => setRoomForm({ ...roomForm, occupant2: v })}>
-                <SelectTrigger><SelectValue placeholder="Aucun" /></SelectTrigger>
-                <SelectContent>
-                  {personOptions.filter((p) => p.id !== roomForm.occupant1).map((p) => (
+                  {newRoomPersonOptions.map((p) => (
                     <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
                   ))}
                 </SelectContent>
@@ -496,10 +574,100 @@ function LodgingPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRoomOpen(false)}>Annuler</Button>
-            <Button onClick={submitRoom} className="bg-indigo-500 hover:bg-indigo-600">Attribuer</Button>
+            <Button onClick={submitRoom} className="bg-indigo-500 hover:bg-indigo-600">Créer</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Sheet open={!!drawer} onOpenChange={(o) => !o && setDrawer(null)}>
+        <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>
+              {drawer ? `Chambre ${drawer.roomNo} · ${accName(drawer.accId)}` : ""}
+            </SheetTitle>
+          </SheetHeader>
+          {drawer && (
+            <div className="mt-4 space-y-4">
+              <div className="text-xs text-slate-500">
+                {drawer.checkIn} → {drawer.checkOut}
+                {drawer.roomType ? ` · ${drawer.roomType}` : ""}
+              </div>
+
+              <div className="space-y-2">
+                <div className="text-sm font-medium text-slate-700">
+                  Occupants ({drawer.items.length})
+                </div>
+                {drawer.items.length === 0 ? (
+                  <p className="text-xs text-slate-500">Aucun occupant.</p>
+                ) : (
+                  <ul className="divide-y rounded-md border">
+                    {drawer.items.map((it) => (
+                      <li key={it.id} className="flex items-center justify-between p-2">
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant="secondary"
+                            className={
+                              it.coach_id
+                                ? "bg-amber-100 text-amber-800"
+                                : "bg-indigo-100 text-indigo-800"
+                            }
+                          >
+                            {it.coach_id ? "Encadrant" : "Athlète"}
+                          </Badge>
+                          <span className="text-sm">{occupantLabel(it)}</span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-red-600 hover:text-red-700"
+                          onClick={() => removeOccupant(it)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div className="space-y-2 rounded-md border p-3">
+                <div className="text-sm font-medium text-slate-700">Ajouter un occupant</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Select value={paxKind} onValueChange={(v) => { setPaxKind(v as "athlete" | "coach"); setPaxId(""); }}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="athlete">Athlète</SelectItem>
+                      <SelectItem value="coach">Encadrant</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <div className="relative">
+                    <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <Input
+                      className="pl-8"
+                      placeholder="Rechercher…"
+                      value={paxSearch}
+                      onChange={(e) => setPaxSearch(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <Select value={paxId} onValueChange={setPaxId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={`Choisir (${personOptions.length})`} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {personOptions.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button onClick={addOccupantToRoom} className="w-full bg-indigo-500 hover:bg-indigo-600">
+                  <Plus className="mr-2 h-4 w-4" /> Ajouter
+                </Button>
+              </div>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
 
       <AlertDialog open={!!confirmDel} onOpenChange={(o) => !o && setConfirmDel(null)}>
         <AlertDialogContent>
