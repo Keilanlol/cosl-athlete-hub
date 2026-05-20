@@ -271,14 +271,24 @@ function LodgingPage() {
 
 
   const removeOccupant = async (occ: RoomingAssignment) => {
-    const { error } = await supabase
-      .from("rooming_assignments")
-      .delete()
-      .eq("id", occ.id);
+    // Si c'est le dernier occupant réel, conserver la chambre en transformant
+    // la ligne en placeholder (sans occupant) plutôt que de la supprimer.
+    const roomItems = rooms.filter(
+      (r) => r.accommodation_id === occ.accommodation_id && r.room_number === occ.room_number,
+    );
+    const realCount = roomItems.filter((r) => r.athlete_id || r.coach_id).length;
+    const { error } =
+      realCount <= 1
+        ? await supabase
+            .from("rooming_assignments")
+            .update({ athlete_id: null, coach_id: null })
+            .eq("id", occ.id)
+        : await supabase.from("rooming_assignments").delete().eq("id", occ.id);
     if (error) return toast.error("Échec", { description: error.message });
     toast.success("Occupant retiré");
     load();
   };
+
 
   const exportCsv = () => {
     const header = ["Hébergement", "Chambre", "Type", "Occupants", "Check-in", "Check-out"];
