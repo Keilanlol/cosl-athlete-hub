@@ -76,7 +76,7 @@ function TransportPage() {
     person_id: "",
     seat: "",
   });
-  const [paxSearch, setPaxSearch] = useState("");
+  
   const [editPaxId, setEditPaxId] = useState<string | null>(null);
   const [editSeat, setEditSeat] = useState("");
 
