@@ -1026,6 +1026,3 @@ function FederationDetailPage() {
   );
 }
 
-// Suppress unused import warnings for sports (kept for future enrichment)
-void sportsUnused;
-const sportsUnused: Sport[] = [];
