@@ -297,7 +297,21 @@ function ClubDetailPage() {
   const openCreateMember = () => {
     setEditingMember(null);
     setMemberForm(emptyMember);
+    setPickedPersonId("");
     setMemberOpen(true);
+  };
+  const onPickPerson = (pid: string) => {
+    setPickedPersonId(pid);
+    const p = allPersons.find((x) => x.id === pid);
+    if (!p) return;
+    setMemberForm((f) => ({
+      ...f,
+      first_name: p.first_name,
+      last_name: p.last_name,
+      email: p.email ?? "",
+      phone: p.phone ?? "",
+      address: p.address ?? "",
+    }));
   };
   const openEditMember = (m: ClubMember) => {
     setEditingMember(m);
