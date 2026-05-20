@@ -312,14 +312,19 @@ function SelectionsPage() {
                           <Lock className="mr-1 h-3 w-3" /> Verrouillé
                         </span>
                       ) : (
-                        <Select value={r.status} onValueChange={(v) => changeStatus(r, v)}>
-                          <SelectTrigger className="ml-auto h-8 w-40"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {SELECTION_STATUSES.map((s) => (
-                              <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <div className="flex items-center justify-end gap-2">
+                          <Select value={r.status} onValueChange={(v) => changeStatus(r, v)}>
+                            <SelectTrigger className="h-8 w-40"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {SELECTION_STATUSES.map((s) => (
+                                <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(r)} title="Modifier">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </div>
                       )}
                     </TableCell>
                   </TableRow>
