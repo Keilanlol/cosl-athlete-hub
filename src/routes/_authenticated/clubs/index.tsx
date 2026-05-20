@@ -66,6 +66,7 @@ const empty = {
 };
 
 function ClubsPage() {
+  const navigate = useNavigate();
   const [rows, setRows] = useState<Club[] | null>(null);
   const [feds, setFeds] = useState<Federation[]>([]);
   const [search, setSearch] = useState("");
