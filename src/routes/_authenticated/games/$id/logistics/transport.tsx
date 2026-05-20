@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { LogisticsTabs } from "@/components/LogisticsTabs";
 import { TableSkeleton, EmptyState } from "@/components/DataTableShell";
+import { PersonCombobox } from "@/components/PersonCombobox";
 
 export const Route = createFileRoute("/_authenticated/games/$id/logistics/transport")({
   component: TransportPage,
@@ -75,7 +76,7 @@ function TransportPage() {
     person_id: "",
     seat: "",
   });
-  const [paxSearch, setPaxSearch] = useState("");
+  
   const [editPaxId, setEditPaxId] = useState<string | null>(null);
   const [editSeat, setEditSeat] = useState("");
 
@@ -179,7 +180,6 @@ function TransportPage() {
     toast.success("Passager ajouté");
     setPaxOpen(false);
     setPaxForm({ kind: "athlete", person_id: "", seat: "" });
-    setPaxSearch("");
     openDrawer(drawer);
     load();
   };
@@ -229,18 +229,14 @@ function TransportPage() {
   }, [passengers]);
 
   const personOptions = useMemo(() => {
-    const q = paxSearch.trim().toLowerCase();
-    const list =
-      paxForm.kind === "athlete"
-        ? athletes
-            .filter((a) => !takenIds.athlete.has(a.id))
-            .map((a) => ({ id: a.id, label: `${a.last_name} ${a.first_name}` }))
-        : coaches
-            .filter((c) => !takenIds.coach.has(c.id))
-            .map((c) => ({ id: c.id, label: `${c.last_name} ${c.first_name}` }));
-    if (!q) return list;
-    return list.filter((p) => p.label.toLowerCase().includes(q));
-  }, [paxForm.kind, athletes, coaches, paxSearch, takenIds]);
+    return paxForm.kind === "athlete"
+      ? athletes
+          .filter((a) => !takenIds.athlete.has(a.id))
+          .map((a) => ({ id: a.id, label: `${a.last_name} ${a.first_name}` }))
+      : coaches
+          .filter((c) => !takenIds.coach.has(c.id))
+          .map((c) => ({ id: c.id, label: `${c.last_name} ${c.first_name}` }));
+  }, [paxForm.kind, athletes, coaches, takenIds]);
 
   const fmtDt = (s: string) =>
     new Date(s).toLocaleString("fr-FR", {
@@ -461,7 +457,7 @@ function TransportPage() {
         open={paxOpen}
         onOpenChange={(o) => {
           setPaxOpen(o);
-          if (!o) { setPaxSearch(""); setPaxForm({ kind: "athlete", person_id: "", seat: "" }); }
+          if (!o) { setPaxForm({ kind: "athlete", person_id: "", seat: "" }); }
         }}
       >
         <DialogContent>
@@ -482,31 +478,12 @@ function TransportPage() {
             </div>
             <div className="space-y-1">
               <Label>Personne</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <Input
-                  placeholder={`Rechercher ${paxForm.kind === "athlete" ? "un athlète" : "un encadrant"}…`}
-                  value={paxSearch}
-                  onChange={(e) => setPaxSearch(e.target.value)}
-                  className="pl-9 mb-2"
-                />
-              </div>
-              <Select
+              <PersonCombobox
                 value={paxForm.person_id}
-                onValueChange={(v) => setPaxForm({ ...paxForm, person_id: v })}
-              >
-                <SelectTrigger><SelectValue placeholder="Choisir" /></SelectTrigger>
-                <SelectContent>
-                  {personOptions.length === 0 ? (
-                    <div className="px-2 py-1.5 text-sm text-slate-500">Aucun résultat</div>
-                  ) : (
-                    personOptions.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-slate-500">{personOptions.length} résultat(s)</p>
+                onChange={(id) => setPaxForm({ ...paxForm, person_id: id })}
+                options={personOptions}
+                searchPlaceholder={`Rechercher ${paxForm.kind === "athlete" ? "un athlète" : "un encadrant"}…`}
+              />
             </div>
             <div className="space-y-1">
               <Label>Siège (optionnel)</Label>

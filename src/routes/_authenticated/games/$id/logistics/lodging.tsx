@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { LogisticsTabs } from "@/components/LogisticsTabs";
 import { TableSkeleton, EmptyState } from "@/components/DataTableShell";
+import { PersonCombobox } from "@/components/PersonCombobox";
 
 export const Route = createFileRoute("/_authenticated/games/$id/logistics/lodging")({
   component: LodgingPage,
@@ -91,7 +92,7 @@ function LodgingPage() {
   const [drawer, setDrawer] = useState<DrawerState>(null);
   const [paxKind, setPaxKind] = useState<"athlete" | "coach">("athlete");
   const [paxId, setPaxId] = useState<string>("");
-  const [paxSearch, setPaxSearch] = useState("");
+  
 
   const load = async () => {
     setLoading(true);
@@ -261,7 +262,6 @@ function LodgingPage() {
     if (error) return toast.error("Échec", { description: error.message });
     toast.success("Occupant ajouté");
     setPaxId("");
-    setPaxSearch("");
     load();
   };
 
@@ -299,7 +299,6 @@ function LodgingPage() {
   };
 
   const personOptions = useMemo(() => {
-    const q = paxSearch.trim().toLowerCase();
     const taken = new Set<string>();
     drawer?.items.forEach((i) => {
       if (paxKind === "athlete" && i.athlete_id) taken.add(i.athlete_id);
@@ -309,8 +308,8 @@ function LodgingPage() {
       paxKind === "athlete"
         ? athletes.map((a) => ({ id: a.id, label: `${a.last_name} ${a.first_name}` }))
         : coaches.map((c) => ({ id: c.id, label: `${c.last_name} ${c.first_name}` }));
-    return list.filter((p) => !taken.has(p.id) && (q === "" || p.label.toLowerCase().includes(q)));
-  }, [paxKind, paxSearch, athletes, coaches, drawer]);
+    return list.filter((p) => !taken.has(p.id));
+  }, [paxKind, athletes, coaches, drawer]);
 
   const newRoomPersonOptions = useMemo(() => {
     if (roomForm.kind === "athlete")
@@ -468,7 +467,7 @@ function LodgingPage() {
                           });
                           setPaxKind("athlete");
                           setPaxId("");
-                          setPaxSearch("");
+                          
                         }}
                       >
                         <Users className="mr-2 h-4 w-4" /> Occupants
@@ -554,14 +553,12 @@ function LodgingPage() {
             </div>
             <div className="space-y-1">
               <Label>1er occupant</Label>
-              <Select value={roomForm.occupant} onValueChange={(v) => setRoomForm({ ...roomForm, occupant: v })}>
-                <SelectTrigger><SelectValue placeholder="Choisir" /></SelectTrigger>
-                <SelectContent>
-                  {newRoomPersonOptions.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <PersonCombobox
+                value={roomForm.occupant}
+                onChange={(id) => setRoomForm({ ...roomForm, occupant: id })}
+                options={newRoomPersonOptions}
+                searchPlaceholder={`Rechercher ${roomForm.kind === "athlete" ? "un athlète" : "un encadrant"}…`}
+              />
             </div>
             <div className="space-y-1">
               <Label>Check-in</Label>
@@ -632,34 +629,19 @@ function LodgingPage() {
 
               <div className="space-y-2 rounded-md border p-3">
                 <div className="text-sm font-medium text-slate-700">Ajouter un occupant</div>
-                <div className="grid grid-cols-2 gap-2">
-                  <Select value={paxKind} onValueChange={(v) => { setPaxKind(v as "athlete" | "coach"); setPaxId(""); }}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="athlete">Athlète</SelectItem>
-                      <SelectItem value="coach">Encadrant</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <div className="relative">
-                    <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <Input
-                      className="pl-8"
-                      placeholder="Rechercher…"
-                      value={paxSearch}
-                      onChange={(e) => setPaxSearch(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <Select value={paxId} onValueChange={setPaxId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={`Choisir (${personOptions.length})`} />
-                  </SelectTrigger>
+                <Select value={paxKind} onValueChange={(v) => { setPaxKind(v as "athlete" | "coach"); setPaxId(""); }}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {personOptions.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
-                    ))}
+                    <SelectItem value="athlete">Athlète</SelectItem>
+                    <SelectItem value="coach">Encadrant</SelectItem>
                   </SelectContent>
                 </Select>
+                <PersonCombobox
+                  value={paxId}
+                  onChange={setPaxId}
+                  options={personOptions}
+                  searchPlaceholder={`Rechercher ${paxKind === "athlete" ? "un athlète" : "un encadrant"}…`}
+                />
                 <Button onClick={addOccupantToRoom} className="w-full bg-indigo-500 hover:bg-indigo-600">
                   <Plus className="mr-2 h-4 w-4" /> Ajouter
                 </Button>
