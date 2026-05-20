@@ -49,6 +49,7 @@ type Row = {
 };
 
 function GlobalAccreditationsPage() {
+  const navigate = useNavigate();
   const [rows, setRows] = useState<Row[] | null>(null);
   const [search, setSearch] = useState("");
   const [gameFilter, setGameFilter] = useState("all");
