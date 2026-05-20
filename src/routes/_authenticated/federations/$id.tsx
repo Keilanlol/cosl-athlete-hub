@@ -20,6 +20,7 @@ import { supabase } from "@/lib/supabase";
 import type {
   Athlete,
   Club,
+  ClubMember,
   Coach,
   Federation,
   FederationMember,
