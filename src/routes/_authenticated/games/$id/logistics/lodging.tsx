@@ -85,6 +85,7 @@ function LodgingPage() {
 
   const [accOpen, setAccOpen] = useState(false);
   const [accForm, setAccForm] = useState<AccForm>(emptyAcc);
+  const [editingAcc, setEditingAcc] = useState<Accommodation | null>(null);
 
   const [roomOpen, setRoomOpen] = useState(false);
   const [roomForm, setRoomForm] = useState<RoomForm>(emptyRoom);
