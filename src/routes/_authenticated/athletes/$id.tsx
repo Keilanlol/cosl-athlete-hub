@@ -1945,10 +1945,6 @@ function KycTabContent({
         </div>
       </KycAxis>
 
-      {/* Note — l'éligibilité d'âge est désormais vérifiée par épreuve */}
-      <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-800">
-        ℹ️ L'éligibilité d'âge ({athlete.birth_date ? `${computeAge(athlete.birth_date) ?? "—"} ans` : "date de naissance manquante"}) est vérifiée automatiquement lors de la sélection à une épreuve spécifique — elle ne fait pas partie du KYC global de l'athlète.
-      </div>
 
       {/* AXE 4 — Antidopage */}
       <KycAxis
