@@ -142,6 +142,9 @@ function CompetitionsPage() {
       category: compForm.category.trim() || null,
       competition_date: compForm.competition_date || null,
       venue: compForm.venue.trim() || null,
+      postcode: compForm.postcode.trim() || null,
+      city: compForm.city.trim() || null,
+      country: compForm.country.trim() || null,
       min_age: compForm.min_age ? parseInt(compForm.min_age, 10) : null,
       max_age: compForm.max_age ? parseInt(compForm.max_age, 10) : null,
       notes: compForm.notes.trim() || null,
@@ -153,7 +156,7 @@ function CompetitionsPage() {
     toast.success(editingComp ? "Épreuve modifiée" : "Épreuve ajoutée");
     setCompOpen(false);
     setEditingComp(null);
-    setCompForm({ sport_id: "", discipline_id: "", name: "", round: "", gender: "mixed", category: "", competition_date: "", venue: "", min_age: "", max_age: "", notes: "" });
+    setCompForm({ sport_id: "", discipline_id: "", name: "", round: "", gender: "mixed", category: "", competition_date: "", venue: "", postcode: "", city: "", country: "", min_age: "", max_age: "", notes: "" });
     load();
   };
 
@@ -168,6 +171,9 @@ function CompetitionsPage() {
       category: c.category ?? "",
       competition_date: c.competition_date ?? "",
       venue: c.venue ?? "",
+      postcode: c.postcode ?? "",
+      city: c.city ?? "",
+      country: c.country ?? "",
       min_age: c.min_age != null ? String(c.min_age) : "",
       max_age: c.max_age != null ? String(c.max_age) : "",
       notes: c.notes ?? "",
