@@ -7,22 +7,54 @@ export interface AddressSearchResult {
   display_name: string;
   lat: string;
   lon: string;
+  street: string;
+  city: string;
+  postcode: string;
+  country: string;
+  country_code: string;
+  state: string;
+}
+
+interface NominatimAddress {
+  house_number?: string;
+  road?: string;
+  pedestrian?: string;
+  neighbourhood?: string;
+  suburb?: string;
   city?: string;
-  country?: string;
+  town?: string;
+  village?: string;
+  municipality?: string;
+  county?: string;
+  state?: string;
   postcode?: string;
+  country?: string;
+  country_code?: string;
 }
 
 interface NominatimResult {
   display_name: string;
   lat: string;
   lon: string;
-  address?: {
-    city?: string;
-    town?: string;
-    village?: string;
-    municipality?: string;
-    country?: string;
-    postcode?: string;
+  address?: NominatimAddress;
+}
+
+function parseResult(r: NominatimResult): AddressSearchResult {
+  const a = r.address ?? {};
+  const road = a.road ?? a.pedestrian ?? "";
+  const street = [a.house_number, road].filter(Boolean).join(" ").trim();
+  const city =
+    a.city ?? a.town ?? a.village ?? a.municipality ?? a.county ?? "";
+  return {
+    display_name: r.display_name,
+    lat: r.lat,
+    lon: r.lon,
+    street,
+    city,
+    postcode: a.postcode ?? "",
+    country: a.country ?? "",
+    country_code: (a.country_code ?? "").toUpperCase(),
+    state: a.state ?? "",
   };
 }
 
@@ -103,17 +135,9 @@ export function AddressSearch({
   }, []);
 
   const handleSelect = (r: NominatimResult) => {
-    const city =
-      r.address?.city ?? r.address?.town ?? r.address?.village ?? r.address?.municipality;
-    onChange(r.display_name);
-    onSelect?.({
-      display_name: r.display_name,
-      lat: r.lat,
-      lon: r.lon,
-      city,
-      country: r.address?.country,
-      postcode: r.address?.postcode,
-    });
+    const parsed = parseResult(r);
+    onChange(parsed.street || parsed.city || parsed.display_name);
+    onSelect?.(parsed);
     setOpen(false);
   };
 
@@ -140,17 +164,30 @@ export function AddressSearch({
           {results.length === 0 && searched && !loading ? (
             <div className="px-3 py-2 text-sm text-slate-500">Aucune adresse trouvée</div>
           ) : (
-            results.map((r, i) => (
-              <button
-                key={`${r.lat}-${r.lon}-${i}`}
-                type="button"
-                onClick={() => handleSelect(r)}
-                className="flex w-full items-start gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50"
-              >
-                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-indigo-500" />
-                <span className="text-slate-700">{r.display_name}</span>
-              </button>
-            ))
+            results.map((r, i) => {
+              const p = parseResult(r);
+              const secondary = [p.city, p.postcode, p.country]
+                .filter(Boolean)
+                .join(", ");
+              return (
+                <button
+                  key={`${r.lat}-${r.lon}-${i}`}
+                  type="button"
+                  onClick={() => handleSelect(r)}
+                  className="flex w-full items-start gap-2 px-3 py-2 text-left hover:bg-slate-50 border-b border-slate-100 last:border-0"
+                >
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-indigo-500" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-slate-900 truncate">
+                      {p.street || p.display_name}
+                    </p>
+                    {secondary && (
+                      <p className="text-xs text-slate-500 truncate">{secondary}</p>
+                    )}
+                  </div>
+                </button>
+              );
+            })
           )}
         </div>
       )}
