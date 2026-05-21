@@ -449,7 +449,7 @@ function AthletesPage() {
                   <TableRow
                     key={a.id}
                     onClick={() => navigate({ to: "/athletes/$id", params: { id: a.id } })}
-                    className="cursor-pointer hover:bg-slate-50"
+                    className={`cursor-pointer hover:bg-slate-50 ${a.is_active === false ? "opacity-60" : ""}`}
                   >
                     <TableCell className="font-mono text-xs">{a.cosl_id}</TableCell>
                     <TableCell>
