@@ -481,13 +481,31 @@ function CompetitionsPage() {
               <Input type="date" value={compForm.competition_date} onChange={(e) => setCompForm({ ...compForm, competition_date: e.target.value })} />
             </div>
             <div className="sm:col-span-2 space-y-1">
-              <Label>Lieu</Label>
+              <Label>Lieu (adresse)</Label>
               <AddressSearch
                 value={compForm.venue}
                 onChange={(v) => setCompForm({ ...compForm, venue: v })}
-                onSelect={(r) => setCompForm({ ...compForm, venue: [r.street, r.city].filter(Boolean).join(", ") || r.display_name })}
-                placeholder="Stade, salle, lieu de l'épreuve…"
+                onSelect={(r) => setCompForm({
+                  ...compForm,
+                  venue: r.street || compForm.venue,
+                  postcode: r.postcode || compForm.postcode,
+                  city: r.city || compForm.city,
+                  country: r.country || compForm.country,
+                })}
+                placeholder="Stade, salle, adresse…"
               />
+            </div>
+            <div className="space-y-1">
+              <Label>Code postal</Label>
+              <Input value={compForm.postcode} onChange={(e) => setCompForm({ ...compForm, postcode: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <Label>Ville</Label>
+              <Input value={compForm.city} onChange={(e) => setCompForm({ ...compForm, city: e.target.value })} />
+            </div>
+            <div className="sm:col-span-2 space-y-1">
+              <Label>Pays</Label>
+              <Input value={compForm.country} onChange={(e) => setCompForm({ ...compForm, country: e.target.value })} />
             </div>
             <div className="space-y-1">
               <Label>Âge minimum</Label>
