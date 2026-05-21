@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Plus, Search, Lock, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { computeAge, checkAgeEligibility } from "@/lib/kyc-utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -85,17 +86,21 @@ function SelectionsPage() {
 
   const load = async () => {
     setRows(null);
-    const [selRes, athRes, sportsRes, gsRes, discRes, kycRes, qRes] = await Promise.all([
+    const [selRes, athRes, sportsRes, gsRes, discRes, kycRes, qRes, compRes] = await Promise.all([
       supabase.from("selections")
-        .select("*, athlete:athletes(id,first_name,last_name,gender,photo_url,primary_sport_id), sport:sports(id,name), discipline:disciplines(id,sport_id,name,gender)")
+        .select("*, athlete:athletes(id,first_name,last_name,gender,photo_url,primary_sport_id,birth_date), sport:sports(id,name), discipline:disciplines(id,sport_id,name,gender), game_competition:game_competitions(id,game_id,sport_id,discipline_id,name,competition_date,min_age,max_age)")
         .eq("game_id", gameId)
         .order("created_at", { ascending: false }),
-      supabase.from("athletes").select("id,first_name,last_name,gender,photo_url,primary_sport_id").eq("is_active", true).order("last_name"),
+      supabase.from("athletes").select("id,first_name,last_name,gender,photo_url,primary_sport_id,birth_date").eq("is_active", true).order("last_name"),
       supabase.from("sports").select("id,name").order("name"),
       supabase.from("game_sports").select("sport_id").eq("game_id", gameId).eq("is_active", true),
       supabase.from("disciplines").select("id,sport_id,name,gender").order("name"),
       supabase.from("athlete_kyc").select("athlete_id, global_status"),
       supabase.from("game_quotas").select("quota_max").eq("game_id", gameId),
+      supabase.from("game_competitions")
+        .select("id,game_id,sport_id,discipline_id,name,competition_date,min_age,max_age")
+        .eq("game_id", gameId)
+        .order("competition_date", { nullsFirst: false }),
     ]);
     if (selRes.error) toast.error("Erreur sélections", { description: selRes.error.message });
     setRows(((selRes.data ?? []) as unknown) as Selection[]);
@@ -103,6 +108,7 @@ function SelectionsPage() {
     setSports((sportsRes.data ?? []) as Sport[]);
     setGameSportIds(((gsRes.data ?? []) as { sport_id: string }[]).map((g) => g.sport_id));
     setDisciplines((discRes.data ?? []) as Discipline[]);
+    setCompetitions((compRes.data ?? []) as Competition[]);
     const map: Record<string, string> = {};
     ((kycRes.data ?? []) as { athlete_id: string; global_status: string }[]).forEach((k) => {
       map[k.athlete_id] = k.global_status;
