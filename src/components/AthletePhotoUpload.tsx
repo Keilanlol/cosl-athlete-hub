@@ -1,12 +1,14 @@
 import { useRef, useState } from "react";
-import { Camera, Loader2, UserCircle } from "lucide-react";
+import { Camera, Loader2, Trash2, UserCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
+import { confirmAction } from "@/components/ConfirmDialog";
 
 const ACCEPTED = ["image/jpeg", "image/png", "image/webp"];
 const MAX_MB = 5;
 const ONE_YEAR = 60 * 60 * 24 * 365;
+const PHOTO_DIR = (athleteId: string) => `athletes/${athleteId}/photo`;
 
 export interface AthletePhotoUploadProps {
   /** null si on est en cours de création (pas encore d'ID) */
@@ -14,6 +16,8 @@ export interface AthletePhotoUploadProps {
   currentPhotoUrl?: string | null;
   /** Appelé après upload réussi. `docId` est null en mode création (pas d'enregistrement DB). */
   onUploaded: (url: string, docId: string | null, file?: File) => void;
+  /** Appelé après suppression réussie (ou reset du preview en mode création). */
+  onDeleted?: () => void;
   /** Mode création : ne touche pas au storage tant qu'il n'y a pas d'ID, juste un preview local. */
   pendingPreviewOnly?: boolean;
   size?: "sm" | "lg";
@@ -21,10 +25,23 @@ export interface AthletePhotoUploadProps {
   className?: string;
 }
 
+async function purgePhotoDir(athleteId: string, keepPath?: string) {
+  const dir = PHOTO_DIR(athleteId);
+  const { data: existing, error } = await supabase.storage.from("documents").list(dir);
+  if (error || !existing?.length) return;
+  const toRemove = existing
+    .map((f) => `${dir}/${f.name}`)
+    .filter((p) => p !== keepPath);
+  if (toRemove.length) {
+    await supabase.storage.from("documents").remove(toRemove);
+  }
+}
+
 export function AthletePhotoUpload({
   athleteId,
   currentPhotoUrl,
   onUploaded,
+  onDeleted,
   pendingPreviewOnly = false,
   size = "lg",
   initials,
@@ -62,12 +79,15 @@ export function AthletePhotoUpload({
     setUploading(true);
     try {
       const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
-      const path = `athletes/${athleteId}/photo/photo_identite.${ext}`;
+      const path = `${PHOTO_DIR(athleteId)}/photo_identite.${ext}`;
 
       const { error: upErr } = await supabase.storage
         .from("documents")
         .upload(path, file, { upsert: true, contentType: file.type });
       if (upErr) throw upErr;
+
+      // Supprime les anciennes versions (autres extensions) du dossier photo
+      await purgePhotoDir(athleteId, path);
 
       const { data: signed, error: signErr } = await supabase.storage
         .from("documents")
@@ -113,6 +133,7 @@ export function AthletePhotoUpload({
 
       await supabase.from("athletes").update({ photo_url: signedUrl }).eq("id", athleteId);
 
+      setLocalPreview(null);
       onUploaded(signedUrl, docId);
       toast.success("Photo mise à jour");
     } catch (e) {
@@ -123,10 +144,59 @@ export function AthletePhotoUpload({
     }
   };
 
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    // Mode création : juste reset du preview
+    if (pendingPreviewOnly || !athleteId) {
+      setLocalPreview(null);
+      onDeleted?.();
+      return;
+    }
+
+    const ok = await confirmAction({
+      title: "Supprimer la photo",
+      description: "La photo officielle sera définitivement supprimée. Continuer ?",
+      confirmLabel: "Supprimer",
+      destructive: true,
+    });
+    if (!ok) return;
+
+    setUploading(true);
+    try {
+      // 1) Storage : purge tout le dossier photo
+      await purgePhotoDir(athleteId);
+
+      // 2) athlete_documents : supprime la ligne photo_identite
+      const { error: delErr } = await supabase
+        .from("athlete_documents")
+        .delete()
+        .eq("athlete_id", athleteId)
+        .eq("doc_type", "photo_identite");
+      if (delErr) throw delErr;
+
+      // 3) athletes.photo_url = null
+      const { error: updErr } = await supabase
+        .from("athletes")
+        .update({ photo_url: null })
+        .eq("id", athleteId);
+      if (updErr) throw updErr;
+
+      setLocalPreview(null);
+      onDeleted?.();
+      toast.success("Photo supprimée");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Échec de la suppression";
+      toast.error(msg);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const displayed = localPreview ?? currentPhotoUrl ?? null;
 
   return (
-    <div className={cn("inline-block", className)}>
+    <div className={cn("inline-block relative", className)}>
       <div
         className={cn(
           "relative group cursor-pointer",
@@ -177,6 +247,18 @@ export function AthletePhotoUpload({
           </div>
         )}
       </div>
+
+      {displayed && !uploading && (
+        <button
+          type="button"
+          onClick={handleDelete}
+          className="absolute -top-1 -right-1 z-10 rounded-full bg-red-500 hover:bg-red-600 text-white p-1.5 shadow-md border-2 border-white transition-colors"
+          aria-label="Supprimer la photo"
+          title="Supprimer la photo"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      )}
 
       <input
         ref={inputRef}
