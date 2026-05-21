@@ -701,42 +701,36 @@ function AthletesPage() {
                     />
                     {fieldErr("sport_nationality")}
                   </div>
-                  <div className="space-y-1.5">
-                    <Label>Photo officielle</Label>
-                    <div className="flex items-center gap-3">
-                      <AthletePhotoUpload
-                        athleteId={editing?.id ?? null}
-                        currentPhotoUrl={
-                          pendingPhotoPreview ?? (editing ? editing.photo_url : null)
-                        }
-                        initials={`${form.first_name?.[0] ?? ""}${form.last_name?.[0] ?? ""}`}
-                        size="sm"
-                        pendingPreviewOnly={!editing}
-                        onUploaded={(url, _docId, file) => {
-                          if (!editing && file) {
-                            setPendingPhotoFile(file);
-                            setPendingPhotoPreview(url);
-                          } else if (editing) {
-                            setForm((f) => ({ ...f, photo_url: url }));
-                          }
-                        }}
-                        onDeleted={() => {
-                          if (!editing) {
+                  {!editing && (
+                    <div className="space-y-1.5">
+                      <Label>Photo officielle</Label>
+                      <div className="flex items-center gap-3">
+                        <AthletePhotoUpload
+                          athleteId={null}
+                          currentPhotoUrl={pendingPhotoPreview}
+                          initials={`${form.first_name?.[0] ?? ""}${form.last_name?.[0] ?? ""}`}
+                          size="sm"
+                          pendingPreviewOnly
+                          onUploaded={(url, _docId, file) => {
+                            if (file) {
+                              setPendingPhotoFile(file);
+                              setPendingPhotoPreview(url);
+                            }
+                          }}
+                          onDeleted={() => {
                             setPendingPhotoFile(null);
                             setPendingPhotoPreview(null);
-                          } else {
-                            setForm((f) => ({ ...f, photo_url: undefined }));
-                          }
-                        }}
-                      />
-                      <p className="text-xs text-slate-400">
-                        Glisser une image ou cliquer
-                        <br />
-                        JPG, PNG, WebP · max 5 MB
-                      </p>
+                          }}
+                        />
+                        <p className="text-xs text-slate-400">
+                          Glisser une image ou cliquer
+                          <br />
+                          JPG, PNG, WebP · max 5 MB
+                        </p>
+                      </div>
+                      {fieldErr("photo_url")}
                     </div>
-                    {fieldErr("photo_url")}
-                  </div>
+                  )}
                 </div>
               </section>
 
