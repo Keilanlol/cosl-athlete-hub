@@ -282,6 +282,7 @@ export type Selection = {
   athlete_id: string;
   sport_id: string;
   discipline_id: string | null;
+  game_competition_id: string | null;
   status: string;
   decided_at: string | null;
   comment: string | null;
