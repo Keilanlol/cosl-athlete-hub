@@ -132,6 +132,10 @@ const emptyMember = {
   email: "",
   phone: "",
   address: "",
+  street: "",
+  postcode: "",
+  city: "",
+  country: "",
   start_date: "",
   end_date: "",
   notes: "",
@@ -373,6 +377,10 @@ function FederationDetailPage() {
       email: m.email ?? "",
       phone: m.phone ?? "",
       address: m.address ?? "",
+      street: m.street ?? "",
+      postcode: m.postcode ?? "",
+      city: m.city ?? "",
+      country: m.country ?? "",
       start_date: m.start_date ?? "",
       end_date: m.end_date ?? "",
       notes: m.notes ?? "",
@@ -395,6 +403,10 @@ function FederationDetailPage() {
       email: memberForm.email.trim() || null,
       phone: memberForm.phone.trim() || null,
       address: memberForm.address.trim() || null,
+      street: memberForm.street.trim() || null,
+      postcode: memberForm.postcode.trim() || null,
+      city: memberForm.city.trim() || null,
+      country: memberForm.country.trim() || null,
       start_date: memberForm.start_date || null,
       end_date: memberForm.end_date || null,
       notes: memberForm.notes.trim() || null,
@@ -1052,26 +1064,36 @@ function FederationDetailPage() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="maddr">Adresse</Label>
+                <Label htmlFor="maddr">Adresse (numéro + rue)</Label>
                 <AddressSearch
                   id="maddr"
-                  value={memberForm.address}
-                  onChange={(v) => setMemberForm({ ...memberForm, address: v })}
+                  value={memberForm.street}
+                  onChange={(v) => setMemberForm({ ...memberForm, street: v })}
                   onSelect={(r) =>
-                    setMemberForm({
-                      ...memberForm,
-                      address: [
-                        r.street,
-                        [r.postcode, r.city].filter(Boolean).join(" "),
-                        r.country,
-                      ]
-                        .filter(Boolean)
-                        .join(", ") || r.display_name,
-                    })
+                    setMemberForm((f) => ({
+                      ...f,
+                      street: r.street || f.street,
+                      postcode: r.postcode || f.postcode,
+                      city: r.city || f.city,
+                      country: r.country || f.country,
+                    }))
                   }
-
                   placeholder="Rue, ville, pays…"
                 />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="mpostcode">Code postal</Label>
+                  <Input id="mpostcode" value={memberForm.postcode} onChange={(e) => setMemberForm({ ...memberForm, postcode: e.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="mcity">Ville</Label>
+                  <Input id="mcity" value={memberForm.city} onChange={(e) => setMemberForm({ ...memberForm, city: e.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="mcountry">Pays</Label>
+                  <Input id="mcountry" value={memberForm.country} onChange={(e) => setMemberForm({ ...memberForm, country: e.target.value })} />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
