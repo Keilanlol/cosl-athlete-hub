@@ -882,8 +882,18 @@ function ClubDetailPage() {
                   value={memberForm.address}
                   onChange={(v) => setMemberForm({ ...memberForm, address: v })}
                   onSelect={(r) =>
-                    setMemberForm({ ...memberForm, address: r.display_name })
+                    setMemberForm({
+                      ...memberForm,
+                      address: [
+                        r.street,
+                        [r.postcode, r.city].filter(Boolean).join(" "),
+                        r.country,
+                      ]
+                        .filter(Boolean)
+                        .join(", ") || r.display_name,
+                    })
                   }
+
                   placeholder="Rue, ville, pays…"
                 />
               </div>
