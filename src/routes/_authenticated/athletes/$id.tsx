@@ -509,20 +509,51 @@ function AthleteDetailPage() {
     loadAll();
   };
 
-  const updateKyc = async (patch: Partial<AthleteKyc>) => {
+  const updateKyc = async (patch: Partial<AthleteKyc>, axis: KycAxisKey = "manual") => {
+    const oldStatus = kyc?.global_status ?? null;
+    const merged = { ...(kyc ?? {}), ...patch } as Partial<AthleteKyc>;
+    const newStatus = computeKycGlobalStatus(merged);
+    const fullPatch = {
+      ...patch,
+      global_status: newStatus,
+      last_check_at: new Date().toISOString(),
+    };
     if (!kyc) {
       const { error } = await supabase
         .from("athlete_kyc")
-        .insert({ athlete_id: id, ...patch });
+        .insert({ athlete_id: id, ...fullPatch });
       if (error) return toast.error("Échec", { description: error.message });
     } else {
       const { error } = await supabase
         .from("athlete_kyc")
-        .update({ ...patch, last_check_at: new Date().toISOString() })
+        .update(fullPatch)
         .eq("athlete_id", id);
       if (error) return toast.error("Échec", { description: error.message });
     }
+    if (oldStatus !== newStatus || axis !== "manual") {
+      await supabase.from("kyc_history").insert({
+        athlete_id: id,
+        changed_by: user?.id ?? null,
+        previous_status: oldStatus,
+        new_status: newStatus,
+        axis,
+      });
+    }
     toast.success("KYC mis à jour");
+    loadAll();
+  };
+
+  const markKycReviewed = async () => {
+    if (!user?.id) { toast.error("Utilisateur non identifié"); return; }
+    const payload = {
+      kyc_reviewed_by: user.id,
+      kyc_reviewed_at: new Date().toISOString(),
+    };
+    const { error } = kyc
+      ? await supabase.from("athlete_kyc").update(payload).eq("athlete_id", id)
+      : await supabase.from("athlete_kyc").insert({ athlete_id: id, ...payload });
+    if (error) return toast.error("Échec", { description: error.message });
+    toast.success("KYC marqué comme vérifié");
     loadAll();
   };
 
