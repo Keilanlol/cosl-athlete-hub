@@ -121,7 +121,7 @@ function kycPill(s: string | null | undefined) {
 function AthleteDetailPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const isAdmin = role === "admin";
   const [tab, setTab] = useHashTab("profil");
   const { items: levels, add: addLevel, remove: removeLevel } = useAthleteLevels();
@@ -134,8 +134,10 @@ function AthleteDetailPage() {
   const [club, setClub] = useState<Club | null>(null);
   const [docs, setDocs] = useState<AthleteDocument[] | null>(null);
   const [kyc, setKyc] = useState<AthleteKyc | null>(null);
-  const [kycNotesDraft, setKycNotesDraft] = useState<string>("");
-  useEffect(() => { setKycNotesDraft(kyc?.notes ?? ""); }, [kyc?.notes]);
+  const [kycHistory, setKycHistory] = useState<(KycHistoryEntry & { changed_by_profile?: { username?: string | null; full_name?: string | null } | null })[]>([]);
+  const [kycReviewer, setKycReviewer] = useState<{ username?: string | null; full_name?: string | null } | null>(null);
+  const [kycCommentDraft, setKycCommentDraft] = useState<string>("");
+  useEffect(() => { setKycCommentDraft(kyc?.kyc_comment ?? ""); }, [kyc?.kyc_comment]);
   const [relations, setRelations] = useState<AthleteRelation[] | null>(null);
   const [selections, setSelections] = useState<Selection[] | null>(null);
   const [coaches, setCoaches] = useState<Coach[]>([]);
