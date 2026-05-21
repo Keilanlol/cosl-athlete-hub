@@ -1163,14 +1163,23 @@ function AthleteDetailPage() {
       <MessageDetailDialog messageId={openMsgId} onClose={() => setOpenMsgId(null)} />
 
       <div className="flex justify-end border-t border-slate-200 pt-4">
-        <Button
-          variant="outline"
-          className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
-          onClick={() => setConfirmDeactivate(true)}
-          disabled={athlete.is_active === false}
-        >
-          {athlete.is_active === false ? "Déjà désactivé" : "Désactiver l'athlète"}
-        </Button>
+        {athlete.is_active === false && isAdmin ? (
+          <Button
+            className="bg-emerald-500 hover:bg-emerald-600 text-white"
+            onClick={() => setConfirmDeactivate(true)}
+          >
+            <UserCheck className="mr-2 h-4 w-4" /> Réactiver l'athlète
+          </Button>
+        ) : (
+          <Button
+            variant="outline"
+            className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+            onClick={() => setConfirmDeactivate(true)}
+            disabled={athlete.is_active === false}
+          >
+            Désactiver l'athlète
+          </Button>
+        )}
       </div>
 
       {/* Edit dialog */}
