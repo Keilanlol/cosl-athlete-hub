@@ -1707,19 +1707,628 @@ function Field({ label, value }: { label: string; value: string | null | undefin
   );
 }
 
-function KycToggle({
-  label,
-  value,
-  onChange,
+type ReviewerProfile = { username?: string | null; full_name?: string | null } | null;
+type KycHistoryRow = KycHistoryEntry & {
+  changed_by_profile?: { username?: string | null; full_name?: string | null } | null;
+};
+
+function KycTabContent({
+  athlete,
+  kyc,
+  docs,
+  history,
+  reviewer,
+  currentUserId,
+  updateKyc,
+  markReviewed,
+  commentDraft,
+  setCommentDraft,
 }: {
-  label: string;
-  value: boolean;
-  onChange: (v: boolean) => void;
+  athlete: Athlete;
+  kyc: AthleteKyc | null;
+  docs: AthleteDocument[];
+  history: KycHistoryRow[];
+  reviewer: ReviewerProfile;
+  currentUserId: string | null;
+  updateKyc: (patch: Partial<AthleteKyc>, axis?: KycAxisKey) => Promise<void> | void;
+  markReviewed: () => Promise<void> | void;
+  commentDraft: string;
+  setCommentDraft: (v: string) => void;
 }) {
+  const globalStatus = kyc?.global_status ?? null;
+  const nbValid = countValidAxes(kyc);
+
+  const passportDoc = useMemo(
+    () =>
+      docs.find((d) => d.id === kyc?.passport_doc_id) ??
+      docs.find(
+        (d) =>
+          d.doc_type?.toLowerCase().includes("passeport") ||
+          d.doc_type?.toLowerCase().includes("identit"),
+      ),
+    [docs, kyc?.passport_doc_id],
+  );
+
+  const ethicsDoc = useMemo(
+    () => docs.find((d) => d.id === kyc?.ethics_charter_doc_id),
+    [docs, kyc?.ethics_charter_doc_id],
+  );
+  const rule40Doc = useMemo(
+    () => docs.find((d) => d.id === kyc?.rule40_doc_id),
+    [docs, kyc?.rule40_doc_id],
+  );
+
+  const age = useMemo(() => {
+    if (!athlete.birth_date) return null;
+    return Math.floor(
+      (Date.now() - new Date(athlete.birth_date).getTime()) /
+        (365.25 * 24 * 3600 * 1000),
+    );
+  }, [athlete.birth_date]);
+
+  const reviewerName = reviewer?.full_name || reviewer?.username || null;
+
+  const bannerCls =
+    globalStatus === "green"
+      ? "bg-emerald-50 border-emerald-200"
+      : globalStatus === "orange"
+      ? "bg-amber-50 border-amber-200"
+      : "bg-red-50 border-red-200";
+
   return (
-    <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
-      <Label className="cursor-pointer">{label}</Label>
-      <Switch checked={value} onCheckedChange={onChange} />
+    <div className="space-y-4">
+      {/* SECTION A — Bandeau statut global */}
+      <div className={`rounded-lg border p-4 flex items-center justify-between gap-3 ${bannerCls}`}>
+        <div className="flex items-center gap-3">
+          <KycStatusBadge status={globalStatus} size="md" showIcon />
+          <div>
+            <p className="font-semibold text-slate-900">
+              Conformité KYC globale — {athlete.first_name} {athlete.last_name}
+            </p>
+            <p className="text-sm text-slate-600">
+              {nbValid}/7 axes validés
+              {kyc?.kyc_reviewed_at &&
+                ` · Vérifié le ${new Date(kyc.kyc_reviewed_at).toLocaleDateString("fr-FR")}`}
+              {reviewerName && ` par ${reviewerName}`}
+            </p>
+          </div>
+        </div>
+        <Button size="sm" variant="outline" onClick={() => markReviewed()} disabled={!currentUserId}>
+          <CheckCircle2 className="mr-2 h-4 w-4" /> Marquer comme vérifié
+        </Button>
+      </div>
+
+      {/* AXE 1 — Identité */}
+      <KycAxis
+        title="Identité officielle"
+        description="Passeport ou carte d'identité valide, non expiré (BF-ATH-050)"
+        status={kyc?.identity_verified ? "green" : "red"}
+        required
+      >
+        <p className="text-xs font-medium text-slate-700">Document lié</p>
+        {passportDoc ? (
+          <div className="flex items-center gap-3 rounded-md border border-slate-200 p-3">
+            <FileText className="h-4 w-4 text-slate-400" />
+            <div className="flex-1">
+              <p className="text-sm font-medium">{passportDoc.doc_type}</p>
+              <p className="text-xs text-slate-500">
+                Expire le : {passportDoc.expiry_date ?? "—"}
+                {passportDoc.expiry_date &&
+                  new Date(passportDoc.expiry_date) < new Date() && (
+                    <span className="ml-2 text-red-600 font-medium">EXPIRÉ</span>
+                  )}
+              </p>
+            </div>
+            {passportDoc.file_url && (
+              <a href={passportDoc.file_url} target="_blank" rel="noreferrer">
+                <Button variant="ghost" size="sm">Voir</Button>
+              </a>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-red-600">
+            ⚠️ Aucun passeport ou CI trouvé dans les documents de l'athlète.
+          </p>
+        )}
+
+        <div className="space-y-1">
+          <Label className="text-xs text-slate-500">
+            Lier un document existant comme pièce d'identité :
+          </Label>
+          <Select
+            value={kyc?.passport_doc_id ?? "__none"}
+            onValueChange={(v) =>
+              updateKyc(
+                {
+                  passport_doc_id: v === "__none" ? null : v,
+                  identity_verified: v !== "__none",
+                },
+                "identity",
+              )
+            }
+          >
+            <SelectTrigger className="h-8 text-sm">
+              <SelectValue placeholder="Choisir parmi les documents uploadés…" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none">— Aucun —</SelectItem>
+              {docs
+                .filter(
+                  (d) =>
+                    d.category === "admin" ||
+                    d.doc_type?.toLowerCase().includes("passeport") ||
+                    d.doc_type?.toLowerCase().includes("identit"),
+                )
+                .map((d) => (
+                  <SelectItem key={d.id} value={d.id}>
+                    {d.doc_type} — {d.file_name}
+                    {d.expiry_date ? ` (exp. ${d.expiry_date})` : ""}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
+          <Label className="text-sm">Identité vérifiée manuellement</Label>
+          <Switch
+            checked={!!kyc?.identity_verified}
+            onCheckedChange={(v) => updateKyc({ identity_verified: v }, "identity")}
+          />
+        </div>
+      </KycAxis>
+
+      {/* AXE 2 — Nationalité */}
+      <KycAxis
+        title="Nationalité sportive & éligibilité internationale"
+        description="Vérification de l'éligibilité à représenter le Luxembourg (BF-ATH-051)"
+        status={kyc?.nationality_verified ? "green" : "red"}
+        required
+      >
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1">
+            <Label>Nationalité sportive déclarée</Label>
+            <Input
+              defaultValue={kyc?.sport_nationality ?? athlete.sport_nationality ?? ""}
+              onBlur={(e) => {
+                const v = e.target.value.toUpperCase();
+                if (v !== (kyc?.sport_nationality ?? "")) updateKyc({ sport_nationality: v || null }, "nationality");
+              }}
+              placeholder="ex: LUX"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>Fédération internationale de référence</Label>
+            <Input
+              defaultValue={kyc?.eligibility_federation ?? ""}
+              onBlur={(e) => {
+                if (e.target.value !== (kyc?.eligibility_federation ?? ""))
+                  updateKyc({ eligibility_federation: e.target.value || null }, "nationality");
+              }}
+              placeholder="ex: World Athletics, FIFA, FIS…"
+            />
+          </div>
+        </div>
+        <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
+          <div>
+            <Label className="text-sm">Nationalité sportive vérifiée</Label>
+            {kyc?.eligibility_verified_at && (
+              <p className="text-xs text-slate-500">
+                Vérifié le {new Date(kyc.eligibility_verified_at).toLocaleDateString("fr-FR")}
+              </p>
+            )}
+          </div>
+          <Switch
+            checked={!!kyc?.nationality_verified}
+            onCheckedChange={(v) =>
+              updateKyc(
+                {
+                  nationality_verified: v,
+                  eligibility_verified_at: v ? new Date().toISOString() : null,
+                  eligibility_verified_by: v ? currentUserId : null,
+                },
+                "nationality",
+              )
+            }
+          />
+        </div>
+      </KycAxis>
+
+      {/* AXE 3 — Âge */}
+      <KycAxis
+        title="Éligibilité d'âge"
+        description="Vérification âge min/max selon la compétition (BF-ATH-052)"
+        status={
+          kyc?.age_eligibility_ok === true
+            ? "green"
+            : kyc?.age_eligibility_ok === false
+            ? "red"
+            : "orange"
+        }
+      >
+        <div className="rounded-md bg-slate-50 border border-slate-200 p-3">
+          <p className="text-sm text-slate-600">
+            Date de naissance : <span className="font-medium">{athlete.birth_date}</span>
+          </p>
+          <p className="text-sm text-slate-600">
+            Âge actuel :{" "}
+            <span className="font-medium text-indigo-600">{age ?? "—"} ans</span>
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="flex items-center justify-between rounded-md border px-3 py-2">
+            <Label className="text-sm">Âge minimum respecté</Label>
+            <Switch
+              checked={!!kyc?.min_age_ok}
+              onCheckedChange={(v) => updateKyc({ min_age_ok: v }, "age")}
+            />
+          </div>
+          <div className="flex items-center justify-between rounded-md border px-3 py-2">
+            <Label className="text-sm">Âge maximum respecté</Label>
+            <Switch
+              checked={!!kyc?.max_age_ok}
+              onCheckedChange={(v) => updateKyc({ max_age_ok: v }, "age")}
+            />
+          </div>
+        </div>
+        <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
+          <Label>Éligibilité d'âge globale</Label>
+          <Select
+            value={
+              kyc?.age_eligibility_ok === true
+                ? "ok"
+                : kyc?.age_eligibility_ok === false
+                ? "nok"
+                : "na"
+            }
+            onValueChange={(v) =>
+              updateKyc(
+                {
+                  age_eligibility_ok:
+                    v === "ok" ? true : v === "nok" ? false : null,
+                },
+                "age",
+              )
+            }
+          >
+            <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ok">✅ Éligible</SelectItem>
+              <SelectItem value="nok">❌ Non éligible</SelectItem>
+              <SelectItem value="na">— Non applicable</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </KycAxis>
+
+      {/* AXE 4 — Antidopage */}
+      <KycAxis
+        title="Statut antidopage"
+        description="Statut AMA/ADAMS — whereabouts, contrôles, suspensions (BF-ATH-053)"
+        status={
+          kyc?.antidoping_status === "green"
+            ? "green"
+            : kyc?.antidoping_status === "orange"
+            ? "orange"
+            : "red"
+        }
+        required
+      >
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1">
+            <Label>Numéro ADAMS</Label>
+            <Input
+              defaultValue={kyc?.adams_number ?? athlete.ada_number ?? ""}
+              onBlur={(e) => {
+                if (e.target.value !== (kyc?.adams_number ?? ""))
+                  updateKyc({ adams_number: e.target.value || null }, "antidoping");
+              }}
+              placeholder="ex: LUX-2024-XXXXX"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>Dernier contrôle antidopage</Label>
+            <Input
+              type="date"
+              value={kyc?.antidoping_last_check ?? ""}
+              onChange={(e) =>
+                updateKyc({ antidoping_last_check: e.target.value || null }, "antidoping")
+              }
+            />
+          </div>
+        </div>
+        <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
+          <Label>Whereabouts à jour</Label>
+          <Switch
+            checked={!!kyc?.antidoping_whereabouts_ok}
+            onCheckedChange={(v) => updateKyc({ antidoping_whereabouts_ok: v }, "antidoping")}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label>Statut antidopage global</Label>
+          <Select
+            value={kyc?.antidoping_status ?? "orange"}
+            onValueChange={(v) =>
+              updateKyc(
+                { antidoping_status: v as AthleteKyc["antidoping_status"] },
+                "antidoping",
+              )
+            }
+          >
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="green">✅ Vert — Aucun problème</SelectItem>
+              <SelectItem value="orange">⚠️ Orange — En attente / contrôle manquant</SelectItem>
+              <SelectItem value="red">❌ Rouge — Suspendu / violation</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </KycAxis>
+
+      {/* AXE 5 — E-learning */}
+      <KycAxis
+        title="E-learning antidopage"
+        description="Formation en ligne AMA obligatoire (BF-ATH-054)"
+        status={kyc?.elearning_antidoping_completed ? "green" : "orange"}
+      >
+        <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
+          <div>
+            <Label>Formation e-learning complétée</Label>
+            {kyc?.elearning_completed_at && (
+              <p className="text-xs text-slate-500">
+                Complétée le {new Date(kyc.elearning_completed_at).toLocaleDateString("fr-FR")}
+              </p>
+            )}
+          </div>
+          <Switch
+            checked={!!kyc?.elearning_antidoping_completed}
+            onCheckedChange={(v) =>
+              updateKyc(
+                {
+                  elearning_antidoping_completed: v,
+                  elearning_completed_at: v ? new Date().toISOString().slice(0, 10) : null,
+                },
+                "elearning",
+              )
+            }
+          />
+        </div>
+        {kyc?.elearning_antidoping_completed && (
+          <div className="space-y-1">
+            <Label>Date de complétion</Label>
+            <Input
+              type="date"
+              value={kyc?.elearning_completed_at ?? ""}
+              onChange={(e) =>
+                updateKyc({ elearning_completed_at: e.target.value || null }, "elearning")
+              }
+            />
+          </div>
+        )}
+        <div className="space-y-1">
+          <Label>Certificat (URL externe ou document)</Label>
+          <Input
+            placeholder="URL du certificat (plateforme AMA, WADA…)"
+            defaultValue={kyc?.elearning_certificate_url ?? ""}
+            onBlur={(e) => {
+              if (e.target.value !== (kyc?.elearning_certificate_url ?? ""))
+                updateKyc({ elearning_certificate_url: e.target.value || null }, "elearning");
+            }}
+          />
+        </div>
+      </KycAxis>
+
+      {/* AXE 6 — Charte éthique */}
+      <KycAxis
+        title="Charte éthique COSL"
+        description="Signature obligatoire de la charte éthique du COSL (BF-ATH-055)"
+        status={kyc?.ethics_charter_signed ? "green" : "orange"}
+      >
+        <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
+          <div>
+            <Label>Charte éthique signée</Label>
+            {kyc?.ethics_charter_signed_at && (
+              <p className="text-xs text-slate-500">
+                Signée le {new Date(kyc.ethics_charter_signed_at).toLocaleDateString("fr-FR")}
+              </p>
+            )}
+          </div>
+          <Switch
+            checked={!!kyc?.ethics_charter_signed}
+            onCheckedChange={(v) =>
+              updateKyc(
+                {
+                  ethics_charter_signed: v,
+                  ethics_charter_signed_at: v ? new Date().toISOString() : null,
+                },
+                "ethics",
+              )
+            }
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs text-slate-500">Document signé (scan / PDF)</Label>
+          <Select
+            value={kyc?.ethics_charter_doc_id ?? "__none"}
+            onValueChange={(v) =>
+              updateKyc({ ethics_charter_doc_id: v === "__none" ? null : v }, "ethics")
+            }
+          >
+            <SelectTrigger className="text-sm h-8">
+              <SelectValue placeholder="Lier un document uploadé…" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none">— Aucun —</SelectItem>
+              {docs
+                .filter(
+                  (d) =>
+                    d.category === "contractual" ||
+                    d.doc_type?.toLowerCase().includes("charte"),
+                )
+                .map((d) => (
+                  <SelectItem key={d.id} value={d.id}>
+                    {d.doc_type} — {d.file_name}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+          {ethicsDoc?.file_url && (
+            <a
+              href={ethicsDoc.file_url}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-slate-600 hover:underline"
+            >
+              📄 Voir le document signé
+            </a>
+          )}
+        </div>
+      </KycAxis>
+
+      {/* AXE 7 — Règle 40 */}
+      <KycAxis
+        title="Engagement Règle 40 CIO"
+        description="Restrictions de communication commerciale pendant les Jeux (BF-ATH-055)"
+        status={kyc?.rule40_signed ? "green" : "orange"}
+      >
+        <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
+          <div>
+            <Label>Règle 40 signée</Label>
+            {kyc?.rule40_signed_at && (
+              <p className="text-xs text-slate-500">
+                Signée le {new Date(kyc.rule40_signed_at).toLocaleDateString("fr-FR")}
+              </p>
+            )}
+          </div>
+          <Switch
+            checked={!!kyc?.rule40_signed}
+            onCheckedChange={(v) =>
+              updateKyc(
+                {
+                  rule40_signed: v,
+                  rule40_signed_at: v ? new Date().toISOString() : null,
+                },
+                "rule40",
+              )
+            }
+          />
+        </div>
+        <Select
+          value={kyc?.rule40_doc_id ?? "__none"}
+          onValueChange={(v) =>
+            updateKyc({ rule40_doc_id: v === "__none" ? null : v }, "rule40")
+          }
+        >
+          <SelectTrigger className="text-sm h-8">
+            <SelectValue placeholder="Lier le document Règle 40 signé…" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none">— Aucun —</SelectItem>
+            {docs
+              .filter((d) => d.category === "contractual")
+              .map((d) => (
+                <SelectItem key={d.id} value={d.id}>
+                  {d.doc_type} — {d.file_name}
+                </SelectItem>
+              ))}
+          </SelectContent>
+        </Select>
+        {rule40Doc?.file_url && (
+          <a
+            href={rule40Doc.file_url}
+            target="_blank"
+            rel="noreferrer"
+            className="text-xs text-slate-600 hover:underline"
+          >
+            📄 Voir le document signé
+          </a>
+        )}
+      </KycAxis>
+
+      {/* SECTION I — Historique */}
+      <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-2">
+        <h4 className="text-sm font-semibold text-slate-700">Historique des modifications KYC</h4>
+        {history.length === 0 ? (
+          <p className="text-sm text-slate-500">Aucun historique.</p>
+        ) : (
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {history.map((h) => (
+              <div
+                key={h.id}
+                className="flex items-start gap-3 text-sm border-l-2 border-slate-200 pl-3 py-1"
+              >
+                <div className="flex-1">
+                  <span className="font-medium">
+                    {h.axis ? KYC_AXE_LABELS[h.axis] ?? h.axis : "—"}
+                  </span>{" "}
+                  <KycStatusBadge
+                    status={h.previous_status as "green" | "orange" | "red" | null}
+                    size="sm"
+                  />
+                  {" → "}
+                  <KycStatusBadge
+                    status={h.new_status as "green" | "orange" | "red" | null}
+                    size="sm"
+                  />
+                  {h.comment && (
+                    <p className="text-xs text-slate-500 mt-0.5">{h.comment}</p>
+                  )}
+                </div>
+                <div className="text-right text-xs text-slate-400 shrink-0">
+                  <p>{new Date(h.changed_at).toLocaleDateString("fr-FR")}</p>
+                  <p>
+                    {h.changed_by_profile?.full_name ??
+                      h.changed_by_profile?.username ??
+                      "—"}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* SECTION J — Commentaire */}
+      <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-3">
+        <h4 className="text-sm font-semibold text-slate-700">Notes & validation</h4>
+        <div className="space-y-1">
+          <Label>Commentaire interne</Label>
+          <Textarea
+            value={commentDraft}
+            onChange={(e) => setCommentDraft(e.target.value)}
+            placeholder="Observations, points en suspens, actions à mener…"
+            rows={3}
+          />
+          {commentDraft !== (kyc?.kyc_comment ?? "") && (
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setCommentDraft(kyc?.kyc_comment ?? "")}
+              >
+                Annuler
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                className="bg-indigo-500 hover:bg-indigo-600"
+                onClick={() =>
+                  updateKyc({ kyc_comment: commentDraft.trim() ? commentDraft : null })
+                }
+              >
+                Enregistrer
+              </Button>
+            </div>
+          )}
+        </div>
+        {kyc?.kyc_reviewed_at && reviewerName && (
+          <p className="text-xs text-slate-500">
+            Dernière révision :{" "}
+            {new Date(kyc.kyc_reviewed_at).toLocaleDateString("fr-FR")} par {reviewerName}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
