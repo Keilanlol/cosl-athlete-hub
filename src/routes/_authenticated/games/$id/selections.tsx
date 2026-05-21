@@ -243,6 +243,19 @@ function SelectionsPage() {
       toast.error("Sélection verrouillée"); return;
     }
     if (newStatus === "selected") {
+      // Vérification d'âge si épreuve liée
+      if (sel.game_competition) {
+        const ageCheck = checkAgeEligibility(
+          sel.athlete?.birth_date,
+          sel.game_competition.min_age,
+          sel.game_competition.max_age,
+          sel.game_competition.competition_date,
+        );
+        if (!ageCheck.eligible) {
+          toast.error("Sélection impossible — âge non éligible", { description: ageCheck.reason });
+          return;
+        }
+      }
       const { data: kycData } = await supabase
         .from("athlete_kyc")
         .select("global_status, identity_verified, nationality_verified, antidoping_status")
