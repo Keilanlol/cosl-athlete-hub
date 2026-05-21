@@ -279,6 +279,9 @@ function FederationDetailPage() {
       name: c.name,
       city: c.city ?? "",
       address: c.address ?? "",
+      street: c.street ?? c.address ?? "",
+      postcode: c.postcode ?? "",
+      country: c.country ?? "",
       email: c.email ?? "",
       phone: c.phone ?? "",
     });
@@ -291,17 +294,29 @@ function FederationDetailPage() {
       return;
     }
     setClubSaving(true);
+    const street = clubForm.street.trim();
+    const city = clubForm.city.trim();
+    const postcode = clubForm.postcode.trim();
+    const country = clubForm.country.trim();
+    const fullAddress =
+      [street, [postcode, city].filter(Boolean).join(" "), country]
+        .filter(Boolean)
+        .join(", ") || clubForm.address.trim();
     const payload = {
       name: clubForm.name.trim(),
       federation_id: id,
-      city: clubForm.city.trim() || null,
-      address: clubForm.address.trim() || null,
+      city: city || null,
+      address: fullAddress || null,
+      street: street || null,
+      postcode: postcode || null,
+      country: country || null,
       email: clubForm.email.trim() || null,
       phone: clubForm.phone.trim() || null,
     };
     const { error } = editingClub
       ? await supabase.from("clubs").update(payload).eq("id", editingClub.id)
       : await supabase.from("clubs").insert(payload);
+
     setClubSaving(false);
     if (error) {
       toast.error("Échec de l'enregistrement", { description: error.message });
