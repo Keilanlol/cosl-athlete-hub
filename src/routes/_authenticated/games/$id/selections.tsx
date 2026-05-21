@@ -195,7 +195,7 @@ function SelectionsPage() {
     toast.success(editingId ? "Sélection mise à jour" : "Athlète pré-sélectionné");
     setOpen(false);
     setEditingId(null);
-    setForm({ athlete_id: "", sport_id: "", discipline_id: "" });
+    setForm({ athlete_id: "", sport_id: "", discipline_id: "", game_competition_id: "" });
     load();
   };
 
@@ -291,7 +291,7 @@ function SelectionsPage() {
             <SelectItem value="red">Invalide</SelectItem>
           </SelectContent>
         </Select>
-        <Button onClick={() => { setEditingId(null); setForm({ athlete_id: "", sport_id: "", discipline_id: "" }); setOpen(true); }} className="ml-auto bg-indigo-500 hover:bg-indigo-600">
+        <Button onClick={() => { setEditingId(null); setForm({ athlete_id: "", sport_id: "", discipline_id: "", game_competition_id: "" }); setOpen(true); }} className="ml-auto bg-indigo-500 hover:bg-indigo-600">
           <Plus className="mr-2 h-4 w-4" /> Ajouter une sélection
         </Button>
       </div>
@@ -365,7 +365,7 @@ function SelectionsPage() {
         )}
       </div>
 
-      <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setEditingId(null); setForm({ athlete_id: "", sport_id: "", discipline_id: "" }); } }}>
+      <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setEditingId(null); setForm({ athlete_id: "", sport_id: "", discipline_id: "", game_competition_id: "" }); } }}>
         <DialogContent>
           <form onSubmit={submit}>
             <DialogHeader>
