@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Search } from "lucide-react";
+import { Plus, Pencil, Search, AlertTriangle } from "lucide-react";
+import { KycStatusBadge } from "@/components/KycStatusBadge";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import {
@@ -110,11 +111,13 @@ function statusBadge(s: string) {
 }
 
 function kycBadge(s: string | null | undefined) {
-  if (s === "green")
-    return <Badge className="bg-emerald-500 text-white hover:bg-emerald-500">KYC OK</Badge>;
-  if (s === "orange")
-    return <Badge className="bg-amber-500 text-white hover:bg-amber-500">Partiel</Badge>;
-  return <Badge className="bg-red-600 text-white hover:bg-red-600">Manquant</Badge>;
+  return (
+    <KycStatusBadge
+      status={(s as "green" | "orange" | "red" | null) ?? null}
+      size="sm"
+      showIcon
+    />
+  );
 }
 
 function AthletesPage() {
