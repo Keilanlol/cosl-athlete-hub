@@ -1715,20 +1715,25 @@ function AthleteDetailPage() {
       <AlertDialog open={confirmDeactivate} onOpenChange={setConfirmDeactivate}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Désactiver cet athlète ?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {athlete.is_active === false ? "Réactiver cet athlète ?" : "Désactiver cet athlète ?"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              L'athlète sera marqué comme inactif (soft delete) et n'apparaîtra
-              plus par défaut dans les listes.
+              {athlete.is_active === false
+                ? "L'athlète sera à nouveau actif et visible dans les listes."
+                : "L'athlète sera marqué comme inactif (soft delete) et n'apparaîtra plus par défaut dans les listes."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deactivating}>Annuler</AlertDialogCancel>
             <AlertDialogAction
-              onClick={deactivate}
+              onClick={() => toggleActive(athlete.is_active === false)}
               disabled={deactivating}
-              className="bg-red-600 hover:bg-red-700"
+              className={athlete.is_active === false ? "bg-emerald-500 hover:bg-emerald-600" : "bg-red-600 hover:bg-red-700"}
             >
-              {deactivating ? "Désactivation…" : "Désactiver"}
+              {deactivating
+                ? (athlete.is_active === false ? "Réactivation…" : "Désactivation…")
+                : (athlete.is_active === false ? "Réactiver" : "Désactiver")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
