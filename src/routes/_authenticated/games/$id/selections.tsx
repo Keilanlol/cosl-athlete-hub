@@ -494,6 +494,51 @@ function SelectionsPage() {
                   </Select>
                 </div>
               </div>
+              <div className="space-y-1.5">
+                <Label>Épreuve</Label>
+                <Select
+                  value={form.game_competition_id || "none"}
+                  onValueChange={(v) => setForm({ ...form, game_competition_id: v === "none" ? "" : v })}
+                >
+                  <SelectTrigger><SelectValue placeholder="Aucune épreuve…" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— Aucune (Games en général)</SelectItem>
+                    {formCompetitions.map((c) => {
+                      const chk = checkAgeEligibility(
+                        selectedAthleteForCheck?.birth_date,
+                        c.min_age,
+                        c.max_age,
+                        c.competition_date,
+                      );
+                      const label = `${c.name}${
+                        c.min_age != null || c.max_age != null
+                          ? ` · âge ${c.min_age ?? "?"}–${c.max_age ?? "?"}`
+                          : ""
+                      }`;
+                      return (
+                        <SelectItem key={c.id} value={c.id}>
+                          {selectedAthleteForCheck && !chk.eligible ? "❌ " : ""}
+                          {label}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                {form.game_competition_id && selectedAthleteForCheck && (() => {
+                  const c = competitions.find((x) => x.id === form.game_competition_id);
+                  const chk = checkAgeEligibility(
+                    selectedAthleteForCheck.birth_date,
+                    c?.min_age,
+                    c?.max_age,
+                    c?.competition_date,
+                  );
+                  return (
+                    <p className={`text-xs mt-1 ${chk.eligible ? "text-emerald-700" : "text-red-700 font-medium"}`}>
+                      {chk.eligible ? "✓" : "⚠️"} {chk.reason}
+                    </p>
+                  );
+                })()}
+              </div>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
