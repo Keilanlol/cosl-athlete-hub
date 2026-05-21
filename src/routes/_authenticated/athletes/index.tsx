@@ -480,7 +480,12 @@ function AthletesPage() {
                     <TableCell className="text-slate-600">
                       {a.current_club?.name ?? "—"}
                     </TableCell>
-                    <TableCell>{statusBadge(a.status)}</TableCell>
+                    <TableCell>
+                      {statusBadge(a.status)}
+                      {a.is_active === false && (
+                        <Badge variant="outline" className="ml-2 border-slate-300 text-slate-500">Inactif</Badge>
+                      )}
+                    </TableCell>
                     <TableCell className="text-slate-600">{lvl?.label ?? a.level ?? "—"}</TableCell>
                     <TableCell>{kycBadge(kyc)}</TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
