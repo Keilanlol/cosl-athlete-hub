@@ -725,7 +725,7 @@ function AthletesPage() {
                             setPendingPhotoFile(null);
                             setPendingPhotoPreview(null);
                           } else {
-                            setForm((f) => ({ ...f, photo_url: null }));
+                            setForm((f) => ({ ...f, photo_url: undefined }));
                           }
                         }}
                       />
