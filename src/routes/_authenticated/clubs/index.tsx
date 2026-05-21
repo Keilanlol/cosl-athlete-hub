@@ -61,9 +61,13 @@ const empty = {
   federation_id: "",
   city: "",
   address: "",
+  street: "",
+  postcode: "",
+  country: "",
   email: "",
   phone: "",
 };
+
 
 function ClubsPage() {
   const navigate = useNavigate();
