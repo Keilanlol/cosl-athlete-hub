@@ -16,6 +16,7 @@ import {
   type Federation,
 } from "@/lib/types";
 import { EditableSelect } from "@/components/EditableSelect";
+import { AthletePhotoUpload } from "@/components/AthletePhotoUpload";
 import { useAthleteLevels, useSports } from "@/hooks/useReferenceData";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
