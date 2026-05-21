@@ -862,7 +862,27 @@ function AthleteDetailPage() {
                         </TableCell>
                         <TableCell>{d.issued_date ?? "—"}</TableCell>
                         <TableCell>{d.expiry_date ?? "—"}</TableCell>
-                        <TableCell>{docStatusBadge(d.status)}</TableCell>
+                        <TableCell>
+                          {isAdmin ? (
+                            <Select
+                              value={d.status}
+                              onValueChange={(v) => updateDocStatus(d.id, v)}
+                            >
+                              <SelectTrigger className="h-8 w-40">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {DOCUMENT_STATUSES.map((s) => (
+                                  <SelectItem key={s.value} value={s.value}>
+                                    {s.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            docStatusBadge(d.status)
+                          )}
+                        </TableCell>
                         <TableCell className="text-right">
                           <Button
                             variant="ghost"
