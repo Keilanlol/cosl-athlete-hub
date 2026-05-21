@@ -101,7 +101,7 @@ export function AddressSearch({
       abortRef.current = ctrl;
       setLoading(true);
       try {
-        const url = `https://photon.internet.lu/api?q=${encodeURIComponent(q)}&limit=5&lang=fr`;
+        const url = `/api/photon?q=${encodeURIComponent(q)}&limit=5&lang=fr`;
         const res = await fetch(url, { signal: ctrl.signal });
         const data: PhotonResponse = await res.json();
         lastQueryRef.current = q;
