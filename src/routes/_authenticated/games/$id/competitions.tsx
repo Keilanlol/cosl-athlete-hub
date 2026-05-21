@@ -450,7 +450,7 @@ function CompetitionsPage() {
               <AddressSearch
                 value={compForm.venue}
                 onChange={(v) => setCompForm({ ...compForm, venue: v })}
-                onSelect={(r) => setCompForm({ ...compForm, venue: r.display_name })}
+                onSelect={(r) => setCompForm({ ...compForm, venue: [r.street, r.city].filter(Boolean).join(", ") || r.display_name })}
                 placeholder="Stade, salle, lieu de l'épreuve…"
               />
             </div>
