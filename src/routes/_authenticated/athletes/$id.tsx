@@ -1801,7 +1801,7 @@ function KycTabContent({
       {/* AXE 1 — Identité */}
       <KycAxis
         title="Identité officielle"
-        description="Passeport ou carte d'identité valide, non expiré (BF-ATH-050)"
+        description="Passeport ou carte d'identité valide, non expiré"
         status={kyc?.identity_verified ? "green" : "red"}
         required
       >
@@ -1881,7 +1881,7 @@ function KycTabContent({
       {/* AXE 2 — Nationalité */}
       <KycAxis
         title="Nationalité sportive & éligibilité internationale"
-        description="Vérification de l'éligibilité à représenter le Luxembourg (BF-ATH-051)"
+        description="Vérification de l'éligibilité à représenter le Luxembourg"
         status={kyc?.nationality_verified ? "green" : "red"}
         required
       >
@@ -1937,7 +1937,7 @@ function KycTabContent({
       {/* AXE 3 — Âge */}
       <KycAxis
         title="Éligibilité d'âge"
-        description="Vérification âge min/max selon la compétition (BF-ATH-052)"
+        description="Vérification âge min/max selon la compétition"
         status={
           kyc?.age_eligibility_ok === true
             ? "green"
@@ -2004,7 +2004,7 @@ function KycTabContent({
       {/* AXE 4 — Antidopage */}
       <KycAxis
         title="Statut antidopage"
-        description="Statut AMA/ADAMS — whereabouts, contrôles, suspensions (BF-ATH-053)"
+        description="Statut AMA/ADAMS — whereabouts, contrôles, suspensions"
         status={
           kyc?.antidoping_status === "green"
             ? "green"
@@ -2068,7 +2068,7 @@ function KycTabContent({
       {/* AXE 5 — E-learning */}
       <KycAxis
         title="E-learning antidopage"
-        description="Formation en ligne AMA obligatoire (BF-ATH-054)"
+        description="Formation en ligne AMA obligatoire"
         status={kyc?.elearning_antidoping_completed ? "green" : "orange"}
       >
         <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
@@ -2121,7 +2121,7 @@ function KycTabContent({
       {/* AXE 6 — Charte éthique */}
       <KycAxis
         title="Charte éthique COSL"
-        description="Signature obligatoire de la charte éthique du COSL (BF-ATH-055)"
+        description="Signature obligatoire de la charte éthique du COSL"
         status={kyc?.ethics_charter_signed ? "green" : "orange"}
       >
         <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
@@ -2188,7 +2188,7 @@ function KycTabContent({
       {/* AXE 7 — Règle 40 */}
       <KycAxis
         title="Engagement Règle 40 CIO"
-        description="Restrictions de communication commerciale pendant les Jeux (BF-ATH-055)"
+        description="Restrictions de communication commerciale pendant les Jeux"
         status={kyc?.rule40_signed ? "green" : "orange"}
       >
         <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
