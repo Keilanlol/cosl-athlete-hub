@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Plus, Trash2, Upload, Pencil, UserCheck, FileText, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { KycStatusBadge } from "@/components/KycStatusBadge";
 import { KycAxis } from "@/components/KycAxis";
-import { computeKycGlobalStatus, countValidAxes } from "@/lib/kyc-utils";
+import { computeKycGlobalStatus, countValidAxes, computeAge } from "@/lib/kyc-utils";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -740,7 +740,18 @@ function AthleteDetailPage() {
 
         <TabsContent value="profil">
           <div className="grid gap-4 rounded-lg border border-slate-200 bg-white p-6 md:grid-cols-2">
-            <Field label="Date de naissance" value={athlete.birth_date} />
+            <Field
+              label="Date de naissance"
+              value={
+                athlete.birth_date
+                  ? `${new Date(athlete.birth_date).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })}${
+                      computeAge(athlete.birth_date) !== null
+                        ? ` · ${computeAge(athlete.birth_date)} ans`
+                        : ""
+                    }`
+                  : null
+              }
+            />
             <Field label="Lieu de naissance" value={athlete.birth_place} />
             <Field
               label="Genre"
@@ -1786,7 +1797,7 @@ function KycTabContent({
               Conformité KYC globale — {athlete.first_name} {athlete.last_name}
             </p>
             <p className="text-sm text-slate-600">
-              {nbValid}/7 axes validés
+              {nbValid}/6 axes validés
               {kyc?.kyc_reviewed_at &&
                 ` · Vérifié le ${new Date(kyc.kyc_reviewed_at).toLocaleDateString("fr-FR")}`}
               {reviewerName && ` par ${reviewerName}`}
@@ -1934,72 +1945,10 @@ function KycTabContent({
         </div>
       </KycAxis>
 
-      {/* AXE 3 — Âge */}
-      <KycAxis
-        title="Éligibilité d'âge"
-        description="Vérification âge min/max selon la compétition"
-        status={
-          kyc?.age_eligibility_ok === true
-            ? "green"
-            : kyc?.age_eligibility_ok === false
-            ? "red"
-            : "orange"
-        }
-      >
-        <div className="rounded-md bg-slate-50 border border-slate-200 p-3">
-          <p className="text-sm text-slate-600">
-            Date de naissance : <span className="font-medium">{athlete.birth_date}</span>
-          </p>
-          <p className="text-sm text-slate-600">
-            Âge actuel :{" "}
-            <span className="font-medium text-indigo-600">{age ?? "—"} ans</span>
-          </p>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="flex items-center justify-between rounded-md border px-3 py-2">
-            <Label className="text-sm">Âge minimum respecté</Label>
-            <Switch
-              checked={!!kyc?.min_age_ok}
-              onCheckedChange={(v) => updateKyc({ min_age_ok: v }, "age")}
-            />
-          </div>
-          <div className="flex items-center justify-between rounded-md border px-3 py-2">
-            <Label className="text-sm">Âge maximum respecté</Label>
-            <Switch
-              checked={!!kyc?.max_age_ok}
-              onCheckedChange={(v) => updateKyc({ max_age_ok: v }, "age")}
-            />
-          </div>
-        </div>
-        <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
-          <Label>Éligibilité d'âge globale</Label>
-          <Select
-            value={
-              kyc?.age_eligibility_ok === true
-                ? "ok"
-                : kyc?.age_eligibility_ok === false
-                ? "nok"
-                : "na"
-            }
-            onValueChange={(v) =>
-              updateKyc(
-                {
-                  age_eligibility_ok:
-                    v === "ok" ? true : v === "nok" ? false : null,
-                },
-                "age",
-              )
-            }
-          >
-            <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ok">✅ Éligible</SelectItem>
-              <SelectItem value="nok">❌ Non éligible</SelectItem>
-              <SelectItem value="na">— Non applicable</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </KycAxis>
+      {/* Note — l'éligibilité d'âge est désormais vérifiée par épreuve */}
+      <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-800">
+        ℹ️ L'éligibilité d'âge ({athlete.birth_date ? `${computeAge(athlete.birth_date) ?? "—"} ans` : "date de naissance manquante"}) est vérifiée automatiquement lors de la sélection à une épreuve spécifique — elle ne fait pas partie du KYC global de l'athlète.
+      </div>
 
       {/* AXE 4 — Antidopage */}
       <KycAxis
