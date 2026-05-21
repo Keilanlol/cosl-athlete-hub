@@ -34,6 +34,7 @@ import {
   type Sport,
 } from "@/lib/types";
 import { EditableSelect } from "@/components/EditableSelect";
+import { AthletePhotoUpload } from "@/components/AthletePhotoUpload";
 import {
   useAthleteLevels,
   useDocumentTypes,
@@ -707,16 +708,42 @@ function AthleteDetailPage() {
           <Button asChild variant="ghost" size="icon">
             <Link to="/athletes"><ArrowLeft className="h-4 w-4" /></Link>
           </Button>
-          <div className="h-14 w-14 overflow-hidden rounded-full bg-slate-200">
-            {athlete.photo_url ? (
-              <img src={athlete.photo_url} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center font-semibold text-slate-500">
-                {athlete.first_name[0]}
-                {athlete.last_name[0]}
-              </div>
-            )}
-          </div>
+          <AthletePhotoUpload
+            athleteId={id}
+            currentPhotoUrl={
+              (docs ?? []).find((d) => d.doc_type === "photo_identite")?.file_url ??
+              athlete.photo_url
+            }
+            initials={`${athlete.first_name[0] ?? ""}${athlete.last_name[0] ?? ""}`}
+            size="lg"
+            onUploaded={(url, docId) => {
+              setAthlete((a) => (a ? { ...a, photo_url: url } : a));
+              setDocs((prev) => {
+                const list = prev ?? [];
+                const existing = list.find((d) => d.doc_type === "photo_identite");
+                if (existing) {
+                  return list.map((d) =>
+                    d.doc_type === "photo_identite" ? { ...d, file_url: url } : d,
+                  );
+                }
+                return [
+                  ...list,
+                  {
+                    id: docId ?? `tmp-${Date.now()}`,
+                    athlete_id: id,
+                    category: "admin",
+                    doc_type: "photo_identite",
+                    file_name: "photo_identite",
+                    file_url: url,
+                    issued_date: null,
+                    expiry_date: null,
+                    status: "valid",
+                    created_at: new Date().toISOString(),
+                  } as AthleteDocument,
+                ];
+              });
+            }}
+          />
           <div>
             <h1 className="text-2xl font-semibold text-slate-900">
               {athlete.first_name} {athlete.last_name}
