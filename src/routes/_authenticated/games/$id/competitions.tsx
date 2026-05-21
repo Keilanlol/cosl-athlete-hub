@@ -280,6 +280,7 @@ function CompetitionsPage() {
                   <TableHead>Genre</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Lieu</TableHead>
+                  <TableHead>Âge</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -293,6 +294,15 @@ function CompetitionsPage() {
                     <TableCell>{GENDERS.find((g) => g.value === c.gender)?.label ?? "—"}</TableCell>
                     <TableCell>{c.competition_date ?? "—"}</TableCell>
                     <TableCell>{c.venue ?? "—"}</TableCell>
+                    <TableCell className="text-xs text-slate-600">
+                      {c.min_age != null && c.max_age != null
+                        ? `${c.min_age}–${c.max_age} ans`
+                        : c.min_age != null
+                        ? `≥ ${c.min_age} ans`
+                        : c.max_age != null
+                        ? `≤ ${c.max_age} ans`
+                        : "—"}
+                    </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <Button variant="ghost" size="icon" onClick={() => setDelComp(c)}>
                         <Trash2 className="h-4 w-4 text-red-600" />
