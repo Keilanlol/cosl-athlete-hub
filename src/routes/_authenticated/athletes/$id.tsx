@@ -1123,12 +1123,17 @@ function AthleteDetailPage() {
                 }}
                 onEdit={(a) => {
                   setApptEditing(a as Appointment);
+                  const pad = (n: number) => n.toString().padStart(2, "0");
+                  const toLocal = (iso: string) => {
+                    const d = new Date(iso);
+                    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                  };
                   setApptForm({
                     title: a.title,
                     description: a.description ?? "",
                     location: a.location ?? "",
-                    starts_at: a.starts_at.slice(0, 16),
-                    ends_at: a.ends_at ? a.ends_at.slice(0, 16) : "",
+                    starts_at: toLocal(a.starts_at),
+                    ends_at: a.ends_at ? toLocal(a.ends_at) : "",
                   });
                   setApptOpen(true);
                 }}
