@@ -867,10 +867,11 @@ function FederationDetailPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>🔍 Rechercher une adresse <span className="text-xs text-slate-400 font-normal">(optionnel)</span></Label>
+                <Label htmlFor="fcstreet">Adresse (numéro + rue)</Label>
                 <AddressSearch
-                  value=""
-                  onChange={() => {}}
+                  id="fcstreet"
+                  value={clubForm.street}
+                  onChange={(v) => setClubForm({ ...clubForm, street: v })}
                   onSelect={(r) =>
                     setClubForm((f) => ({
                       ...f,
@@ -881,14 +882,6 @@ function FederationDetailPage() {
                     }))
                   }
                   placeholder="Rue, ville, pays…"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="fcstreet">Adresse (numéro + rue)</Label>
-                <Input
-                  id="fcstreet"
-                  value={clubForm.street}
-                  onChange={(e) => setClubForm({ ...clubForm, street: e.target.value })}
                 />
               </div>
               <div className="grid grid-cols-3 gap-3">
