@@ -39,7 +39,15 @@ export const Route = createFileRoute("/_authenticated/games/$id/logistics/lodgin
   component: LodgingPage,
 });
 
-type AccForm = { name: string; type: string; city: string; total_rooms: string };
+type AccForm = {
+  name: string;
+  type: string;
+  street: string;
+  postcode: string;
+  city: string;
+  country: string;
+  total_rooms: string;
+};
 type RoomForm = {
   accommodation_id: string;
   room_number: string;
@@ -48,7 +56,7 @@ type RoomForm = {
   check_out: string;
 };
 
-const emptyAcc: AccForm = { name: "", type: "", city: "", total_rooms: "" };
+const emptyAcc: AccForm = { name: "", type: "", street: "", postcode: "", city: "", country: "", total_rooms: "" };
 const emptyRoom: RoomForm = {
   accommodation_id: "",
   room_number: "",
