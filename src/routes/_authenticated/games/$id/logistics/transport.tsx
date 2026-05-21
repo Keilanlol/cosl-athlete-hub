@@ -370,7 +370,7 @@ function TransportPage() {
               <AddressSearch
                 value={form.dropoff_location}
                 onChange={(v) => setForm({ ...form, dropoff_location: v })}
-                onSelect={(r) => setForm({ ...form, dropoff_location: r.display_name })}
+                onSelect={(r) => setForm({ ...form, dropoff_location: [r.street, r.city, r.country].filter(Boolean).join(", ") || r.display_name })}
                 placeholder="Point de dropoff"
               />
             </div>
