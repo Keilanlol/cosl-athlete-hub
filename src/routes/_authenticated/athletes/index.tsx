@@ -702,11 +702,31 @@ function AthletesPage() {
                     {fieldErr("sport_nationality")}
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Photo (URL)</Label>
-                    <Input
-                      value={form.photo_url ?? ""}
-                      onChange={(e) => setForm({ ...form, photo_url: e.target.value })}
-                    />
+                    <Label>Photo officielle</Label>
+                    <div className="flex items-center gap-3">
+                      <AthletePhotoUpload
+                        athleteId={editing?.id ?? null}
+                        currentPhotoUrl={
+                          pendingPhotoPreview ?? (editing ? editing.photo_url : null)
+                        }
+                        initials={`${form.first_name?.[0] ?? ""}${form.last_name?.[0] ?? ""}`}
+                        size="sm"
+                        pendingPreviewOnly={!editing}
+                        onUploaded={(url, _docId, file) => {
+                          if (!editing && file) {
+                            setPendingPhotoFile(file);
+                            setPendingPhotoPreview(url);
+                          } else if (editing) {
+                            setForm((f) => ({ ...f, photo_url: url }));
+                          }
+                        }}
+                      />
+                      <p className="text-xs text-slate-400">
+                        Glisser une image ou cliquer
+                        <br />
+                        JPG, PNG, WebP · max 5 MB
+                      </p>
+                    </div>
                     {fieldErr("photo_url")}
                   </div>
                 </div>
