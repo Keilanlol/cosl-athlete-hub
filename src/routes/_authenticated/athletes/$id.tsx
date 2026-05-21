@@ -1,6 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Plus, Trash2, Upload, Pencil, UserCheck } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Upload, Pencil, UserCheck, FileText, CheckCircle2 } from "lucide-react";
+import { KycStatusBadge } from "@/components/KycStatusBadge";
+import { KycAxis } from "@/components/KycAxis";
+import { computeKycGlobalStatus, countValidAxes } from "@/lib/kyc-utils";
+import { KYC_AXE_LABELS, type KycAxisKey, type KycHistoryEntry } from "@/lib/types";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
