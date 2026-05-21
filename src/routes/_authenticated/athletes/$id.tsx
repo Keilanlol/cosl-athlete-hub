@@ -299,7 +299,22 @@ function AthleteDetailPage() {
         .eq("athlete_id", id),
     ]);
     setDocs((dd ?? []) as AthleteDocument[]);
-    setKyc((kk ?? null) as AthleteKyc | null);
+    const kycRow = (kk ?? null) as AthleteKyc | null;
+    setKyc(kycRow);
+    // Load KYC history + reviewer profile in parallel
+    const [{ data: hist }, reviewerRes] = await Promise.all([
+      supabase
+        .from("kyc_history")
+        .select("*, changed_by_profile:user_profiles!kyc_history_changed_by_fkey(username, full_name)")
+        .eq("athlete_id", id)
+        .order("changed_at", { ascending: false })
+        .limit(30),
+      kycRow?.kyc_reviewed_by
+        ? supabase.from("user_profiles").select("username, full_name").eq("id", kycRow.kyc_reviewed_by).maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+    setKycHistory(((hist ?? []) as unknown) as typeof kycHistory);
+    setKycReviewer((reviewerRes.data ?? null) as { username?: string | null; full_name?: string | null } | null);
     setRelations((rr ?? []) as AthleteRelation[]);
     setSelections((ss ?? []) as Selection[]);
     setResults((rs ?? []) as ResultRow[]);
