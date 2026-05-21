@@ -509,7 +509,7 @@ function CompetitionsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCompOpen(false)}>Annuler</Button>
-            <Button onClick={submitComp} className="bg-indigo-500 hover:bg-indigo-600">Créer</Button>
+            <Button onClick={submitComp} className="bg-indigo-500 hover:bg-indigo-600">{editingComp ? "Enregistrer" : "Créer"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
