@@ -454,6 +454,28 @@ function CompetitionsPage() {
                 placeholder="Stade, salle, lieu de l'épreuve…"
               />
             </div>
+            <div className="space-y-1">
+              <Label>Âge minimum</Label>
+              <Input
+                type="number"
+                min={0}
+                max={120}
+                value={compForm.min_age}
+                onChange={(e) => setCompForm({ ...compForm, min_age: e.target.value })}
+                placeholder="ex: 16"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Âge maximum</Label>
+              <Input
+                type="number"
+                min={0}
+                max={120}
+                value={compForm.max_age}
+                onChange={(e) => setCompForm({ ...compForm, max_age: e.target.value })}
+                placeholder="ex: 23"
+              />
+            </div>
             <div className="sm:col-span-2 space-y-1">
               <Label>Notes</Label>
               <Textarea value={compForm.notes} onChange={(e) => setCompForm({ ...compForm, notes: e.target.value })} />
