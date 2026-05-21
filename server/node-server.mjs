@@ -22,6 +22,34 @@ if (!shellFile) {
 
 const app = express();
 
+const PHOTON_TOKEN =
+  process.env.PHOTON_TOKEN ||
+  "ZCbEtPZfZGRxEhKziCi5u7yPJ3RBKAA8nnMEFQVqixFW4uL2wMoywEA7YyyKaPQkfk6ow";
+
+// Proxy vers Photon (photon.internet.lu) — ajoute le token côté serveur,
+// évite les erreurs CORS côté navigateur.
+app.get("/api/photon", async (req, res) => {
+  try {
+    const qs = req.originalUrl.includes("?")
+      ? req.originalUrl.slice(req.originalUrl.indexOf("?"))
+      : "";
+    const upstream = await fetch(`https://photon.internet.lu/api${qs}`, {
+      headers: { Authorization: `Bearer ${PHOTON_TOKEN}` },
+      redirect: "follow",
+    });
+    const body = await upstream.text();
+    res.status(upstream.status);
+    res.setHeader(
+      "Content-Type",
+      upstream.headers.get("content-type") || "application/json",
+    );
+    res.setHeader("Cache-Control", "no-store");
+    res.send(body);
+  } catch (e) {
+    res.status(502).json({ error: "photon_proxy_failed", message: String(e) });
+  }
+});
+
 // Static assets (cache long for /assets/, no-cache pour le shell)
 app.use(
   express.static(distDir, {

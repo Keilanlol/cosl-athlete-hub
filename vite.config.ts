@@ -6,10 +6,26 @@
 // You can pass additional config via defineConfig({ vite: { ... } }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
-// Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
-// @cloudflare/vite-plugin builds from this — wrangler.jsonc main alone is insufficient.
+const PHOTON_TOKEN =
+  "ZCbEtPZfZGRxEhKziCi5u7yPJ3RBKAA8nnMEFQVqixFW4uL2wMoywEA7YyyKaPQkfk6ow";
+
 export default defineConfig({
   tanstackStart: {
     server: { entry: "server" },
+  },
+  vite: {
+    server: {
+      proxy: {
+        "/api/photon": {
+          target: "https://photon.internet.lu",
+          changeOrigin: true,
+          secure: true,
+          rewrite: (p) => p.replace(/^\/api\/photon/, "/api"),
+          headers: {
+            Authorization: `Bearer ${PHOTON_TOKEN}`,
+          },
+        },
+      },
+    },
   },
 });
