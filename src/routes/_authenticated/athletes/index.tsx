@@ -85,6 +85,10 @@ const emptyForm: AthleteForm = {
   email: "",
   phone: "",
   address: "",
+  street: "",
+  postcode: "",
+  city: "",
+  country: "",
   emergency_contact_name: "",
   emergency_contact_phone: "",
   photo_url: "",
@@ -254,6 +258,10 @@ function AthletesPage() {
       email: a.email ?? "",
       phone: a.phone ?? "",
       address: a.address ?? "",
+      street: a.street ?? "",
+      postcode: a.postcode ?? "",
+      city: a.city ?? "",
+      country: a.country ?? "",
       emergency_contact_name: a.emergency_contact_name ?? "",
       emergency_contact_phone: a.emergency_contact_phone ?? "",
       photo_url: a.photo_url ?? "",
@@ -304,6 +312,10 @@ function AthletesPage() {
       email: v.email || null,
       phone: v.phone || null,
       address: v.address || null,
+      street: v.street || null,
+      postcode: v.postcode || null,
+      city: v.city || null,
+      country: v.country || null,
       emergency_contact_name: v.emergency_contact_name || null,
       emergency_contact_phone: v.emergency_contact_phone || null,
       photo_url: v.photo_url || null,
@@ -847,11 +859,35 @@ function AthletesPage() {
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Adresse</Label>
-                  <Input
-                    value={form.address ?? ""}
-                    onChange={(e) => setForm({ ...form, address: e.target.value })}
+                  <Label>Adresse (numéro + rue)</Label>
+                  <AddressSearch
+                    value={form.street ?? ""}
+                    onChange={(v) => setForm({ ...form, street: v })}
+                    onSelect={(r) =>
+                      setForm((f) => ({
+                        ...f,
+                        street: r.street || f.street,
+                        postcode: r.postcode || f.postcode,
+                        city: r.city || f.city,
+                        country: r.country || f.country,
+                      }))
+                    }
+                    placeholder="Rue, ville, pays…"
                   />
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Code postal</Label>
+                    <Input value={form.postcode ?? ""} onChange={(e) => setForm({ ...form, postcode: e.target.value })} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Ville</Label>
+                    <Input value={form.city ?? ""} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Pays</Label>
+                    <Input value={form.country ?? ""} onChange={(e) => setForm({ ...form, country: e.target.value })} />
+                  </div>
                 </div>
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <div className="space-y-1.5">
