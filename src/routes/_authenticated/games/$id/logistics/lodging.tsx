@@ -526,7 +526,7 @@ function LodgingPage() {
               <AddressSearch
                 value={accForm.city}
                 onChange={(v) => setAccForm({ ...accForm, city: v })}
-                onSelect={(r) => setAccForm({ ...accForm, city: r.city ?? r.display_name })}
+                onSelect={(r) => setAccForm({ ...accForm, city: r.city || r.display_name })}
                 placeholder="Ville ou adresse de l'hébergement"
               />
             </div>
