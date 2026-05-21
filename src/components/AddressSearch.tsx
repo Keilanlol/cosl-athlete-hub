@@ -15,46 +15,48 @@ export interface AddressSearchResult {
   state: string;
 }
 
-interface NominatimAddress {
-  house_number?: string;
-  road?: string;
-  pedestrian?: string;
-  neighbourhood?: string;
-  suburb?: string;
+interface PhotonProperties {
+  housenumber?: string;
+  street?: string;
+  name?: string;
   city?: string;
-  town?: string;
-  village?: string;
-  municipality?: string;
+  district?: string;
+  locality?: string;
   county?: string;
   state?: string;
   postcode?: string;
   country?: string;
-  country_code?: string;
+  countrycode?: string;
 }
 
-interface NominatimResult {
-  display_name: string;
-  lat: string;
-  lon: string;
-  address?: NominatimAddress;
+interface PhotonFeature {
+  type: "Feature";
+  properties: PhotonProperties;
+  geometry: { type: "Point"; coordinates: [number, number] };
 }
 
-function parseResult(r: NominatimResult): AddressSearchResult {
-  const a = r.address ?? {};
-  const road = a.road ?? a.pedestrian ?? "";
-  const street = [a.house_number, road].filter(Boolean).join(" ").trim();
-  const city =
-    a.city ?? a.town ?? a.village ?? a.municipality ?? a.county ?? "";
+interface PhotonResponse {
+  features?: PhotonFeature[];
+}
+
+function parseFeature(f: PhotonFeature): AddressSearchResult {
+  const p = f.properties ?? {};
+  const street = [p.housenumber, p.street ?? p.name].filter(Boolean).join(" ").trim();
+  const city = p.city ?? p.district ?? p.locality ?? p.county ?? "";
+  const [lon, lat] = f.geometry?.coordinates ?? [0, 0];
+  const display_name = [street, p.postcode, city, p.country]
+    .filter(Boolean)
+    .join(", ");
   return {
-    display_name: r.display_name,
-    lat: r.lat,
-    lon: r.lon,
+    display_name,
+    lat: String(lat),
+    lon: String(lon),
     street,
     city,
-    postcode: a.postcode ?? "",
-    country: a.country ?? "",
-    country_code: (a.country_code ?? "").toUpperCase(),
-    state: a.state ?? "",
+    postcode: p.postcode ?? "",
+    country: p.country ?? "",
+    country_code: (p.countrycode ?? "").toUpperCase(),
+    state: p.state ?? "",
   };
 }
 
@@ -75,7 +77,7 @@ export function AddressSearch({
   className,
   id,
 }: AddressSearchProps) {
-  const [results, setResults] = useState<NominatimResult[]>([]);
+  const [results, setResults] = useState<PhotonFeature[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
@@ -99,16 +101,11 @@ export function AddressSearch({
       abortRef.current = ctrl;
       setLoading(true);
       try {
-        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
-          q,
-        )}&format=json&limit=5&addressdetails=1`;
-        const res = await fetch(url, {
-          signal: ctrl.signal,
-          headers: { "Accept-Language": "fr" },
-        });
-        const data: NominatimResult[] = await res.json();
+        const url = `https://photon.internet.lu/api?q=${encodeURIComponent(q)}&limit=5&lang=fr`;
+        const res = await fetch(url, { signal: ctrl.signal });
+        const data: PhotonResponse = await res.json();
         lastQueryRef.current = q;
-        setResults(data);
+        setResults(data.features ?? []);
         setSearched(true);
         setOpen(true);
       } catch (e) {
@@ -134,8 +131,8 @@ export function AddressSearch({
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
-  const handleSelect = (r: NominatimResult) => {
-    const parsed = parseResult(r);
+  const handleSelect = (f: PhotonFeature) => {
+    const parsed = parseFeature(f);
     onChange(parsed.street || parsed.city || parsed.display_name);
     onSelect?.(parsed);
     setOpen(false);
@@ -164,16 +161,16 @@ export function AddressSearch({
           {results.length === 0 && searched && !loading ? (
             <div className="px-3 py-2 text-sm text-slate-500">Aucune adresse trouvée</div>
           ) : (
-            results.map((r, i) => {
-              const p = parseResult(r);
+            results.map((f, i) => {
+              const p = parseFeature(f);
               const secondary = [p.city, p.postcode, p.country]
                 .filter(Boolean)
                 .join(", ");
               return (
                 <button
-                  key={`${r.lat}-${r.lon}-${i}`}
+                  key={`${p.lat}-${p.lon}-${i}`}
                   type="button"
-                  onClick={() => handleSelect(r)}
+                  onClick={() => handleSelect(f)}
                   className="flex w-full items-start gap-2 px-3 py-2 text-left hover:bg-slate-50 border-b border-slate-100 last:border-0"
                 >
                   <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-indigo-500" />
