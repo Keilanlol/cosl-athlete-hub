@@ -266,7 +266,7 @@ function CompetitionsPage() {
         </div>
         <div className="rounded-lg border border-slate-200 bg-white">
           {comps === null ? (
-            <TableSkeleton cols={7} />
+            <TableSkeleton cols={8} />
           ) : comps.length === 0 ? (
             <div className="p-6"><EmptyState message="Aucune épreuve définie." /></div>
           ) : (
