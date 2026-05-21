@@ -716,6 +716,10 @@ function AthleteDetailPage() {
             }
             initials={`${athlete.first_name[0] ?? ""}${athlete.last_name[0] ?? ""}`}
             size="lg"
+            onDeleted={() => {
+              setAthlete((a) => (a ? { ...a, photo_url: null } : a));
+              setDocs((prev) => (prev ?? []).filter((d) => d.doc_type !== "photo_identite"));
+            }}
             onUploaded={(url, docId) => {
               setAthlete((a) => (a ? { ...a, photo_url: url } : a));
               setDocs((prev) => {
@@ -846,6 +850,10 @@ function AthleteDetailPage() {
                   }
                   initials={`${athlete.first_name[0] ?? ""}${athlete.last_name[0] ?? ""}`}
                   size="sm"
+                  onDeleted={() => {
+                    setAthlete((a) => (a ? { ...a, photo_url: null } : a));
+                    setDocs((prev) => (prev ?? []).filter((d) => d.doc_type !== "photo_identite"));
+                  }}
                   onUploaded={(url, docId) => {
                     setAthlete((a) => (a ? { ...a, photo_url: url } : a));
                     setDocs((prev) => {
