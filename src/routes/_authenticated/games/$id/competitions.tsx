@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, Download } from "lucide-react";
+import { Plus, Trash2, Download, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import {
@@ -77,6 +77,7 @@ function CompetitionsPage() {
     notes: "",
   });
   const [delComp, setDelComp] = useState<GameCompetition | null>(null);
+  const [editingComp, setEditingComp] = useState<GameCompetition | null>(null);
   const [viewComp, setViewComp] = useState<GameCompetition | null>(null);
   const [selRows, setSelRows] = useState<Array<{ athlete_id: string; athlete: { first_name: string; last_name: string; cosl_id: string; gender: string } | null }>>([]);
   const [resultDlgOpen, setResultDlgOpen] = useState(false);
@@ -128,7 +129,7 @@ function CompetitionsPage() {
   const submitComp = async () => {
     if (!compForm.sport_id) return toast.error("Sport requis");
     if (!compForm.name.trim()) return toast.error("Nom de l'épreuve requis");
-    const { error } = await supabase.from("game_competitions").insert({
+    const payload = {
       game_id: id,
       sport_id: compForm.sport_id,
       discipline_id: compForm.discipline_id || null,
@@ -141,12 +142,34 @@ function CompetitionsPage() {
       min_age: compForm.min_age ? parseInt(compForm.min_age, 10) : null,
       max_age: compForm.max_age ? parseInt(compForm.max_age, 10) : null,
       notes: compForm.notes.trim() || null,
-    });
+    };
+    const { error } = editingComp
+      ? await supabase.from("game_competitions").update(payload).eq("id", editingComp.id)
+      : await supabase.from("game_competitions").insert(payload);
     if (error) return toast.error("Échec", { description: error.message });
-    toast.success("Épreuve ajoutée");
+    toast.success(editingComp ? "Épreuve modifiée" : "Épreuve ajoutée");
     setCompOpen(false);
+    setEditingComp(null);
     setCompForm({ sport_id: "", discipline_id: "", name: "", round: "", gender: "mixed", category: "", competition_date: "", venue: "", min_age: "", max_age: "", notes: "" });
     load();
+  };
+
+  const openEditComp = (c: GameCompetition) => {
+    setEditingComp(c);
+    setCompForm({
+      sport_id: c.sport_id,
+      discipline_id: c.discipline_id ?? "",
+      name: c.name,
+      round: c.round ?? "",
+      gender: c.gender ?? "mixed",
+      category: c.category ?? "",
+      competition_date: c.competition_date ?? "",
+      venue: c.venue ?? "",
+      min_age: c.min_age != null ? String(c.min_age) : "",
+      max_age: c.max_age != null ? String(c.max_age) : "",
+      notes: c.notes ?? "",
+    });
+    setCompOpen(true);
   };
 
   const removeComp = async () => {
@@ -304,6 +327,9 @@ function CompetitionsPage() {
                         : "—"}
                     </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                      <Button variant="ghost" size="icon" onClick={() => openEditComp(c)} aria-label="Modifier">
+                        <Pencil className="h-4 w-4" />
+                      </Button>
                       <Button variant="ghost" size="icon" onClick={() => setDelComp(c)}>
                         <Trash2 className="h-4 w-4 text-red-600" />
                       </Button>
@@ -386,10 +412,10 @@ function CompetitionsPage() {
         </div>
       </section>
 
-      {/* Dialog ajout épreuve */}
-      <Dialog open={compOpen} onOpenChange={setCompOpen}>
+      {/* Dialog ajout/édition épreuve */}
+      <Dialog open={compOpen} onOpenChange={(o) => { setCompOpen(o); if (!o) setEditingComp(null); }}>
         <DialogContent className="max-w-xl">
-          <DialogHeader><DialogTitle>Ajouter une épreuve</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingComp ? "Modifier l'épreuve" : "Ajouter une épreuve"}</DialogTitle></DialogHeader>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
               <Label>Sport *</Label>
