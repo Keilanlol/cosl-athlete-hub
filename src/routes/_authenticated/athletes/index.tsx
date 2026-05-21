@@ -449,7 +449,7 @@ function AthletesPage() {
                   <TableRow
                     key={a.id}
                     onClick={() => navigate({ to: "/athletes/$id", params: { id: a.id } })}
-                    className="cursor-pointer hover:bg-slate-50"
+                    className={`cursor-pointer hover:bg-slate-50 ${a.is_active === false ? "opacity-60" : ""}`}
                   >
                     <TableCell className="font-mono text-xs">{a.cosl_id}</TableCell>
                     <TableCell>
@@ -480,7 +480,12 @@ function AthletesPage() {
                     <TableCell className="text-slate-600">
                       {a.current_club?.name ?? "—"}
                     </TableCell>
-                    <TableCell>{statusBadge(a.status)}</TableCell>
+                    <TableCell>
+                      {statusBadge(a.status)}
+                      {a.is_active === false && (
+                        <Badge variant="outline" className="ml-2 border-slate-300 text-slate-500">Inactif</Badge>
+                      )}
+                    </TableCell>
                     <TableCell className="text-slate-600">{lvl?.label ?? a.level ?? "—"}</TableCell>
                     <TableCell>{kycBadge(kyc)}</TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>

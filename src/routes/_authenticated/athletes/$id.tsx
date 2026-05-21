@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Plus, Trash2, Upload, Pencil } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Upload, Pencil, UserCheck } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { confirmAction } from "@/components/ConfirmDialog";
@@ -114,6 +115,8 @@ function kycPill(s: string | null | undefined) {
 function AthleteDetailPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
+  const { role } = useAuth();
+  const isAdmin = role === "admin";
   const [tab, setTab] = useHashTab("profil");
   const { items: levels, add: addLevel, remove: removeLevel } = useAthleteLevels();
   const { items: sportsRef, add: addSport, remove: removeSport } = useSports();
@@ -408,21 +411,23 @@ function AthleteDetailPage() {
     loadAll();
   };
 
-  const deactivate = async () => {
+  const toggleActive = async (nextActive: boolean) => {
     if (!athlete) return;
     setDeactivating(true);
     const { error } = await supabase
       .from("athletes")
-      .update({ is_active: false })
+      .update({ is_active: nextActive })
       .eq("id", athlete.id);
     setDeactivating(false);
     setConfirmDeactivate(false);
     if (error) {
-      toast.error("Désactivation impossible", { description: error.message });
+      toast.error(nextActive ? "Réactivation impossible" : "Désactivation impossible", {
+        description: error.message,
+      });
       return;
     }
-    toast.success("Athlète désactivé");
-    navigate({ to: "/athletes" });
+    toast.success(nextActive ? "Athlète réactivé" : "Athlète désactivé");
+    loadAll();
   };
 
   const submitDoc = async (e: React.FormEvent) => {
@@ -1158,14 +1163,23 @@ function AthleteDetailPage() {
       <MessageDetailDialog messageId={openMsgId} onClose={() => setOpenMsgId(null)} />
 
       <div className="flex justify-end border-t border-slate-200 pt-4">
-        <Button
-          variant="outline"
-          className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
-          onClick={() => setConfirmDeactivate(true)}
-          disabled={athlete.is_active === false}
-        >
-          {athlete.is_active === false ? "Déjà désactivé" : "Désactiver l'athlète"}
-        </Button>
+        {athlete.is_active === false && isAdmin ? (
+          <Button
+            className="bg-emerald-500 hover:bg-emerald-600 text-white"
+            onClick={() => setConfirmDeactivate(true)}
+          >
+            <UserCheck className="mr-2 h-4 w-4" /> Réactiver l'athlète
+          </Button>
+        ) : (
+          <Button
+            variant="outline"
+            className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+            onClick={() => setConfirmDeactivate(true)}
+            disabled={athlete.is_active === false}
+          >
+            Désactiver l'athlète
+          </Button>
+        )}
       </div>
 
       {/* Edit dialog */}
@@ -1701,20 +1715,25 @@ function AthleteDetailPage() {
       <AlertDialog open={confirmDeactivate} onOpenChange={setConfirmDeactivate}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Désactiver cet athlète ?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {athlete.is_active === false ? "Réactiver cet athlète ?" : "Désactiver cet athlète ?"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              L'athlète sera marqué comme inactif (soft delete) et n'apparaîtra
-              plus par défaut dans les listes.
+              {athlete.is_active === false
+                ? "L'athlète sera à nouveau actif et visible dans les listes."
+                : "L'athlète sera marqué comme inactif (soft delete) et n'apparaîtra plus par défaut dans les listes."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deactivating}>Annuler</AlertDialogCancel>
             <AlertDialogAction
-              onClick={deactivate}
+              onClick={() => toggleActive(athlete.is_active === false)}
               disabled={deactivating}
-              className="bg-red-600 hover:bg-red-700"
+              className={athlete.is_active === false ? "bg-emerald-500 hover:bg-emerald-600" : "bg-red-600 hover:bg-red-700"}
             >
-              {deactivating ? "Désactivation…" : "Désactiver"}
+              {deactivating
+                ? (athlete.is_active === false ? "Réactivation…" : "Désactivation…")
+                : (athlete.is_active === false ? "Réactiver" : "Désactiver")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
