@@ -164,6 +164,9 @@ function ClubsPage() {
       federation_id: c.federation_id,
       city: c.city ?? "",
       address: c.address ?? "",
+      street: c.street ?? c.address ?? "",
+      postcode: c.postcode ?? "",
+      country: c.country ?? "",
       email: c.email ?? "",
       phone: c.phone ?? "",
     });
@@ -177,11 +180,22 @@ function ClubsPage() {
       return;
     }
     setSaving(true);
+    const street = form.street.trim();
+    const city = form.city.trim();
+    const postcode = form.postcode.trim();
+    const country = form.country.trim();
+    const fullAddress =
+      [street, [postcode, city].filter(Boolean).join(" "), country]
+        .filter(Boolean)
+        .join(", ") || form.address.trim();
     const payload = {
       name: form.name.trim(),
       federation_id: form.federation_id,
-      city: form.city.trim() || null,
-      address: form.address.trim() || null,
+      city: city || null,
+      address: fullAddress || null,
+      street: street || null,
+      postcode: postcode || null,
+      country: country || null,
       email: form.email.trim() || null,
       phone: form.phone.trim() || null,
     };
@@ -197,6 +211,7 @@ function ClubsPage() {
     setOpen(false);
     load();
   };
+
 
   const confirmDelete = async () => {
     if (!deleteId) return;
