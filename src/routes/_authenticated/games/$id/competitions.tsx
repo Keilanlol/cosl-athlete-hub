@@ -72,6 +72,8 @@ function CompetitionsPage() {
     category: "",
     competition_date: "",
     venue: "",
+    min_age: "",
+    max_age: "",
     notes: "",
   });
   const [delComp, setDelComp] = useState<GameCompetition | null>(null);
@@ -136,12 +138,14 @@ function CompetitionsPage() {
       category: compForm.category.trim() || null,
       competition_date: compForm.competition_date || null,
       venue: compForm.venue.trim() || null,
+      min_age: compForm.min_age ? parseInt(compForm.min_age, 10) : null,
+      max_age: compForm.max_age ? parseInt(compForm.max_age, 10) : null,
       notes: compForm.notes.trim() || null,
     });
     if (error) return toast.error("Échec", { description: error.message });
     toast.success("Épreuve ajoutée");
     setCompOpen(false);
-    setCompForm({ sport_id: "", discipline_id: "", name: "", round: "", gender: "mixed", category: "", competition_date: "", venue: "", notes: "" });
+    setCompForm({ sport_id: "", discipline_id: "", name: "", round: "", gender: "mixed", category: "", competition_date: "", venue: "", min_age: "", max_age: "", notes: "" });
     load();
   };
 
