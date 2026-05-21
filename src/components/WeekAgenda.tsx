@@ -246,18 +246,29 @@ export function WeekAgenda({ events, onCreate, onEdit }: Props) {
                           seg.continuesBefore ? "rounded-t-none border-t-0" : ""
                         } ${seg.continuesAfter ? "rounded-b-none border-b-0" : ""}`}
                       >
-                        <div className="font-semibold truncate">
-                          {seg.continuesBefore && "↑ "}
-                          {e.title}
-                        </div>
+                        <div className="font-semibold truncate">{e.title}</div>
                         <div className="opacity-80">
-                          {pad(s.getHours())}:{pad(s.getMinutes())}
-                          {e.ends_at && ` – ${pad(en.getHours())}:${pad(en.getMinutes())}`}
+                          {seg.continuesBefore || seg.continuesAfter ? (
+                            e.ends_at ? (
+                              <>
+                                {pad(s.getDate())}/{pad(s.getMonth() + 1)} {pad(s.getHours())}:{pad(s.getMinutes())}
+                                {" – "}
+                                {pad(en.getDate())}/{pad(en.getMonth() + 1)} {pad(en.getHours())}:{pad(en.getMinutes())}
+                              </>
+                            ) : (
+                              <>
+                                {pad(s.getDate())}/{pad(s.getMonth() + 1)} {pad(s.getHours())}:{pad(s.getMinutes())}
+                              </>
+                            )
+                          ) : (
+                            <>
+                              {pad(s.getHours())}:{pad(s.getMinutes())}
+                              {e.ends_at && ` – ${pad(en.getHours())}:${pad(en.getMinutes())}`}
+                            </>
+                          )}
                         </div>
                         {e.location && <div className="truncate opacity-70">📍 {e.location}</div>}
-                        {seg.continuesAfter && (
-                          <div className="text-[10px] italic opacity-70">… suite</div>
-                        )}
+
                       </button>
                       {/* "+" overlay : créer un rdv superposé au même créneau */}
                       <button
