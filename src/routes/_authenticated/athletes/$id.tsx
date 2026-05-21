@@ -509,6 +509,21 @@ function AthleteDetailPage() {
     loadAll();
   };
 
+  const updateDocStatus = async (docId: string, nextStatus: string) => {
+    const { error } = await supabase
+      .from("athlete_documents")
+      .update({ status: nextStatus })
+      .eq("id", docId);
+    if (error) {
+      toast.error("Mise à jour impossible", { description: error.message });
+      return;
+    }
+    toast.success("Statut mis à jour");
+    setDocs((prev) =>
+      prev ? prev.map((d) => (d.id === docId ? { ...d, status: nextStatus } : d)) : prev
+    );
+  };
+
   const updateKyc = async (patch: Partial<AthleteKyc>, axis: KycAxisKey = "manual") => {
     const oldStatus = kyc?.global_status ?? null;
     const merged = { ...(kyc ?? {}), ...patch } as Partial<AthleteKyc>;
@@ -847,7 +862,27 @@ function AthleteDetailPage() {
                         </TableCell>
                         <TableCell>{d.issued_date ?? "—"}</TableCell>
                         <TableCell>{d.expiry_date ?? "—"}</TableCell>
-                        <TableCell>{docStatusBadge(d.status)}</TableCell>
+                        <TableCell>
+                          {isAdmin ? (
+                            <Select
+                              value={d.status}
+                              onValueChange={(v) => updateDocStatus(d.id, v)}
+                            >
+                              <SelectTrigger className="h-8 w-40">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {DOCUMENT_STATUSES.map((s) => (
+                                  <SelectItem key={s.value} value={s.value}>
+                                    {s.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            docStatusBadge(d.status)
+                          )}
+                        </TableCell>
                         <TableCell className="text-right">
                           <Button
                             variant="ghost"
