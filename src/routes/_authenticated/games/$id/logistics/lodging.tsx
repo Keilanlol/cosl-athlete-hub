@@ -220,15 +220,36 @@ function LodgingPage() {
       game_id: id,
       name: accForm.name.trim(),
       type: accForm.type.trim() || null,
+      street: accForm.street.trim() || null,
+      postcode: accForm.postcode.trim() || null,
       city: accForm.city.trim() || null,
+      country: accForm.country.trim() || null,
+      address: [accForm.street, accForm.postcode, accForm.city, accForm.country].filter(Boolean).join(", ") || null,
       total_rooms: accForm.total_rooms ? parseInt(accForm.total_rooms, 10) : null,
     };
-    const { error } = await supabase.from("accommodations").insert(payload);
+    const { error } = editingAcc
+      ? await supabase.from("accommodations").update(payload).eq("id", editingAcc.id)
+      : await supabase.from("accommodations").insert(payload);
     if (error) return toast.error("Échec", { description: error.message });
-    toast.success("Hébergement ajouté");
+    toast.success(editingAcc ? "Hébergement modifié" : "Hébergement ajouté");
     setAccOpen(false);
+    setEditingAcc(null);
     setAccForm(emptyAcc);
     load();
+  };
+
+  const openEditAcc = (a: Accommodation) => {
+    setEditingAcc(a);
+    setAccForm({
+      name: a.name,
+      type: a.type ?? "",
+      street: a.street ?? "",
+      postcode: a.postcode ?? "",
+      city: a.city ?? "",
+      country: a.country ?? "",
+      total_rooms: a.total_rooms != null ? String(a.total_rooms) : "",
+    });
+    setAccOpen(true);
   };
 
   const submitRoom = async () => {
