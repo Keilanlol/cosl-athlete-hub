@@ -1700,11 +1700,28 @@ function AthleteDetailPage() {
                 />
               </div>
             </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setApptOpen(false)}>Annuler</Button>
-              <Button type="submit" className="bg-indigo-500 hover:bg-indigo-600">
-                {apptEditing ? "Enregistrer" : "Ajouter"}
-              </Button>
+            <DialogFooter className="gap-2 sm:justify-between">
+              <div>
+                {apptEditing && (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={() => {
+                      const idToDelete = apptEditing.id;
+                      setApptOpen(false);
+                      setApptDeleteId(idToDelete);
+                    }}
+                  >
+                    Supprimer
+                  </Button>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" onClick={() => setApptOpen(false)}>Annuler</Button>
+                <Button type="submit" className="bg-indigo-500 hover:bg-indigo-600">
+                  {apptEditing ? "Enregistrer" : "Ajouter"}
+                </Button>
+              </div>
             </DialogFooter>
           </form>
         </DialogContent>

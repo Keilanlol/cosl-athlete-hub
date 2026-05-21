@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export type AgendaEvent = {
@@ -21,10 +21,11 @@ const DAY_LABELS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 const HOUR_START = 7;
 const HOUR_END = 22;
 const HOUR_PX = 48;
+const DAY_MINUTES = (HOUR_END - HOUR_START + 1) * 60;
 
 function startOfWeek(d: Date) {
   const x = new Date(d);
-  const dow = (x.getDay() + 6) % 7; // 0 = Mon
+  const dow = (x.getDay() + 6) % 7;
   x.setDate(x.getDate() - dow);
   x.setHours(0, 0, 0, 0);
   return x;
@@ -35,13 +36,60 @@ function addDays(d: Date, n: number) {
   return x;
 }
 function sameDay(a: Date, b: Date) {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
 }
 function pad(n: number) {
   return n.toString().padStart(2, "0");
 }
 function toLocalInput(d: Date) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+type Segment = {
+  event: AgendaEvent;
+  startMin: number; // minutes from HOUR_START on this day, clipped
+  endMin: number;
+  continuesBefore: boolean;
+  continuesAfter: boolean;
+};
+
+type LaidOutSegment = Segment & { col: number; cols: number };
+
+function layoutOverlaps(segs: Segment[]): LaidOutSegment[] {
+  // Greedy column assignment for overlapping segments
+  const sorted = [...segs].sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin);
+  type Active = LaidOutSegment;
+  const result: Active[] = [];
+  // Cluster overlapping segments and compute max cols within cluster
+  let cluster: Active[] = [];
+  let clusterEnd = -Infinity;
+  const flushCluster = () => {
+    if (!cluster.length) return;
+    const cols = Math.max(...cluster.map((c) => c.col)) + 1;
+    cluster.forEach((c) => (c.cols = cols));
+    result.push(...cluster);
+    cluster = [];
+    clusterEnd = -Infinity;
+  };
+
+  sorted.forEach((s) => {
+    if (s.startMin >= clusterEnd) flushCluster();
+    // Find first free column
+    const usedCols = new Set(
+      cluster.filter((c) => c.endMin > s.startMin).map((c) => c.col),
+    );
+    let col = 0;
+    while (usedCols.has(col)) col++;
+    const laid: Active = { ...s, col, cols: 1 };
+    cluster.push(laid);
+    clusterEnd = Math.max(clusterEnd, s.endMin);
+  });
+  flushCluster();
+  return result;
 }
 
 export function WeekAgenda({ events, onCreate, onEdit }: Props) {
@@ -58,17 +106,40 @@ export function WeekAgenda({ events, onCreate, onEdit }: Props) {
     return `${fmt(anchor)} – ${fmt(last)} ${last.getFullYear()}`;
   }, [anchor, days]);
 
-  const eventsByDay = useMemo(() => {
-    const m: Record<number, AgendaEvent[]> = {};
-    for (let i = 0; i < 7; i++) m[i] = [];
-    events.forEach((e) => {
-      const s = new Date(e.starts_at);
-      for (let i = 0; i < 7; i++) {
-        if (sameDay(s, days[i])) {
-          m[i].push(e);
-          break;
-        }
-      }
+  // Per-day list of laid-out segments (handles multi-day + overlap)
+  const segmentsByDay = useMemo(() => {
+    const m: LaidOutSegment[][] = Array.from({ length: 7 }, () => []);
+    days.forEach((day, di) => {
+      const dayStart = new Date(day);
+      dayStart.setHours(HOUR_START, 0, 0, 0);
+      const dayEnd = new Date(day);
+      dayEnd.setHours(HOUR_END + 1, 0, 0, 0);
+
+      const segs: Segment[] = [];
+      events.forEach((e) => {
+        const s = new Date(e.starts_at);
+        const en = e.ends_at ? new Date(e.ends_at) : new Date(s.getTime() + 60 * 60 * 1000);
+        if (en <= dayStart || s >= dayEnd) return; // not visible on this day
+        const clippedStart = s < dayStart ? dayStart : s;
+        const clippedEnd = en > dayEnd ? dayEnd : en;
+        const startMin = Math.max(
+          0,
+          (clippedStart.getTime() - dayStart.getTime()) / 60000,
+        );
+        const endMin = Math.min(
+          DAY_MINUTES,
+          (clippedEnd.getTime() - dayStart.getTime()) / 60000,
+        );
+        if (endMin <= startMin) return;
+        segs.push({
+          event: e,
+          startMin,
+          endMin,
+          continuesBefore: s < dayStart,
+          continuesAfter: en > dayEnd,
+        });
+      });
+      m[di] = layoutOverlaps(segs);
     });
     return m;
   }, [events, days]);
@@ -146,34 +217,66 @@ export function WeekAgenda({ events, onCreate, onEdit }: Props) {
                 ))}
 
                 {/* Events */}
-                {eventsByDay[di].map((e) => {
+                {segmentsByDay[di].map((seg) => {
+                  const e = seg.event;
+                  const top = (seg.startMin / 60) * HOUR_PX;
+                  const height = Math.max(20, ((seg.endMin - seg.startMin) / 60) * HOUR_PX - 2);
+                  const widthPct = 100 / seg.cols;
+                  const leftPct = seg.col * widthPct;
                   const s = new Date(e.starts_at);
                   const en = e.ends_at ? new Date(e.ends_at) : new Date(s.getTime() + 60 * 60 * 1000);
-                  const startMin = Math.max(0, (s.getHours() - HOUR_START) * 60 + s.getMinutes());
-                  const endMin = Math.min(
-                    (HOUR_END - HOUR_START + 1) * 60,
-                    (en.getHours() - HOUR_START) * 60 + en.getMinutes(),
-                  );
-                  const top = (startMin / 60) * HOUR_PX;
-                  const height = Math.max(20, ((endMin - startMin) / 60) * HOUR_PX - 2);
                   return (
-                    <button
-                      key={e.id}
-                      type="button"
-                      onClick={(ev) => {
-                        ev.stopPropagation();
-                        onEdit(e);
+                    <div
+                      key={`${e.id}-${seg.startMin}`}
+                      style={{
+                        top,
+                        height,
+                        left: `calc(${leftPct}% + 2px)`,
+                        width: `calc(${widthPct}% - 4px)`,
                       }}
-                      style={{ top, height }}
-                      className="absolute left-1 right-1 overflow-hidden rounded-md border border-indigo-300 bg-indigo-100 px-2 py-1 text-left text-[11px] leading-tight text-indigo-900 shadow-sm hover:bg-indigo-200"
+                      className="absolute group"
                     >
-                      <div className="font-semibold truncate">{e.title}</div>
-                      <div className="opacity-80">
-                        {pad(s.getHours())}:{pad(s.getMinutes())}
-                        {e.ends_at && ` – ${pad(en.getHours())}:${pad(en.getMinutes())}`}
-                      </div>
-                      {e.location && <div className="truncate opacity-70">📍 {e.location}</div>}
-                    </button>
+                      <button
+                        type="button"
+                        onClick={(ev) => {
+                          ev.stopPropagation();
+                          onEdit(e);
+                        }}
+                        className={`h-full w-full overflow-hidden rounded-md border border-indigo-300 bg-indigo-100 px-2 py-1 text-left text-[11px] leading-tight text-indigo-900 shadow-sm hover:bg-indigo-200 ${
+                          seg.continuesBefore ? "rounded-t-none border-t-0" : ""
+                        } ${seg.continuesAfter ? "rounded-b-none border-b-0" : ""}`}
+                      >
+                        <div className="font-semibold truncate">
+                          {seg.continuesBefore && "↑ "}
+                          {e.title}
+                        </div>
+                        <div className="opacity-80">
+                          {pad(s.getHours())}:{pad(s.getMinutes())}
+                          {e.ends_at && ` – ${pad(en.getHours())}:${pad(en.getMinutes())}`}
+                        </div>
+                        {e.location && <div className="truncate opacity-70">📍 {e.location}</div>}
+                        {seg.continuesAfter && (
+                          <div className="text-[10px] italic opacity-70">… suite</div>
+                        )}
+                      </button>
+                      {/* "+" overlay : créer un rdv superposé au même créneau */}
+                      <button
+                        type="button"
+                        onClick={(ev) => {
+                          ev.stopPropagation();
+                          const dt = new Date(d);
+                          const startHour = Math.floor(seg.startMin / 60) + HOUR_START;
+                          const startMinute = seg.startMin % 60;
+                          dt.setHours(startHour, startMinute, 0, 0);
+                          onCreate(toLocalInput(dt));
+                        }}
+                        className="absolute -top-1 -right-1 z-10 hidden h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-white shadow-md hover:bg-indigo-700 group-hover:flex"
+                        title="Ajouter un rendez-vous superposé"
+                        aria-label="Ajouter un rendez-vous superposé"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </button>
+                    </div>
                   );
                 })}
               </div>
