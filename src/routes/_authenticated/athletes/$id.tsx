@@ -34,6 +34,7 @@ import {
   type Sport,
 } from "@/lib/types";
 import { EditableSelect } from "@/components/EditableSelect";
+import { AthletePhotoUpload } from "@/components/AthletePhotoUpload";
 import {
   useAthleteLevels,
   useDocumentTypes,
@@ -707,16 +708,42 @@ function AthleteDetailPage() {
           <Button asChild variant="ghost" size="icon">
             <Link to="/athletes"><ArrowLeft className="h-4 w-4" /></Link>
           </Button>
-          <div className="h-14 w-14 overflow-hidden rounded-full bg-slate-200">
-            {athlete.photo_url ? (
-              <img src={athlete.photo_url} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center font-semibold text-slate-500">
-                {athlete.first_name[0]}
-                {athlete.last_name[0]}
-              </div>
-            )}
-          </div>
+          <AthletePhotoUpload
+            athleteId={id}
+            currentPhotoUrl={
+              (docs ?? []).find((d) => d.doc_type === "photo_identite")?.file_url ??
+              athlete.photo_url
+            }
+            initials={`${athlete.first_name[0] ?? ""}${athlete.last_name[0] ?? ""}`}
+            size="lg"
+            onUploaded={(url, docId) => {
+              setAthlete((a) => (a ? { ...a, photo_url: url } : a));
+              setDocs((prev) => {
+                const list = prev ?? [];
+                const existing = list.find((d) => d.doc_type === "photo_identite");
+                if (existing) {
+                  return list.map((d) =>
+                    d.doc_type === "photo_identite" ? { ...d, file_url: url } : d,
+                  );
+                }
+                return [
+                  ...list,
+                  {
+                    id: docId ?? `tmp-${Date.now()}`,
+                    athlete_id: id,
+                    category: "admin",
+                    doc_type: "photo_identite",
+                    file_name: "photo_identite",
+                    file_url: url,
+                    issued_date: null,
+                    expiry_date: null,
+                    status: "valid",
+                    created_at: new Date().toISOString(),
+                  } as AthleteDocument,
+                ];
+              });
+            }}
+          />
           <div>
             <h1 className="text-2xl font-semibold text-slate-900">
               {athlete.first_name} {athlete.last_name}
@@ -807,6 +834,58 @@ function AthleteDetailPage() {
 
         <TabsContent value="documents">
           <div className="space-y-3">
+            {/* Encart photo officielle — un seul document de type photo_identite par athlète */}
+            <div className="rounded-lg border border-slate-200 bg-white p-4">
+              <h3 className="text-sm font-semibold text-slate-700 mb-3">Photo officielle</h3>
+              <div className="flex items-center gap-4">
+                <AthletePhotoUpload
+                  athleteId={id}
+                  currentPhotoUrl={
+                    (docs ?? []).find((d) => d.doc_type === "photo_identite")?.file_url ??
+                    athlete.photo_url
+                  }
+                  initials={`${athlete.first_name[0] ?? ""}${athlete.last_name[0] ?? ""}`}
+                  size="sm"
+                  onUploaded={(url, docId) => {
+                    setAthlete((a) => (a ? { ...a, photo_url: url } : a));
+                    setDocs((prev) => {
+                      const list = prev ?? [];
+                      const existing = list.find((d) => d.doc_type === "photo_identite");
+                      if (existing) {
+                        return list.map((d) =>
+                          d.doc_type === "photo_identite" ? { ...d, file_url: url } : d,
+                        );
+                      }
+                      return [
+                        ...list,
+                        {
+                          id: docId ?? `tmp-${Date.now()}`,
+                          athlete_id: id,
+                          category: "admin",
+                          doc_type: "photo_identite",
+                          file_name: "photo_identite",
+                          file_url: url,
+                          issued_date: null,
+                          expiry_date: null,
+                          status: "valid",
+                          created_at: new Date().toISOString(),
+                        } as AthleteDocument,
+                      ];
+                    });
+                  }}
+                />
+                <div className="text-sm text-slate-500">
+                  {(docs ?? []).find((d) => d.doc_type === "photo_identite") ? (
+                    <p className="text-emerald-600">✓ Photo uploadée</p>
+                  ) : (
+                    <p>Aucune photo — cliquez pour ajouter</p>
+                  )}
+                  <p className="text-xs mt-1">JPG, PNG ou WebP · max 5 MB</p>
+                  <p className="text-xs text-slate-400">Une seule photo d'identité par athlète</p>
+                </div>
+              </div>
+            </div>
+
             <div className="flex justify-end">
               <Button onClick={() => setDocOpen(true)} className="bg-indigo-500 hover:bg-indigo-600">
                 <Upload className="mr-2 h-4 w-4" /> Ajouter un document
@@ -815,7 +894,7 @@ function AthleteDetailPage() {
             <div className="rounded-lg border border-slate-200 bg-white">
               {docs === null ? (
                 <TableSkeleton cols={6} />
-              ) : docs.length === 0 ? (
+              ) : docs.filter((d) => d.doc_type !== "photo_identite").length === 0 ? (
                 <div className="p-6"><EmptyState message="Aucun document." /></div>
               ) : (
                 <Table>
@@ -831,7 +910,7 @@ function AthleteDetailPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {docs.map((d) => (
+                    {docs.filter((d) => d.doc_type !== "photo_identite").map((d) => (
                       <TableRow key={d.id}>
                         <TableCell>
                           {DOCUMENT_CATEGORIES.find((c) => c.value === d.category)?.label ?? d.category}
