@@ -1730,8 +1730,8 @@ function KycTabContent({
   history: KycHistoryRow[];
   reviewer: ReviewerProfile;
   currentUserId: string | null;
-  updateKyc: (patch: Partial<AthleteKyc>, axis?: KycAxisKey) => Promise<void> | void;
-  markReviewed: () => Promise<void> | void;
+  updateKyc: (patch: Partial<AthleteKyc>, axis?: KycAxisKey) => unknown;
+  markReviewed: () => unknown;
   commentDraft: string;
   setCommentDraft: (v: string) => void;
 }) {
