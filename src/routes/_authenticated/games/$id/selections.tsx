@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Plus, Search, Lock, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { computeAge, checkAgeEligibility } from "@/lib/kyc-utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,13 +45,21 @@ const KYC_BADGE: Record<string, { label: string; cls: string }> = {
 type Athlete = {
   id: string; first_name: string; last_name: string; gender: string;
   photo_url: string | null; primary_sport_id: string | null;
+  birth_date: string | null;
 };
 type Sport = { id: string; name: string };
 type Discipline = { id: string; sport_id: string; name: string; gender: string };
+type Competition = {
+  id: string; game_id: string; sport_id: string; discipline_id: string | null;
+  name: string; competition_date: string | null;
+  min_age: number | null; max_age: number | null;
+};
 type Selection = {
   id: string; game_id: string; athlete_id: string; sport_id: string;
-  discipline_id: string | null; status: string; is_locked: boolean | null;
+  discipline_id: string | null; game_competition_id: string | null;
+  status: string; is_locked: boolean | null;
   athlete: Athlete | null; sport: Sport | null; discipline: Discipline | null;
+  game_competition: Competition | null;
 };
 
 function SelectionsPage() {
@@ -60,6 +69,7 @@ function SelectionsPage() {
   const [sports, setSports] = useState<Sport[]>([]);
   const [gameSportIds, setGameSportIds] = useState<string[]>([]);
   const [disciplines, setDisciplines] = useState<Discipline[]>([]);
+  const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [kycMap, setKycMap] = useState<Record<string, string>>({});
   const [quotaSum, setQuotaSum] = useState(0);
 
@@ -71,22 +81,26 @@ function SelectionsPage() {
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [form, setForm] = useState({ athlete_id: "", sport_id: "", discipline_id: "" });
+  const [form, setForm] = useState({ athlete_id: "", sport_id: "", discipline_id: "", game_competition_id: "" });
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
     setRows(null);
-    const [selRes, athRes, sportsRes, gsRes, discRes, kycRes, qRes] = await Promise.all([
+    const [selRes, athRes, sportsRes, gsRes, discRes, kycRes, qRes, compRes] = await Promise.all([
       supabase.from("selections")
-        .select("*, athlete:athletes(id,first_name,last_name,gender,photo_url,primary_sport_id), sport:sports(id,name), discipline:disciplines(id,sport_id,name,gender)")
+        .select("*, athlete:athletes(id,first_name,last_name,gender,photo_url,primary_sport_id,birth_date), sport:sports(id,name), discipline:disciplines(id,sport_id,name,gender), game_competition:game_competitions(id,game_id,sport_id,discipline_id,name,competition_date,min_age,max_age)")
         .eq("game_id", gameId)
         .order("created_at", { ascending: false }),
-      supabase.from("athletes").select("id,first_name,last_name,gender,photo_url,primary_sport_id").eq("is_active", true).order("last_name"),
+      supabase.from("athletes").select("id,first_name,last_name,gender,photo_url,primary_sport_id,birth_date").eq("is_active", true).order("last_name"),
       supabase.from("sports").select("id,name").order("name"),
       supabase.from("game_sports").select("sport_id").eq("game_id", gameId).eq("is_active", true),
       supabase.from("disciplines").select("id,sport_id,name,gender").order("name"),
       supabase.from("athlete_kyc").select("athlete_id, global_status"),
       supabase.from("game_quotas").select("quota_max").eq("game_id", gameId),
+      supabase.from("game_competitions")
+        .select("id,game_id,sport_id,discipline_id,name,competition_date,min_age,max_age")
+        .eq("game_id", gameId)
+        .order("competition_date", { nullsFirst: false }),
     ]);
     if (selRes.error) toast.error("Erreur sélections", { description: selRes.error.message });
     setRows(((selRes.data ?? []) as unknown) as Selection[]);
@@ -94,6 +108,7 @@ function SelectionsPage() {
     setSports((sportsRes.data ?? []) as Sport[]);
     setGameSportIds(((gsRes.data ?? []) as { sport_id: string }[]).map((g) => g.sport_id));
     setDisciplines((discRes.data ?? []) as Discipline[]);
+    setCompetitions((compRes.data ?? []) as Competition[]);
     const map: Record<string, string> = {};
     ((kycRes.data ?? []) as { athlete_id: string; global_status: string }[]).forEach((k) => {
       map[k.athlete_id] = k.global_status;
@@ -149,14 +164,39 @@ function SelectionsPage() {
       athlete_id: a.id,
       sport_id: a.primary_sport_id ?? "",
       discipline_id: "",
+      game_competition_id: "",
     });
     setPickerOpen(false);
   };
+
+  const selectedAthleteForCheck = useMemo(
+    () => athletes.find((a) => a.id === form.athlete_id) ?? null,
+    [athletes, form.athlete_id],
+  );
+
+  const formCompetitions = useMemo(
+    () => competitions.filter((c) => !form.sport_id || c.sport_id === form.sport_id),
+    [competitions, form.sport_id],
+  );
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.athlete_id || !form.sport_id) {
       toast.error("Athlète et sport requis"); return;
+    }
+    // Vérification d'âge si une épreuve est choisie
+    if (form.game_competition_id) {
+      const comp = competitions.find((c) => c.id === form.game_competition_id);
+      const ageCheck = checkAgeEligibility(
+        selectedAthleteForCheck?.birth_date,
+        comp?.min_age,
+        comp?.max_age,
+        comp?.competition_date,
+      );
+      if (!ageCheck.eligible) {
+        toast.error("Sélection impossible — âge non éligible", { description: ageCheck.reason });
+        return;
+      }
     }
     setSaving(true);
     const { error } = editingId
@@ -164,12 +204,14 @@ function SelectionsPage() {
           athlete_id: form.athlete_id,
           sport_id: form.sport_id,
           discipline_id: form.discipline_id || null,
+          game_competition_id: form.game_competition_id || null,
         }).eq("id", editingId)
       : await supabase.from("selections").insert({
           game_id: gameId,
           athlete_id: form.athlete_id,
           sport_id: form.sport_id,
           discipline_id: form.discipline_id || null,
+          game_competition_id: form.game_competition_id || null,
           status: "pre_selected",
         });
     setSaving(false);
@@ -180,7 +222,7 @@ function SelectionsPage() {
     toast.success(editingId ? "Sélection mise à jour" : "Athlète pré-sélectionné");
     setOpen(false);
     setEditingId(null);
-    setForm({ athlete_id: "", sport_id: "", discipline_id: "" });
+    setForm({ athlete_id: "", sport_id: "", discipline_id: "", game_competition_id: "" });
     load();
   };
 
@@ -191,6 +233,7 @@ function SelectionsPage() {
       athlete_id: sel.athlete_id,
       sport_id: sel.sport_id,
       discipline_id: sel.discipline_id ?? "",
+      game_competition_id: sel.game_competition_id ?? "",
     });
     setOpen(true);
   };
@@ -200,6 +243,19 @@ function SelectionsPage() {
       toast.error("Sélection verrouillée"); return;
     }
     if (newStatus === "selected") {
+      // Vérification d'âge si épreuve liée
+      if (sel.game_competition) {
+        const ageCheck = checkAgeEligibility(
+          sel.athlete?.birth_date,
+          sel.game_competition.min_age,
+          sel.game_competition.max_age,
+          sel.game_competition.competition_date,
+        );
+        if (!ageCheck.eligible) {
+          toast.error("Sélection impossible — âge non éligible", { description: ageCheck.reason });
+          return;
+        }
+      }
       const { data: kycData } = await supabase
         .from("athlete_kyc")
         .select("global_status, identity_verified, nationality_verified, antidoping_status")
@@ -276,14 +332,14 @@ function SelectionsPage() {
             <SelectItem value="red">Invalide</SelectItem>
           </SelectContent>
         </Select>
-        <Button onClick={() => { setEditingId(null); setForm({ athlete_id: "", sport_id: "", discipline_id: "" }); setOpen(true); }} className="ml-auto bg-indigo-500 hover:bg-indigo-600">
+        <Button onClick={() => { setEditingId(null); setForm({ athlete_id: "", sport_id: "", discipline_id: "", game_competition_id: "" }); setOpen(true); }} className="ml-auto bg-indigo-500 hover:bg-indigo-600">
           <Plus className="mr-2 h-4 w-4" /> Ajouter une sélection
         </Button>
       </div>
 
       <div className="rounded-lg border border-slate-200 bg-white">
         {rows === null ? (
-          <TableSkeleton cols={7} />
+          <TableSkeleton cols={8} />
         ) : filtered.length === 0 ? (
           <div className="p-6"><EmptyState message="Aucune sélection." /></div>
         ) : (
@@ -293,6 +349,8 @@ function SelectionsPage() {
                 <TableHead>Athlète</TableHead>
                 <TableHead>Sport</TableHead>
                 <TableHead>Discipline</TableHead>
+                <TableHead>Épreuve</TableHead>
+                <TableHead>Âge</TableHead>
                 <TableHead>Genre</TableHead>
                 <TableHead>Statut</TableHead>
                 <TableHead>KYC</TableHead>
@@ -318,6 +376,29 @@ function SelectionsPage() {
                     </TableCell>
                     <TableCell>{r.sport?.name ?? "—"}</TableCell>
                     <TableCell>{r.discipline?.name ?? "—"}</TableCell>
+                    <TableCell className="text-sm">
+                      {r.game_competition ? (
+                        <span className="font-medium text-slate-700">{r.game_competition.name}</span>
+                      ) : (
+                        <span className="text-xs text-slate-400">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {(() => {
+                        const age = computeAge(r.athlete?.birth_date);
+                        if (age == null) return <span className="text-slate-400">—</span>;
+                        const comp = r.game_competition;
+                        if (!comp || (comp.min_age == null && comp.max_age == null)) {
+                          return <span>{age} ans</span>;
+                        }
+                        const chk = checkAgeEligibility(r.athlete?.birth_date, comp.min_age, comp.max_age, comp.competition_date);
+                        return (
+                          <span className={chk.eligible ? "text-emerald-700" : "text-red-700 font-medium"}>
+                            {age} ans {chk.eligible ? "✓" : "⚠️"}
+                          </span>
+                        );
+                      })()}
+                    </TableCell>
                     <TableCell><Badge variant="outline">{r.athlete?.gender ?? "—"}</Badge></TableCell>
                     <TableCell>{sb && <Badge className={`${sb.cls} hover:${sb.cls}`}>{sb.label}</Badge>}</TableCell>
                     <TableCell><Badge className={`${kb.cls} hover:${kb.cls}`}>{kb.label}</Badge></TableCell>
@@ -350,7 +431,7 @@ function SelectionsPage() {
         )}
       </div>
 
-      <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setEditingId(null); setForm({ athlete_id: "", sport_id: "", discipline_id: "" }); } }}>
+      <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setEditingId(null); setForm({ athlete_id: "", sport_id: "", discipline_id: "", game_competition_id: "" }); } }}>
         <DialogContent>
           <form onSubmit={submit}>
             <DialogHeader>
@@ -412,6 +493,51 @@ function SelectionsPage() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Épreuve</Label>
+                <Select
+                  value={form.game_competition_id || "none"}
+                  onValueChange={(v) => setForm({ ...form, game_competition_id: v === "none" ? "" : v })}
+                >
+                  <SelectTrigger><SelectValue placeholder="Aucune épreuve…" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— Aucune (Games en général)</SelectItem>
+                    {formCompetitions.map((c) => {
+                      const chk = checkAgeEligibility(
+                        selectedAthleteForCheck?.birth_date,
+                        c.min_age,
+                        c.max_age,
+                        c.competition_date,
+                      );
+                      const label = `${c.name}${
+                        c.min_age != null || c.max_age != null
+                          ? ` · âge ${c.min_age ?? "?"}–${c.max_age ?? "?"}`
+                          : ""
+                      }`;
+                      return (
+                        <SelectItem key={c.id} value={c.id}>
+                          {selectedAthleteForCheck && !chk.eligible ? "❌ " : ""}
+                          {label}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                {form.game_competition_id && selectedAthleteForCheck && (() => {
+                  const c = competitions.find((x) => x.id === form.game_competition_id);
+                  const chk = checkAgeEligibility(
+                    selectedAthleteForCheck.birth_date,
+                    c?.min_age,
+                    c?.max_age,
+                    c?.competition_date,
+                  );
+                  return (
+                    <p className={`text-xs mt-1 ${chk.eligible ? "text-emerald-700" : "text-red-700 font-medium"}`}>
+                      {chk.eligible ? "✓" : "⚠️"} {chk.reason}
+                    </p>
+                  );
+                })()}
               </div>
             </div>
             <DialogFooter>

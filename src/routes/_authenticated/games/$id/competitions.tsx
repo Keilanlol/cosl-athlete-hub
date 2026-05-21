@@ -72,6 +72,8 @@ function CompetitionsPage() {
     category: "",
     competition_date: "",
     venue: "",
+    min_age: "",
+    max_age: "",
     notes: "",
   });
   const [delComp, setDelComp] = useState<GameCompetition | null>(null);
@@ -136,12 +138,14 @@ function CompetitionsPage() {
       category: compForm.category.trim() || null,
       competition_date: compForm.competition_date || null,
       venue: compForm.venue.trim() || null,
+      min_age: compForm.min_age ? parseInt(compForm.min_age, 10) : null,
+      max_age: compForm.max_age ? parseInt(compForm.max_age, 10) : null,
       notes: compForm.notes.trim() || null,
     });
     if (error) return toast.error("Échec", { description: error.message });
     toast.success("Épreuve ajoutée");
     setCompOpen(false);
-    setCompForm({ sport_id: "", discipline_id: "", name: "", round: "", gender: "mixed", category: "", competition_date: "", venue: "", notes: "" });
+    setCompForm({ sport_id: "", discipline_id: "", name: "", round: "", gender: "mixed", category: "", competition_date: "", venue: "", min_age: "", max_age: "", notes: "" });
     load();
   };
 
@@ -262,7 +266,7 @@ function CompetitionsPage() {
         </div>
         <div className="rounded-lg border border-slate-200 bg-white">
           {comps === null ? (
-            <TableSkeleton cols={7} />
+            <TableSkeleton cols={8} />
           ) : comps.length === 0 ? (
             <div className="p-6"><EmptyState message="Aucune épreuve définie." /></div>
           ) : (
@@ -276,6 +280,7 @@ function CompetitionsPage() {
                   <TableHead>Genre</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Lieu</TableHead>
+                  <TableHead>Âge</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -289,6 +294,15 @@ function CompetitionsPage() {
                     <TableCell>{GENDERS.find((g) => g.value === c.gender)?.label ?? "—"}</TableCell>
                     <TableCell>{c.competition_date ?? "—"}</TableCell>
                     <TableCell>{c.venue ?? "—"}</TableCell>
+                    <TableCell className="text-xs text-slate-600">
+                      {c.min_age != null && c.max_age != null
+                        ? `${c.min_age}–${c.max_age} ans`
+                        : c.min_age != null
+                        ? `≥ ${c.min_age} ans`
+                        : c.max_age != null
+                        ? `≤ ${c.max_age} ans`
+                        : "—"}
+                    </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <Button variant="ghost" size="icon" onClick={() => setDelComp(c)}>
                         <Trash2 className="h-4 w-4 text-red-600" />
@@ -438,6 +452,28 @@ function CompetitionsPage() {
                 onChange={(v) => setCompForm({ ...compForm, venue: v })}
                 onSelect={(r) => setCompForm({ ...compForm, venue: r.display_name })}
                 placeholder="Stade, salle, lieu de l'épreuve…"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Âge minimum</Label>
+              <Input
+                type="number"
+                min={0}
+                max={120}
+                value={compForm.min_age}
+                onChange={(e) => setCompForm({ ...compForm, min_age: e.target.value })}
+                placeholder="ex: 16"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Âge maximum</Label>
+              <Input
+                type="number"
+                min={0}
+                max={120}
+                value={compForm.max_age}
+                onChange={(e) => setCompForm({ ...compForm, max_age: e.target.value })}
+                placeholder="ex: 23"
               />
             </div>
             <div className="sm:col-span-2 space-y-1">
