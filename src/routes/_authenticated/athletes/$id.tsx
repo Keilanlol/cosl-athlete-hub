@@ -410,7 +410,6 @@ function AthleteDetailPage() {
       address: v.address || null,
       emergency_contact_name: v.emergency_contact_name || null,
       emergency_contact_phone: v.emergency_contact_phone || null,
-      photo_url: v.photo_url || null,
       primary_sport_id: v.primary_sport_id || null,
       primary_federation_id: v.primary_federation_id || null,
       current_club_id: v.current_club_id || null,
@@ -1356,14 +1355,6 @@ function AthleteDetailPage() {
                       value={form.phone ?? ""}
                       onChange={(e) => setForm({ ...form, phone: e.target.value })}
                     />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Photo (URL)</Label>
-                    <Input
-                      value={form.photo_url ?? ""}
-                      onChange={(e) => setForm({ ...form, photo_url: e.target.value })}
-                    />
-                    {fieldErr("photo_url")}
                   </div>
                   <div className="space-y-1.5">
                     <Label>Sport</Label>
