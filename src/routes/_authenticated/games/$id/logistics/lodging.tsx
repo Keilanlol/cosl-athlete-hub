@@ -545,9 +545,9 @@ function LodgingPage() {
         </div>
       </div>
 
-      <Dialog open={accOpen} onOpenChange={setAccOpen}>
+      <Dialog open={accOpen} onOpenChange={(o) => { setAccOpen(o); if (!o) { setEditingAcc(null); setAccForm(emptyAcc); } }}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Ajouter un hébergement</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingAcc ? "Modifier l'hébergement" : "Ajouter un hébergement"}</DialogTitle></DialogHeader>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="sm:col-span-2 space-y-1">
               <Label>Nom</Label>
@@ -558,22 +558,40 @@ function LodgingPage() {
               <Input value={accForm.type} onChange={(e) => setAccForm({ ...accForm, type: e.target.value })} placeholder="hôtel, village…" />
             </div>
             <div className="space-y-1">
-              <Label>Ville</Label>
-              <AddressSearch
-                value={accForm.city}
-                onChange={(v) => setAccForm({ ...accForm, city: v })}
-                onSelect={(r) => setAccForm({ ...accForm, city: r.city || r.display_name })}
-                placeholder="Ville ou adresse de l'hébergement"
-              />
-            </div>
-            <div className="space-y-1">
               <Label>Capacité (nb chambres)</Label>
               <Input type="number" min={0} value={accForm.total_rooms} onChange={(e) => setAccForm({ ...accForm, total_rooms: e.target.value })} />
             </div>
+            <div className="sm:col-span-2 space-y-1">
+              <Label>Adresse (rue + numéro)</Label>
+              <AddressSearch
+                value={accForm.street}
+                onChange={(v) => setAccForm({ ...accForm, street: v })}
+                onSelect={(r) => setAccForm({
+                  ...accForm,
+                  street: r.street || accForm.street,
+                  postcode: r.postcode || accForm.postcode,
+                  city: r.city || accForm.city,
+                  country: r.country || accForm.country,
+                })}
+                placeholder="Tapez pour rechercher l'adresse…"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Code postal</Label>
+              <Input value={accForm.postcode} onChange={(e) => setAccForm({ ...accForm, postcode: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <Label>Ville</Label>
+              <Input value={accForm.city} onChange={(e) => setAccForm({ ...accForm, city: e.target.value })} />
+            </div>
+            <div className="sm:col-span-2 space-y-1">
+              <Label>Pays</Label>
+              <Input value={accForm.country} onChange={(e) => setAccForm({ ...accForm, country: e.target.value })} />
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAccOpen(false)}>Annuler</Button>
-            <Button onClick={submitAcc} className="bg-indigo-500 hover:bg-indigo-600">Créer</Button>
+            <Button variant="outline" onClick={() => { setAccOpen(false); setEditingAcc(null); setAccForm(emptyAcc); }}>Annuler</Button>
+            <Button onClick={submitAcc} className="bg-indigo-500 hover:bg-indigo-600">{editingAcc ? "Enregistrer" : "Créer"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
