@@ -200,15 +200,70 @@ export type AthleteDocument = {
 export type AthleteKyc = {
   id: string;
   athlete_id: string;
+  // Axe 1 — Identité
   identity_verified: boolean | null;
+  passport_doc_id: string | null;
+  ci_doc_id: string | null;
+  // Axe 2 — Nationalité
   nationality_verified: boolean | null;
+  sport_nationality: string | null;
+  eligibility_federation: string | null;
+  eligibility_verified_at: string | null;
+  eligibility_verified_by: string | null;
+  // Axe 3 — Âge
   age_eligibility_ok: boolean | null;
+  min_age_ok: boolean | null;
+  max_age_ok: boolean | null;
+  // Axe 4 — Antidopage
   antidoping_status: KycStatusValue | null;
+  adams_number: string | null;
+  antidoping_last_check: string | null;
+  antidoping_whereabouts_ok: boolean | null;
+  // Axe 5 — E-learning
+  elearning_antidoping_completed: boolean | null;
+  elearning_completed_at: string | null;
+  elearning_certificate_url: string | null;
+  // Axe 6 — Charte éthique
+  ethics_charter_signed: boolean | null;
   ethics_charter_signed_at: string | null;
+  ethics_charter_doc_id: string | null;
+  // Axe 7 — Règle 40
+  rule40_signed: boolean | null;
   rule40_signed_at: string | null;
+  rule40_doc_id: string | null;
+  // Méta
   global_status: KycStatusValue | null;
   last_check_at: string | null;
+  kyc_reviewed_by: string | null;
+  kyc_reviewed_at: string | null;
+  kyc_comment: string | null;
   notes: string | null;
+};
+
+export type KycAxisKey =
+  | "identity" | "nationality" | "age"
+  | "antidoping" | "elearning" | "ethics" | "rule40" | "manual";
+
+export const KYC_AXE_LABELS: Record<KycAxisKey, string> = {
+  identity: "Identité officielle",
+  nationality: "Nationalité sportive",
+  age: "Éligibilité d'âge",
+  antidoping: "Antidopage",
+  elearning: "E-learning antidopage",
+  ethics: "Charte éthique COSL",
+  rule40: "Règle 40 CIO",
+  manual: "Modification manuelle",
+};
+
+export type KycHistoryEntry = {
+  id: string;
+  athlete_id: string;
+  changed_by: string | null;
+  previous_status: string | null;
+  new_status: string;
+  axis: KycAxisKey | null;
+  comment: string | null;
+  changed_at: string;
 };
 
 export type AthleteRelation = {

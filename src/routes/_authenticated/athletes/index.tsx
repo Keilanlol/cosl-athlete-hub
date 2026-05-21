@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Search } from "lucide-react";
+import { Plus, Pencil, Search, AlertTriangle } from "lucide-react";
+import { KycStatusBadge } from "@/components/KycStatusBadge";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import {
@@ -110,11 +111,13 @@ function statusBadge(s: string) {
 }
 
 function kycBadge(s: string | null | undefined) {
-  if (s === "green")
-    return <Badge className="bg-emerald-500 text-white hover:bg-emerald-500">KYC OK</Badge>;
-  if (s === "orange")
-    return <Badge className="bg-amber-500 text-white hover:bg-amber-500">Partiel</Badge>;
-  return <Badge className="bg-red-600 text-white hover:bg-red-600">Manquant</Badge>;
+  return (
+    <KycStatusBadge
+      status={(s as "green" | "orange" | "red" | null) ?? null}
+      size="sm"
+      showIcon
+    />
+  );
 }
 
 function AthletesPage() {
@@ -326,6 +329,13 @@ function AthletesPage() {
   const fieldErr = (k: string) =>
     errors[k] ? <p className="text-xs text-red-600">{errors[k]}</p> : null;
 
+  const kycRedCount = (rows ?? []).filter(
+    (a) => a.is_active !== false && readKyc(a.athlete_kyc) === "red",
+  ).length;
+  const kycOrangeCount = (rows ?? []).filter(
+    (a) => a.is_active !== false && readKyc(a.athlete_kyc) === "orange",
+  ).length;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -339,6 +349,30 @@ function AthletesPage() {
           <Plus className="mr-2 h-4 w-4" /> Ajouter un athlète
         </Button>
       </div>
+
+      {(kycRedCount > 0 || kycOrangeCount > 0) && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 flex items-center gap-3">
+          <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
+          <div className="flex-1 text-sm">
+            {kycRedCount > 0 && (
+              <span className="text-red-700 font-medium">
+                {kycRedCount} athlète(s) non conforme(s) (KYC rouge)
+              </span>
+            )}
+            {kycRedCount > 0 && kycOrangeCount > 0 && " · "}
+            {kycOrangeCount > 0 && (
+              <span className="text-amber-700">
+                {kycOrangeCount} athlète(s) partiellement conforme(s) (KYC orange)
+              </span>
+            )}
+          </div>
+          {kycRedCount > 0 && (
+            <Button size="sm" variant="outline" onClick={() => setFKyc("red")}>
+              Voir les non conformes
+            </Button>
+          )}
+        </div>
+      )}
 
       <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 lg:grid-cols-6">
         <div className="relative lg:col-span-2">

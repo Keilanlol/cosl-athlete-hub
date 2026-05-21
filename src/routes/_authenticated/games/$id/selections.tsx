@@ -200,16 +200,31 @@ function SelectionsPage() {
       toast.error("Sélection verrouillée"); return;
     }
     if (newStatus === "selected") {
-      const { data, error } = await supabase.rpc("athlete_kyc_valid", { _athlete_id: sel.athlete_id });
-      if (error) {
-        toast.error("Vérification KYC impossible", { description: error.message });
-        return;
-      }
-      if (!data) {
-        toast.error("KYC invalide", {
-          description: "Cet athlète n'a pas un KYC valide. Vérifiez son dossier avant de le sélectionner.",
+      const { data: kycData } = await supabase
+        .from("athlete_kyc")
+        .select("global_status, identity_verified, nationality_verified, antidoping_status")
+        .eq("athlete_id", sel.athlete_id)
+        .maybeSingle();
+
+      if (!kycData || kycData.global_status === "red") {
+        toast.error("KYC invalide — Sélection impossible", {
+          description: !kycData
+            ? "Aucun dossier KYC trouvé pour cet athlète."
+            : !kycData.identity_verified
+            ? "Identité non vérifiée (axe bloquant)."
+            : !kycData.nationality_verified
+            ? "Nationalité sportive non vérifiée (axe bloquant)."
+            : kycData.antidoping_status === "red"
+            ? "Statut antidopage rouge (axe bloquant)."
+            : "KYC global non conforme.",
         });
         return;
+      }
+      if (kycData.global_status === "orange") {
+        toast.warning("KYC partiel — Certains axes ne sont pas validés", {
+          description:
+            "La sélection est possible mais le dossier KYC doit être complété avant l'accréditation.",
+        });
       }
     }
     const patch: { status: string; decided_at?: string } = { status: newStatus };
