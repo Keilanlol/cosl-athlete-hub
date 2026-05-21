@@ -339,7 +339,7 @@ function SelectionsPage() {
 
       <div className="rounded-lg border border-slate-200 bg-white">
         {rows === null ? (
-          <TableSkeleton cols={7} />
+          <TableSkeleton cols={8} />
         ) : filtered.length === 0 ? (
           <div className="p-6"><EmptyState message="Aucune sélection." /></div>
         ) : (
@@ -349,6 +349,8 @@ function SelectionsPage() {
                 <TableHead>Athlète</TableHead>
                 <TableHead>Sport</TableHead>
                 <TableHead>Discipline</TableHead>
+                <TableHead>Épreuve</TableHead>
+                <TableHead>Âge</TableHead>
                 <TableHead>Genre</TableHead>
                 <TableHead>Statut</TableHead>
                 <TableHead>KYC</TableHead>
@@ -374,6 +376,29 @@ function SelectionsPage() {
                     </TableCell>
                     <TableCell>{r.sport?.name ?? "—"}</TableCell>
                     <TableCell>{r.discipline?.name ?? "—"}</TableCell>
+                    <TableCell className="text-sm">
+                      {r.game_competition ? (
+                        <span className="font-medium text-slate-700">{r.game_competition.name}</span>
+                      ) : (
+                        <span className="text-xs text-slate-400">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {(() => {
+                        const age = computeAge(r.athlete?.birth_date);
+                        if (age == null) return <span className="text-slate-400">—</span>;
+                        const comp = r.game_competition;
+                        if (!comp || (comp.min_age == null && comp.max_age == null)) {
+                          return <span>{age} ans</span>;
+                        }
+                        const chk = checkAgeEligibility(r.athlete?.birth_date, comp.min_age, comp.max_age, comp.competition_date);
+                        return (
+                          <span className={chk.eligible ? "text-emerald-700" : "text-red-700 font-medium"}>
+                            {age} ans {chk.eligible ? "✓" : "⚠️"}
+                          </span>
+                        );
+                      })()}
+                    </TableCell>
                     <TableCell><Badge variant="outline">{r.athlete?.gender ?? "—"}</Badge></TableCell>
                     <TableCell>{sb && <Badge className={`${sb.cls} hover:${sb.cls}`}>{sb.label}</Badge>}</TableCell>
                     <TableCell><Badge className={`${kb.cls} hover:${kb.cls}`}>{kb.label}</Badge></TableCell>
