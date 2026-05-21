@@ -411,21 +411,23 @@ function AthleteDetailPage() {
     loadAll();
   };
 
-  const deactivate = async () => {
+  const toggleActive = async (nextActive: boolean) => {
     if (!athlete) return;
     setDeactivating(true);
     const { error } = await supabase
       .from("athletes")
-      .update({ is_active: false })
+      .update({ is_active: nextActive })
       .eq("id", athlete.id);
     setDeactivating(false);
     setConfirmDeactivate(false);
     if (error) {
-      toast.error("Désactivation impossible", { description: error.message });
+      toast.error(nextActive ? "Réactivation impossible" : "Désactivation impossible", {
+        description: error.message,
+      });
       return;
     }
-    toast.success("Athlète désactivé");
-    navigate({ to: "/athletes" });
+    toast.success(nextActive ? "Athlète réactivé" : "Athlète désactivé");
+    loadAll();
   };
 
   const submitDoc = async (e: React.FormEvent) => {
