@@ -720,6 +720,14 @@ function AthletesPage() {
                             setForm((f) => ({ ...f, photo_url: url }));
                           }
                         }}
+                        onDeleted={() => {
+                          if (!editing) {
+                            setPendingPhotoFile(null);
+                            setPendingPhotoPreview(null);
+                          } else {
+                            setForm((f) => ({ ...f, photo_url: null }));
+                          }
+                        }}
                       />
                       <p className="text-xs text-slate-400">
                         Glisser une image ou cliquer
