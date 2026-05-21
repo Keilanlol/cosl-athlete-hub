@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, Download, Building2, Search } from "lucide-react";
+import { Plus, Trash2, Download, Building2, Search, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { confirmAction } from "@/components/ConfirmDialog";
@@ -39,7 +39,15 @@ export const Route = createFileRoute("/_authenticated/games/$id/logistics/lodgin
   component: LodgingPage,
 });
 
-type AccForm = { name: string; type: string; city: string; total_rooms: string };
+type AccForm = {
+  name: string;
+  type: string;
+  street: string;
+  postcode: string;
+  city: string;
+  country: string;
+  total_rooms: string;
+};
 type RoomForm = {
   accommodation_id: string;
   room_number: string;
@@ -48,7 +56,7 @@ type RoomForm = {
   check_out: string;
 };
 
-const emptyAcc: AccForm = { name: "", type: "", city: "", total_rooms: "" };
+const emptyAcc: AccForm = { name: "", type: "", street: "", postcode: "", city: "", country: "", total_rooms: "" };
 const emptyRoom: RoomForm = {
   accommodation_id: "",
   room_number: "",
@@ -77,6 +85,7 @@ function LodgingPage() {
 
   const [accOpen, setAccOpen] = useState(false);
   const [accForm, setAccForm] = useState<AccForm>(emptyAcc);
+  const [editingAcc, setEditingAcc] = useState<Accommodation | null>(null);
 
   const [roomOpen, setRoomOpen] = useState(false);
   const [roomForm, setRoomForm] = useState<RoomForm>(emptyRoom);
@@ -211,15 +220,36 @@ function LodgingPage() {
       game_id: id,
       name: accForm.name.trim(),
       type: accForm.type.trim() || null,
+      street: accForm.street.trim() || null,
+      postcode: accForm.postcode.trim() || null,
       city: accForm.city.trim() || null,
+      country: accForm.country.trim() || null,
+      address: [accForm.street, accForm.postcode, accForm.city, accForm.country].filter(Boolean).join(", ") || null,
       total_rooms: accForm.total_rooms ? parseInt(accForm.total_rooms, 10) : null,
     };
-    const { error } = await supabase.from("accommodations").insert(payload);
+    const { error } = editingAcc
+      ? await supabase.from("accommodations").update(payload).eq("id", editingAcc.id)
+      : await supabase.from("accommodations").insert(payload);
     if (error) return toast.error("Échec", { description: error.message });
-    toast.success("Hébergement ajouté");
+    toast.success(editingAcc ? "Hébergement modifié" : "Hébergement ajouté");
     setAccOpen(false);
+    setEditingAcc(null);
     setAccForm(emptyAcc);
     load();
+  };
+
+  const openEditAcc = (a: Accommodation) => {
+    setEditingAcc(a);
+    setAccForm({
+      name: a.name,
+      type: a.type ?? "",
+      street: a.street ?? "",
+      postcode: a.postcode ?? "",
+      city: a.city ?? "",
+      country: a.country ?? "",
+      total_rooms: a.total_rooms != null ? String(a.total_rooms) : "",
+    });
+    setAccOpen(true);
   };
 
   const submitRoom = async () => {
@@ -372,13 +402,19 @@ function LodgingPage() {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {accs.map((a) => (
               <div key={a.id} className="rounded-lg border border-slate-200 bg-white p-4">
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-indigo-500" />
-                  <h3 className="font-semibold text-slate-900">{a.name}</h3>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Building2 className="h-4 w-4 text-indigo-500 shrink-0" />
+                    <h3 className="font-semibold text-slate-900 truncate">{a.name}</h3>
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={() => openEditAcc(a)} aria-label="Modifier">
+                    <Pencil className="h-4 w-4" />
+                  </Button>
                 </div>
                 <p className="mt-1 text-xs text-slate-500">
-                  {[a.type, a.city].filter(Boolean).join(" · ") || "—"}
+                  {[a.type, [a.postcode, a.city].filter(Boolean).join(" "), a.country].filter(Boolean).join(" · ") || "—"}
                 </p>
+                {a.street && <p className="mt-1 text-xs text-slate-500">{a.street}</p>}
                 <p className="mt-2 text-xs text-slate-500">
                   Capacité : {a.total_rooms ?? "—"} chambres
                 </p>
@@ -509,9 +545,9 @@ function LodgingPage() {
         </div>
       </div>
 
-      <Dialog open={accOpen} onOpenChange={setAccOpen}>
+      <Dialog open={accOpen} onOpenChange={(o) => { setAccOpen(o); if (!o) { setEditingAcc(null); setAccForm(emptyAcc); } }}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Ajouter un hébergement</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingAcc ? "Modifier l'hébergement" : "Ajouter un hébergement"}</DialogTitle></DialogHeader>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="sm:col-span-2 space-y-1">
               <Label>Nom</Label>
@@ -522,22 +558,40 @@ function LodgingPage() {
               <Input value={accForm.type} onChange={(e) => setAccForm({ ...accForm, type: e.target.value })} placeholder="hôtel, village…" />
             </div>
             <div className="space-y-1">
-              <Label>Ville</Label>
-              <AddressSearch
-                value={accForm.city}
-                onChange={(v) => setAccForm({ ...accForm, city: v })}
-                onSelect={(r) => setAccForm({ ...accForm, city: r.city || r.display_name })}
-                placeholder="Ville ou adresse de l'hébergement"
-              />
-            </div>
-            <div className="space-y-1">
               <Label>Capacité (nb chambres)</Label>
               <Input type="number" min={0} value={accForm.total_rooms} onChange={(e) => setAccForm({ ...accForm, total_rooms: e.target.value })} />
             </div>
+            <div className="sm:col-span-2 space-y-1">
+              <Label>Adresse (rue + numéro)</Label>
+              <AddressSearch
+                value={accForm.street}
+                onChange={(v) => setAccForm({ ...accForm, street: v })}
+                onSelect={(r) => setAccForm({
+                  ...accForm,
+                  street: r.street || accForm.street,
+                  postcode: r.postcode || accForm.postcode,
+                  city: r.city || accForm.city,
+                  country: r.country || accForm.country,
+                })}
+                placeholder="Tapez pour rechercher l'adresse…"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Code postal</Label>
+              <Input value={accForm.postcode} onChange={(e) => setAccForm({ ...accForm, postcode: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <Label>Ville</Label>
+              <Input value={accForm.city} onChange={(e) => setAccForm({ ...accForm, city: e.target.value })} />
+            </div>
+            <div className="sm:col-span-2 space-y-1">
+              <Label>Pays</Label>
+              <Input value={accForm.country} onChange={(e) => setAccForm({ ...accForm, country: e.target.value })} />
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAccOpen(false)}>Annuler</Button>
-            <Button onClick={submitAcc} className="bg-indigo-500 hover:bg-indigo-600">Créer</Button>
+            <Button variant="outline" onClick={() => { setAccOpen(false); setEditingAcc(null); setAccForm(emptyAcc); }}>Annuler</Button>
+            <Button onClick={submitAcc} className="bg-indigo-500 hover:bg-indigo-600">{editingAcc ? "Enregistrer" : "Créer"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

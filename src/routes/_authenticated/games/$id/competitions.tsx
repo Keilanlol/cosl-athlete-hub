@@ -72,6 +72,9 @@ function CompetitionsPage() {
     category: "",
     competition_date: "",
     venue: "",
+    postcode: "",
+    city: "",
+    country: "",
     min_age: "",
     max_age: "",
     notes: "",
@@ -139,6 +142,9 @@ function CompetitionsPage() {
       category: compForm.category.trim() || null,
       competition_date: compForm.competition_date || null,
       venue: compForm.venue.trim() || null,
+      postcode: compForm.postcode.trim() || null,
+      city: compForm.city.trim() || null,
+      country: compForm.country.trim() || null,
       min_age: compForm.min_age ? parseInt(compForm.min_age, 10) : null,
       max_age: compForm.max_age ? parseInt(compForm.max_age, 10) : null,
       notes: compForm.notes.trim() || null,
@@ -150,7 +156,7 @@ function CompetitionsPage() {
     toast.success(editingComp ? "Épreuve modifiée" : "Épreuve ajoutée");
     setCompOpen(false);
     setEditingComp(null);
-    setCompForm({ sport_id: "", discipline_id: "", name: "", round: "", gender: "mixed", category: "", competition_date: "", venue: "", min_age: "", max_age: "", notes: "" });
+    setCompForm({ sport_id: "", discipline_id: "", name: "", round: "", gender: "mixed", category: "", competition_date: "", venue: "", postcode: "", city: "", country: "", min_age: "", max_age: "", notes: "" });
     load();
   };
 
@@ -165,6 +171,9 @@ function CompetitionsPage() {
       category: c.category ?? "",
       competition_date: c.competition_date ?? "",
       venue: c.venue ?? "",
+      postcode: c.postcode ?? "",
+      city: c.city ?? "",
+      country: c.country ?? "",
       min_age: c.min_age != null ? String(c.min_age) : "",
       max_age: c.max_age != null ? String(c.max_age) : "",
       notes: c.notes ?? "",
@@ -472,13 +481,31 @@ function CompetitionsPage() {
               <Input type="date" value={compForm.competition_date} onChange={(e) => setCompForm({ ...compForm, competition_date: e.target.value })} />
             </div>
             <div className="sm:col-span-2 space-y-1">
-              <Label>Lieu</Label>
+              <Label>Lieu (adresse)</Label>
               <AddressSearch
                 value={compForm.venue}
                 onChange={(v) => setCompForm({ ...compForm, venue: v })}
-                onSelect={(r) => setCompForm({ ...compForm, venue: [r.street, r.city].filter(Boolean).join(", ") || r.display_name })}
-                placeholder="Stade, salle, lieu de l'épreuve…"
+                onSelect={(r) => setCompForm({
+                  ...compForm,
+                  venue: r.street || compForm.venue,
+                  postcode: r.postcode || compForm.postcode,
+                  city: r.city || compForm.city,
+                  country: r.country || compForm.country,
+                })}
+                placeholder="Stade, salle, adresse…"
               />
+            </div>
+            <div className="space-y-1">
+              <Label>Code postal</Label>
+              <Input value={compForm.postcode} onChange={(e) => setCompForm({ ...compForm, postcode: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <Label>Ville</Label>
+              <Input value={compForm.city} onChange={(e) => setCompForm({ ...compForm, city: e.target.value })} />
+            </div>
+            <div className="sm:col-span-2 space-y-1">
+              <Label>Pays</Label>
+              <Input value={compForm.country} onChange={(e) => setCompForm({ ...compForm, country: e.target.value })} />
             </div>
             <div className="space-y-1">
               <Label>Âge minimum</Label>
