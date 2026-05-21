@@ -56,6 +56,10 @@ export type FederationMember = {
   email: string | null;
   phone: string | null;
   address: string | null;
+  street: string | null;
+  postcode: string | null;
+  city: string | null;
+  country: string | null;
   start_date: string | null;
   end_date: string | null;
   notes: string | null;
@@ -82,6 +86,10 @@ export type ClubMember = {
   email: string | null;
   phone: string | null;
   address: string | null;
+  street: string | null;
+  postcode: string | null;
+  city: string | null;
+  country: string | null;
   start_date: string | null;
   end_date: string | null;
   notes: string | null;
@@ -168,6 +176,10 @@ export type Athlete = {
   email: string | null;
   phone: string | null;
   address: string | null;
+  street: string | null;
+  postcode: string | null;
+  city: string | null;
+  country: string | null;
   emergency_contact_name: string | null;
   emergency_contact_phone: string | null;
   photo_url: string | null;
@@ -324,6 +336,10 @@ export const athleteSchema = z.object({
   email: z.string().trim().email("Email invalide").optional().or(z.literal("")),
   phone: z.string().trim().max(40).optional().or(z.literal("")),
   address: z.string().trim().max(255).optional().or(z.literal("")),
+  street: z.string().trim().max(255).optional().or(z.literal("")),
+  postcode: z.string().trim().max(20).optional().or(z.literal("")),
+  city: z.string().trim().max(120).optional().or(z.literal("")),
+  country: z.string().trim().max(80).optional().or(z.literal("")),
   emergency_contact_name: z.string().trim().max(120).optional().or(z.literal("")),
   emergency_contact_phone: z.string().trim().max(40).optional().or(z.literal("")),
   photo_url: z.string().trim().url("URL invalide").optional().or(z.literal("")),
@@ -378,6 +394,10 @@ export type GameCompetition = {
   gender: Gender | null;
   category: string | null;
   venue: string | null;
+  street: string | null;
+  postcode: string | null;
+  city: string | null;
+  country: string | null;
   min_age: number | null;
   max_age: number | null;
   notes: string | null;
@@ -546,6 +566,8 @@ export type Accommodation = {
   game_id: string;
   name: string;
   address: string | null;
+  street: string | null;
+  postcode: string | null;
   city: string | null;
   country: string | null;
   type: string | null;

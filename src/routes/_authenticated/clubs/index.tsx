@@ -401,10 +401,11 @@ function ClubsPage() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>🔍 Rechercher une adresse <span className="text-xs text-slate-400 font-normal">(optionnel — remplit les champs ci-dessous)</span></Label>
+                <Label htmlFor="cstreet">Adresse (numéro + rue)</Label>
                 <AddressSearch
-                  value=""
-                  onChange={() => {}}
+                  id="cstreet"
+                  value={form.street}
+                  onChange={(v) => setForm({ ...form, street: v })}
                   onSelect={(r) =>
                     setForm((f) => ({
                       ...f,
@@ -415,15 +416,6 @@ function ClubsPage() {
                     }))
                   }
                   placeholder="ex: 1 Rue du Stade, Luxembourg…"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="cstreet">Adresse (numéro + rue)</Label>
-                <Input
-                  id="cstreet"
-                  value={form.street}
-                  onChange={(e) => setForm({ ...form, street: e.target.value })}
-                  placeholder="ex: 1 Rue du Stade"
                 />
               </div>
               <div className="grid grid-cols-3 gap-3">
