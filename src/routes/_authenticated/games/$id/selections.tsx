@@ -44,13 +44,21 @@ const KYC_BADGE: Record<string, { label: string; cls: string }> = {
 type Athlete = {
   id: string; first_name: string; last_name: string; gender: string;
   photo_url: string | null; primary_sport_id: string | null;
+  birth_date: string | null;
 };
 type Sport = { id: string; name: string };
 type Discipline = { id: string; sport_id: string; name: string; gender: string };
+type Competition = {
+  id: string; game_id: string; sport_id: string; discipline_id: string | null;
+  name: string; competition_date: string | null;
+  min_age: number | null; max_age: number | null;
+};
 type Selection = {
   id: string; game_id: string; athlete_id: string; sport_id: string;
-  discipline_id: string | null; status: string; is_locked: boolean | null;
+  discipline_id: string | null; game_competition_id: string | null;
+  status: string; is_locked: boolean | null;
   athlete: Athlete | null; sport: Sport | null; discipline: Discipline | null;
+  game_competition: Competition | null;
 };
 
 function SelectionsPage() {
@@ -60,6 +68,7 @@ function SelectionsPage() {
   const [sports, setSports] = useState<Sport[]>([]);
   const [gameSportIds, setGameSportIds] = useState<string[]>([]);
   const [disciplines, setDisciplines] = useState<Discipline[]>([]);
+  const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [kycMap, setKycMap] = useState<Record<string, string>>({});
   const [quotaSum, setQuotaSum] = useState(0);
 
@@ -71,7 +80,7 @@ function SelectionsPage() {
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [form, setForm] = useState({ athlete_id: "", sport_id: "", discipline_id: "" });
+  const [form, setForm] = useState({ athlete_id: "", sport_id: "", discipline_id: "", game_competition_id: "" });
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
