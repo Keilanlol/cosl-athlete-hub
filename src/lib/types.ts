@@ -18,10 +18,14 @@ export type Club = {
   federation_id: string;
   city: string | null;
   address: string | null;
+  street: string | null;
+  postcode: string | null;
+  country: string | null;
   email: string | null;
   phone: string | null;
   created_at: string;
 };
+
 
 export type Coach = {
   id: string;

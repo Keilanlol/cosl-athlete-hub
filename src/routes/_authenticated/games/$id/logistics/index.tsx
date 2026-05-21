@@ -294,7 +294,7 @@ function TravelPlansPage() {
               <AddressSearch
                 value={form.departure_point}
                 onChange={(v) => setForm({ ...form, departure_point: v })}
-                onSelect={(r) => setForm({ ...form, departure_point: r.display_name })}
+                onSelect={(r) => setForm({ ...form, departure_point: [r.street, r.city, r.country].filter(Boolean).join(", ") || r.display_name })}
                 placeholder="Aéroport, gare, adresse…"
               />
             </div>
@@ -303,7 +303,7 @@ function TravelPlansPage() {
               <AddressSearch
                 value={form.arrival_point}
                 onChange={(v) => setForm({ ...form, arrival_point: v })}
-                onSelect={(r) => setForm({ ...form, arrival_point: r.display_name })}
+                onSelect={(r) => setForm({ ...form, arrival_point: [r.street, r.city, r.country].filter(Boolean).join(", ") || r.display_name })}
                 placeholder="Aéroport, gare, adresse…"
               />
             </div>

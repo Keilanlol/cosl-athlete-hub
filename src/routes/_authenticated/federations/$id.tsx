@@ -116,9 +116,13 @@ const emptyClub = {
   name: "",
   city: "",
   address: "",
+  street: "",
+  postcode: "",
+  country: "",
   email: "",
   phone: "",
 };
+
 
 // ---------- Member form ----------
 const emptyMember = {
@@ -275,6 +279,9 @@ function FederationDetailPage() {
       name: c.name,
       city: c.city ?? "",
       address: c.address ?? "",
+      street: c.street ?? c.address ?? "",
+      postcode: c.postcode ?? "",
+      country: c.country ?? "",
       email: c.email ?? "",
       phone: c.phone ?? "",
     });
@@ -287,17 +294,29 @@ function FederationDetailPage() {
       return;
     }
     setClubSaving(true);
+    const street = clubForm.street.trim();
+    const city = clubForm.city.trim();
+    const postcode = clubForm.postcode.trim();
+    const country = clubForm.country.trim();
+    const fullAddress =
+      [street, [postcode, city].filter(Boolean).join(" "), country]
+        .filter(Boolean)
+        .join(", ") || clubForm.address.trim();
     const payload = {
       name: clubForm.name.trim(),
       federation_id: id,
-      city: clubForm.city.trim() || null,
-      address: clubForm.address.trim() || null,
+      city: city || null,
+      address: fullAddress || null,
+      street: street || null,
+      postcode: postcode || null,
+      country: country || null,
       email: clubForm.email.trim() || null,
       phone: clubForm.phone.trim() || null,
     };
     const { error } = editingClub
       ? await supabase.from("clubs").update(payload).eq("id", editingClub.id)
       : await supabase.from("clubs").insert(payload);
+
     setClubSaving(false);
     if (error) {
       toast.error("Échec de l'enregistrement", { description: error.message });
@@ -847,15 +866,58 @@ function FederationDetailPage() {
                   required
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>🔍 Rechercher une adresse <span className="text-xs text-slate-400 font-normal">(optionnel)</span></Label>
+                <AddressSearch
+                  value=""
+                  onChange={() => {}}
+                  onSelect={(r) =>
+                    setClubForm((f) => ({
+                      ...f,
+                      street: r.street || f.street,
+                      city: r.city || f.city,
+                      postcode: r.postcode || f.postcode,
+                      country: r.country || f.country,
+                    }))
+                  }
+                  placeholder="Rue, ville, pays…"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="fcstreet">Adresse (numéro + rue)</Label>
+                <Input
+                  id="fcstreet"
+                  value={clubForm.street}
+                  onChange={(e) => setClubForm({ ...clubForm, street: e.target.value })}
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="fccity">Ville</Label>
+                  <Label htmlFor="fcpostcode">Code postal</Label>
                   <Input
-                    id="fccity"
+                    id="fcpostcode"
+                    value={clubForm.postcode}
+                    onChange={(e) => setClubForm({ ...clubForm, postcode: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="fccity2">Ville</Label>
+                  <Input
+                    id="fccity2"
                     value={clubForm.city}
                     onChange={(e) => setClubForm({ ...clubForm, city: e.target.value })}
                   />
                 </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="fccountry">Pays</Label>
+                  <Input
+                    id="fccountry"
+                    value={clubForm.country}
+                    onChange={(e) => setClubForm({ ...clubForm, country: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="fcphone">Téléphone</Label>
                   <Input
@@ -864,26 +926,17 @@ function FederationDetailPage() {
                     onChange={(e) => setClubForm({ ...clubForm, phone: e.target.value })}
                   />
                 </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="fcemail">Email</Label>
+                  <Input
+                    id="fcemail"
+                    type="email"
+                    value={clubForm.email}
+                    onChange={(e) => setClubForm({ ...clubForm, email: e.target.value })}
+                  />
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="fcaddr">Adresse</Label>
-                <AddressSearch
-                  id="fcaddr"
-                  value={clubForm.address}
-                  onChange={(v) => setClubForm({ ...clubForm, address: v })}
-                  onSelect={(r) => setClubForm({ ...clubForm, address: r.display_name })}
-                  placeholder="Rue, ville, pays…"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="fcemail">Email</Label>
-                <Input
-                  id="fcemail"
-                  type="email"
-                  value={clubForm.email}
-                  onChange={(e) => setClubForm({ ...clubForm, email: e.target.value })}
-                />
-              </div>
+
             </div>
             <DialogFooter>
               <Button
@@ -1012,8 +1065,18 @@ function FederationDetailPage() {
                   value={memberForm.address}
                   onChange={(v) => setMemberForm({ ...memberForm, address: v })}
                   onSelect={(r) =>
-                    setMemberForm({ ...memberForm, address: r.display_name })
+                    setMemberForm({
+                      ...memberForm,
+                      address: [
+                        r.street,
+                        [r.postcode, r.city].filter(Boolean).join(" "),
+                        r.country,
+                      ]
+                        .filter(Boolean)
+                        .join(", ") || r.display_name,
+                    })
                   }
+
                   placeholder="Rue, ville, pays…"
                 />
               </div>

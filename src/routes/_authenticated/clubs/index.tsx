@@ -61,9 +61,13 @@ const empty = {
   federation_id: "",
   city: "",
   address: "",
+  street: "",
+  postcode: "",
+  country: "",
   email: "",
   phone: "",
 };
+
 
 function ClubsPage() {
   const navigate = useNavigate();
@@ -160,6 +164,9 @@ function ClubsPage() {
       federation_id: c.federation_id,
       city: c.city ?? "",
       address: c.address ?? "",
+      street: c.street ?? c.address ?? "",
+      postcode: c.postcode ?? "",
+      country: c.country ?? "",
       email: c.email ?? "",
       phone: c.phone ?? "",
     });
@@ -173,11 +180,22 @@ function ClubsPage() {
       return;
     }
     setSaving(true);
+    const street = form.street.trim();
+    const city = form.city.trim();
+    const postcode = form.postcode.trim();
+    const country = form.country.trim();
+    const fullAddress =
+      [street, [postcode, city].filter(Boolean).join(" "), country]
+        .filter(Boolean)
+        .join(", ") || form.address.trim();
     const payload = {
       name: form.name.trim(),
       federation_id: form.federation_id,
-      city: form.city.trim() || null,
-      address: form.address.trim() || null,
+      city: city || null,
+      address: fullAddress || null,
+      street: street || null,
+      postcode: postcode || null,
+      country: country || null,
       email: form.email.trim() || null,
       phone: form.phone.trim() || null,
     };
@@ -193,6 +211,7 @@ function ClubsPage() {
     setOpen(false);
     load();
   };
+
 
   const confirmDelete = async () => {
     if (!deleteId) return;
@@ -381,7 +400,42 @@ function ClubsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>🔍 Rechercher une adresse <span className="text-xs text-slate-400 font-normal">(optionnel — remplit les champs ci-dessous)</span></Label>
+                <AddressSearch
+                  value=""
+                  onChange={() => {}}
+                  onSelect={(r) =>
+                    setForm((f) => ({
+                      ...f,
+                      street: r.street || f.street,
+                      city: r.city || f.city,
+                      postcode: r.postcode || f.postcode,
+                      country: r.country || f.country,
+                    }))
+                  }
+                  placeholder="ex: 1 Rue du Stade, Luxembourg…"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="cstreet">Adresse (numéro + rue)</Label>
+                <Input
+                  id="cstreet"
+                  value={form.street}
+                  onChange={(e) => setForm({ ...form, street: e.target.value })}
+                  placeholder="ex: 1 Rue du Stade"
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="cpostcode">Code postal</Label>
+                  <Input
+                    id="cpostcode"
+                    value={form.postcode}
+                    onChange={(e) => setForm({ ...form, postcode: e.target.value })}
+                    placeholder="L-1234"
+                  />
+                </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="ccity">Ville</Label>
                   <Input
@@ -391,6 +445,17 @@ function ClubsPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
+                  <Label htmlFor="ccountry">Pays</Label>
+                  <Input
+                    id="ccountry"
+                    value={form.country}
+                    onChange={(e) => setForm({ ...form, country: e.target.value })}
+                    placeholder="Luxembourg"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
                   <Label htmlFor="cphone">Téléphone</Label>
                   <Input
                     id="cphone"
@@ -398,26 +463,17 @@ function ClubsPage() {
                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
                   />
                 </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="cemail">Email</Label>
+                  <Input
+                    id="cemail"
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  />
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="caddr">Adresse</Label>
-                <AddressSearch
-                  id="caddr"
-                  value={form.address}
-                  onChange={(v) => setForm({ ...form, address: v })}
-                  onSelect={(r) => setForm({ ...form, address: r.display_name })}
-                  placeholder="Rue, ville, pays…"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="cemail">Email</Label>
-                <Input
-                  id="cemail"
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                />
-              </div>
+
             </div>
             <DialogFooter>
               <Button

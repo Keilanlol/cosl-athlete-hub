@@ -409,8 +409,9 @@ function GamesListPage() {
                     onSelect={(r) =>
                       setForm({
                         ...form,
-                        host_city: r.city ?? r.display_name,
-                        host_country: r.country ?? form.host_country,
+                        host_city: r.city || r.display_name,
+                        host_country: r.country || form.host_country,
+
                       })
                     }
                     placeholder="Luxembourg, Paris…"
