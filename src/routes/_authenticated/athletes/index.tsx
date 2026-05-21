@@ -320,16 +320,73 @@ function AthletesPage() {
       passport_number: v.passport_number || null,
       passport_expiry: v.passport_expiry || null,
     };
-    const { error } = editing
-      ? await supabase.from("athletes").update(payload).eq("id", editing.id)
-      : await supabase.from("athletes").insert(payload);
-    setSaving(false);
-    if (error) {
-      toast.error("Échec de l'enregistrement", { description: error.message });
-      return;
+    let createdId: string | null = editing?.id ?? null;
+    if (editing) {
+      const { error } = await supabase
+        .from("athletes")
+        .update(payload)
+        .eq("id", editing.id);
+      if (error) {
+        setSaving(false);
+        toast.error("Échec de l'enregistrement", { description: error.message });
+        return;
+      }
+    } else {
+      const { data: inserted, error } = await supabase
+        .from("athletes")
+        .insert(payload)
+        .select("id")
+        .single();
+      if (error || !inserted) {
+        setSaving(false);
+        toast.error("Échec de l'enregistrement", { description: error?.message });
+        return;
+      }
+      createdId = inserted.id;
     }
+
+    // Upload de la photo en attente (mode création) une fois l'ID disponible
+    if (!editing && createdId && pendingPhotoFile) {
+      try {
+        const ext = pendingPhotoFile.name.split(".").pop()?.toLowerCase() ?? "jpg";
+        const path = `athletes/${createdId}/photo/photo_identite.${ext}`;
+        const { error: upErr } = await supabase.storage
+          .from("documents")
+          .upload(path, pendingPhotoFile, { upsert: true, contentType: pendingPhotoFile.type });
+        if (!upErr) {
+          const { data: signed } = await supabase.storage
+            .from("documents")
+            .createSignedUrl(path, 60 * 60 * 24 * 365);
+          if (signed?.signedUrl) {
+            await Promise.all([
+              supabase.from("athlete_documents").insert({
+                athlete_id: createdId,
+                category: "admin",
+                doc_type: "photo_identite",
+                file_name: pendingPhotoFile.name,
+                file_url: signed.signedUrl,
+                status: "valid",
+              }),
+              supabase
+                .from("athletes")
+                .update({ photo_url: signed.signedUrl })
+                .eq("id", createdId),
+            ]);
+          }
+        } else {
+          toast.error("Photo non uploadée", { description: upErr.message });
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Échec upload photo";
+        toast.error(msg);
+      }
+    }
+
+    setSaving(false);
     toast.success(editing ? "Athlète modifié" : "Athlète ajouté");
     setOpen(false);
+    setPendingPhotoFile(null);
+    setPendingPhotoPreview(null);
     load();
   };
 
