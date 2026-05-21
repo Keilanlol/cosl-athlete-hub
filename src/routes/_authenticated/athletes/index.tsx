@@ -146,6 +146,8 @@ function AthletesPage() {
   const [form, setForm] = useState<AthleteForm>(emptyForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [pendingPhotoFile, setPendingPhotoFile] = useState<File | null>(null);
+  const [pendingPhotoPreview, setPendingPhotoPreview] = useState<string | null>(null);
 
   const load = async () => {
     setRows(null);
@@ -226,6 +228,8 @@ function AthletesPage() {
   const openCreate = () => {
     setEditing(null);
     setErrors({});
+    setPendingPhotoFile(null);
+    setPendingPhotoPreview(null);
     setForm({
       ...emptyForm,
       cosl_id: generateCoslId(rows?.map((r) => r.cosl_id) ?? []),
@@ -236,6 +240,8 @@ function AthletesPage() {
   const openEdit = (a: Athlete) => {
     setEditing(a);
     setErrors({});
+    setPendingPhotoFile(null);
+    setPendingPhotoPreview(null);
     setForm({
       cosl_id: a.cosl_id,
       first_name: a.first_name,
