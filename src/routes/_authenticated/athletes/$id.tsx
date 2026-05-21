@@ -810,116 +810,18 @@ function AthleteDetailPage() {
         </TabsContent>
 
         <TabsContent value="kyc">
-          <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Conformité globale</h3>
-              <div className="flex items-center gap-2">
-                Statut: {kycPill(globalKyc)}
-                <Select
-                  value={globalKyc}
-                  onValueChange={(v) => updateKyc({ global_status: v as AthleteKyc["global_status"] })}
-                >
-                  <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="green">Vert</SelectItem>
-                    <SelectItem value="orange">Orange</SelectItem>
-                    <SelectItem value="red">Rouge</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid gap-3 md:grid-cols-2">
-              <KycToggle
-                label="Identité vérifiée"
-                value={!!kyc?.identity_verified}
-                onChange={(v) => updateKyc({ identity_verified: v })}
-              />
-              <KycToggle
-                label="Nationalité vérifiée"
-                value={!!kyc?.nationality_verified}
-                onChange={(v) => updateKyc({ nationality_verified: v })}
-              />
-              <KycToggle
-                label="Éligibilité d'âge"
-                value={!!kyc?.age_eligibility_ok}
-                onChange={(v) => updateKyc({ age_eligibility_ok: v })}
-              />
-              <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
-                <Label>Antidopage</Label>
-                <Select
-                  value={kyc?.antidoping_status ?? "orange"}
-                  onValueChange={(v) =>
-                    updateKyc({ antidoping_status: v as AthleteKyc["antidoping_status"] })
-                  }
-                >
-                  <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="green">Vert</SelectItem>
-                    <SelectItem value="orange">Orange</SelectItem>
-                    <SelectItem value="red">Rouge</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
-                <Label>Charte éthique signée</Label>
-                <Input
-                  type="date"
-                  className="w-44"
-                  value={kyc?.ethics_charter_signed_at?.slice(0, 10) ?? ""}
-                  onChange={(e) =>
-                    updateKyc({
-                      ethics_charter_signed_at: e.target.value
-                        ? new Date(e.target.value).toISOString()
-                        : null,
-                    })
-                  }
-                />
-              </div>
-              <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
-                <Label>Règle 40 signée</Label>
-                <Input
-                  type="date"
-                  className="w-44"
-                  value={kyc?.rule40_signed_at?.slice(0, 10) ?? ""}
-                  onChange={(e) =>
-                    updateKyc({
-                      rule40_signed_at: e.target.value
-                        ? new Date(e.target.value).toISOString()
-                        : null,
-                    })
-                  }
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Notes</Label>
-              <Textarea
-                value={kycNotesDraft}
-                onChange={(e) => setKycNotesDraft(e.target.value)}
-                rows={4}
-              />
-              {(kycNotesDraft !== (kyc?.notes ?? "")) && (
-                <div className="flex justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setKycNotesDraft(kyc?.notes ?? "")}
-                  >
-                    Annuler
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="bg-indigo-500 hover:bg-indigo-600"
-                    onClick={() => updateKyc({ notes: kycNotesDraft.trim() ? kycNotesDraft : null })}
-                  >
-                    Enregistrer
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
+          <KycTabContent
+            athlete={athlete}
+            kyc={kyc}
+            docs={docs ?? []}
+            history={kycHistory}
+            reviewer={kycReviewer}
+            currentUserId={user?.id ?? null}
+            updateKyc={updateKyc}
+            markReviewed={markKycReviewed}
+            commentDraft={kycCommentDraft}
+            setCommentDraft={setKycCommentDraft}
+          />
         </TabsContent>
 
         <TabsContent value="relations">
