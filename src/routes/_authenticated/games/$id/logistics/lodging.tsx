@@ -402,13 +402,19 @@ function LodgingPage() {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {accs.map((a) => (
               <div key={a.id} className="rounded-lg border border-slate-200 bg-white p-4">
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-indigo-500" />
-                  <h3 className="font-semibold text-slate-900">{a.name}</h3>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Building2 className="h-4 w-4 text-indigo-500 shrink-0" />
+                    <h3 className="font-semibold text-slate-900 truncate">{a.name}</h3>
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={() => openEditAcc(a)} aria-label="Modifier">
+                    <Pencil className="h-4 w-4" />
+                  </Button>
                 </div>
                 <p className="mt-1 text-xs text-slate-500">
-                  {[a.type, a.city].filter(Boolean).join(" · ") || "—"}
+                  {[a.type, [a.postcode, a.city].filter(Boolean).join(" "), a.country].filter(Boolean).join(" · ") || "—"}
                 </p>
+                {a.street && <p className="mt-1 text-xs text-slate-500">{a.street}</p>}
                 <p className="mt-2 text-xs text-slate-500">
                   Capacité : {a.total_rooms ?? "—"} chambres
                 </p>
