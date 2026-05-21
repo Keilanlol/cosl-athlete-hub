@@ -164,14 +164,39 @@ function SelectionsPage() {
       athlete_id: a.id,
       sport_id: a.primary_sport_id ?? "",
       discipline_id: "",
+      game_competition_id: "",
     });
     setPickerOpen(false);
   };
+
+  const selectedAthleteForCheck = useMemo(
+    () => athletes.find((a) => a.id === form.athlete_id) ?? null,
+    [athletes, form.athlete_id],
+  );
+
+  const formCompetitions = useMemo(
+    () => competitions.filter((c) => !form.sport_id || c.sport_id === form.sport_id),
+    [competitions, form.sport_id],
+  );
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.athlete_id || !form.sport_id) {
       toast.error("Athlète et sport requis"); return;
+    }
+    // Vérification d'âge si une épreuve est choisie
+    if (form.game_competition_id) {
+      const comp = competitions.find((c) => c.id === form.game_competition_id);
+      const ageCheck = checkAgeEligibility(
+        selectedAthleteForCheck?.birth_date,
+        comp?.min_age,
+        comp?.max_age,
+        comp?.competition_date,
+      );
+      if (!ageCheck.eligible) {
+        toast.error("Sélection impossible — âge non éligible", { description: ageCheck.reason });
+        return;
+      }
     }
     setSaving(true);
     const { error } = editingId
@@ -179,12 +204,14 @@ function SelectionsPage() {
           athlete_id: form.athlete_id,
           sport_id: form.sport_id,
           discipline_id: form.discipline_id || null,
+          game_competition_id: form.game_competition_id || null,
         }).eq("id", editingId)
       : await supabase.from("selections").insert({
           game_id: gameId,
           athlete_id: form.athlete_id,
           sport_id: form.sport_id,
           discipline_id: form.discipline_id || null,
+          game_competition_id: form.game_competition_id || null,
           status: "pre_selected",
         });
     setSaving(false);
@@ -206,6 +233,7 @@ function SelectionsPage() {
       athlete_id: sel.athlete_id,
       sport_id: sel.sport_id,
       discipline_id: sel.discipline_id ?? "",
+      game_competition_id: sel.game_competition_id ?? "",
     });
     setOpen(true);
   };
