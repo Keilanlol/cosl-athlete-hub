@@ -116,9 +116,13 @@ const emptyClub = {
   name: "",
   city: "",
   address: "",
+  street: "",
+  postcode: "",
+  country: "",
   email: "",
   phone: "",
 };
+
 
 // ---------- Member form ----------
 const emptyMember = {
