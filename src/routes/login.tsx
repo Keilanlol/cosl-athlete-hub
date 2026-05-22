@@ -43,7 +43,8 @@ function LoginPage() {
           <code> .env.example</code>) puis relance le build.
         </div>
       )}
-      <form onSubmit={onSubmit} className="space-y-4">
+      <form onSubmit={onSubmit} className="space-y-5">
+        <h1 className="text-xl font-bold text-[#1A1A1A] text-center">Connexion</h1>
         <div className="space-y-1.5">
           <Label htmlFor="username">Nom d'utilisateur</Label>
           <Input
@@ -66,22 +67,23 @@ function LoginPage() {
           />
         </div>
         {error && (
-          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <div className="rounded-md border border-[#E8B4BF] bg-[#F5E6E9] px-3 py-2 text-sm text-[#C8102E]">
             {error}
           </div>
         )}
         <Button
           type="submit"
           disabled={submitting}
-          className="w-full bg-indigo-500 hover:bg-indigo-600"
+          className="w-full bg-[#C8102E] hover:bg-[#A00D24] text-white font-semibold py-2.5"
         >
           {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Se connecter
         </Button>
-        <p className="text-center text-xs text-slate-500">
+        <p className="text-center text-xs text-[#717171]">
           Comptes créés par un administrateur COSL.
         </p>
       </form>
+
     </AuthLayout>
   );
 }

@@ -74,28 +74,24 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
-      <SidebarHeader className="bg-slate-800 text-slate-100">
-        <div className="flex items-center gap-2 px-2 py-2">
-          <div className="flex gap-1">
-            <span
-              className="inline-block h-2.5 w-2.5 rounded-full"
-              style={{ backgroundColor: "#ED2939" }}
-            />
-            <span
-              className="inline-block h-2.5 w-2.5 rounded-full"
-              style={{ backgroundColor: "#003F87" }}
-            />
-          </div>
+      <SidebarHeader className="bg-[#1A1A1A] text-[#F5F5F5] border-b border-[#2A2A2A]">
+        <div className="flex items-center gap-3 px-2 py-3">
+          <img src="/logo-cosl.png" alt="COSL" className="h-9 w-auto shrink-0" />
           {!collapsed && (
-            <span className="text-sm font-semibold tracking-tight">COSLxBloobiz</span>
+            <div className="leading-tight">
+              <p className="text-white font-bold text-sm">COSL</p>
+              <p className="text-[#A0A0A0] text-[11px]">Bloobiz Platform</p>
+            </div>
           )}
         </div>
       </SidebarHeader>
-      <SidebarContent className="bg-slate-800 text-slate-300">
+      <SidebarContent className="bg-[#1A1A1A] text-[#C0C0C0]">
         {groups.map((group) => (
           <SidebarGroup key={group.label}>
             {!collapsed && (
-              <SidebarGroupLabel className="text-slate-500">{group.label}</SidebarGroupLabel>
+              <SidebarGroupLabel className="text-[#717171] text-[10px] font-semibold tracking-[0.12em] uppercase">
+                {group.label}
+              </SidebarGroupLabel>
             )}
             <SidebarGroupContent>
               <SidebarMenu>
@@ -108,8 +104,8 @@ export function AppSidebar() {
                         isActive={active}
                         className={
                           active
-                            ? "bg-indigo-500 text-white hover:bg-indigo-500 hover:text-white"
-                            : "text-slate-300 hover:bg-slate-700 hover:text-white"
+                            ? "bg-[#C8102E] text-white hover:bg-[#C8102E] hover:text-white font-medium"
+                            : "text-[#C0C0C0] hover:bg-[#2A2A2A] hover:text-white"
                         }
                       >
                         <Link to={item.url} className="flex items-center gap-2">
@@ -128,3 +124,4 @@ export function AppSidebar() {
     </Sidebar>
   );
 }
+

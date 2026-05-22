@@ -11,19 +11,21 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-slate-50">
+      <div className="flex min-h-screen w-full bg-[#FAFAFA]">
         <AppSidebar />
         <div className="flex flex-1 flex-col">
-          <header className="flex h-14 items-center justify-between border-b border-slate-200 bg-white px-4">
+          <header className="flex h-14 items-center justify-between border-b border-[#E8E8E8] bg-white px-4">
             <div className="flex items-center gap-3">
               <SidebarTrigger />
-              <div className="text-sm text-slate-500">Games Management Platform</div>
+              <div className="text-xs uppercase tracking-[0.15em] font-semibold text-[#717171]">
+                Games Management Platform
+              </div>
             </div>
             <div className="flex items-center gap-3">
               <div className="text-right">
-                <div className="text-sm font-medium text-slate-900">{display}</div>
+                <div className="text-sm font-semibold text-[#1A1A1A]">{display}</div>
                 {role && (
-                  <div className="text-xs text-slate-500 capitalize">
+                  <div className="text-xs text-[#717171] capitalize">
                     {role.replace("_", " ")}
                   </div>
                 )}
@@ -32,7 +34,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 variant="ghost"
                 size="sm"
                 onClick={() => signOut()}
-                className="gap-2 text-slate-600"
+                className="gap-2 text-[#717171] hover:text-[#C8102E] hover:bg-[#F5E6E9]"
               >
                 <LogOut className="h-4 w-4" />
                 Déconnexion
@@ -45,3 +47,4 @@ export function AppLayout({ children }: { children: ReactNode }) {
     </SidebarProvider>
   );
 }
+
