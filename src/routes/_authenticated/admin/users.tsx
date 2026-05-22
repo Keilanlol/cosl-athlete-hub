@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
 import { Plus, ShieldAlert, Search } from "lucide-react";
 import { toast } from "sonner";
@@ -67,7 +68,7 @@ function AdminUsersPage() {
       .select("*")
       .order("created_at", { ascending: false });
     setLoading(false);
-    if (error) return toast.error("Erreur de chargement", { description: error.message });
+    if (error) return toast.error("Erreur de chargement", { description: friendlyError(error) });
     setUsers((data ?? []) as UserProfile[]);
   };
 
@@ -113,7 +114,7 @@ function AdminUsersPage() {
       },
     });
     setSubmitting(false);
-    if (error) return toast.error("Échec création", { description: error.message });
+    if (error) return toast.error("Échec création", { description: friendlyError(error) });
     toast.success("Utilisateur créé");
     setOpen(false);
     setForm(emptyForm);
@@ -126,7 +127,7 @@ function AdminUsersPage() {
       .from("user_profiles")
       .update({ role: newRole })
       .eq("id", u.id);
-    if (error) return toast.error("Échec", { description: error.message });
+    if (error) return toast.error("Échec", { description: friendlyError(error) });
     toast.success("Rôle mis à jour");
     setUsers((arr) => arr.map((x) => (x.id === u.id ? { ...x, role: newRole } : x)));
   };
@@ -136,7 +137,7 @@ function AdminUsersPage() {
     // Suppression du profil — l'utilisateur auth reste mais perd l'accès applicatif.
     // (La suppression complète de auth.users nécessite la SERVICE_ROLE_KEY côté serveur.)
     const { error } = await supabase.from("user_profiles").delete().eq("id", confirmDel.id);
-    if (error) toast.error("Échec", { description: error.message });
+    if (error) toast.error("Échec", { description: friendlyError(error) });
     else { toast.success("Utilisateur désactivé"); load(); }
     setConfirmDel(null);
   };

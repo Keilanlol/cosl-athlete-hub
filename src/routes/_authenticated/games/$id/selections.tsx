@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Search, Lock, Pencil } from "lucide-react";
 import { toast } from "sonner";
@@ -216,7 +217,7 @@ function SelectionsPage() {
         });
     setSaving(false);
     if (error) {
-      toast.error("Échec", { description: error.message });
+      toast.error("Échec", { description: friendlyError(error) });
       return;
     }
     toast.success(editingId ? "Sélection mise à jour" : "Athlète pré-sélectionné");
@@ -286,7 +287,7 @@ function SelectionsPage() {
     const patch: { status: string; decided_at?: string } = { status: newStatus };
     if (["selected", "reserve", "rejected"].includes(newStatus)) patch.decided_at = new Date().toISOString();
     const { error } = await supabase.from("selections").update(patch).eq("id", sel.id);
-    if (error) toast.error("Échec", { description: error.message });
+    if (error) toast.error("Échec", { description: friendlyError(error) });
     else { toast.success("Statut mis à jour"); load(); }
   };
 

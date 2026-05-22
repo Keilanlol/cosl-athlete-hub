@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
 import { CheckCheck, Search } from "lucide-react";
 import { toast } from "sonner";
@@ -41,7 +42,7 @@ function NotificationsPage() {
       .from("notifications")
       .select("*")
       .order("created_at", { ascending: false });
-    if (error) { toast.error("Erreur", { description: error.message }); setLoading(false); return; }
+    if (error) { toast.error("Erreur", { description: friendlyError(error) }); setLoading(false); return; }
     const list = (data ?? []) as Notification[];
     setNotifs(list);
 
@@ -94,7 +95,7 @@ function NotificationsPage() {
 
   const toggleRead = async (n: Notification, v: boolean) => {
     const { error } = await supabase.from("notifications").update({ is_read: v }).eq("id", n.id);
-    if (error) return toast.error("Échec", { description: error.message });
+    if (error) return toast.error("Échec", { description: friendlyError(error) });
     setNotifs((arr) => arr.map((x) => (x.id === n.id ? { ...x, is_read: v } : x)));
   };
 
@@ -102,7 +103,7 @@ function NotificationsPage() {
     const ids = filtered.filter((n) => !n.is_read).map((n) => n.id);
     if (!ids.length) return toast.info("Tout est déjà lu");
     const { error } = await supabase.from("notifications").update({ is_read: true }).in("id", ids);
-    if (error) return toast.error("Échec", { description: error.message });
+    if (error) return toast.error("Échec", { description: friendlyError(error) });
     toast.success(`${ids.length} notification(s) marquée(s) comme lue(s)`);
     load();
   };

@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Mail, MapPin, Pencil, Phone, Trash2, UserRound, CalendarDays, FileText } from "lucide-react";
 import { toast } from "sonner";
@@ -124,7 +125,7 @@ function ClubMemberDetailPage() {
     const { error } = await supabase.from("club_members").update(payload).eq("id", member.id);
     setSaving(false);
     if (error) {
-      toast.error("Échec", { description: error.message });
+      toast.error("Échec", { description: friendlyError(error) });
       return;
     }
     toast.success("Membre modifié");
@@ -143,7 +144,7 @@ function ClubMemberDetailPage() {
     if (!ok) return;
     const { error } = await supabase.from("club_members").delete().eq("id", member.id);
     if (error) {
-      toast.error("Suppression impossible", { description: error.message });
+      toast.error("Suppression impossible", { description: friendlyError(error) });
       return;
     }
     toast.success("Membre supprimé");

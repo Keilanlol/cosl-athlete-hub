@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -84,7 +85,7 @@ function TravelPlansPage() {
     ]);
     setLoading(false);
     if (error) {
-      toast.error("Erreur de chargement", { description: error.message });
+      toast.error("Erreur de chargement", { description: friendlyError(error) });
       return;
     }
     setPlans((p ?? []) as TravelPlan[]);
@@ -148,7 +149,7 @@ function TravelPlansPage() {
     const { error } = editing
       ? await supabase.from("travel_plans").update(payload).eq("id", editing.id)
       : await supabase.from("travel_plans").insert(payload);
-    if (error) return toast.error("Échec", { description: error.message });
+    if (error) return toast.error("Échec", { description: friendlyError(error) });
 
     toast.success(editing ? "Plan mis à jour" : "Plan créé");
     setOpen(false);
@@ -158,7 +159,7 @@ function TravelPlansPage() {
   const remove = async () => {
     if (!confirmDel) return;
     const { error } = await supabase.from("travel_plans").delete().eq("id", confirmDel.id);
-    if (error) toast.error("Échec", { description: error.message });
+    if (error) toast.error("Échec", { description: friendlyError(error) });
     else { toast.success("Plan supprimé"); load(); }
     setConfirmDel(null);
   };

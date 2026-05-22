@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { toast } from "sonner";
@@ -64,7 +65,7 @@ function GlobalAccreditationsPage() {
       .select("id, game_id, full_name, status, game:games(id,name,short_name), type:accreditation_types(category,type_code,required_documents), docs:accreditation_documents(status)")
       .order("created_at", { ascending: false });
     if (error) {
-      toast.error("Erreur de chargement", { description: error.message });
+      toast.error("Erreur de chargement", { description: friendlyError(error) });
       setRows([]); return;
     }
     setRows(((data ?? []) as unknown) as Row[]);

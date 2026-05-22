@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Trash2, Settings2, Eye, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -262,7 +263,7 @@ function GameOverviewPage() {
       .select()
       .single();
     if (error) {
-      toast.error("Échec", { description: error.message });
+      toast.error("Échec", { description: friendlyError(error) });
       return;
     }
     if (gs && newSportDiscIds.length) {
@@ -287,7 +288,7 @@ function GameOverviewPage() {
       .select()
       .single();
     if (error) {
-      toast.error("Échec", { description: error.message });
+      toast.error("Échec", { description: friendlyError(error) });
       return null;
     }
     toast.success("Discipline ajoutée");
@@ -298,7 +299,7 @@ function GameOverviewPage() {
   const deleteDiscipline = async (discId: string) => {
     if (!(await confirmAction({ title: "Supprimer cette discipline ?", confirmLabel: "Supprimer" }))) return;
     const { error } = await supabase.from("disciplines").delete().eq("id", discId);
-    if (error) return toast.error("Échec", { description: error.message });
+    if (error) return toast.error("Échec", { description: friendlyError(error) });
     toast.success("Discipline supprimée");
     await load();
   };
@@ -309,14 +310,14 @@ function GameOverviewPage() {
       if (!ok) return;
     }
     const { error } = await supabase.from("game_sports").update({ is_active: !gs.is_active }).eq("id", gs.id);
-    if (error) toast.error("Échec", { description: error.message });
+    if (error) toast.error("Échec", { description: friendlyError(error) });
     else load();
   };
 
   const removeSport = async (gs: GameSport) => {
     if (!(await confirmAction({ title: "Retirer ce sport ?", confirmLabel: "Retirer" }))) return;
     const { error } = await supabase.from("game_sports").delete().eq("id", gs.id);
-    if (error) toast.error("Échec", { description: error.message });
+    if (error) toast.error("Échec", { description: friendlyError(error) });
     else { toast.success("Sport retiré"); load(); }
   };
 
@@ -333,7 +334,7 @@ function GameOverviewPage() {
       qualification_deadline: quotaForm.qualification_deadline || null,
       qualification_criteria: quotaForm.qualification_criteria.trim() || null,
     });
-    if (error) toast.error("Échec", { description: error.message });
+    if (error) toast.error("Échec", { description: friendlyError(error) });
     else {
       toast.success("Quota ajouté");
       setQuotaDlgOpen(false);
@@ -345,7 +346,7 @@ function GameOverviewPage() {
   const removeQuota = async (q: GameQuota) => {
     if (!(await confirmAction({ title: "Supprimer ce quota ?", confirmLabel: "Supprimer" }))) return;
     const { error } = await supabase.from("game_quotas").delete().eq("id", q.id);
-    if (error) toast.error("Échec", { description: error.message });
+    if (error) toast.error("Échec", { description: friendlyError(error) });
     else { toast.success("Quota supprimé"); load(); }
   };
 
@@ -366,13 +367,13 @@ function GameOverviewPage() {
         .delete()
         .eq("game_sport_id", discDlg.id)
         .in("discipline_id", toRemove);
-      if (error) return toast.error("Échec", { description: error.message });
+      if (error) return toast.error("Échec", { description: friendlyError(error) });
     }
     if (toAdd.length) {
       const { error } = await supabase.from("game_sport_disciplines").insert(
         toAdd.map((d) => ({ game_sport_id: discDlg.id, discipline_id: d })),
       );
-      if (error) return toast.error("Échec", { description: error.message });
+      if (error) return toast.error("Échec", { description: friendlyError(error) });
     }
     toast.success("Disciplines admises mises à jour");
     setDiscDlg(null);

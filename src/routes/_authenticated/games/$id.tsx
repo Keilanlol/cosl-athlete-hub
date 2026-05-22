@@ -1,4 +1,5 @@
 import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
+import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Archive, Pencil, Download } from "lucide-react";
 import { toast } from "sonner";
@@ -37,7 +38,7 @@ function GameLayout() {
     const { data, error } = await supabase.from("games").select("*").eq("id", id).maybeSingle();
     setLoading(false);
     if (error) {
-      toast.error("Erreur de chargement", { description: error.message });
+      toast.error("Erreur de chargement", { description: friendlyError(error) });
       return;
     }
     setGame((data ?? null) as Game | null);
@@ -48,7 +49,7 @@ function GameLayout() {
   const archive = async () => {
     if (!game) return;
     const { error } = await supabase.from("games").update({ status: "archived" }).eq("id", game.id);
-    if (error) toast.error("Échec", { description: error.message });
+    if (error) toast.error("Échec", { description: friendlyError(error) });
     else { toast.success("Games archivé"); load(); }
   };
 
@@ -60,7 +61,7 @@ function GameLayout() {
       .eq("game_id", game.id)
       .in("status", ["selected", "reserve"]);
     if (error) {
-      toast.error("Export impossible", { description: error.message });
+      toast.error("Export impossible", { description: friendlyError(error) });
       return;
     }
     const rows = (data ?? []) as unknown as Array<{

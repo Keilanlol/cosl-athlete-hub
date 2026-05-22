@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Mail, Phone, Pencil, Trash2, UserCog } from "lucide-react";
 import { toast } from "sonner";
@@ -143,7 +144,7 @@ function CoachDetailPage() {
     const { error } = await supabase.from("coaches").update(payload).eq("id", coach.id);
     setSaving(false);
     if (error) {
-      toast.error("Échec", { description: error.message });
+      toast.error("Échec", { description: friendlyError(error) });
       return;
     }
     toast.success("Encadrant modifié");
@@ -162,7 +163,7 @@ function CoachDetailPage() {
     if (!ok) return;
     const { error } = await supabase.from("coaches").delete().eq("id", coach.id);
     if (error) {
-      toast.error("Suppression impossible", { description: error.message });
+      toast.error("Suppression impossible", { description: friendlyError(error) });
       return;
     }
     toast.success("Encadrant supprimé");

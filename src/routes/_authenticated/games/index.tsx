@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Pencil, Trash2, Search, Archive } from "lucide-react";
 import { toast } from "sonner";
@@ -97,7 +98,7 @@ function GamesListPage() {
       .select("*")
       .order("competition_start", { ascending: false });
     if (error) {
-      toast.error("Erreur de chargement", { description: error.message });
+      toast.error("Erreur de chargement", { description: friendlyError(error) });
       setRows([]);
       return;
     }
@@ -190,7 +191,7 @@ function GamesListPage() {
       : await supabase.from("games").insert(payload);
     setSaving(false);
     if (error) {
-      toast.error("Échec de l'enregistrement", { description: error.message });
+      toast.error("Échec de l'enregistrement", { description: friendlyError(error) });
       return;
     }
     toast.success(editing ? "Games modifié" : "Games créé");
@@ -203,7 +204,7 @@ function GamesListPage() {
       .from("games")
       .update({ status: "archived" })
       .eq("id", g.id);
-    if (error) toast.error("Échec", { description: error.message });
+    if (error) toast.error("Échec", { description: friendlyError(error) });
     else {
       toast.success("Games archivé");
       load();
@@ -213,7 +214,7 @@ function GamesListPage() {
   const confirmDelete = async () => {
     if (!deleteId) return;
     const { error } = await supabase.from("games").delete().eq("id", deleteId);
-    if (error) toast.error("Suppression impossible", { description: error.message });
+    if (error) toast.error("Suppression impossible", { description: friendlyError(error) });
     else {
       toast.success("Games supprimé");
       load();
