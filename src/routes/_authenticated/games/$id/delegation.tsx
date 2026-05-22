@@ -85,7 +85,7 @@ function DelegationPage() {
     if (existing) return existing as Delegation;
     const { data: created, error } = await supabase.from("delegations").insert({ game_id: gameId }).select().single();
     if (error) {
-      toast.error("Erreur création délégation", { description: friendlyError(error.message ? { message: error.message } : null) });
+      toast.error("Erreur création délégation", { description: friendlyError(error) });
       return null;
     }
     return created as Delegation;
@@ -146,7 +146,7 @@ function DelegationPage() {
     if (!delegation) return;
     const { error } = await supabase.from("delegations")
       .update({ chief_of_mission_id: chiefId || null }).eq("id", delegation.id);
-    if (error) toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
+    if (error) toast.error("Échec", { description: friendlyError(error) });
     else { toast.success("Chef de Mission défini"); setChiefOpen(false); load(); }
   };
 
@@ -154,7 +154,7 @@ function DelegationPage() {
     if (!delegation) return;
     const { error } = await supabase.from("delegations")
       .update({ games_manager_id: mgrId || null }).eq("id", delegation.id);
-    if (error) toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
+    if (error) toast.error("Échec", { description: friendlyError(error) });
     else { toast.success("Games Manager défini"); setMgrOpen(false); load(); }
   };
 
@@ -174,7 +174,7 @@ function DelegationPage() {
     const { error } = await supabase.from("delegation_members").insert(payload);
     setSaving(false);
     if (error) {
-      toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) }); return;
+      toast.error("Échec", { description: friendlyError(error) }); return;
     }
     toast.success("Membre ajouté");
     setMemberOpen(false);
@@ -185,7 +185,7 @@ function DelegationPage() {
   const removeMember = async (m: Member) => {
     if (!(await confirmAction({ title: "Retirer ce membre ?", description: "Le membre sera retiré de la délégation.", confirmLabel: "Retirer" }))) return;
     const { error } = await supabase.from("delegation_members").delete().eq("id", m.id);
-    if (error) toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
+    if (error) toast.error("Échec", { description: friendlyError(error) });
     else { toast.success("Membre retiré"); load(); }
   };
 

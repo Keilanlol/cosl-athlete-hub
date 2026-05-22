@@ -152,7 +152,7 @@ function CompetitionsPage() {
     const { error } = editingComp
       ? await supabase.from("game_competitions").update(payload).eq("id", editingComp.id)
       : await supabase.from("game_competitions").insert(payload);
-    if (error) return toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
+    if (error) return toast.error("Échec", { description: friendlyError(error) });
     toast.success(editingComp ? "Épreuve modifiée" : "Épreuve ajoutée");
     setCompOpen(false);
     setEditingComp(null);
@@ -184,7 +184,7 @@ function CompetitionsPage() {
   const removeComp = async () => {
     if (!delComp) return;
     const { error } = await supabase.from("game_competitions").delete().eq("id", delComp.id);
-    if (error) toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
+    if (error) toast.error("Échec", { description: friendlyError(error) });
     else { toast.success("Épreuve supprimée"); load(); }
     setDelComp(null);
   };
@@ -225,7 +225,7 @@ function CompetitionsPage() {
       is_national_record: resultForm.is_national_record,
       is_personal_best: resultForm.is_personal_best,
     });
-    if (error) return toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
+    if (error) return toast.error("Échec", { description: friendlyError(error) });
     toast.success("Résultat enregistré");
     setResultDlgOpen(false);
     setResultForm({ athlete_id: "", rank: "", medal: "", score: "", unit: "", is_national_record: false, is_personal_best: false });

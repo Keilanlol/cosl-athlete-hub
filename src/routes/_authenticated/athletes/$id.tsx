@@ -426,7 +426,7 @@ function AthleteDetailPage() {
     const { error } = await supabase.from("athletes").update(payload).eq("id", athlete.id);
     setSaving(false);
     if (error) {
-      toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
+      toast.error("Échec", { description: friendlyError(error) });
       return;
     }
     toast.success("Athlète mis à jour");
@@ -445,7 +445,7 @@ function AthleteDetailPage() {
     setConfirmDeactivate(false);
     if (error) {
       toast.error(nextActive ? "Réactivation impossible" : "Désactivation impossible", {
-        description: friendlyError(error.message ? { message: error.message } : null),
+        description: friendlyError(error),
       });
       return;
     }
@@ -470,7 +470,7 @@ function AthleteDetailPage() {
       status: docForm.status,
     });
     if (error) {
-      toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
+      toast.error("Échec", { description: friendlyError(error) });
       return;
     }
     toast.success("Document ajouté");
@@ -502,7 +502,7 @@ function AthleteDetailPage() {
       .eq("id", docDeleteId);
     setDocDeleteId(null);
     if (error) {
-      toast.error("Suppression impossible", { description: friendlyError(error.message ? { message: error.message } : null) });
+      toast.error("Suppression impossible", { description: friendlyError(error) });
       return;
     }
     toast.success("Document supprimé");
@@ -515,7 +515,7 @@ function AthleteDetailPage() {
       .update({ status: nextStatus })
       .eq("id", docId);
     if (error) {
-      toast.error("Mise à jour impossible", { description: friendlyError(error.message ? { message: error.message } : null) });
+      toast.error("Mise à jour impossible", { description: friendlyError(error) });
       return;
     }
     toast.success("Statut mis à jour");
@@ -537,13 +537,13 @@ function AthleteDetailPage() {
       const { error } = await supabase
         .from("athlete_kyc")
         .insert({ athlete_id: id, ...fullPatch });
-      if (error) return toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
+      if (error) return toast.error("Échec", { description: friendlyError(error) });
     } else {
       const { error } = await supabase
         .from("athlete_kyc")
         .update(fullPatch)
         .eq("athlete_id", id);
-      if (error) return toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
+      if (error) return toast.error("Échec", { description: friendlyError(error) });
     }
     if (oldStatus !== newStatus || axis !== "manual") {
       await supabase.from("kyc_history").insert({
@@ -567,7 +567,7 @@ function AthleteDetailPage() {
     const { error } = kyc
       ? await supabase.from("athlete_kyc").update(payload).eq("athlete_id", id)
       : await supabase.from("athlete_kyc").insert({ athlete_id: id, ...payload });
-    if (error) return toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
+    if (error) return toast.error("Échec", { description: friendlyError(error) });
     toast.success("KYC marqué comme vérifié");
     loadAll();
   };
@@ -586,7 +586,7 @@ function AthleteDetailPage() {
       end_date: relForm.end_date || null,
     });
     if (error) {
-      toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
+      toast.error("Échec", { description: friendlyError(error) });
       return;
     }
     toast.success("Relation ajoutée");
@@ -603,7 +603,7 @@ function AthleteDetailPage() {
   const deleteRel = async (relId: string) => {
     if (!(await confirmAction({ title: "Supprimer cette relation ?", confirmLabel: "Supprimer" }))) return;
     const { error } = await supabase.from("athlete_relations").delete().eq("id", relId);
-    if (error) return toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
+    if (error) return toast.error("Échec", { description: friendlyError(error) });
     toast.success("Relation supprimée");
     loadAll();
   };
@@ -625,7 +625,7 @@ function AthleteDetailPage() {
     const { error } = apptEditing
       ? await supabase.from("athlete_appointments").update(payload).eq("id", apptEditing.id)
       : await supabase.from("athlete_appointments").insert(payload);
-    if (error) return toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
+    if (error) return toast.error("Échec", { description: friendlyError(error) });
     toast.success(apptEditing ? "Rendez-vous mis à jour" : "Rendez-vous ajouté");
     setApptOpen(false);
     setApptEditing(null);
@@ -636,7 +636,7 @@ function AthleteDetailPage() {
     if (!apptDeleteId) return;
     const { error } = await supabase.from("athlete_appointments").delete().eq("id", apptDeleteId);
     setApptDeleteId(null);
-    if (error) return toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
+    if (error) return toast.error("Échec", { description: friendlyError(error) });
     toast.success("Rendez-vous supprimé");
     loadAll();
   };
@@ -659,7 +659,7 @@ function AthleteDetailPage() {
       notes: resultForm.notes.trim() || null,
     };
     const { error } = await supabase.from("athlete_results").insert(payload);
-    if (error) return toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
+    if (error) return toast.error("Échec", { description: friendlyError(error) });
     toast.success("Résultat ajouté");
     setResultOpen(false);
     setResultForm({

@@ -106,7 +106,7 @@ function FlightsPage() {
         special_baggage: editBag.trim() || null,
       })
       .eq("id", editPaxId);
-    if (error) return toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
+    if (error) return toast.error("Échec", { description: friendlyError(error) });
     toast.success("Passager mis à jour");
     setEditPaxId(null);
     if (drawerFlight) openDrawer(drawerFlight);
@@ -207,7 +207,7 @@ function FlightsPage() {
       notes: form.notes.trim() || null,
     };
     const { error } = await supabase.from("flights").insert(payload);
-    if (error) return toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
+    if (error) return toast.error("Échec", { description: friendlyError(error) });
     toast.success("Vol ajouté");
     setDlgOpen(false);
     setForm(emptyFlight);
@@ -220,7 +220,7 @@ function FlightsPage() {
       .from("flight_passengers")
       .select("*")
       .eq("flight_id", f.id);
-    if (error) toast.error("Erreur passagers", { description: friendlyError(error.message ? { message: error.message } : null) });
+    if (error) toast.error("Erreur passagers", { description: friendlyError(error) });
     setPassengers((data ?? []) as FlightPassenger[]);
   };
 
@@ -235,7 +235,7 @@ function FlightsPage() {
       special_baggage: paxForm.special_baggage.trim() || null,
     };
     const { error } = await supabase.from("flight_passengers").insert(payload);
-    if (error) return toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
+    if (error) return toast.error("Échec", { description: friendlyError(error) });
     toast.success("Passager ajouté");
     setPaxOpen(false);
     setPaxForm({ kind: "athlete", person_id: "", seat: "", special_baggage: "" });
@@ -246,7 +246,7 @@ function FlightsPage() {
   const removePax = async (pid: string) => {
     if (!(await confirmAction({ title: "Retirer ce passager ?", confirmLabel: "Retirer" }))) return;
     const { error } = await supabase.from("flight_passengers").delete().eq("id", pid);
-    if (error) return toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
+    if (error) return toast.error("Échec", { description: friendlyError(error) });
     toast.success("Passager retiré");
     if (drawerFlight) openDrawer(drawerFlight);
     load();
@@ -255,7 +255,7 @@ function FlightsPage() {
   const removeFlight = async () => {
     if (!confirmDel) return;
     const { error } = await supabase.from("flights").delete().eq("id", confirmDel.id);
-    if (error) toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
+    if (error) toast.error("Échec", { description: friendlyError(error) });
     else { toast.success("Vol supprimé"); load(); }
     setConfirmDel(null);
   };

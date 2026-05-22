@@ -163,7 +163,7 @@ function AthletesPage() {
       )
       .order("last_name");
     if (error) {
-      toast.error("Erreur de chargement", { description: friendlyError(error.message ? { message: error.message } : null) });
+      toast.error("Erreur de chargement", { description: friendlyError(error) });
       setRows([]);
       return;
     }
@@ -341,7 +341,7 @@ function AthletesPage() {
         .eq("id", editing.id);
       if (error) {
         setSaving(false);
-        toast.error("Échec de l'enregistrement", { description: friendlyError(error.message ? { message: error.message } : null) });
+        toast.error("Échec de l'enregistrement", { description: friendlyError(error) });
         return;
       }
     } else {
@@ -352,7 +352,7 @@ function AthletesPage() {
         .single();
       if (error || !inserted) {
         setSaving(false);
-        toast.error("Échec de l'enregistrement", { description: friendlyError(error?.message ? { message: error?.message } : null) });
+        toast.error("Échec de l'enregistrement", { description: friendlyError(error?) });
         return;
       }
       createdId = inserted.id;
@@ -387,7 +387,7 @@ function AthletesPage() {
             ]);
           }
         } else {
-          toast.error("Photo non uploadée", { description: friendlyError(upErr.message ? { message: upErr.message } : null) });
+          toast.error("Photo non uploadée", { description: friendlyError(upErr) });
         }
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Échec upload photo";

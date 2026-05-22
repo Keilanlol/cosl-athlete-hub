@@ -143,7 +143,7 @@ function CoachDetailPage() {
     const { error } = await supabase.from("coaches").update(payload).eq("id", coach.id);
     setSaving(false);
     if (error) {
-      toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
+      toast.error("Échec", { description: friendlyError(error) });
       return;
     }
     toast.success("Encadrant modifié");
@@ -162,7 +162,7 @@ function CoachDetailPage() {
     if (!ok) return;
     const { error } = await supabase.from("coaches").delete().eq("id", coach.id);
     if (error) {
-      toast.error("Suppression impossible", { description: friendlyError(error.message ? { message: error.message } : null) });
+      toast.error("Suppression impossible", { description: friendlyError(error) });
       return;
     }
     toast.success("Encadrant supprimé");

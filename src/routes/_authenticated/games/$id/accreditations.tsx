@@ -201,14 +201,14 @@ function GameAccreditationsPage() {
     const { error } = editingType
       ? await supabase.from("accreditation_types").update(payload).eq("id", editingType.id)
       : await supabase.from("accreditation_types").insert(payload);
-    if (error) { toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) }); return; }
+    if (error) { toast.error("Échec", { description: friendlyError(error) }); return; }
     toast.success(editingType ? "Type modifié" : "Type ajouté");
     setTypeOpen(false); load();
   };
   const removeType = async (t: AccType) => {
     if (!(await confirmAction({ title: "Supprimer ce type d'accréditation ?", description: `« ${t.type_code} » sera supprimé.`, confirmLabel: "Supprimer" }))) return;
     const { error } = await supabase.from("accreditation_types").delete().eq("id", t.id);
-    if (error) toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
+    if (error) toast.error("Échec", { description: friendlyError(error) });
     else { toast.success("Type supprimé"); load(); }
   };
 
@@ -232,7 +232,7 @@ function GameAccreditationsPage() {
       status: "draft",
     };
     const { error } = await supabase.from("accreditations").insert(payload);
-    if (error) { toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) }); return; }
+    if (error) { toast.error("Échec", { description: friendlyError(error) }); return; }
     toast.success("Accréditation créée");
     setAccOpen(false);
     setAccForm({ entity_id: "", type_id: "", function_label: "" });
@@ -264,7 +264,7 @@ function GameAccreditationsPage() {
 
   const setDocStatus = async (doc: AccDoc, status: string) => {
     const { error } = await supabase.from("accreditation_documents").update({ status }).eq("id", doc.id);
-    if (error) toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
+    if (error) toast.error("Échec", { description: friendlyError(error) });
     else { toast.success("Statut document mis à jour"); load(); }
   };
 
@@ -274,7 +274,7 @@ function GameAccreditationsPage() {
     if (status === "validated") { patch.validated_at = new Date().toISOString(); patch.rejection_reason = null; }
     if (status === "rejected") patch.rejection_reason = reason ?? null;
     const { error } = await supabase.from("accreditations").update(patch).eq("id", acc.id);
-    if (error) toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
+    if (error) toast.error("Échec", { description: friendlyError(error) });
     else { toast.success("Statut mis à jour"); load(); }
   };
 

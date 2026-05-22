@@ -97,7 +97,7 @@ function GamesListPage() {
       .select("*")
       .order("competition_start", { ascending: false });
     if (error) {
-      toast.error("Erreur de chargement", { description: friendlyError(error.message ? { message: error.message } : null) });
+      toast.error("Erreur de chargement", { description: friendlyError(error) });
       setRows([]);
       return;
     }
@@ -190,7 +190,7 @@ function GamesListPage() {
       : await supabase.from("games").insert(payload);
     setSaving(false);
     if (error) {
-      toast.error("Échec de l'enregistrement", { description: friendlyError(error.message ? { message: error.message } : null) });
+      toast.error("Échec de l'enregistrement", { description: friendlyError(error) });
       return;
     }
     toast.success(editing ? "Games modifié" : "Games créé");
@@ -203,7 +203,7 @@ function GamesListPage() {
       .from("games")
       .update({ status: "archived" })
       .eq("id", g.id);
-    if (error) toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
+    if (error) toast.error("Échec", { description: friendlyError(error) });
     else {
       toast.success("Games archivé");
       load();
@@ -213,7 +213,7 @@ function GamesListPage() {
   const confirmDelete = async () => {
     if (!deleteId) return;
     const { error } = await supabase.from("games").delete().eq("id", deleteId);
-    if (error) toast.error("Suppression impossible", { description: friendlyError(error.message ? { message: error.message } : null) });
+    if (error) toast.error("Suppression impossible", { description: friendlyError(error) });
     else {
       toast.success("Games supprimé");
       load();
