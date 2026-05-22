@@ -84,7 +84,7 @@ function TravelPlansPage() {
     ]);
     setLoading(false);
     if (error) {
-      toast.error("Erreur de chargement", { description: error.message });
+      toast.error("Erreur de chargement", { description: friendlyError(error.message ? { message: error.message } : null) });
       return;
     }
     setPlans((p ?? []) as TravelPlan[]);
@@ -148,7 +148,7 @@ function TravelPlansPage() {
     const { error } = editing
       ? await supabase.from("travel_plans").update(payload).eq("id", editing.id)
       : await supabase.from("travel_plans").insert(payload);
-    if (error) return toast.error("Échec", { description: error.message });
+    if (error) return toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
 
     toast.success(editing ? "Plan mis à jour" : "Plan créé");
     setOpen(false);
@@ -158,7 +158,7 @@ function TravelPlansPage() {
   const remove = async () => {
     if (!confirmDel) return;
     const { error } = await supabase.from("travel_plans").delete().eq("id", confirmDel.id);
-    if (error) toast.error("Échec", { description: error.message });
+    if (error) toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
     else { toast.success("Plan supprimé"); load(); }
     setConfirmDel(null);
   };

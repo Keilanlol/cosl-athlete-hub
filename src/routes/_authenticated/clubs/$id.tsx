@@ -253,7 +253,7 @@ function ClubDetailPage() {
       .select("id, first_name, last_name, current_club_id, cosl_id, gender, birth_date, status, primary_sport:sports!athletes_primary_sport_id_fkey(name)")
       .or(`current_club_id.is.null,current_club_id.neq.${id}`)
       .order("last_name");
-    if (error) toast.error("Erreur", { description: error.message });
+    if (error) toast.error("Erreur", { description: friendlyError(error.message ? { message: error.message } : null) });
     setAthletePool((data ?? []) as unknown as AthleteRow[]);
   };
 
@@ -269,7 +269,7 @@ function ClubDetailPage() {
       .eq("id", selectedAthleteId);
     setAthleteSaving(false);
     if (error) {
-      toast.error("Échec", { description: error.message });
+      toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
       return;
     }
     toast.success("Adhérent ajouté au club");
@@ -290,7 +290,7 @@ function ClubDetailPage() {
       .update({ current_club_id: null })
       .eq("id", a.id);
     if (error) {
-      toast.error("Suppression impossible", { description: error.message });
+      toast.error("Suppression impossible", { description: friendlyError(error.message ? { message: error.message } : null) });
     } else {
       toast.success("Adhérent retiré");
       load();
@@ -366,7 +366,7 @@ function ClubDetailPage() {
       : await supabase.from("club_members").insert(payload);
     setMemberSaving(false);
     if (error) {
-      toast.error("Échec de l'enregistrement", { description: error.message });
+      toast.error("Échec de l'enregistrement", { description: friendlyError(error.message ? { message: error.message } : null) });
       return;
     }
     toast.success(editingMember ? "Membre modifié" : "Membre ajouté");
@@ -382,7 +382,7 @@ function ClubDetailPage() {
     });
     if (!ok) return;
     const { error } = await supabase.from("club_members").delete().eq("id", m.id);
-    if (error) toast.error("Suppression impossible", { description: error.message });
+    if (error) toast.error("Suppression impossible", { description: friendlyError(error.message ? { message: error.message } : null) });
     else {
       toast.success("Membre supprimé");
       load();

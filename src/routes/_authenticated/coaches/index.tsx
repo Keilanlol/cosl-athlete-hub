@@ -211,7 +211,7 @@ function CoachesPage() {
       : await supabase.from("coaches").insert(payload);
     setSaving(false);
     if (error) {
-      toast.error("Échec de l'enregistrement", { description: error.message });
+      toast.error("Échec de l'enregistrement", { description: friendlyError(error.message ? { message: error.message } : null) });
       return;
     }
     toast.success(editing ? "Encadrant modifié" : "Encadrant ajouté");
@@ -222,7 +222,7 @@ function CoachesPage() {
   const confirmDelete = async () => {
     if (!deleteId) return;
     const { error } = await supabase.from("coaches").delete().eq("id", deleteId);
-    if (error) toast.error("Suppression impossible", { description: error.message });
+    if (error) toast.error("Suppression impossible", { description: friendlyError(error.message ? { message: error.message } : null) });
     else {
       toast.success("Encadrant supprimé");
       load();

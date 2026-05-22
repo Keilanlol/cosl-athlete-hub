@@ -230,7 +230,7 @@ function LodgingPage() {
     const { error } = editingAcc
       ? await supabase.from("accommodations").update(payload).eq("id", editingAcc.id)
       : await supabase.from("accommodations").insert(payload);
-    if (error) return toast.error("Échec", { description: error.message });
+    if (error) return toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
     toast.success(editingAcc ? "Hébergement modifié" : "Hébergement ajouté");
     setAccOpen(false);
     setEditingAcc(null);
@@ -269,7 +269,7 @@ function LodgingPage() {
       coach_id: null,
     };
     const { error } = await supabase.from("rooming_assignments").insert(payload);
-    if (error) return toast.error("Échec", { description: error.message });
+    if (error) return toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
     toast.success("Chambre créée");
     setRoomOpen(false);
     setRoomForm(emptyRoom);
@@ -283,7 +283,7 @@ function LodgingPage() {
       .from("rooming_assignments")
       .delete()
       .eq("id", confirmDel.id);
-    if (error) toast.error("Échec", { description: error.message });
+    if (error) toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
     else { toast.success("Occupant retiré"); load(); }
     setConfirmDel(null);
   };
@@ -314,7 +314,7 @@ function LodgingPage() {
           check_out: drawer.checkOut,
           ...patch,
         });
-    if (error) return toast.error("Échec", { description: error.message });
+    if (error) return toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
     toast.success("Occupant ajouté");
     setPaxId("");
     load();
@@ -336,7 +336,7 @@ function LodgingPage() {
             .update({ athlete_id: null, coach_id: null })
             .eq("id", occ.id)
         : await supabase.from("rooming_assignments").delete().eq("id", occ.id);
-    if (error) return toast.error("Échec", { description: error.message });
+    if (error) return toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
     toast.success("Occupant retiré");
     load();
   };

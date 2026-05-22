@@ -92,7 +92,7 @@ function MessagesPage() {
       supabase.from("games").select("*").order("competition_start", { ascending: false }),
     ]);
     setLoading(false);
-    if (error) return toast.error("Erreur de chargement", { description: error.message });
+    if (error) return toast.error("Erreur de chargement", { description: friendlyError(error.message ? { message: error.message } : null) });
     setTemplates((t ?? []) as MessageTemplate[]);
     setFeds((f ?? []) as Federation[]);
     setGames((g ?? []) as Game[]);
@@ -133,7 +133,7 @@ function MessagesPage() {
     const { error } = tplEdit
       ? await supabase.from("message_templates").update(payload).eq("id", tplEdit.id)
       : await supabase.from("message_templates").insert(payload);
-    if (error) return toast.error("Échec", { description: error.message });
+    if (error) return toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
     toast.success(tplEdit ? "Template mis à jour" : "Template créé");
     setTplOpen(false);
     load();
@@ -141,7 +141,7 @@ function MessagesPage() {
   const removeTpl = async () => {
     if (!tplDel) return;
     const { error } = await supabase.from("message_templates").delete().eq("id", tplDel.id);
-    if (error) toast.error("Échec", { description: error.message });
+    if (error) toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
     else { toast.success("Template supprimé"); load(); }
     setTplDel(null);
   };
@@ -226,7 +226,7 @@ function MessagesPage() {
       .single();
     if (error || !inserted) {
       setSending(false);
-      return toast.error("Échec", { description: error?.message });
+      return toast.error("Échec", { description: friendlyError(error?.message ? { message: error?.message } : null) });
     }
     // Track per-athlete recipients (skip "staff")
     if (audience.kind !== "staff") {

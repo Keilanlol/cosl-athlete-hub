@@ -90,7 +90,7 @@ function TransportPage() {
       .order("pickup_time");
     if (error) {
       setLoading(false);
-      return toast.error("Erreur de chargement", { description: error.message });
+      return toast.error("Erreur de chargement", { description: friendlyError(error.message ? { message: error.message } : null) });
     }
     const list = (data ?? []) as LocalTransport[];
     setItems(list);
@@ -160,7 +160,7 @@ function TransportPage() {
       notes: form.notes.trim() || null,
     };
     const { error } = await supabase.from("local_transports").insert(payload);
-    if (error) return toast.error("Échec", { description: error.message });
+    if (error) return toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
     toast.success("Transport ajouté");
     setOpen(false);
     setForm(empty);
@@ -170,7 +170,7 @@ function TransportPage() {
   const remove = async () => {
     if (!confirmDel) return;
     const { error } = await supabase.from("local_transports").delete().eq("id", confirmDel.id);
-    if (error) toast.error("Échec", { description: error.message });
+    if (error) toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
     else { toast.success("Transport supprimé"); load(); }
     setConfirmDel(null);
   };
@@ -182,7 +182,7 @@ function TransportPage() {
       .select("*")
       .eq("local_transport_id", t.id)
       .order("created_at");
-    if (error) toast.error("Erreur passagers", { description: error.message });
+    if (error) toast.error("Erreur passagers", { description: friendlyError(error.message ? { message: error.message } : null) });
     setPassengers((data ?? []) as LocalTransportPassenger[]);
   };
 
@@ -201,7 +201,7 @@ function TransportPage() {
       seat: paxForm.seat.trim() || null,
     };
     const { error } = await supabase.from("local_transport_passengers").insert(payload);
-    if (error) return toast.error("Échec", { description: error.message });
+    if (error) return toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
     toast.success("Passager ajouté");
     setPaxOpen(false);
     setPaxForm({ kind: "athlete", person_id: "", seat: "" });
@@ -212,7 +212,7 @@ function TransportPage() {
   const removePax = async (pid: string) => {
     if (!(await confirmAction({ title: "Retirer ce passager ?", confirmLabel: "Retirer" }))) return;
     const { error } = await supabase.from("local_transport_passengers").delete().eq("id", pid);
-    if (error) return toast.error("Échec", { description: error.message });
+    if (error) return toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
     toast.success("Passager retiré");
     if (drawer) openDrawer(drawer);
     load();
@@ -229,7 +229,7 @@ function TransportPage() {
       .from("local_transport_passengers")
       .update({ seat: editSeat.trim() || null })
       .eq("id", editPaxId);
-    if (error) return toast.error("Échec", { description: error.message });
+    if (error) return toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
     toast.success("Passager mis à jour");
     setEditPaxId(null);
     if (drawer) openDrawer(drawer);

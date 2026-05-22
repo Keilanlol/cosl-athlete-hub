@@ -32,7 +32,7 @@ function LogisticsGlobal() {
         .in("status", ["preparation", "in_progress"])
         .order("competition_start", { ascending: true });
       if (error) {
-        toast.error("Erreur de chargement", { description: error.message });
+        toast.error("Erreur de chargement", { description: friendlyError(error.message ? { message: error.message } : null) });
         setLoading(false);
         return;
       }

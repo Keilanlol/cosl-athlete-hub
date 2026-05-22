@@ -216,7 +216,7 @@ function SelectionsPage() {
         });
     setSaving(false);
     if (error) {
-      toast.error("Échec", { description: error.message });
+      toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
       return;
     }
     toast.success(editingId ? "Sélection mise à jour" : "Athlète pré-sélectionné");
@@ -286,7 +286,7 @@ function SelectionsPage() {
     const patch: { status: string; decided_at?: string } = { status: newStatus };
     if (["selected", "reserve", "rejected"].includes(newStatus)) patch.decided_at = new Date().toISOString();
     const { error } = await supabase.from("selections").update(patch).eq("id", sel.id);
-    if (error) toast.error("Échec", { description: error.message });
+    if (error) toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
     else { toast.success("Statut mis à jour"); load(); }
   };
 

@@ -89,7 +89,7 @@ function FederationsPage() {
       .select("*")
       .order("acronym");
     if (error) {
-      toast.error("Erreur de chargement", { description: error.message });
+      toast.error("Erreur de chargement", { description: friendlyError(error.message ? { message: error.message } : null) });
       setRows([]);
       return;
     }
@@ -177,7 +177,7 @@ function FederationsPage() {
       : await supabase.from("federations").insert(payload);
     setSaving(false);
     if (error) {
-      toast.error("Échec de l'enregistrement", { description: error.message });
+      toast.error("Échec de l'enregistrement", { description: friendlyError(error.message ? { message: error.message } : null) });
       return;
     }
     toast.success(editing ? "Fédération modifiée" : "Fédération ajoutée");
@@ -189,7 +189,7 @@ function FederationsPage() {
     if (!deleteId) return;
     const { error } = await supabase.from("federations").delete().eq("id", deleteId);
     if (error) {
-      toast.error("Suppression impossible", { description: error.message });
+      toast.error("Suppression impossible", { description: friendlyError(error.message ? { message: error.message } : null) });
     } else {
       toast.success("Fédération supprimée");
       load();

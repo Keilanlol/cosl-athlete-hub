@@ -204,7 +204,7 @@ function ClubsPage() {
       : await supabase.from("clubs").insert(payload);
     setSaving(false);
     if (error) {
-      toast.error("Échec de l'enregistrement", { description: error.message });
+      toast.error("Échec de l'enregistrement", { description: friendlyError(error.message ? { message: error.message } : null) });
       return;
     }
     toast.success(editing ? "Club modifié" : "Club ajouté");
@@ -216,7 +216,7 @@ function ClubsPage() {
   const confirmDelete = async () => {
     if (!deleteId) return;
     const { error } = await supabase.from("clubs").delete().eq("id", deleteId);
-    if (error) toast.error("Suppression impossible", { description: error.message });
+    if (error) toast.error("Suppression impossible", { description: friendlyError(error.message ? { message: error.message } : null) });
     else {
       toast.success("Club supprimé");
       load();

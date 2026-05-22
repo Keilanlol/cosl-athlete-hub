@@ -323,7 +323,7 @@ function FederationDetailPage() {
 
     setClubSaving(false);
     if (error) {
-      toast.error("Échec de l'enregistrement", { description: error.message });
+      toast.error("Échec de l'enregistrement", { description: friendlyError(error.message ? { message: error.message } : null) });
       return;
     }
     toast.success(editingClub ? "Club modifié" : "Club ajouté");
@@ -341,7 +341,7 @@ function FederationDetailPage() {
     if (!ok) return;
     const { error } = await supabase.from("clubs").delete().eq("id", c.id);
     if (error) {
-      toast.error("Suppression impossible", { description: error.message });
+      toast.error("Suppression impossible", { description: friendlyError(error.message ? { message: error.message } : null) });
     } else {
       toast.success("Club retiré");
       load();
@@ -420,7 +420,7 @@ function FederationDetailPage() {
       : await supabase.from("federation_members").insert(payload);
     setMemberSaving(false);
     if (error) {
-      toast.error("Échec de l'enregistrement", { description: error.message });
+      toast.error("Échec de l'enregistrement", { description: friendlyError(error.message ? { message: error.message } : null) });
       return;
     }
     toast.success(editingMember ? "Membre modifié" : "Membre ajouté");
@@ -439,7 +439,7 @@ function FederationDetailPage() {
       .from("federation_members")
       .delete()
       .eq("id", m.id);
-    if (error) toast.error("Suppression impossible", { description: error.message });
+    if (error) toast.error("Suppression impossible", { description: friendlyError(error.message ? { message: error.message } : null) });
     else {
       toast.success("Membre supprimé");
       load();

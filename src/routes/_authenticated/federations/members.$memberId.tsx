@@ -127,7 +127,7 @@ function FedMemberDetailPage() {
       .eq("id", member.id);
     setSaving(false);
     if (error) {
-      toast.error("Échec", { description: error.message });
+      toast.error("Échec", { description: friendlyError(error.message ? { message: error.message } : null) });
       return;
     }
     toast.success("Membre modifié");
@@ -146,7 +146,7 @@ function FedMemberDetailPage() {
     if (!ok) return;
     const { error } = await supabase.from("federation_members").delete().eq("id", member.id);
     if (error) {
-      toast.error("Suppression impossible", { description: error.message });
+      toast.error("Suppression impossible", { description: friendlyError(error.message ? { message: error.message } : null) });
       return;
     }
     toast.success("Membre supprimé");
