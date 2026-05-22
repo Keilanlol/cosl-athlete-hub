@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Pencil, Trash2, Send, Search } from "lucide-react";
 import { toast } from "sonner";
@@ -226,7 +227,7 @@ function MessagesPage() {
       .single();
     if (error || !inserted) {
       setSending(false);
-      return toast.error("Échec", { description: friendlyError(error?) });
+      return toast.error("Échec", { description: friendlyError(error) });
     }
     // Track per-athlete recipients (skip "staff")
     if (audience.kind !== "staff") {

@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Plus, Trash2, Upload, Pencil, UserCheck, FileText, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { KycStatusBadge } from "@/components/KycStatusBadge";

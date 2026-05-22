@@ -1,4 +1,5 @@
 import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
+import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Archive, Pencil, Download } from "lucide-react";
 import { toast } from "sonner";

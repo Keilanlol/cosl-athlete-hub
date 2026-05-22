@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Pencil, Search, AlertTriangle } from "lucide-react";
 import { KycStatusBadge } from "@/components/KycStatusBadge";
@@ -352,7 +353,7 @@ function AthletesPage() {
         .single();
       if (error || !inserted) {
         setSaving(false);
-        toast.error("Échec de l'enregistrement", { description: friendlyError(error?) });
+        toast.error("Échec de l'enregistrement", { description: friendlyError(error) });
         return;
       }
       createdId = inserted.id;
