@@ -216,6 +216,23 @@ function ClubsPage() {
 
   const confirmDelete = async () => {
     if (!deleteId) return;
+    const { count, error: ce } = await supabase
+      .from("athletes")
+      .select("id", { count: "exact", head: true })
+      .eq("current_club_id", deleteId)
+      .eq("is_active", true);
+    if (ce) {
+      toast.error("Suppression impossible", { description: friendlyError(ce) });
+      setDeleteId(null);
+      return;
+    }
+    if ((count ?? 0) > 0) {
+      toast.error("Suppression impossible", {
+        description: `Ce club compte encore ${count} athlète(s) actif(s). Désactivez-les d'abord.`,
+      });
+      setDeleteId(null);
+      return;
+    }
     const { error } = await supabase.from("clubs").delete().eq("id", deleteId);
     if (error) toast.error("Suppression impossible", { description: friendlyError(error) });
     else {
