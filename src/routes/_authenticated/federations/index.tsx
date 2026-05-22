@@ -188,6 +188,22 @@ function FederationsPage() {
 
   const confirmDelete = async () => {
     if (!deleteId) return;
+    const { count, error: ce } = await supabase
+      .from("clubs")
+      .select("id", { count: "exact", head: true })
+      .eq("federation_id", deleteId);
+    if (ce) {
+      toast.error("Suppression impossible", { description: friendlyError(ce) });
+      setDeleteId(null);
+      return;
+    }
+    if ((count ?? 0) > 0) {
+      toast.error("Suppression impossible", {
+        description: `Cette fédération a encore ${count} club(s) rattaché(s). Supprimez-les d'abord.`,
+      });
+      setDeleteId(null);
+      return;
+    }
     const { error } = await supabase.from("federations").delete().eq("id", deleteId);
     if (error) {
       toast.error("Suppression impossible", { description: friendlyError(error) });
