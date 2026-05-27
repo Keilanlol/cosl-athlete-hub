@@ -154,6 +154,7 @@ function ClubDetailPage() {
 
   // Add athlete dialog
   const [athleteOpen, setAthleteOpen] = useState(false);
+  const [athletesActiveOnly, setAthletesActiveOnly] = useState(true);
   const [athletePool, setAthletePool] = useState<AthleteRow[]>([]);
   const [selectedAthleteId, setSelectedAthleteId] = useState("");
   const [athleteSaving, setAthleteSaving] = useState(false);
