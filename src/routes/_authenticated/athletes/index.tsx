@@ -519,12 +519,14 @@ function AthletesPage() {
             <SelectItem value="red">Rouge</SelectItem>
           </SelectContent>
         </Select>
-        <div className="flex items-center justify-between gap-3 rounded-md border border-slate-200 px-3 py-1.5 lg:col-span-2">
-          <Label htmlFor="active-only" className="cursor-pointer text-sm">
-            Athlètes actifs uniquement
-          </Label>
-          <Switch id="active-only" checked={activeOnly} onCheckedChange={setActiveOnly} />
-        </div>
+        <Select value={fActive} onValueChange={(v) => setFActive(v as "active" | "inactive" | "all")}>
+          <SelectTrigger><SelectValue placeholder="Activité" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="active">Actifs</SelectItem>
+            <SelectItem value="inactive">Inactifs</SelectItem>
+            <SelectItem value="all">Tous</SelectItem>
+          </SelectContent>
+        </Select>
         <div className="flex items-center text-sm text-slate-500">
           {filtered.length} résultat(s)
         </div>
