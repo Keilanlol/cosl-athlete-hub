@@ -179,6 +179,7 @@ function ClubDetailPage() {
         .from("athletes")
         .select("*, primary_sport:sports!athletes_primary_sport_id_fkey(name)")
         .eq("current_club_id", id)
+        .eq("is_active", true)
         .order("last_name"),
       supabase.from("sports").select("*"),
       supabase
