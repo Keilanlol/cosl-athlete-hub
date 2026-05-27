@@ -760,9 +760,27 @@ function ClubDetailPage() {
         </TabsContent>
 
         {/* ============ COACHES ============ */}
-        <TabsContent value="coaches" className="mt-4">
+        <TabsContent value="coaches" className="mt-4 space-y-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              placeholder="Nom, prénom, email, rôle…"
+              value={coachSearch}
+              onChange={(e) => setCoachSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          {(() => {
+            const q = coachSearch.trim().toLowerCase();
+            const visibleCoaches = coaches.filter((c) => {
+              if (!q) return true;
+              const role = COACH_ROLES.find((r) => r.value === c.role)?.label ?? c.role;
+              const hay = `${c.first_name} ${c.last_name} ${c.email ?? ""} ${role}`.toLowerCase();
+              return hay.includes(q);
+            });
+            return (
           <div className="rounded-lg border border-slate-200 bg-white">
-            {coaches.length === 0 ? (
+            {visibleCoaches.length === 0 ? (
               <div className="p-6">
                 <EmptyState message="Aucun encadrant rattaché." />
               </div>
@@ -778,13 +796,13 @@ function ClubDetailPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {coaches.map((c) => {
+                  {visibleCoaches.map((c) => {
                     const role = COACH_ROLES.find((r) => r.value === c.role)?.label ?? c.role;
                     return (
                       <TableRow
                         key={c.id}
                         onClick={() => navigate({ to: "/coaches/$id", params: { id: c.id } })}
-                        className="cursor-pointer hover:bg-slate-50"
+                        className={`cursor-pointer hover:bg-slate-50 ${c.is_active ? "" : "opacity-60"}`}
                       >
                         <TableCell className="font-medium">
                           {c.first_name} {c.last_name}
@@ -808,6 +826,8 @@ function ClubDetailPage() {
               </Table>
             )}
           </div>
+            );
+          })()}
         </TabsContent>
       </Tabs>
 
