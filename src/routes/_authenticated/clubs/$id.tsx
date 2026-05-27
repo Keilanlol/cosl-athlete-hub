@@ -548,24 +548,45 @@ function ClubDetailPage() {
         {/* ============ ATHLETES ============ */}
         <TabsContent value="athletes" className="mt-4 space-y-3">
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5">
-              <Label htmlFor="club-active-only" className="cursor-pointer text-sm">
-                Athlètes actifs uniquement
-              </Label>
-              <Switch
-                id="club-active-only"
-                checked={athletesActiveOnly}
-                onCheckedChange={setAthletesActiveOnly}
-              />
+        <TabsContent value="athletes" className="mt-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-1 flex-wrap items-center gap-2">
+              <div className="relative min-w-[220px] flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  placeholder="Nom, prénom, COSL ID, sport…"
+                  value={athleteSearch}
+                  onChange={(e) => setAthleteSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Select
+                value={athletesActive}
+                onValueChange={(v) => setAthletesActive(v as "active" | "inactive" | "all")}
+              >
+                <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Actifs</SelectItem>
+                  <SelectItem value="inactive">Inactifs</SelectItem>
+                  <SelectItem value="all">Tous</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <Button onClick={openAddAthlete} className="bg-indigo-500 hover:bg-indigo-600">
               <Plus className="mr-2 h-4 w-4" /> Ajouter un adhérent
             </Button>
           </div>
           {(() => {
-            const visibleAthletes = athletesActiveOnly
-              ? athletes.filter((a) => a.is_active !== false)
-              : athletes;
+            const q = athleteSearch.trim().toLowerCase();
+            const visibleAthletes = athletes.filter((a) => {
+              if (athletesActive === "active" && a.is_active === false) return false;
+              if (athletesActive === "inactive" && a.is_active !== false) return false;
+              if (q) {
+                const hay = `${a.first_name} ${a.last_name} ${a.cosl_id ?? ""} ${a.primary_sport?.name ?? ""}`.toLowerCase();
+                if (!hay.includes(q)) return false;
+              }
+              return true;
+            });
             return (
           <div className="rounded-lg border border-slate-200 bg-white">
             {visibleAthletes.length === 0 ? (
