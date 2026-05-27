@@ -16,6 +16,7 @@ import {
   Pencil,
   Trash2,
   UserMinus,
+  Search,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -154,7 +155,10 @@ function ClubDetailPage() {
 
   // Add athlete dialog
   const [athleteOpen, setAthleteOpen] = useState(false);
-  const [athletesActiveOnly, setAthletesActiveOnly] = useState(true);
+  const [athletesActive, setAthletesActive] = useState<"active" | "inactive" | "all">("active");
+  const [athleteSearch, setAthleteSearch] = useState("");
+  const [memberSearch, setMemberSearch] = useState("");
+  const [coachSearch, setCoachSearch] = useState("");
   const [athletePool, setAthletePool] = useState<AthleteRow[]>([]);
   const [selectedAthleteId, setSelectedAthleteId] = useState("");
   const [athleteSaving, setAthleteSaving] = useState(false);
@@ -543,25 +547,44 @@ function ClubDetailPage() {
 
         {/* ============ ATHLETES ============ */}
         <TabsContent value="athletes" className="mt-4 space-y-3">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5">
-              <Label htmlFor="club-active-only" className="cursor-pointer text-sm">
-                Athlètes actifs uniquement
-              </Label>
-              <Switch
-                id="club-active-only"
-                checked={athletesActiveOnly}
-                onCheckedChange={setAthletesActiveOnly}
-              />
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-1 flex-wrap items-center gap-2">
+              <div className="relative min-w-[220px] flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  placeholder="Nom, prénom, COSL ID, sport…"
+                  value={athleteSearch}
+                  onChange={(e) => setAthleteSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Select
+                value={athletesActive}
+                onValueChange={(v) => setAthletesActive(v as "active" | "inactive" | "all")}
+              >
+                <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Actifs</SelectItem>
+                  <SelectItem value="inactive">Inactifs</SelectItem>
+                  <SelectItem value="all">Tous</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <Button onClick={openAddAthlete} className="bg-indigo-500 hover:bg-indigo-600">
               <Plus className="mr-2 h-4 w-4" /> Ajouter un adhérent
             </Button>
           </div>
           {(() => {
-            const visibleAthletes = athletesActiveOnly
-              ? athletes.filter((a) => a.is_active !== false)
-              : athletes;
+            const q = athleteSearch.trim().toLowerCase();
+            const visibleAthletes = athletes.filter((a) => {
+              if (athletesActive === "active" && a.is_active === false) return false;
+              if (athletesActive === "inactive" && a.is_active !== false) return false;
+              if (q) {
+                const hay = `${a.first_name} ${a.last_name} ${a.cosl_id ?? ""} ${a.primary_sport?.name ?? ""}`.toLowerCase();
+                if (!hay.includes(q)) return false;
+              }
+              return true;
+            });
             return (
           <div className="rounded-lg border border-slate-200 bg-white">
             {visibleAthletes.length === 0 ? (
@@ -629,13 +652,30 @@ function ClubDetailPage() {
 
         {/* ============ MEMBERS ============ */}
         <TabsContent value="members" className="mt-4 space-y-3">
-          <div className="flex justify-end">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="relative min-w-[220px] flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                placeholder="Nom, prénom, email, fonction…"
+                value={memberSearch}
+                onChange={(e) => setMemberSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
             <Button onClick={openCreateMember} className="bg-indigo-500 hover:bg-indigo-600">
               <Plus className="mr-2 h-4 w-4" /> Ajouter un membre
             </Button>
           </div>
+          {(() => {
+            const q = memberSearch.trim().toLowerCase();
+            const visibleMembers = members.filter((m) => {
+              if (!q) return true;
+              const hay = `${m.first_name} ${m.last_name} ${m.email ?? ""} ${memberRoleLabel(m.role)}`.toLowerCase();
+              return hay.includes(q);
+            });
+            return (
           <div className="rounded-lg border border-slate-200 bg-white">
-            {members.length === 0 ? (
+            {visibleMembers.length === 0 ? (
               <div className="p-6">
                 <EmptyState message="Aucun membre enregistré (président, trésorier…)." />
               </div>
@@ -653,7 +693,7 @@ function ClubDetailPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {members.map((m) => (
+                  {visibleMembers.map((m) => (
                     <TableRow
                       key={m.id}
                       onClick={() => navigate({ to: "/clubs/members/$memberId", params: { memberId: m.id } })}
@@ -715,12 +755,32 @@ function ClubDetailPage() {
               </Table>
             )}
           </div>
+            );
+          })()}
         </TabsContent>
 
         {/* ============ COACHES ============ */}
-        <TabsContent value="coaches" className="mt-4">
+        <TabsContent value="coaches" className="mt-4 space-y-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              placeholder="Nom, prénom, email, rôle…"
+              value={coachSearch}
+              onChange={(e) => setCoachSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          {(() => {
+            const q = coachSearch.trim().toLowerCase();
+            const visibleCoaches = coaches.filter((c) => {
+              if (!q) return true;
+              const role = COACH_ROLES.find((r) => r.value === c.role)?.label ?? c.role;
+              const hay = `${c.first_name} ${c.last_name} ${c.email ?? ""} ${role}`.toLowerCase();
+              return hay.includes(q);
+            });
+            return (
           <div className="rounded-lg border border-slate-200 bg-white">
-            {coaches.length === 0 ? (
+            {visibleCoaches.length === 0 ? (
               <div className="p-6">
                 <EmptyState message="Aucun encadrant rattaché." />
               </div>
@@ -736,13 +796,13 @@ function ClubDetailPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {coaches.map((c) => {
+                  {visibleCoaches.map((c) => {
                     const role = COACH_ROLES.find((r) => r.value === c.role)?.label ?? c.role;
                     return (
                       <TableRow
                         key={c.id}
                         onClick={() => navigate({ to: "/coaches/$id", params: { id: c.id } })}
-                        className="cursor-pointer hover:bg-slate-50"
+                        className={`cursor-pointer hover:bg-slate-50 ${c.is_active ? "" : "opacity-60"}`}
                       >
                         <TableCell className="font-medium">
                           {c.first_name} {c.last_name}
@@ -766,6 +826,8 @@ function ClubDetailPage() {
               </Table>
             )}
           </div>
+            );
+          })()}
         </TabsContent>
       </Tabs>
 

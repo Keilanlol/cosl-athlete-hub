@@ -144,7 +144,7 @@ function AthletesPage() {
   const [fStatus, setFStatus] = useState(ALL);
   const [fLevel, setFLevel] = useState(ALL);
   const [fKyc, setFKyc] = useState(ALL);
-  const [activeOnly, setActiveOnly] = useState(true);
+  const [fActive, setFActive] = useState<"active" | "inactive" | "all">("active");
 
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState(false);
@@ -197,7 +197,8 @@ function AthletesPage() {
     if (!rows) return [];
     const q = search.trim().toLowerCase();
     return rows.filter((a) => {
-      if (activeOnly && a.is_active === false) return false;
+      if (fActive === "active" && a.is_active === false) return false;
+      if (fActive === "inactive" && a.is_active !== false) return false;
       if (fSport !== ALL && a.primary_sport_id !== fSport) return false;
       if (fDiscipline !== ALL) {
         const ads = athleteDisciplines[a.id] ?? [];
@@ -214,7 +215,7 @@ function AthletesPage() {
       }
       return true;
     });
-  }, [rows, search, fSport, fDiscipline, fFed, fStatus, fLevel, fKyc, activeOnly, athleteDisciplines]);
+  }, [rows, search, fSport, fDiscipline, fFed, fStatus, fLevel, fKyc, fActive, athleteDisciplines]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -518,12 +519,14 @@ function AthletesPage() {
             <SelectItem value="red">Rouge</SelectItem>
           </SelectContent>
         </Select>
-        <div className="flex items-center justify-between gap-3 rounded-md border border-slate-200 px-3 py-1.5 lg:col-span-2">
-          <Label htmlFor="active-only" className="cursor-pointer text-sm">
-            Athlètes actifs uniquement
-          </Label>
-          <Switch id="active-only" checked={activeOnly} onCheckedChange={setActiveOnly} />
-        </div>
+        <Select value={fActive} onValueChange={(v) => setFActive(v as "active" | "inactive" | "all")}>
+          <SelectTrigger><SelectValue placeholder="Activité" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="active">Actifs</SelectItem>
+            <SelectItem value="inactive">Inactifs</SelectItem>
+            <SelectItem value="all">Tous</SelectItem>
+          </SelectContent>
+        </Select>
         <div className="flex items-center text-sm text-slate-500">
           {filtered.length} résultat(s)
         </div>
