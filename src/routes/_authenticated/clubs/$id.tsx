@@ -154,6 +154,7 @@ function ClubDetailPage() {
 
   // Add athlete dialog
   const [athleteOpen, setAthleteOpen] = useState(false);
+  const [athletesActiveOnly, setAthletesActiveOnly] = useState(true);
   const [athletePool, setAthletePool] = useState<AthleteRow[]>([]);
   const [selectedAthleteId, setSelectedAthleteId] = useState("");
   const [athleteSaving, setAthleteSaving] = useState(false);
@@ -179,7 +180,6 @@ function ClubDetailPage() {
         .from("athletes")
         .select("*, primary_sport:sports!athletes_primary_sport_id_fkey(name)")
         .eq("current_club_id", id)
-        .eq("is_active", true)
         .order("last_name"),
       supabase.from("sports").select("*"),
       supabase
@@ -543,13 +543,28 @@ function ClubDetailPage() {
 
         {/* ============ ATHLETES ============ */}
         <TabsContent value="athletes" className="mt-4 space-y-3">
-          <div className="flex justify-end">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5">
+              <Label htmlFor="club-active-only" className="cursor-pointer text-sm">
+                Athlètes actifs uniquement
+              </Label>
+              <Switch
+                id="club-active-only"
+                checked={athletesActiveOnly}
+                onCheckedChange={setAthletesActiveOnly}
+              />
+            </div>
             <Button onClick={openAddAthlete} className="bg-indigo-500 hover:bg-indigo-600">
               <Plus className="mr-2 h-4 w-4" /> Ajouter un adhérent
             </Button>
           </div>
+          {(() => {
+            const visibleAthletes = athletesActiveOnly
+              ? athletes.filter((a) => a.is_active !== false)
+              : athletes;
+            return (
           <div className="rounded-lg border border-slate-200 bg-white">
-            {athletes.length === 0 ? (
+            {visibleAthletes.length === 0 ? (
               <div className="p-6">
                 <EmptyState message="Aucun adhérent." />
               </div>
@@ -566,11 +581,11 @@ function ClubDetailPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {athletes.map((a) => (
+                  {visibleAthletes.map((a) => (
                     <TableRow
                       key={a.id}
                       onClick={() => navigate({ to: "/athletes/$id", params: { id: a.id } })}
-                      className="cursor-pointer hover:bg-slate-50"
+                      className={`cursor-pointer hover:bg-slate-50 ${a.is_active === false ? "opacity-60" : ""}`}
                     >
                       <TableCell className="font-medium">
                         {a.first_name} {a.last_name}
@@ -581,7 +596,14 @@ function ClubDetailPage() {
                       <TableCell className="text-slate-600">
                         {ageOf(a.birth_date) ?? "—"}
                       </TableCell>
-                      <TableCell>{statusBadge(a.status)}</TableCell>
+                      <TableCell>
+                        {statusBadge(a.status)}
+                        {a.is_active === false && (
+                          <Badge variant="outline" className="ml-2 border-slate-300 text-slate-500">
+                            Inactif
+                          </Badge>
+                        )}
+                      </TableCell>
                       <TableCell className="font-mono text-xs text-slate-500">
                         {a.cosl_id || "—"}
                       </TableCell>
@@ -601,6 +623,8 @@ function ClubDetailPage() {
               </Table>
             )}
           </div>
+            );
+          })()}
         </TabsContent>
 
         {/* ============ MEMBERS ============ */}
