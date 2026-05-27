@@ -547,8 +547,6 @@ function ClubDetailPage() {
 
         {/* ============ ATHLETES ============ */}
         <TabsContent value="athletes" className="mt-4 space-y-3">
-          <div className="flex items-center justify-between gap-3">
-        <TabsContent value="athletes" className="mt-4 space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-1 flex-wrap items-center gap-2">
               <div className="relative min-w-[220px] flex-1">
