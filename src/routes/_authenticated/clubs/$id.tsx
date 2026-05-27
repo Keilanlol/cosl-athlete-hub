@@ -652,13 +652,30 @@ function ClubDetailPage() {
 
         {/* ============ MEMBERS ============ */}
         <TabsContent value="members" className="mt-4 space-y-3">
-          <div className="flex justify-end">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="relative min-w-[220px] flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                placeholder="Nom, prénom, email, fonction…"
+                value={memberSearch}
+                onChange={(e) => setMemberSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
             <Button onClick={openCreateMember} className="bg-indigo-500 hover:bg-indigo-600">
               <Plus className="mr-2 h-4 w-4" /> Ajouter un membre
             </Button>
           </div>
+          {(() => {
+            const q = memberSearch.trim().toLowerCase();
+            const visibleMembers = members.filter((m) => {
+              if (!q) return true;
+              const hay = `${m.first_name} ${m.last_name} ${m.email ?? ""} ${memberRoleLabel(m.role)}`.toLowerCase();
+              return hay.includes(q);
+            });
+            return (
           <div className="rounded-lg border border-slate-200 bg-white">
-            {members.length === 0 ? (
+            {visibleMembers.length === 0 ? (
               <div className="p-6">
                 <EmptyState message="Aucun membre enregistré (président, trésorier…)." />
               </div>
@@ -676,7 +693,7 @@ function ClubDetailPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {members.map((m) => (
+                  {visibleMembers.map((m) => (
                     <TableRow
                       key={m.id}
                       onClick={() => navigate({ to: "/clubs/members/$memberId", params: { memberId: m.id } })}
@@ -738,6 +755,8 @@ function ClubDetailPage() {
               </Table>
             )}
           </div>
+            );
+          })()}
         </TabsContent>
 
         {/* ============ COACHES ============ */}
