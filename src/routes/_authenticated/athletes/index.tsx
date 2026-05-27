@@ -215,7 +215,7 @@ function AthletesPage() {
       }
       return true;
     });
-  }, [rows, search, fSport, fDiscipline, fFed, fStatus, fLevel, fKyc, activeOnly, athleteDisciplines]);
+  }, [rows, search, fSport, fDiscipline, fFed, fStatus, fLevel, fKyc, fActive, athleteDisciplines]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
