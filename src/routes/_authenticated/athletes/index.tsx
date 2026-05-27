@@ -522,8 +522,8 @@ function AthletesPage() {
         <Select value={fActive} onValueChange={(v) => setFActive(v as "active" | "inactive" | "all")}>
           <SelectTrigger><SelectValue placeholder="Activité" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="active">Actifs</SelectItem>
-            <SelectItem value="inactive">Inactifs</SelectItem>
+            <SelectItem value="active">Athlètes désactivés</SelectItem>
+            <SelectItem value="inactive">Athlètes activées</SelectItem>
             <SelectItem value="all">Tous</SelectItem>
           </SelectContent>
         </Select>
