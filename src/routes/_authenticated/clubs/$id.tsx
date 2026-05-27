@@ -16,6 +16,7 @@ import {
   Pencil,
   Trash2,
   UserMinus,
+  Search,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
