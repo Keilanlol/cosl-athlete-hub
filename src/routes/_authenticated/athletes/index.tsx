@@ -144,7 +144,7 @@ function AthletesPage() {
   const [fStatus, setFStatus] = useState(ALL);
   const [fLevel, setFLevel] = useState(ALL);
   const [fKyc, setFKyc] = useState(ALL);
-  const [activeOnly, setActiveOnly] = useState(true);
+  const [fActive, setFActive] = useState<"active" | "inactive" | "all">("active");
 
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState(false);
