@@ -219,6 +219,7 @@ function FederationDetailPage() {
       .select(
         "*, primary_sport:sports!athletes_primary_sport_id_fkey(name), current_club:clubs!athletes_current_club_id_fkey(id,name)",
       )
+      .eq("is_active", true)
       .order("last_name");
     if (clubIds.length > 0) {
       athletesQuery.or(

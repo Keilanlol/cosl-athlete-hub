@@ -179,6 +179,7 @@ function ClubDetailPage() {
         .from("athletes")
         .select("*, primary_sport:sports!athletes_primary_sport_id_fkey(name)")
         .eq("current_club_id", id)
+        .eq("is_active", true)
         .order("last_name"),
       supabase.from("sports").select("*"),
       supabase
@@ -253,6 +254,7 @@ function ClubDetailPage() {
       .from("athletes")
       .select("id, first_name, last_name, current_club_id, cosl_id, gender, birth_date, status, primary_sport:sports!athletes_primary_sport_id_fkey(name)")
       .or(`current_club_id.is.null,current_club_id.neq.${id}`)
+      .eq("is_active", true)
       .order("last_name");
     if (error) toast.error("Erreur", { description: friendlyError(error) });
     setAthletePool((data ?? []) as unknown as AthleteRow[]);
