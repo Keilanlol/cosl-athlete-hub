@@ -197,7 +197,8 @@ function AthletesPage() {
     if (!rows) return [];
     const q = search.trim().toLowerCase();
     return rows.filter((a) => {
-      if (activeOnly && a.is_active === false) return false;
+      if (fActive === "active" && a.is_active === false) return false;
+      if (fActive === "inactive" && a.is_active !== false) return false;
       if (fSport !== ALL && a.primary_sport_id !== fSport) return false;
       if (fDiscipline !== ALL) {
         const ads = athleteDisciplines[a.id] ?? [];
