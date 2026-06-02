@@ -556,13 +556,40 @@ function FederationsPage() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="president_name">Président</Label>
-                <Input
-                  id="president_name"
-                  value={form.president_name}
-                  onChange={(e) =>
-                    setForm({ ...form, president_name: e.target.value })
-                  }
-                />
+                <Select value={presidentValue} onValueChange={onPresidentSelect}>
+                  <SelectTrigger id="president_name">
+                    <SelectValue placeholder="Sélectionner un membre…">
+                      {form.president_name || "Sélectionner un membre…"}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {form.president_name && (
+                      <SelectItem value="__none__">— Aucun —</SelectItem>
+                    )}
+                    {fedMembers.length === 0 && !pendingPresident && (
+                      <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                        {editing ? "Aucun membre pour cette fédération" : "Aucun membre — créez-en un"}
+                      </div>
+                    )}
+                    {fedMembers.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.first_name} {m.last_name}
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          {FEDERATION_MEMBER_ROLES.find((r) => r.value === m.role)?.label ?? m.role}
+                        </span>
+                      </SelectItem>
+                    ))}
+                    {pendingPresident && (
+                      <SelectItem value="__pending__">
+                        {pendingPresident.first_name} {pendingPresident.last_name}
+                        <span className="ml-2 text-xs text-muted-foreground">(à créer)</span>
+                      </SelectItem>
+                    )}
+                    <SelectItem value="__new__" className="font-medium text-primary">
+                      + Ajouter un nouveau membre
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
