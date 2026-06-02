@@ -993,6 +993,7 @@ function AthleteDetailPage() {
             athlete={athlete}
             kyc={kyc}
             docs={docs ?? []}
+            docTypes={docTypes}
             history={kycHistory}
             reviewer={kycReviewer}
             currentUserId={user?.id ?? null}
@@ -1002,6 +1003,7 @@ function AthleteDetailPage() {
             setCommentDraft={setKycCommentDraft}
           />
         </TabsContent>
+
 
         <TabsContent value="relations">
           <div className="space-y-3">
