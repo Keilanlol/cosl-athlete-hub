@@ -342,7 +342,7 @@ function FederationDetailPage() {
     const ok = await confirmAction({
       title: `Retirer ${c.name} ?`,
       description:
-        "Le club sera retiré de cette fédération (fédération_id mis à null). Le club reste existant mais sans fédération.",
+        "Le club sera retiré de cette fédération. Le club reste existant mais sans fédération.",
       confirmLabel: "Retirer",
       destructive: true,
     });
