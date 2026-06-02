@@ -10,7 +10,6 @@ import {
   Mail,
   Phone,
   MapPin,
-  Trophy,
   Building2,
   Plus,
   Pencil,
@@ -35,7 +34,7 @@ import {
 } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -88,30 +87,30 @@ function memberRoleLabel(role: string) {
   return CLUB_MEMBER_ROLES.find((r) => r.value === role)?.label ?? role;
 }
 
-function StatCard({
+function StatPill({
   icon: Icon,
   label,
   value,
-  hint,
+  sub,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   value: number | string;
-  hint?: string;
+  sub?: string;
 }) {
   return (
-    <Card>
-      <CardContent className="flex items-center gap-4 p-5">
-        <div className="rounded-lg bg-indigo-50 p-3 text-indigo-600">
-          <Icon className="h-5 w-5" />
-        </div>
-        <div>
-          <div className="text-2xl font-semibold text-slate-900">{value}</div>
-          <div className="text-sm text-slate-600">{label}</div>
-          {hint && <div className="mt-0.5 text-xs text-slate-400">{hint}</div>}
-        </div>
-      </CardContent>
-    </Card>
+    <div className="flex items-center gap-3 rounded-lg bg-slate-50 px-4 py-3">
+      <div className="text-[#C8102E]">
+        <Icon className="h-5 w-5" />
+      </div>
+      <div>
+        <p className="text-xl font-bold text-slate-900">{value}</p>
+        <p className="text-xs text-slate-500">
+          {label}
+          {sub ? ` · ${sub}` : ""}
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -436,13 +435,16 @@ function ClubDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <Button asChild variant="ghost" size="sm" className="-ml-2">
+      <div>
+        <Button asChild variant="ghost" size="sm" className="-ml-2 mb-2">
           <Link to="/clubs">
             <ArrowLeft className="mr-2 h-4 w-4" /> Clubs
           </Link>
         </Button>
-        <div className="flex items-center gap-3">
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white p-6">
+        <div className="flex flex-wrap items-start gap-5">
           <EntityImageUpload
             entityId={club.id}
             entityType="club"
@@ -466,113 +468,94 @@ function ClubDetailPage() {
               setClub((c) => (c ? { ...c, logo_url: null, logo_storage_path: null } : c));
             }}
           />
-          <div>
-            <h1 className="text-2xl font-semibold text-slate-900">{club.name}</h1>
-            <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-slate-600">
+
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2 mb-1">
               {fed && (
-                <Link
-                  to="/federations/$id"
-                  params={{ id: fed.id }}
-                  className="inline-flex items-center gap-1 text-slate-600 hover:underline"
-                >
-                  <Building2 className="h-3.5 w-3.5" />
-                  {fed.acronym} — {fed.name}
+                <Link to="/federations/$id" params={{ id: fed.id }}>
+                  <Badge variant="outline" className="font-mono hover:bg-slate-100">
+                    <Building2 className="mr-1 h-3 w-3" />
+                    {fed.acronym}
+                  </Badge>
                 </Link>
               )}
               {club.city && (
-                <span className="inline-flex items-center gap-1">
-                  <MapPin className="h-3.5 w-3.5" /> {club.city}
+                <Badge variant="outline" className="font-normal">
+                  <MapPin className="mr-1 h-3 w-3" />
+                  {club.city}
+                </Badge>
+              )}
+            </div>
+            <h1 className="text-2xl font-bold text-slate-900">{club.name}</h1>
+            <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-slate-500">
+              {president && (
+                <span className="flex items-center gap-1">
+                  <UserRound className="h-3.5 w-3.5" />
+                  Président :{" "}
+                  <span className="text-slate-700 font-medium ml-1">
+                    {president.first_name} {president.last_name}
+                  </span>
+                </span>
+              )}
+              {club.email && (
+                <a
+                  href={`mailto:${club.email}`}
+                  className="flex items-center gap-1 text-indigo-600 hover:underline"
+                >
+                  <Mail className="h-3.5 w-3.5" /> {club.email}
+                </a>
+              )}
+              {club.phone && (
+                <span className="flex items-center gap-1">
+                  <Phone className="h-3.5 w-3.5" /> {club.phone}
+                </span>
+              )}
+              {club.address && (
+                <span className="flex items-center gap-1">
+                  <MapPin className="h-3.5 w-3.5" /> {club.city ?? club.address}
                 </span>
               )}
             </div>
           </div>
         </div>
+
+        <div className="mt-5 pt-5 border-t border-slate-100 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <StatPill
+            icon={Users}
+            label="Adhérents"
+            value={stats.athletes}
+            sub={`${stats.active} actifs`}
+          />
+          <StatPill icon={UserCog} label="Encadrement" value={stats.coaches} />
+          <StatPill icon={UserRound} label="Membres bureau" value={stats.members} />
+          <StatPill
+            icon={Users}
+            label="Mixité"
+            value={`${stats.male}H / ${stats.female}F`}
+            sub={stats.avgAge ? `Moy. ${stats.avgAge} ans` : undefined}
+          />
+        </div>
+
+        {stats.sportCounts.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-slate-100">
+            <p className="text-xs uppercase tracking-wide text-slate-400 mb-2">
+              Sports pratiqués
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {stats.sportCounts.slice(0, 8).map(([name, n]) => (
+                <span
+                  key={name}
+                  className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700"
+                >
+                  {name}{" "}
+                  <span className="font-semibold text-slate-900">{n}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
-        <StatCard
-          icon={Users}
-          label="Adhérents"
-          value={stats.athletes}
-          hint={`${stats.active} actif(s)`}
-        />
-        <StatCard icon={UserCog} label="Encadrement" value={stats.coaches} />
-        <StatCard icon={UserRound} label="Membres" value={stats.members} />
-        <StatCard
-          icon={Trophy}
-          label="Sports"
-          value={stats.sportCounts.length}
-        />
-        <StatCard
-          icon={Users}
-          label="Mixité"
-          value={`${stats.male}H / ${stats.female}F`}
-          hint={stats.avgAge ? `Âge moyen ${stats.avgAge} ans` : undefined}
-        />
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-base">Coordonnées</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-3 text-sm md:grid-cols-2">
-            <div>
-              <div className="text-xs uppercase tracking-wide text-slate-500">Président</div>
-              <div className="text-slate-900">
-                {president ? `${president.first_name} ${president.last_name}` : "—"}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs uppercase tracking-wide text-slate-500">Fédération</div>
-              <div className="text-slate-900">
-                {fed ? `${fed.acronym} — ${fed.name}` : "—"}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs uppercase tracking-wide text-slate-500">Adresse</div>
-              <div className="text-slate-900">
-                {club.address ?? "—"}
-                {club.city ? `, ${club.city}` : ""}
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Mail className="h-4 w-4 text-slate-400" />
-              {club.email ? (
-                <a href={`mailto:${club.email}`} className="text-indigo-600 hover:underline">
-                  {club.email}
-                </a>
-              ) : (
-                <span className="text-slate-400">—</span>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <Phone className="h-4 w-4 text-slate-400" />
-              <span className="text-slate-700">{club.phone ?? "—"}</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Répartition par sport</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {stats.sportCounts.length === 0 ? (
-              <p className="text-sm text-slate-500">Aucun adhérent enregistré.</p>
-            ) : (
-              <ul className="space-y-1.5 text-sm">
-                {stats.sportCounts.slice(0, 6).map(([name, n]) => (
-                  <li key={name} className="flex items-center justify-between">
-                    <span className="text-slate-700">{name}</span>
-                    <Badge variant="outline">{n}</Badge>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-      </div>
 
       <Tabs defaultValue="athletes">
         <TabsList>
