@@ -9,6 +9,8 @@ export type Federation = {
   contact_phone: string | null;
   international_federation: string | null;
   is_olympic: boolean | null;
+  logo_url: string | null;
+  logo_storage_path: string | null;
   created_at: string;
 };
 
@@ -23,6 +25,8 @@ export type Club = {
   country: string | null;
   email: string | null;
   phone: string | null;
+  logo_url: string | null;
+  logo_storage_path: string | null;
   created_at: string;
 };
 
@@ -37,6 +41,8 @@ export type Coach = {
   federation_id: string | null;
   club_id: string | null;
   is_active: boolean | null;
+  photo_url: string | null;
+  photo_storage_path: string | null;
   created_at: string;
 };
 
@@ -64,6 +70,8 @@ export type FederationMember = {
   end_date: string | null;
   notes: string | null;
   is_active: boolean | null;
+  photo_url: string | null;
+  photo_storage_path: string | null;
   created_at: string;
 };
 
