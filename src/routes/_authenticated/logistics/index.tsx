@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useState } from "react";
-import { Plane, MapPin, AlertTriangle, ArrowRight } from "lucide-react";
+import { Plane, MapPin, AlertTriangle, ArrowRight, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { type Game, GAME_STATUSES, GAME_TYPES } from "@/lib/types";
