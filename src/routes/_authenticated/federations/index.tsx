@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Plus, Pencil, Trash2, Search, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import type { Federation } from "@/lib/types";
+import { FEDERATION_MEMBER_ROLES, type Federation, type FederationMember } from "@/lib/types";
 import { EntityImageUpload } from "@/components/EntityImageUpload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,9 +68,18 @@ const empty = {
   is_olympic: true,
 };
 
+const emptyMember = {
+  first_name: "",
+  last_name: "",
+  role: "president",
+  email: "",
+  phone: "",
+};
+
 function FederationsPage() {
   const navigate = useNavigate();
   const [rows, setRows] = useState<Federation[] | null>(null);
+  const [members, setMembers] = useState<FederationMember[]>([]);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
     key: "acronym",
@@ -84,18 +93,26 @@ function FederationsPage() {
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
+  // Sub-dialog: ajouter un membre depuis le dropdown Président
+  const [memberOpen, setMemberOpen] = useState(false);
+  const [memberForm, setMemberForm] = useState(emptyMember);
+  const [memberSaving, setMemberSaving] = useState(false);
+  // En mode création de fédération, on stocke le membre à créer après l'insert
+  const [pendingPresident, setPendingPresident] = useState<typeof emptyMember | null>(null);
+
   const load = async () => {
     setRows(null);
-    const { data, error } = await supabase
-      .from("federations")
-      .select("*")
-      .order("acronym");
+    const [{ data, error }, { data: md }] = await Promise.all([
+      supabase.from("federations").select("*").order("acronym"),
+      supabase.from("federation_members").select("*").order("last_name"),
+    ]);
     if (error) {
       toast.error("Erreur de chargement", { description: friendlyError(error) });
       setRows([]);
       return;
     }
     setRows((data ?? []) as Federation[]);
+    setMembers((md ?? []) as FederationMember[]);
   };
 
   useEffect(() => {
@@ -141,11 +158,13 @@ function FederationsPage() {
   const openCreate = () => {
     setEditing(null);
     setForm(empty);
+    setPendingPresident(null);
     setOpen(true);
   };
 
   const openEdit = (f: Federation) => {
     setEditing(f);
+    setPendingPresident(null);
     setForm({
       acronym: f.acronym,
       name: f.name,
@@ -156,6 +175,82 @@ function FederationsPage() {
       is_olympic: f.is_olympic ?? true,
     });
     setOpen(true);
+  };
+
+  // Membres rattachés à la fédération courante (en édition) — sinon liste vide
+  const fedMembers = useMemo(
+    () => (editing ? members.filter((m) => m.federation_id === editing.id) : []),
+    [members, editing],
+  );
+
+  const presidentValue = (() => {
+    if (pendingPresident) return "__pending__";
+    const name = form.president_name.trim();
+    if (!name) return "";
+    const found = fedMembers.find(
+      (m) => `${m.first_name} ${m.last_name}`.trim() === name,
+    );
+    return found ? found.id : "__custom__";
+  })();
+
+  const onPresidentSelect = (v: string) => {
+    if (v === "__new__") {
+      setMemberForm(emptyMember);
+      setMemberOpen(true);
+      return;
+    }
+    if (v === "__none__") {
+      setForm({ ...form, president_name: "" });
+      setPendingPresident(null);
+      return;
+    }
+    const m = fedMembers.find((x) => x.id === v);
+    if (m) {
+      setForm({ ...form, president_name: `${m.first_name} ${m.last_name}`.trim() });
+      setPendingPresident(null);
+    }
+  };
+
+  const submitMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const fn = memberForm.first_name.trim();
+    const ln = memberForm.last_name.trim();
+    if (!fn || !ln) {
+      toast.error("Prénom et nom requis");
+      return;
+    }
+    const fullName = `${fn} ${ln}`.trim();
+    // Pas encore de fédération créée → on stocke pour insertion post-create
+    if (!editing) {
+      setPendingPresident({ ...memberForm, first_name: fn, last_name: ln });
+      setForm((f) => ({ ...f, president_name: fullName }));
+      setMemberOpen(false);
+      toast.success("Membre prêt — sera créé avec la fédération");
+      return;
+    }
+    setMemberSaving(true);
+    const { data, error } = await supabase
+      .from("federation_members")
+      .insert({
+        federation_id: editing.id,
+        first_name: fn,
+        last_name: ln,
+        role: memberForm.role,
+        email: memberForm.email.trim() || null,
+        phone: memberForm.phone.trim() || null,
+        is_active: true,
+      })
+      .select()
+      .single();
+    setMemberSaving(false);
+    if (error) {
+      toast.error("Échec de l'ajout du membre", { description: friendlyError(error) });
+      return;
+    }
+    setMembers((ms) => [...ms, data as FederationMember]);
+    setForm((f) => ({ ...f, president_name: fullName }));
+    setMemberOpen(false);
+    toast.success("Membre ajouté");
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -174,16 +269,49 @@ function FederationsPage() {
       international_federation: form.international_federation.trim() || null,
       is_olympic: form.is_olympic,
     };
-    const { error } = editing
-      ? await supabase.from("federations").update(payload).eq("id", editing.id)
-      : await supabase.from("federations").insert(payload);
-    setSaving(false);
-    if (error) {
-      toast.error("Échec de l'enregistrement", { description: friendlyError(error) });
-      return;
+    let newFedId: string | null = editing?.id ?? null;
+    if (editing) {
+      const { error } = await supabase
+        .from("federations")
+        .update(payload)
+        .eq("id", editing.id);
+      if (error) {
+        setSaving(false);
+        toast.error("Échec de l'enregistrement", { description: friendlyError(error) });
+        return;
+      }
+    } else {
+      const { data, error } = await supabase
+        .from("federations")
+        .insert(payload)
+        .select()
+        .single();
+      if (error || !data) {
+        setSaving(false);
+        toast.error("Échec de l'enregistrement", { description: friendlyError(error) });
+        return;
+      }
+      newFedId = (data as Federation).id;
     }
+    // Création du président en attente
+    if (!editing && pendingPresident && newFedId) {
+      const { error: me } = await supabase.from("federation_members").insert({
+        federation_id: newFedId,
+        first_name: pendingPresident.first_name,
+        last_name: pendingPresident.last_name,
+        role: pendingPresident.role,
+        email: pendingPresident.email.trim() || null,
+        phone: pendingPresident.phone.trim() || null,
+        is_active: true,
+      });
+      if (me) {
+        toast.error("Membre président non créé", { description: friendlyError(me) });
+      }
+    }
+    setSaving(false);
     toast.success(editing ? "Fédération modifiée" : "Fédération ajoutée");
     setOpen(false);
+    setPendingPresident(null);
     load();
   };
 
@@ -428,13 +556,40 @@ function FederationsPage() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="president_name">Président</Label>
-                <Input
-                  id="president_name"
-                  value={form.president_name}
-                  onChange={(e) =>
-                    setForm({ ...form, president_name: e.target.value })
-                  }
-                />
+                <Select value={presidentValue} onValueChange={onPresidentSelect}>
+                  <SelectTrigger id="president_name">
+                    <SelectValue placeholder="Sélectionner un membre…">
+                      {form.president_name || "Sélectionner un membre…"}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {form.president_name && (
+                      <SelectItem value="__none__">— Aucun —</SelectItem>
+                    )}
+                    {fedMembers.length === 0 && !pendingPresident && (
+                      <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                        {editing ? "Aucun membre pour cette fédération" : "Aucun membre — créez-en un"}
+                      </div>
+                    )}
+                    {fedMembers.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.first_name} {m.last_name}
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          {FEDERATION_MEMBER_ROLES.find((r) => r.value === m.role)?.label ?? m.role}
+                        </span>
+                      </SelectItem>
+                    ))}
+                    {pendingPresident && (
+                      <SelectItem value="__pending__">
+                        {pendingPresident.first_name} {pendingPresident.last_name}
+                        <span className="ml-2 text-xs text-muted-foreground">(à créer)</span>
+                      </SelectItem>
+                    )}
+                    <SelectItem value="__new__" className="font-medium text-primary">
+                      + Ajouter un nouveau membre
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
@@ -503,6 +658,83 @@ function FederationsPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={memberOpen} onOpenChange={setMemberOpen}>
+        <DialogContent className="sm:max-w-md">
+          <form onSubmit={submitMember}>
+            <DialogHeader>
+              <DialogTitle>Ajouter un membre</DialogTitle>
+              <DialogDescription>
+                Ce membre sera rattaché à la fédération et sélectionné comme président.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="m_first">Prénom *</Label>
+                  <Input
+                    id="m_first"
+                    value={memberForm.first_name}
+                    onChange={(e) => setMemberForm({ ...memberForm, first_name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="m_last">Nom *</Label>
+                  <Input
+                    id="m_last"
+                    value={memberForm.last_name}
+                    onChange={(e) => setMemberForm({ ...memberForm, last_name: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="m_role">Rôle</Label>
+                <Select
+                  value={memberForm.role}
+                  onValueChange={(v) => setMemberForm({ ...memberForm, role: v })}
+                >
+                  <SelectTrigger id="m_role"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {FEDERATION_MEMBER_ROLES.map((r) => (
+                      <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="m_email">Email</Label>
+                  <Input
+                    id="m_email"
+                    type="email"
+                    value={memberForm.email}
+                    onChange={(e) => setMemberForm({ ...memberForm, email: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="m_phone">Téléphone</Label>
+                  <Input
+                    id="m_phone"
+                    value={memberForm.phone}
+                    onChange={(e) => setMemberForm({ ...memberForm, phone: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setMemberOpen(false)} disabled={memberSaving}>
+                Annuler
+              </Button>
+              <Button type="submit" disabled={memberSaving} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
+                {memberSaving ? "Enregistrement…" : "Ajouter"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
 
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>
