@@ -244,6 +244,13 @@ function ClubDetailPage() {
       .order("last_name");
     setUnlinkedMembers((unlinked ?? []) as ClubMember[]);
 
+    const { data: freeC } = await supabase
+      .from("coaches")
+      .select("*")
+      .is("club_id", null)
+      .order("last_name");
+    setFreeCoaches((freeC ?? []) as Coach[]);
+
     setLoading(false);
   };
 
