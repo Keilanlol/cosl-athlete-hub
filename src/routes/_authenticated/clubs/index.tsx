@@ -280,6 +280,7 @@ function ClubsPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Toutes les fédérations</SelectItem>
+            <SelectItem value="__none__">Sans fédération</SelectItem>
             {feds.map((f) => (
               <SelectItem key={f.id} value={f.id}>
                 {f.acronym} — {f.name}
