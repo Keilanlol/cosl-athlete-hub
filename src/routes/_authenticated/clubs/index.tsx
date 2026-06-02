@@ -128,7 +128,8 @@ function ClubsPage() {
     if (!rows) return [];
     const q = search.trim().toLowerCase();
     let r = rows.slice();
-    if (fedFilter !== "all") r = r.filter((c) => c.federation_id === fedFilter);
+    if (fedFilter === "__none__") r = r.filter((c) => !c.federation_id);
+    else if (fedFilter !== "all") r = r.filter((c) => c.federation_id === fedFilter);
     if (cityFilter !== "all") r = r.filter((c) => c.city === cityFilter);
     if (q) r = r.filter((c) => c.name.toLowerCase().includes(q));
     r.sort((a, b) => {
