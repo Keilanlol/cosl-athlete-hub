@@ -360,21 +360,7 @@ function FederationDetailPage() {
   const openCreateMember = () => {
     setEditingMember(null);
     setMemberForm(emptyMember);
-    setPickedPersonId("");
     setMemberOpen(true);
-  };
-  const onPickPerson = (pid: string) => {
-    setPickedPersonId(pid);
-    const p = allPersons.find((x) => x.id === pid);
-    if (!p) return;
-    setMemberForm((f) => ({
-      ...f,
-      first_name: p.first_name,
-      last_name: p.last_name,
-      email: p.email ?? "",
-      phone: p.phone ?? "",
-      address: p.address ?? "",
-    }));
   };
   const openEditMember = (m: FederationMember) => {
     setEditingMember(m);
@@ -425,24 +411,17 @@ function FederationDetailPage() {
           .from("federation_members")
           .update(payload)
           .eq("id", editingMember.id)
-      : pickedPersonId
-        ? await supabase
-            .from("federation_members")
-            .update(payload)
-            .eq("id", pickedPersonId)
-        : await supabase.from("federation_members").insert(payload);
+      : await supabase.from("federation_members").insert(payload);
     setMemberSaving(false);
     if (error) {
       toast.error("Échec de l'enregistrement", { description: friendlyError(error) });
       return;
     }
-    toast.success(
-      editingMember ? "Membre modifié" : pickedPersonId ? "Membre rattaché" : "Membre ajouté",
-    );
+    toast.success(editingMember ? "Membre modifié" : "Membre ajouté");
     setMemberOpen(false);
-    setPickedPersonId("");
     load();
   };
+
   const removeMember = async (m: FederationMember) => {
     const ok = await confirmAction({
       title: `Supprimer ${m.first_name} ${m.last_name} ?`,
