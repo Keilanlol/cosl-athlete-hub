@@ -5,6 +5,7 @@ import { Plus, Pencil, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import type { Federation } from "@/lib/types";
+import { EntityImageUpload } from "@/components/EntityImageUpload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -261,6 +262,7 @@ function FederationsPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-14"></TableHead>
                 <TableHead>
                   <SortBtn
                     active={sort.key === "acronym"}
@@ -301,6 +303,15 @@ function FederationsPage() {
                   onClick={() => navigate({ to: "/federations/$id", params: { id: f.id } })}
                   className="cursor-pointer hover:bg-slate-50"
                 >
+                  <TableCell>
+                    <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-md border border-slate-200 bg-slate-50">
+                      {f.logo_url ? (
+                        <img src={f.logo_url} alt={f.acronym} className="h-full w-full object-contain p-0.5" />
+                      ) : (
+                        <span className="text-[10px] font-semibold text-slate-500">{f.acronym?.slice(0, 3)}</span>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell className="font-mono text-sm font-medium">{f.acronym}</TableCell>
                   <TableCell>{f.name}</TableCell>
                   <TableCell className="text-slate-600">
