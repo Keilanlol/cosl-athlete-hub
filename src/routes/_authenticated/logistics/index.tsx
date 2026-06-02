@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useState } from "react";
-import { Plane, MapPin, AlertTriangle, ArrowRight } from "lucide-react";
+import { Plane, MapPin, AlertTriangle, ArrowRight, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { type Game, GAME_STATUSES, GAME_TYPES } from "@/lib/types";
@@ -104,11 +104,16 @@ function LogisticsGlobal() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">Logistique</h1>
-        <p className="text-sm text-muted-foreground">
-          Vue transverse des Games actifs : voyages, hébergement, transport.
-        </p>
+      <div className="flex items-center gap-3">
+        <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-white">
+          <Truck className="h-5 w-5" />
+        </span>
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground">Logistique</h1>
+          <p className="text-sm text-muted-foreground">
+            Vue transverse des Games actifs : voyages, hébergement, transport.
+          </p>
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
