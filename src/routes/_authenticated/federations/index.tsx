@@ -51,6 +51,8 @@ import {
   SortBtn,
   TableSkeleton,
 } from "@/components/DataTableShell";
+import { AddressSearch } from "@/components/AddressSearch";
+import { Textarea } from "@/components/ui/textarea";
 
 export const Route = createFileRoute("/_authenticated/federations/")({
   component: FederationsPage,
@@ -74,6 +76,14 @@ const emptyMember = {
   role: "president",
   email: "",
   phone: "",
+  street: "",
+  postcode: "",
+  city: "",
+  country: "",
+  start_date: "",
+  end_date: "",
+  notes: "",
+  is_active: true,
 };
 
 function FederationsPage() {
@@ -229,6 +239,11 @@ function FederationsPage() {
       return;
     }
     setMemberSaving(true);
+    const street = memberForm.street.trim();
+    const postcode = memberForm.postcode.trim();
+    const city = memberForm.city.trim();
+    const country = memberForm.country.trim();
+    const address = [street, postcode, city, country].filter(Boolean).join(", ") || null;
     const { data, error } = await supabase
       .from("federation_members")
       .insert({
@@ -238,7 +253,15 @@ function FederationsPage() {
         role: memberForm.role,
         email: memberForm.email.trim() || null,
         phone: memberForm.phone.trim() || null,
-        is_active: true,
+        street: street || null,
+        postcode: postcode || null,
+        city: city || null,
+        country: country || null,
+        address,
+        start_date: memberForm.start_date || null,
+        end_date: memberForm.end_date || null,
+        notes: memberForm.notes.trim() || null,
+        is_active: memberForm.is_active,
       })
       .select()
       .single();
@@ -295,14 +318,28 @@ function FederationsPage() {
     }
     // Création du président en attente
     if (!editing && pendingPresident && newFedId) {
+      const p = pendingPresident;
+      const pStreet = p.street.trim();
+      const pPostcode = p.postcode.trim();
+      const pCity = p.city.trim();
+      const pCountry = p.country.trim();
+      const pAddress = [pStreet, pPostcode, pCity, pCountry].filter(Boolean).join(", ") || null;
       const { error: me } = await supabase.from("federation_members").insert({
         federation_id: newFedId,
-        first_name: pendingPresident.first_name,
-        last_name: pendingPresident.last_name,
-        role: pendingPresident.role,
-        email: pendingPresident.email.trim() || null,
-        phone: pendingPresident.phone.trim() || null,
-        is_active: true,
+        first_name: p.first_name,
+        last_name: p.last_name,
+        role: p.role,
+        email: p.email.trim() || null,
+        phone: p.phone.trim() || null,
+        street: pStreet || null,
+        postcode: pPostcode || null,
+        city: pCity || null,
+        country: pCountry || null,
+        address: pAddress,
+        start_date: p.start_date || null,
+        end_date: p.end_date || null,
+        notes: p.notes.trim() || null,
+        is_active: p.is_active,
       });
       if (me) {
         toast.error("Membre président non créé", { description: friendlyError(me) });
@@ -660,42 +697,22 @@ function FederationsPage() {
       </Dialog>
 
       <Dialog open={memberOpen} onOpenChange={setMemberOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <form onSubmit={submitMember}>
             <DialogHeader>
               <DialogTitle>Ajouter un membre</DialogTitle>
               <DialogDescription>
-                Ce membre sera rattaché à la fédération et sélectionné comme président.
+                Rattaché à la fédération et sélectionné comme président.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="m_first">Prénom *</Label>
-                  <Input
-                    id="m_first"
-                    value={memberForm.first_name}
-                    onChange={(e) => setMemberForm({ ...memberForm, first_name: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="m_last">Nom *</Label>
-                  <Input
-                    id="m_last"
-                    value={memberForm.last_name}
-                    onChange={(e) => setMemberForm({ ...memberForm, last_name: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
               <div className="space-y-1.5">
-                <Label htmlFor="m_role">Rôle</Label>
+                <Label>Fonction *</Label>
                 <Select
                   value={memberForm.role}
                   onValueChange={(v) => setMemberForm({ ...memberForm, role: v })}
                 >
-                  <SelectTrigger id="m_role"><SelectValue /></SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {FEDERATION_MEMBER_ROLES.map((r) => (
                       <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
@@ -703,24 +720,119 @@ function FederationsPage() {
                   </SelectContent>
                 </Select>
               </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="m_email">Email</Label>
+                  <Label>Prénom *</Label>
                   <Input
-                    id="m_email"
+                    value={memberForm.first_name}
+                    onChange={(e) => setMemberForm({ ...memberForm, first_name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Nom *</Label>
+                  <Input
+                    value={memberForm.last_name}
+                    onChange={(e) => setMemberForm({ ...memberForm, last_name: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Email</Label>
+                  <Input
                     type="email"
                     value={memberForm.email}
                     onChange={(e) => setMemberForm({ ...memberForm, email: e.target.value })}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="m_phone">Téléphone</Label>
+                  <Label>Téléphone</Label>
                   <Input
-                    id="m_phone"
                     value={memberForm.phone}
                     onChange={(e) => setMemberForm({ ...memberForm, phone: e.target.value })}
                   />
                 </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Adresse (numéro + rue)</Label>
+                <AddressSearch
+                  value={memberForm.street}
+                  onChange={(v) => setMemberForm({ ...memberForm, street: v })}
+                  onSelect={(r) =>
+                    setMemberForm((f) => ({
+                      ...f,
+                      street: r.street || f.street,
+                      postcode: r.postcode || f.postcode,
+                      city: r.city || f.city,
+                      country: r.country || f.country,
+                    }))
+                  }
+                  placeholder="Rue, ville, pays…"
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Code postal</Label>
+                  <Input
+                    value={memberForm.postcode}
+                    onChange={(e) => setMemberForm({ ...memberForm, postcode: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Ville</Label>
+                  <Input
+                    value={memberForm.city}
+                    onChange={(e) => setMemberForm({ ...memberForm, city: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Pays</Label>
+                  <Input
+                    value={memberForm.country}
+                    onChange={(e) => setMemberForm({ ...memberForm, country: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Début de mandat</Label>
+                  <Input
+                    type="date"
+                    value={memberForm.start_date}
+                    onChange={(e) => setMemberForm({ ...memberForm, start_date: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Fin de mandat</Label>
+                  <Input
+                    type="date"
+                    value={memberForm.end_date}
+                    onChange={(e) => setMemberForm({ ...memberForm, end_date: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Notes</Label>
+                <Textarea
+                  rows={2}
+                  value={memberForm.notes}
+                  onChange={(e) => setMemberForm({ ...memberForm, notes: e.target.value })}
+                />
+              </div>
+
+              <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
+                <Label className="cursor-pointer">Membre actif</Label>
+                <Switch
+                  checked={memberForm.is_active}
+                  onCheckedChange={(v) => setMemberForm({ ...memberForm, is_active: v })}
+                />
               </div>
             </div>
             <DialogFooter>
