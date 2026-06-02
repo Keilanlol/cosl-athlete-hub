@@ -10,7 +10,6 @@ import {
   Mail,
   Phone,
   Globe,
-  Trophy,
   Plus,
   Pencil,
   Trash2,
