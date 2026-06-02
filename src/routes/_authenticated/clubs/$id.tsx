@@ -3,7 +3,7 @@ import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
-  Shield,
+  // Shield removed: replaced by EntityImageUpload in header
   Users,
   UserCog,
   UserRound,
