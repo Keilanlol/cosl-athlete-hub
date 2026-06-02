@@ -3,7 +3,7 @@ import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
-  Building2,
+  // Building2 removed: replaced by EntityImageUpload in header
   Users,
   Shield,
   UserCog,
@@ -66,6 +66,7 @@ import { EmptyState } from "@/components/DataTableShell";
 import { AddressSearch } from "@/components/AddressSearch";
 import { PersonCombobox } from "@/components/PersonCombobox";
 import { confirmAction } from "@/components/ConfirmDialog";
+import { EntityImageUpload } from "@/components/EntityImageUpload";
 
 export const Route = createFileRoute("/_authenticated/federations/$id")({
   component: FederationDetailPage,
@@ -478,9 +479,29 @@ function FederationDetailPage() {
             </Link>
           </Button>
           <div className="flex items-center gap-3">
-            <span className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-500 text-white">
-              <Building2 className="h-6 w-6" />
-            </span>
+            <EntityImageUpload
+              entityId={fed.id}
+              entityType="federation"
+              currentImageUrl={fed.logo_url}
+              currentStoragePath={fed.logo_storage_path}
+              shape="square"
+              size="lg"
+              placeholder={fed.acronym?.slice(0, 3)}
+              onUploaded={async (url, path) => {
+                await supabase
+                  .from("federations")
+                  .update({ logo_url: url, logo_storage_path: path })
+                  .eq("id", id);
+                setFed((f) => (f ? { ...f, logo_url: url, logo_storage_path: path } : f));
+              }}
+              onDeleted={async () => {
+                await supabase
+                  .from("federations")
+                  .update({ logo_url: null, logo_storage_path: null })
+                  .eq("id", id);
+                setFed((f) => (f ? { ...f, logo_url: null, logo_storage_path: null } : f));
+              }}
+            />
             <div>
               <h1 className="text-2xl font-semibold text-slate-900">
                 <span className="font-mono text-indigo-600">{fed.acronym}</span>{" "}
@@ -717,6 +738,7 @@ function FederationDetailPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-14"></TableHead>
                     <TableHead>Nom</TableHead>
                     <TableHead>Fonction</TableHead>
                     <TableHead>Email</TableHead>
@@ -728,14 +750,25 @@ function FederationDetailPage() {
                 </TableHeader>
                 <TableBody>
                   {members.map((m) => (
-                    <TableRow
-                      key={m.id}
-                      onClick={() => navigate({ to: "/federations/members/$memberId", params: { memberId: m.id } })}
-                      className="cursor-pointer hover:bg-slate-50"
-                    >
-                      <TableCell className="font-medium">
-                        {m.first_name} {m.last_name}
-                      </TableCell>
+                  <TableRow
+                    key={m.id}
+                    onClick={() => navigate({ to: "/federations/members/$memberId", params: { memberId: m.id } })}
+                    className="cursor-pointer hover:bg-slate-50"
+                  >
+                    <TableCell>
+                      <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-100">
+                        {m.photo_url ? (
+                          <img src={m.photo_url} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <span className="text-xs font-semibold text-slate-500">
+                            {(m.first_name[0] ?? "") + (m.last_name[0] ?? "")}
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {m.first_name} {m.last_name}
+                    </TableCell>
                       <TableCell>
                         <Badge variant="outline">{memberRoleLabel(m.role)}</Badge>
                       </TableCell>
@@ -979,6 +1012,36 @@ function FederationDetailPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
+              {editingMember && (
+                <div className="flex justify-center pb-2">
+                  <EntityImageUpload
+                    entityId={editingMember.id}
+                    entityType="federation_member"
+                    currentImageUrl={editingMember.photo_url}
+                    currentStoragePath={editingMember.photo_storage_path}
+                    shape="circle"
+                    size="lg"
+                    label="Photo"
+                    placeholder={(editingMember.first_name[0] ?? "") + (editingMember.last_name[0] ?? "")}
+                    onUploaded={async (url, path) => {
+                      await supabase
+                        .from("federation_members")
+                        .update({ photo_url: url, photo_storage_path: path })
+                        .eq("id", editingMember.id);
+                      setEditingMember((m) => (m ? { ...m, photo_url: url, photo_storage_path: path } : m));
+                      load();
+                    }}
+                    onDeleted={async () => {
+                      await supabase
+                        .from("federation_members")
+                        .update({ photo_url: null, photo_storage_path: null })
+                        .eq("id", editingMember.id);
+                      setEditingMember((m) => (m ? { ...m, photo_url: null, photo_storage_path: null } : m));
+                      load();
+                    }}
+                  />
+                </div>
+              )}
               {!editingMember && allPersons.length > 0 && (
                 <div className="space-y-1.5 rounded-md border border-dashed border-slate-300 bg-slate-50 p-3">
                   <Label className="text-xs uppercase tracking-wide text-slate-500">

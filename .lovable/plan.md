@@ -1,296 +1,105 @@
 
-# Plan de mise en service — COSLxBloobiz
+# Photos & Logos — Fédérations, Clubs, Membres, Encadrants
 
-Document opérationnel : tout ce qu'il faut paramétrer, dans l'ordre, pour qu'une instance vierge soit fonctionnelle en production. À cocher étape par étape.
+Étendre le système de photo athlète existant à 4 nouvelles entités, en gardant exactement le même UX (drag & drop, overlay Camera au survol, bouton Trash2 rouge, confirmation, URL signée 1 an dans le bucket `documents`).
 
----
+## 1. Migration SQL
 
-## 1. Pré-requis serveur
+Nouveau fichier `supabase/sql/21_entity_images.sql` :
 
-| Composant | Version min. | Usage |
-|---|---|---|
-| Node.js | 20 LTS | Build + Express runtime |
-| npm ou bun | npm 10 / bun 1.1 | Install |
-| PostgreSQL | 15+ | Base Supabase |
-| Supabase self-hosted | dernière stable | Auth + DB + Storage |
-| Reverse proxy | nginx ou Caddy | TLS + WAF devant Express |
-| Domaine + certificat | Let's Encrypt | HTTPS obligatoire (Supabase exige HTTPS pour cookies sécurisés) |
+- `federations` : `logo_url TEXT`, `logo_storage_path TEXT`
+- `clubs` : `logo_url TEXT`, `logo_storage_path TEXT`
+- `federation_members` : `photo_url TEXT`, `photo_storage_path TEXT`
+- `coaches` : `photo_url TEXT`, `photo_storage_path TEXT`
 
----
+Tous en `ADD COLUMN IF NOT EXISTS` + `NOTIFY pgrst, 'reload schema'`.
 
-## 2. Provisionner Supabase self-hosted
+## 2. Nouveau composant `src/components/EntityImageUpload.tsx`
 
-1. Déployer Supabase (docker-compose officiel ou Coolify/Dokploy).
-2. Récupérer dans le dashboard Supabase → **Project Settings → API** :
-   - `Project URL` (ex. `https://supabase.cosl.lu`)
-   - `anon public key` (clé publique)
-   - `service_role key` (clé privée — **ne jamais committer**)
-3. Vérifier que **Auth → Email auth** est activé, **désactiver "Enable email confirmations"** (l'app utilise des emails synthétiques `${username}@coslbloobiz.local` qui ne sont pas livrables).
-4. Vérifier que **Auth → Settings → Site URL** pointe vers le domaine final (ex. `https://app.cosl.lu`).
-5. Optionnel : activer **HIBP password check** (Auth → Providers → Email).
+Calqué sur `AthletePhotoUpload.tsx`, simplifié (pas de `athlete_documents`, pas de `pendingPreviewOnly`).
 
----
-
-## 3. Appliquer le schéma SQL
-
-Dans cet ordre, depuis le serveur Postgres ou via `psql` distant :
-
-```bash
-psql "$DATABASE_URL" -f supabase/sql/01_init.sql
-psql "$DATABASE_URL" -f supabase/sql/02_storage.sql
-```
-
-`01_init.sql` crée :
-- 13 enums métier
-- 24 tables (référentiels, athlètes, games, accréditations, logistique, communication)
-- triggers `handle_new_user` + `set_athletes_updated_at`
-- RPC `athlete_kyc_valid`, `accreditation_completeness`, `quota_filled`
-- RLS activé sur toutes les tables avec policy "authenticated = full access"
-
-`02_storage.sql` crée le bucket privé `accreditation-docs` + policies.
-
-> ⚠️ **À corriger avant prod** (cf. audit précédent) : les RLS sont permissives. Réécrire les policies par rôle (admin/games_manager/fed_manager/logistics/communication/reader) avant ouverture multi-utilisateurs.
-
----
-
-## 4. Seed de données initiales
-
-Aucun seed n'est fourni. À insérer manuellement via SQL ou via l'UI une fois le 1er admin créé :
-
-1. **Sports** (athlétisme, natation, judo, …) — table `sports`
-2. **Disciplines** rattachées à chaque sport — table `disciplines`
-3. **Fédérations luxembourgeoises** (FLA, FLNS, FLAM, …) — table `federations`
-4. **Clubs** principaux — table `clubs`
-
-Sans sports/fédérations, les formulaires athlètes/games seront bloqués (FK vides).
-
----
-
-## 5. Créer le premier utilisateur admin
-
-⚠️ La fonction `auth.admin_create_user(jsonb)` **n'existe pas** dans Supabase self-hosted (c'est une API REST, pas une fonction SQL). Trois méthodes possibles, par ordre de préférence :
-
-### Méthode A — Dashboard Supabase (recommandée)
-
-1. Supabase Studio → **Authentication → Users → Add user → Create new user**
-2. Email : `admin@coslbloobiz.local`
-3. Password : un mot de passe fort
-4. Cocher **Auto Confirm User**
-5. Créer.
-
-Puis compléter le profil applicatif (le trigger `handle_new_user` peut déjà avoir créé une ligne avec les métadonnées disponibles ; il faut donc faire un **upsert**, pas un insert simple) :
-
-```sql
--- Récupérer l'UUID créé
-SELECT id, email FROM auth.users WHERE email = 'admin@coslbloobiz.local';
-
--- Créer ou corriger le profil applicatif
-INSERT INTO public.user_profiles (id, username, full_name, email, role)
-VALUES (
-  '<UUID_COPIE_CI_DESSUS>',
-  'admin',
-  'Administrateur COSL',
-  'admin@coslbloobiz.local',
-  'admin'
-)
-ON CONFLICT (id) DO UPDATE SET
-  username = EXCLUDED.username,
-  full_name = EXCLUDED.full_name,
-  email = EXCLUDED.email,
-  role = EXCLUDED.role;
-```
-
-### Méthode B — API REST Auth Admin (script ou curl)
-
-Avec la `SERVICE_ROLE_KEY` (jamais committée) :
-
-```bash
-curl -X POST "$SUPABASE_URL/auth/v1/admin/users" \
-  -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
-  -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "admin@coslbloobiz.local",
-    "password": "CHANGEZ_MOI_FORT",
-    "email_confirm": true,
-    "user_metadata": {
-      "username": "admin",
-      "full_name": "Administrateur COSL",
-      "role": "admin"
-    }
-  }'
-```
-
-Avec cette méthode, `user_metadata` est rempli → le trigger `handle_new_user` crée automatiquement la ligne `user_profiles` avec rôle `admin`. Aucune insertion manuelle nécessaire.
-
-### Méthode C — Insertion SQL directe (avancé, à éviter sauf si A/B impossibles)
-
-```sql
--- 1) Créer l'utilisateur dans auth.users (mot de passe haché par Supabase)
-INSERT INTO auth.users (
-  instance_id, id, aud, role, email, encrypted_password,
-  email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
-  created_at, updated_at, confirmation_token, recovery_token,
-  email_change_token_new, email_change
-)
-VALUES (
-  '00000000-0000-0000-0000-000000000000',
-  gen_random_uuid(),
-  'authenticated', 'authenticated',
-  'admin@coslbloobiz.local',
-  crypt('CHANGEZ_MOI_FORT', gen_salt('bf')),
-  now(),
-  '{"provider":"email","providers":["email"]}'::jsonb,
-  '{"username":"admin","full_name":"Administrateur COSL","role":"admin"}'::jsonb,
-  now(), now(), '', '', '', ''
-);
-```
-
-Le trigger `handle_new_user` se déclenche et crée la ligne `user_profiles`. Nécessite l'extension `pgcrypto` (`CREATE EXTENSION IF NOT EXISTS pgcrypto;`).
-
-### Connexion
-
-Une fois le compte créé, login via `/login` avec **username = `admin`** + mot de passe défini.
-
----
-
-## 6. Variables d'environnement
-
-Créer `.env` à la racine du projet **avant** le build :
-
-```env
-# Côté client (injecté dans le bundle)
-VITE_SUPABASE_URL=https://supabase.cosl.lu
-VITE_SUPABASE_ANON_KEY=eyJhbGciOi...
-```
-
-> Le `service_role` key n'est utilisé nulle part dans le code actuel et ne doit JAMAIS être ajoutée à un `VITE_*`. Elle sera nécessaire uniquement quand on implémentera la suppression hard d'utilisateurs (route serveur dédiée — non en place).
-
----
-
-## 7. Build de production
-
-```bash
-npm install              # ou bun install
-npm run build:prod       # → dist/client/ (SPA pure, ssr: false)
-```
-
-Vérifier que `dist/client/index.html` (ou `_shell.html`) existe.
-
----
-
-## 8. Lancer le serveur Express
-
-```bash
-PORT=3000 HOST=0.0.0.0 npm run start:prod
-```
-
-À production, encadrer avec un superviseur :
-- **systemd** (recommandé) — créer `/etc/systemd/system/cosl-bloobiz.service`
-- ou **PM2** — `pm2 start "npm run start:prod" --name cosl`
-
----
-
-## 9. Reverse proxy + TLS
-
-Exemple nginx minimal :
-
-```nginx
-server {
-  listen 443 ssl http2;
-  server_name app.cosl.lu;
-  ssl_certificate     /etc/letsencrypt/live/app.cosl.lu/fullchain.pem;
-  ssl_certificate_key /etc/letsencrypt/live/app.cosl.lu/privkey.pem;
-
-  location / {
-    proxy_pass http://127.0.0.1:3000;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-Proto https;
-  }
+Props :
+```ts
+{
+  entityId: string;
+  entityType: 'federation' | 'club' | 'federation_member' | 'coach';
+  currentImageUrl?: string | null;
+  currentStoragePath?: string | null;
+  onUploaded: (url: string, storagePath: string) => void;
+  onDeleted?: () => void;
+  shape?: 'circle' | 'square';   // défaut: circle
+  size?: 'sm' | 'lg';            // défaut: lg
+  label?: string;
+  placeholder?: string;
+  className?: string;
 }
 ```
 
-Renouvellement Let's Encrypt via `certbot --nginx`.
+Comportement :
+- Bucket `documents`, chemins :
+  - `federations/{id}/logo/logo.{ext}`
+  - `clubs/{id}/logo/logo.{ext}`
+  - `federation-members/{id}/photo/photo.{ext}`
+  - `coaches/{id}/photo/photo.{ext}`
+- Avant upload : si `currentStoragePath` fourni et différent → `storage.remove([currentStoragePath])`.
+- Upload `{ upsert: true, contentType }`, puis `createSignedUrl(path, 60*60*24*365)`.
+- Callback `onUploaded(signedUrl, path)`.
+- Suppression : `confirmAction` ("Supprimer cette image ?") → `storage.remove([currentStoragePath])` → `onDeleted()`.
+- Validation : JPG/PNG/WebP, max 5 MB, toasts d'erreur.
+- Rendu :
+  - `shape="circle"` → `rounded-full` + `object-cover`, fallback `UserCircle`
+  - `shape="square"` → `rounded-lg` + `object-contain p-1`, fallback `Building2`
+  - Placeholder texte (initiales/acronyme) en `font-semibold text-slate-500` si fourni
+  - Overlay hover `bg-black/40` + Camera + "Modifier"/"Ajouter"
+  - Bouton Trash2 `-top-1 -right-1` rouge, bordure blanche
+- Label optionnel sous la zone (`text-xs text-slate-500`).
 
----
+Important : aucune écriture en DB depuis le composant — les parents gèrent l'update Supabase dans leurs `onUploaded` / `onDeleted` (ce qui permet de réutiliser le même composant pour 4 tables sans branchement interne).
 
-## 10. CORS Supabase
+## 3. Types — `src/lib/types.ts`
 
-Dans Supabase → **API → CORS** : ajouter `https://app.cosl.lu` dans les origins autorisées.
+Ajouter aux interfaces existantes :
+- `Federation` : `logo_url`, `logo_storage_path` (string | null)
+- `Club` : `logo_url`, `logo_storage_path`
+- `FederationMember` : `photo_url`, `photo_storage_path`
+- `Coach` : `photo_url`, `photo_storage_path`
 
----
+## 4. Intégration UI (8 fichiers de routes)
 
-## 11. Storage : taille fichiers et types
+Pattern identique partout : `select("*")` ramène déjà les nouvelles colonnes ; ajouter explicitement les colonnes dans les `select(...)` ciblés s'ils ne sont pas en `*`. Dans chaque Dialog d'édition, le bloc `EntityImageUpload` n'est rendu QUE si on édite une entité existante (id connu) — pas en création initiale, pour éviter d'uploader avant d'avoir un id.
 
-Dans Supabase → Storage → bucket `accreditation-docs` → **Edit** :
-- File size limit : 10 MB recommandé
-- Allowed MIME types : `application/pdf, image/jpeg, image/png`
+### `federations/index.tsx`
+- Cellule logo (square, sm) en 1ère colonne du tableau, fallback acronyme.
+- Dans Dialog édition (si `editing`) : `EntityImageUpload` (square, lg, label "Logo de la fédération") → update DB + setEditing + reload.
 
----
+### `federations/$id.tsx`
+- Header : remplacer/compléter l'icône Building2 par `EntityImageUpload` (square, lg).
+- Onglet "members" : avatar circle sm dans chaque ligne (photo ou initiales).
+- Dialog `memberOpen` (si `editingMember`) : `EntityImageUpload` (circle, lg, `entityType="federation_member"`).
 
-## 12. Sauvegardes
+### `clubs/index.tsx`
+- Cellule logo (square, sm) en 1ère colonne, fallback 2 premières lettres.
+- Dialog édition : `EntityImageUpload` (square, lg, label "Logo du club").
 
-1. **Postgres** : `pg_dump` quotidien chiffré (cron + offsite, ex. S3 + GPG).
-2. **Storage** : sync `accreditation-docs` avec `rclone` ou snapshot du volume Docker.
-3. Tester la restauration au moins une fois.
+### `clubs/$id.tsx`
+- Header : `EntityImageUpload` (square, lg) à côté du nom (remplace l'icône Shield).
+- Onglet "members" : avatar circle sm dans le tableau + Dialog (`entityType="federation_member"`).
+- Onglet "coaches" : avatar circle sm dans le tableau (lecture seule ici, édition via /coaches).
 
----
+### `coaches/index.tsx`
+- Cellule photo circle sm en 1ère colonne.
+- Dialog édition : `EntityImageUpload` (circle, lg, label "Photo").
 
-## 13. Monitoring minimal
+### `coaches/$id.tsx`
+- Header : `EntityImageUpload` (circle, lg) en remplacement de l'avatar initiales.
 
-- Healthcheck HTTP : `GET https://app.cosl.lu/login` → 200
-- Logs Express → journald (via systemd) ou fichier rotaté
-- Alertes Supabase (CPU/disque) via dashboard
+## 5. Ne pas toucher
 
----
+`AthletePhotoUpload.tsx`, `AuthContext.tsx`, `supabase.ts`, `kyc-utils.ts`, `server/node-server.mjs`, `vite.config.prod.ts`, routes logistique/games/accreditations.
 
-## 14. Checklist avant ouverture aux utilisateurs
+## Points d'attention
 
-- [ ] Schéma SQL appliqué (01 + 02)
-- [ ] Seeds sports / disciplines / fédérations / clubs insérés
-- [ ] Compte admin créé et testé
-- [ ] `.env` rempli avec URL + anon key prod
-- [ ] Build prod OK (`dist/client/` présent)
-- [ ] Express tourne sous systemd/PM2
-- [ ] Domaine HTTPS opérationnel + CORS Supabase configuré
-- [ ] Bucket `accreditation-docs` privé avec policies appliquées
-- [ ] Backup Postgres + Storage planifié
-- [ ] **(P0 sécurité)** RLS reécrites par rôle avant accès multi-utilisateurs
-- [ ] **(P1)** Validation Zod étendue à tous les formulaires
-- [ ] **(P1)** `updated_at` ajouté à toutes les tables
-- [ ] **(P2)** Tri colonnes ajouté sur les tableaux
-
----
-
-## 15. Tests fonctionnels minimum
-
-Une fois tout en place, dérouler :
-
-1. Login avec admin → dashboard chargé.
-2. Créer une fédération → un club → un sport → une discipline.
-3. Créer un athlète complet, valider Zod, vérifier KYC.
-4. Créer un Games, ajouter sport + quota.
-5. Sélectionner un athlète → vérifier que la promotion vers `selected` appelle `athlete_kyc_valid` (toast rouge si KYC invalide).
-6. Créer une accréditation, uploader un document, le valider.
-7. Créer un plan de voyage, un vol avec passager.
-8. Envoyer un message via template.
-9. Créer un 2e utilisateur depuis `/admin/users`, se déconnecter, se reconnecter avec ce compte.
-
----
-
-## 16. Travaux différés (post-mise en service)
-
-D'après l'audit du tour précédent, à planifier en sprint suivant :
-
-| Priorité | Action |
-|---|---|
-| P0 | Réécrire RLS par rôle (table `user_roles` + fonction `has_role`) |
-| P0 | Ajouter `beforeLoad` sur layout `_authenticated/_admin` |
-| P0 | Route serveur `/api/admin/users` (création/suppression via service_role) |
-| P1 | Schémas Zod pour games, federations, clubs, coaches, accreditations, logistique, communication |
-| P1 | Colonne + trigger `updated_at` sur toutes les tables mutables |
-| P1 | CHECK SQL : `birth_date`, `passport_expiry`, regex `cosl_id` |
-| P2 | Tri par colonne sur toutes les listes |
-| P2 | Statuer sur soft-delete coaches / user_profiles |
-| P3 | README de déploiement dérivé de ce plan |
+- Réutilisation du bucket existant `documents` (déjà configuré dans `10_documents_bucket.sql`, MIME types JPG/PNG/WebP/PDF autorisés, RLS authenticated OK).
+- URLs signées 1 an : à régénérer si nécessaire au prochain édit (le `currentStoragePath` permet de re-signer côté composant lors d'un remplacement).
+- Pour l'onglet coaches d'un club : on n'autorise pas l'édition de photo depuis la fiche club (juste affichage), l'édition se fait sur `/coaches/$id` — c'est cohérent avec les autres infos coach.
+- Aucun changement de logique métier ni de filtres : seul le presentationnel + 2 colonnes par table.

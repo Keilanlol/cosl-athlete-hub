@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState } from "@/components/DataTableShell";
+import { EntityImageUpload } from "@/components/EntityImageUpload";
 
 export const Route = createFileRoute("/_authenticated/coaches/$id")({
   component: CoachDetailPage,
@@ -200,9 +201,29 @@ function CoachDetailPage() {
 
       <div className="rounded-xl border border-slate-200 bg-white p-6">
         <div className="flex flex-wrap items-center gap-5">
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-indigo-100 text-2xl font-semibold text-indigo-700">
-            {initials(coach)}
-          </div>
+          <EntityImageUpload
+            entityId={coach.id}
+            entityType="coach"
+            currentImageUrl={coach.photo_url}
+            currentStoragePath={coach.photo_storage_path}
+            shape="circle"
+            size="lg"
+            placeholder={initials(coach)}
+            onUploaded={async (url, path) => {
+              await supabase
+                .from("coaches")
+                .update({ photo_url: url, photo_storage_path: path })
+                .eq("id", coach.id);
+              setCoach((c) => (c ? { ...c, photo_url: url, photo_storage_path: path } : c));
+            }}
+            onDeleted={async () => {
+              await supabase
+                .from("coaches")
+                .update({ photo_url: null, photo_storage_path: null })
+                .eq("id", coach.id);
+              setCoach((c) => (c ? { ...c, photo_url: null, photo_storage_path: null } : c));
+            }}
+          />
           <div className="flex-1">
             <h1 className="text-2xl font-semibold text-slate-900">
               {coach.first_name} {coach.last_name}
