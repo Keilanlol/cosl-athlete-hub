@@ -381,14 +381,19 @@ function ClubDetailPage() {
     };
     const { error } = editingMember
       ? await supabase.from("club_members").update(payload).eq("id", editingMember.id)
-      : await supabase.from("club_members").insert(payload);
+      : pickedPersonId
+        ? await supabase.from("club_members").update(payload).eq("id", pickedPersonId)
+        : await supabase.from("club_members").insert(payload);
     setMemberSaving(false);
     if (error) {
       toast.error("Échec de l'enregistrement", { description: friendlyError(error) });
       return;
     }
-    toast.success(editingMember ? "Membre modifié" : "Membre ajouté");
+    toast.success(
+      editingMember ? "Membre modifié" : pickedPersonId ? "Membre rattaché" : "Membre ajouté",
+    );
     setMemberOpen(false);
+    setPickedPersonId("");
     load();
   };
   const removeMember = async (m: ClubMember) => {
