@@ -707,18 +707,8 @@ function FederationsPage() {
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="space-y-1.5">
-                <Label>Fonction *</Label>
-                <Select
-                  value={memberForm.role}
-                  onValueChange={(v) => setMemberForm({ ...memberForm, role: v })}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {FEDERATION_MEMBER_ROLES.map((r) => (
-                      <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>Fonction</Label>
+                <Input value="Président" disabled />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
