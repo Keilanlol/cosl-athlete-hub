@@ -1890,14 +1890,20 @@ function KycTabContent({
   const globalStatus = kyc?.global_status ?? null;
   const nbValid = countValidAxes(kyc);
 
+  const labelOf = (code?: string | null) =>
+    (code && docTypes.find((t) => t.code === code)?.label) || code || "—";
+
+  const isIdentityDoc = (code?: string | null) =>
+    !!code && ["passport", "id_card"].includes(code);
+  const isEthicsDoc = (code?: string | null) =>
+    !!code && ["ethics", "ethics_charter"].includes(code);
+  const isRule40Doc = (code?: string | null) =>
+    !!code && ["rule40", "rule_40"].includes(code);
+
   const passportDoc = useMemo(
     () =>
       docs.find((d) => d.id === kyc?.passport_doc_id) ??
-      docs.find(
-        (d) =>
-          d.doc_type?.toLowerCase().includes("passeport") ||
-          d.doc_type?.toLowerCase().includes("identit"),
-      ),
+      docs.find((d) => isIdentityDoc(d.doc_type)),
     [docs, kyc?.passport_doc_id],
   );
 
@@ -1909,6 +1915,7 @@ function KycTabContent({
     () => docs.find((d) => d.id === kyc?.rule40_doc_id),
     [docs, kyc?.rule40_doc_id],
   );
+
 
   const age = useMemo(() => {
     if (!athlete.birth_date) return null;
