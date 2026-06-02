@@ -66,6 +66,7 @@ import { EmptyState } from "@/components/DataTableShell";
 import { AddressSearch } from "@/components/AddressSearch";
 import { PersonCombobox } from "@/components/PersonCombobox";
 import { confirmAction } from "@/components/ConfirmDialog";
+import { EntityImageUpload } from "@/components/EntityImageUpload";
 
 export const Route = createFileRoute("/_authenticated/federations/$id")({
   component: FederationDetailPage,
@@ -478,9 +479,29 @@ function FederationDetailPage() {
             </Link>
           </Button>
           <div className="flex items-center gap-3">
-            <span className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-500 text-white">
-              <Building2 className="h-6 w-6" />
-            </span>
+            <EntityImageUpload
+              entityId={fed.id}
+              entityType="federation"
+              currentImageUrl={fed.logo_url}
+              currentStoragePath={fed.logo_storage_path}
+              shape="square"
+              size="lg"
+              placeholder={fed.acronym?.slice(0, 3)}
+              onUploaded={async (url, path) => {
+                await supabase
+                  .from("federations")
+                  .update({ logo_url: url, logo_storage_path: path })
+                  .eq("id", id);
+                setFed((f) => (f ? { ...f, logo_url: url, logo_storage_path: path } : f));
+              }}
+              onDeleted={async () => {
+                await supabase
+                  .from("federations")
+                  .update({ logo_url: null, logo_storage_path: null })
+                  .eq("id", id);
+                setFed((f) => (f ? { ...f, logo_url: null, logo_storage_path: null } : f));
+              }}
+            />
             <div>
               <h1 className="text-2xl font-semibold text-slate-900">
                 <span className="font-mono text-indigo-600">{fed.acronym}</span>{" "}
