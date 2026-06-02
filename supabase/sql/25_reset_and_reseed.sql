@@ -996,9 +996,9 @@ INSERT INTO public.club_members
   (club_id, first_name, last_name, role, email, phone, is_active, start_date)
 SELECT c.id,
        split_part('Jean Marc Paul Anne Sophie Tom Luc Pascale Romain Tania Charel Henri Liz Eva Maya', ' ',
-                  ((row_number() OVER (ORDER BY c.name) - 1) % 15) + 1),
+                  (((row_number() OVER (ORDER BY c.name) - 1) % 15) + 1)::int),
        split_part('Wagner Reuter Klein Theis Hoffmann Schmitt Folkmer Becker Origer Schaeffer Stelmes Bertemes Mellina Hostert Frising', ' ',
-                  ((row_number() OVER (ORDER BY c.name) - 1) % 15) + 1),
+                  (((row_number() OVER (ORDER BY c.name) - 1) % 15) + 1)::int),
        'Président',
        'president+'||replace(lower(c.name),' ','-')||'@club.lu',
        '+352 621 22 ' || lpad(((row_number() OVER (ORDER BY c.name))::int)::text, 2, '0') || ' 01',
@@ -1010,9 +1010,9 @@ INSERT INTO public.club_members
   (club_id, first_name, last_name, role, email, phone, is_active, start_date)
 SELECT c.id,
        split_part('Claire Pierre Léa Tom Mia Eva Pol Mike Felix Ben Tim Nora Liz Charlotte Alex', ' ',
-                  ((row_number() OVER (ORDER BY c.name) - 1) % 15) + 1),
+                  (((row_number() OVER (ORDER BY c.name) - 1) % 15) + 1)::int),
        split_part('Schmit Mertens Reuter Wagner Reding Folscheid Klein Hoffmann Theis Schaeffer Frising Becker Bertemes Origer Hostert', ' ',
-                  ((row_number() OVER (ORDER BY c.name) - 1) % 15) + 1),
+                  (((row_number() OVER (ORDER BY c.name) - 1) % 15) + 1)::int),
        'Secrétaire',
        'secretary+'||replace(lower(c.name),' ','-')||'@club.lu',
        '+352 621 22 ' || lpad(((row_number() OVER (ORDER BY c.name))::int)::text, 2, '0') || ' 02',
