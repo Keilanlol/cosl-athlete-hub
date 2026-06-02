@@ -342,16 +342,16 @@ function FederationDetailPage() {
     const ok = await confirmAction({
       title: `Retirer ${c.name} ?`,
       description:
-        "Le club sera supprimé de la fédération. Cette action est irréversible.",
+        "Le club sera retiré de cette fédération (fédération_id mis à null). Le club reste existant mais sans fédération.",
       confirmLabel: "Retirer",
       destructive: true,
     });
     if (!ok) return;
-    const { error } = await supabase.from("clubs").delete().eq("id", c.id);
+    const { error } = await supabase.from("clubs").update({ federation_id: null }).eq("id", c.id);
     if (error) {
-      toast.error("Suppression impossible", { description: friendlyError(error) });
+      toast.error("Échec du retrait", { description: friendlyError(error) });
     } else {
-      toast.success("Club retiré");
+      toast.success("Club retiré de la fédération");
       load();
     }
   };
