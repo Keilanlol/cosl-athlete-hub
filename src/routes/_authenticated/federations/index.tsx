@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Plus, Pencil, Trash2, Search, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import type { Federation } from "@/lib/types";
+import { FEDERATION_MEMBER_ROLES, type Federation, type FederationMember } from "@/lib/types";
 import { EntityImageUpload } from "@/components/EntityImageUpload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,9 +68,18 @@ const empty = {
   is_olympic: true,
 };
 
+const emptyMember = {
+  first_name: "",
+  last_name: "",
+  role: "president",
+  email: "",
+  phone: "",
+};
+
 function FederationsPage() {
   const navigate = useNavigate();
   const [rows, setRows] = useState<Federation[] | null>(null);
+  const [members, setMembers] = useState<FederationMember[]>([]);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
     key: "acronym",
@@ -84,18 +93,26 @@ function FederationsPage() {
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
+  // Sub-dialog: ajouter un membre depuis le dropdown Président
+  const [memberOpen, setMemberOpen] = useState(false);
+  const [memberForm, setMemberForm] = useState(emptyMember);
+  const [memberSaving, setMemberSaving] = useState(false);
+  // En mode création de fédération, on stocke le membre à créer après l'insert
+  const [pendingPresident, setPendingPresident] = useState<typeof emptyMember | null>(null);
+
   const load = async () => {
     setRows(null);
-    const { data, error } = await supabase
-      .from("federations")
-      .select("*")
-      .order("acronym");
+    const [{ data, error }, { data: md }] = await Promise.all([
+      supabase.from("federations").select("*").order("acronym"),
+      supabase.from("federation_members").select("*").order("last_name"),
+    ]);
     if (error) {
       toast.error("Erreur de chargement", { description: friendlyError(error) });
       setRows([]);
       return;
     }
     setRows((data ?? []) as Federation[]);
+    setMembers((md ?? []) as FederationMember[]);
   };
 
   useEffect(() => {
