@@ -1969,7 +1969,7 @@ function KycTabContent({
           <div className="flex items-center gap-3 rounded-md border border-border p-3">
             <FileText className="h-4 w-4 text-muted-foreground" />
             <div className="flex-1">
-              <p className="text-sm font-medium">{passportDoc.doc_type}</p>
+              <p className="text-sm font-medium">{labelOf(passportDoc.doc_type)}</p>
               <p className="text-xs text-muted-foreground">
                 Expire le : {passportDoc.expiry_date ?? "—"}
                 {passportDoc.expiry_date &&
