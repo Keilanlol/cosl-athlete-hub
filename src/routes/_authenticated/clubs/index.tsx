@@ -344,6 +344,7 @@ function ClubsPage() {
                     Ville
                   </SortBtn>
                 </TableHead>
+                <TableHead>Président</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Téléphone</TableHead>
                 <TableHead className="w-24 text-right">Actions</TableHead>
