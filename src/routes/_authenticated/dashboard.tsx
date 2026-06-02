@@ -267,11 +267,18 @@ function DashboardPage() {
                   className="rounded-xl border border-border bg-card p-4 hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="font-semibold text-foreground truncate">{g.name}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {[g.host_city, g.host_country].filter(Boolean).join(", ") || "—"}
-                      </p>
+                    <div className="min-w-0 flex items-center gap-2">
+                      {g.logo_url ? (
+                        <img src={g.logo_url} alt="" className="h-8 w-8 shrink-0 object-contain" />
+                      ) : (
+                        <Trophy className="h-5 w-5 shrink-0 text-muted-foreground" />
+                      )}
+                      <div className="min-w-0">
+                        <p className="font-semibold text-foreground truncate">{g.name}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {[g.host_city, g.host_country].filter(Boolean).join(", ") || "—"}
+                        </p>
+                      </div>
                     </div>
                     {t && (
                       <Badge className={`${t.cls} hover:${t.cls} shrink-0`}>
