@@ -14,7 +14,8 @@ export type EntityType =
   | "club"
   | "federation_member"
   | "club_member"
-  | "coach";
+  | "coach"
+  | "game";
 
 export interface EntityImageUploadProps {
   entityId: string;
@@ -42,6 +43,8 @@ const buildStoragePath = (entityType: EntityType, entityId: string, ext: string)
       return `club-members/${entityId}/photo/photo.${ext}`;
     case "coach":
       return `coaches/${entityId}/photo/photo.${ext}`;
+    case "game":
+      return `games/${entityId}/logo/logo.${ext}`;
   }
 };
 

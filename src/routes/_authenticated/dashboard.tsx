@@ -151,7 +151,7 @@ function DashboardPage() {
             })}
           </p>
         </div>
-        <img src="/logo-cosl.png" alt="COSL" className="h-10 w-auto opacity-60" />
+        <img src="/logo-cosl.png" alt="COSL" className="h-20 w-auto" />
       </div>
 
       {/* KPI cards */}

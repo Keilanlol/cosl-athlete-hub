@@ -496,6 +496,8 @@ export type Game = {
   timezone: string | null;
   status: GameStatus;
   description: string | null;
+  logo_url: string | null;
+  logo_storage_path: string | null;
   created_at: string;
 };
 
