@@ -143,10 +143,13 @@ function GameLayout() {
               currentStoragePath={game.logo_storage_path}
               shape="square"
               size="lg"
-              onUploaded={(url, path) => {
+              placeholder={(game.short_name ?? game.name)?.slice(0, 2).toUpperCase()}
+              onUploaded={async (url, path) => {
+                await supabase.from("games").update({ logo_url: url, logo_storage_path: path }).eq("id", game.id);
                 setGame({ ...game, logo_url: url, logo_storage_path: path });
               }}
-              onDeleted={() => {
+              onDeleted={async () => {
+                await supabase.from("games").update({ logo_url: null, logo_storage_path: null }).eq("id", game.id);
                 setGame({ ...game, logo_url: null, logo_storage_path: null });
               }}
             />
