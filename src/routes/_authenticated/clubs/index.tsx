@@ -353,6 +353,7 @@ function ClubsPage() {
             <TableBody>
               {visible.map((c) => {
                 const f = fedMap.get(c.federation_id);
+                const pres = presidentByClub.get(c.id);
                 return (
                   <TableRow
                     key={c.id}
@@ -383,8 +384,11 @@ function ClubsPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-muted-foreground">{c.city ?? "—"}</TableCell>
-                    <TableCell className="text-muted-foreground">{c.email ?? "—"}</TableCell>
-                    <TableCell className="text-muted-foreground">{c.phone ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {pres ? `${pres.first_name} ${pres.last_name}` : "—"}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{pres?.email ?? c.email ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{pres?.phone ?? c.phone ?? "—"}</TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <Button
                         variant="ghost"
