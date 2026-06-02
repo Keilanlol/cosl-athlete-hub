@@ -434,6 +434,44 @@ function ClubDetailPage() {
     }
   };
 
+  // ---------- Coach CRUD ----------
+  const openCreateCoach = () => {
+    setPickedCoachId("");
+    setCoachForm(emptyCoach);
+    setCoachOpen(true);
+  };
+  const submitCoach = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!coachForm.first_name.trim() || !coachForm.last_name.trim()) {
+      toast.error("Prénom et nom requis");
+      return;
+    }
+    setCoachSaving(true);
+    const payload = {
+      club_id: id,
+      federation_id: club?.federation_id ?? null,
+      first_name: coachForm.first_name.trim(),
+      last_name: coachForm.last_name.trim(),
+      email: coachForm.email.trim() || null,
+      phone: coachForm.phone.trim() || null,
+      role: coachForm.role,
+      is_active: coachForm.is_active,
+    };
+    const { error } = pickedCoachId
+      ? await supabase.from("coaches").update(payload).eq("id", pickedCoachId)
+      : await supabase.from("coaches").insert(payload);
+    setCoachSaving(false);
+    if (error) {
+      toast.error("Échec de l'enregistrement", { description: friendlyError(error) });
+      return;
+    }
+    toast.success(pickedCoachId ? "Encadrant rattaché" : "Encadrant ajouté");
+    setCoachOpen(false);
+    setPickedCoachId("");
+    load();
+  };
+
+
   if (loading) return <div className="p-6 text-muted-foreground">Chargement…</div>;
   if (!club) {
     return (
