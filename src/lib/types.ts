@@ -51,6 +51,10 @@ export const COACH_ROLES = [
   { value: "manager", label: "Manager" },
   { value: "medical", label: "Médical" },
   { value: "official", label: "Officiel" },
+  { value: "chief_of_mission", label: "Chef de mission" },
+  { value: "press", label: "Presse" },
+  { value: "physio", label: "Physiothérapeute" },
+  { value: "logistics", label: "Logistique" },
 ] as const;
 
 export type FederationMember = {
