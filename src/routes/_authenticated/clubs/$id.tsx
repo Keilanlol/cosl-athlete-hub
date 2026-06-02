@@ -68,6 +68,7 @@ import { EmptyState } from "@/components/DataTableShell";
 import { AddressSearch } from "@/components/AddressSearch";
 import { PersonCombobox } from "@/components/PersonCombobox";
 import { confirmAction } from "@/components/ConfirmDialog";
+import { EntityImageUpload } from "@/components/EntityImageUpload";
 
 export const Route = createFileRoute("/_authenticated/clubs/$id")({
   component: ClubDetailPage,
@@ -427,9 +428,29 @@ function ClubDetailPage() {
           </Link>
         </Button>
         <div className="flex items-center gap-3">
-          <span className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-500 text-white">
-            <Shield className="h-6 w-6" />
-          </span>
+          <EntityImageUpload
+            entityId={club.id}
+            entityType="club"
+            currentImageUrl={club.logo_url}
+            currentStoragePath={club.logo_storage_path}
+            shape="square"
+            size="lg"
+            placeholder={club.name?.slice(0, 2).toUpperCase()}
+            onUploaded={async (url, path) => {
+              await supabase
+                .from("clubs")
+                .update({ logo_url: url, logo_storage_path: path })
+                .eq("id", id);
+              setClub((c) => (c ? { ...c, logo_url: url, logo_storage_path: path } : c));
+            }}
+            onDeleted={async () => {
+              await supabase
+                .from("clubs")
+                .update({ logo_url: null, logo_storage_path: null })
+                .eq("id", id);
+              setClub((c) => (c ? { ...c, logo_url: null, logo_storage_path: null } : c));
+            }}
+          />
           <div>
             <h1 className="text-2xl font-semibold text-slate-900">{club.name}</h1>
             <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-slate-600">
