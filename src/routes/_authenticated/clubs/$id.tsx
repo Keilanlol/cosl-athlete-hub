@@ -10,7 +10,6 @@ import {
   Mail,
   Phone,
   MapPin,
-  Trophy,
   Building2,
   Plus,
   Pencil,
