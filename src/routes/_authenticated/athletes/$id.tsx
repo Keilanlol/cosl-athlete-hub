@@ -2014,16 +2014,15 @@ function KycTabContent({
               {docs
                 .filter(
                   (d) =>
-                    d.category === "admin" ||
-                    d.doc_type?.toLowerCase().includes("passeport") ||
-                    d.doc_type?.toLowerCase().includes("identit"),
+                    d.category === "admin" || isIdentityDoc(d.doc_type),
                 )
                 .map((d) => (
                   <SelectItem key={d.id} value={d.id}>
-                    {d.doc_type} — {d.file_name}
+                    {labelOf(d.doc_type)} — {d.file_name}
                     {d.expiry_date ? ` (exp. ${d.expiry_date})` : ""}
                   </SelectItem>
                 ))}
+
             </SelectContent>
           </Select>
         </div>
