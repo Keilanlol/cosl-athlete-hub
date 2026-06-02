@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Search, AlertTriangle } from "lucide-react";
+import { Plus, Pencil, Search, AlertTriangle, Users } from "lucide-react";
 import { KycStatusBadge } from "@/components/KycStatusBadge";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -418,11 +418,16 @@ function AthletesPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">Athlètes</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Référentiel central des athlètes COSL.
-          </p>
+        <div className="flex items-center gap-3">
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-white">
+            <Users className="h-5 w-5" />
+          </span>
+          <div>
+            <h1 className="text-2xl font-semibold text-foreground">Athlètes</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Référentiel central des athlètes COSL.
+            </p>
+          </div>
         </div>
         <Button onClick={openCreate} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
           <Plus className="mr-2 h-4 w-4" /> Ajouter un athlète
