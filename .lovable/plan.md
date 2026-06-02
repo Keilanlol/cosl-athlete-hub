@@ -1,105 +1,48 @@
+# Plan — Photos club_members + seed des images entités
 
-# Photos & Logos — Fédérations, Clubs, Membres, Encadrants
+## 1. Migration SQL — `supabase/sql/22_club_members_photo.sql`
 
-Étendre le système de photo athlète existant à 4 nouvelles entités, en gardant exactement le même UX (drag & drop, overlay Camera au survol, bouton Trash2 rouge, confirmation, URL signée 1 an dans le bucket `documents`).
+Ajouter les colonnes photo sur `club_members` (mêmes noms que `federation_members`) :
 
-## 1. Migration SQL
+```sql
+ALTER TABLE public.club_members
+  ADD COLUMN IF NOT EXISTS photo_url          TEXT,
+  ADD COLUMN IF NOT EXISTS photo_storage_path TEXT;
 
-Nouveau fichier `supabase/sql/21_entity_images.sql` :
-
-- `federations` : `logo_url TEXT`, `logo_storage_path TEXT`
-- `clubs` : `logo_url TEXT`, `logo_storage_path TEXT`
-- `federation_members` : `photo_url TEXT`, `photo_storage_path TEXT`
-- `coaches` : `photo_url TEXT`, `photo_storage_path TEXT`
-
-Tous en `ADD COLUMN IF NOT EXISTS` + `NOTIFY pgrst, 'reload schema'`.
-
-## 2. Nouveau composant `src/components/EntityImageUpload.tsx`
-
-Calqué sur `AthletePhotoUpload.tsx`, simplifié (pas de `athlete_documents`, pas de `pendingPreviewOnly`).
-
-Props :
-```ts
-{
-  entityId: string;
-  entityType: 'federation' | 'club' | 'federation_member' | 'coach';
-  currentImageUrl?: string | null;
-  currentStoragePath?: string | null;
-  onUploaded: (url: string, storagePath: string) => void;
-  onDeleted?: () => void;
-  shape?: 'circle' | 'square';   // défaut: circle
-  size?: 'sm' | 'lg';            // défaut: lg
-  label?: string;
-  placeholder?: string;
-  className?: string;
-}
+NOTIFY pgrst, 'reload schema';
 ```
 
-Comportement :
-- Bucket `documents`, chemins :
-  - `federations/{id}/logo/logo.{ext}`
-  - `clubs/{id}/logo/logo.{ext}`
-  - `federation-members/{id}/photo/photo.{ext}`
-  - `coaches/{id}/photo/photo.{ext}`
-- Avant upload : si `currentStoragePath` fourni et différent → `storage.remove([currentStoragePath])`.
-- Upload `{ upsert: true, contentType }`, puis `createSignedUrl(path, 60*60*24*365)`.
-- Callback `onUploaded(signedUrl, path)`.
-- Suppression : `confirmAction` ("Supprimer cette image ?") → `storage.remove([currentStoragePath])` → `onDeleted()`.
-- Validation : JPG/PNG/WebP, max 5 MB, toasts d'erreur.
-- Rendu :
-  - `shape="circle"` → `rounded-full` + `object-cover`, fallback `UserCircle`
-  - `shape="square"` → `rounded-lg` + `object-contain p-1`, fallback `Building2`
-  - Placeholder texte (initiales/acronyme) en `font-semibold text-slate-500` si fourni
-  - Overlay hover `bg-black/40` + Camera + "Modifier"/"Ajouter"
-  - Bouton Trash2 `-top-1 -right-1` rouge, bordure blanche
-- Label optionnel sous la zone (`text-xs text-slate-500`).
+## 2. Types — `src/lib/types.ts`
 
-Important : aucune écriture en DB depuis le composant — les parents gèrent l'update Supabase dans leurs `onUploaded` / `onDeleted` (ce qui permet de réutiliser le même composant pour 4 tables sans branchement interne).
+Étendre `ClubMember` avec `photo_url?: string | null` et `photo_storage_path?: string | null`.
 
-## 3. Types — `src/lib/types.ts`
+## 3. UI — `src/routes/_authenticated/clubs/$id.tsx`
 
-Ajouter aux interfaces existantes :
-- `Federation` : `logo_url`, `logo_storage_path` (string | null)
-- `Club` : `logo_url`, `logo_storage_path`
-- `FederationMember` : `photo_url`, `photo_storage_path`
-- `Coach` : `photo_url`, `photo_storage_path`
+- Sélectionner les nouvelles colonnes dans les requêtes `club_members`.
+- Onglet Membres : remplacer l'avatar « initiales » par `<EntityImageUpload shape="circle" size="sm" entityType="club_member" />` en lecture (ou simple `<img>` si pas d'édition inline) — calqué sur l'onglet Membres de la fiche fédération.
+- Dialog d'édition d'un membre : ajouter `<EntityImageUpload shape="circle" size="lg" entityType="club_member" label="Photo" />` (visible uniquement quand `editingMember.id` existe), avec `onUploaded`/`onDeleted` qui font le `update` sur `club_members`.
 
-## 4. Intégration UI (8 fichiers de routes)
+## 4. Composant `EntityImageUpload`
 
-Pattern identique partout : `select("*")` ramène déjà les nouvelles colonnes ; ajouter explicitement les colonnes dans les `select(...)` ciblés s'ils ne sont pas en `*`. Dans chaque Dialog d'édition, le bloc `EntityImageUpload` n'est rendu QUE si on édite une entité existante (id connu) — pas en création initiale, pour éviter d'uploader avant d'avoir un id.
+Ajouter `club_member` à l'union `entityType` et au mapping de chemin de stockage : `club-members/{id}/photo/photo.{ext}`.
 
-### `federations/index.tsx`
-- Cellule logo (square, sm) en 1ère colonne du tableau, fallback acronyme.
-- Dans Dialog édition (si `editing`) : `EntityImageUpload` (square, lg, label "Logo de la fédération") → update DB + setEditing + reload.
+## 5. Seed des images — `supabase/sql/23_seed_entity_images.sql`
 
-### `federations/$id.tsx`
-- Header : remplacer/compléter l'icône Building2 par `EntityImageUpload` (square, lg).
-- Onglet "members" : avatar circle sm dans chaque ligne (photo ou initiales).
-- Dialog `memberOpen` (si `editingMember`) : `EntityImageUpload` (circle, lg, `entityType="federation_member"`).
+Remplir `logo_url` / `photo_url` pour les lignes existantes qui n'en ont pas, via des URLs publiques déterministes (pas de fichiers réels dans le bucket, donc `*_storage_path` reste `NULL` — l'upload via UI le remplira plus tard) :
 
-### `clubs/index.tsx`
-- Cellule logo (square, sm) en 1ère colonne, fallback 2 premières lettres.
-- Dialog édition : `EntityImageUpload` (square, lg, label "Logo du club").
+- **federations.logo_url** : `https://api.dicebear.com/9.x/initials/svg?seed={short_name}&backgroundType=gradientLinear&radius=20`
+- **clubs.logo_url** : même générateur, seed = `acronym` ou `name`
+- **federation_members.photo_url** : `https://api.dicebear.com/9.x/avataaars/svg?seed={id}`
+- **coaches.photo_url** : `https://api.dicebear.com/9.x/avataaars/svg?seed={id}`
+- **club_members.photo_url** : idem
 
-### `clubs/$id.tsx`
-- Header : `EntityImageUpload` (square, lg) à côté du nom (remplace l'icône Shield).
-- Onglet "members" : avatar circle sm dans le tableau + Dialog (`entityType="federation_member"`).
-- Onglet "coaches" : avatar circle sm dans le tableau (lecture seule ici, édition via /coaches).
+Toutes les requêtes utilisent `UPDATE ... WHERE photo_url IS NULL` (idempotent, ne casse pas les vraies images uploadées). Pas de `INSERT` de lignes — on enrichit seulement les données existantes.
 
-### `coaches/index.tsx`
-- Cellule photo circle sm en 1ère colonne.
-- Dialog édition : `EntityImageUpload` (circle, lg, label "Photo").
+## Fichiers
 
-### `coaches/$id.tsx`
-- Header : `EntityImageUpload` (circle, lg) en remplacement de l'avatar initiales.
+- Créés : `supabase/sql/22_club_members_photo.sql`, `supabase/sql/23_seed_entity_images.sql`
+- Modifiés : `src/lib/types.ts`, `src/components/EntityImageUpload.tsx`, `src/routes/_authenticated/clubs/$id.tsx`
 
-## 5. Ne pas toucher
+## Hors scope
 
-`AthletePhotoUpload.tsx`, `AuthContext.tsx`, `supabase.ts`, `kyc-utils.ts`, `server/node-server.mjs`, `vite.config.prod.ts`, routes logistique/games/accreditations.
-
-## Points d'attention
-
-- Réutilisation du bucket existant `documents` (déjà configuré dans `10_documents_bucket.sql`, MIME types JPG/PNG/WebP/PDF autorisés, RLS authenticated OK).
-- URLs signées 1 an : à régénérer si nécessaire au prochain édit (le `currentStoragePath` permet de re-signer côté composant lors d'un remplacement).
-- Pour l'onglet coaches d'un club : on n'autorise pas l'édition de photo depuis la fiche club (juste affichage), l'édition se fait sur `/coaches/$id` — c'est cohérent avec les autres infos coach.
-- Aucun changement de logique métier ni de filtres : seul le presentationnel + 2 colonnes par table.
+`AthletePhotoUpload`, auth, autres routes (logistique/games/accréditations), aucune modification des photos déjà uploadées par l'utilisateur.
