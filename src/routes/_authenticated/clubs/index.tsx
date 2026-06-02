@@ -315,7 +315,7 @@ function ClubsPage() {
 
       <div className="rounded-lg border border-border bg-card">
         {rows === null ? (
-          <TableSkeleton cols={6} />
+          <TableSkeleton cols={7} />
         ) : filtered.length === 0 ? (
           <div className="p-6">
             <EmptyState message="Aucun club enregistré." />
