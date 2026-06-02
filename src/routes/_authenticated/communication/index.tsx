@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Mail, BellRing, MailOpen, Send } from "lucide-react";
+import { Mail, BellRing, MailOpen, Send, Megaphone } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { type MessageSent } from "@/lib/types";
@@ -63,9 +63,14 @@ function CommunicationDashboard() {
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">Communication</h1>
-          <p className="text-sm text-muted-foreground">Tableau de bord des envois et notifications.</p>
+        <div className="flex items-center gap-3">
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-white">
+            <Megaphone className="h-5 w-5" />
+          </span>
+          <div>
+            <h1 className="text-2xl font-semibold text-foreground">Communication</h1>
+            <p className="text-sm text-muted-foreground">Tableau de bord des envois et notifications.</p>
+          </div>
         </div>
         <Link to="/communication/messages">
           <Button className="bg-primary hover:bg-[var(--cosl-red-dark)]">
