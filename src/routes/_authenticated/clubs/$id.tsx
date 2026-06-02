@@ -853,14 +853,19 @@ function ClubDetailPage() {
 
         {/* ============ COACHES ============ */}
         <TabsContent value="coaches" className="mt-4 space-y-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Nom, prénom, email, rôle…"
-              value={coachSearch}
-              onChange={(e) => setCoachSearch(e.target.value)}
-              className="pl-9"
-            />
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Nom, prénom, email, rôle…"
+                value={coachSearch}
+                onChange={(e) => setCoachSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <Button onClick={openCreateCoach} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
+              <Plus className="mr-2 h-4 w-4" /> Ajouter un encadrant
+            </Button>
           </div>
           {(() => {
             const q = coachSearch.trim().toLowerCase();
