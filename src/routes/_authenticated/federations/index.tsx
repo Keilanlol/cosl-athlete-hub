@@ -158,11 +158,13 @@ function FederationsPage() {
   const openCreate = () => {
     setEditing(null);
     setForm(empty);
+    setPendingPresident(null);
     setOpen(true);
   };
 
   const openEdit = (f: Federation) => {
     setEditing(f);
+    setPendingPresident(null);
     setForm({
       acronym: f.acronym,
       name: f.name,
@@ -173,6 +175,82 @@ function FederationsPage() {
       is_olympic: f.is_olympic ?? true,
     });
     setOpen(true);
+  };
+
+  // Membres rattachés à la fédération courante (en édition) — sinon liste vide
+  const fedMembers = useMemo(
+    () => (editing ? members.filter((m) => m.federation_id === editing.id) : []),
+    [members, editing],
+  );
+
+  const presidentValue = (() => {
+    if (pendingPresident) return "__pending__";
+    const name = form.president_name.trim();
+    if (!name) return "";
+    const found = fedMembers.find(
+      (m) => `${m.first_name} ${m.last_name}`.trim() === name,
+    );
+    return found ? found.id : "__custom__";
+  })();
+
+  const onPresidentSelect = (v: string) => {
+    if (v === "__new__") {
+      setMemberForm(emptyMember);
+      setMemberOpen(true);
+      return;
+    }
+    if (v === "__none__") {
+      setForm({ ...form, president_name: "" });
+      setPendingPresident(null);
+      return;
+    }
+    const m = fedMembers.find((x) => x.id === v);
+    if (m) {
+      setForm({ ...form, president_name: `${m.first_name} ${m.last_name}`.trim() });
+      setPendingPresident(null);
+    }
+  };
+
+  const submitMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const fn = memberForm.first_name.trim();
+    const ln = memberForm.last_name.trim();
+    if (!fn || !ln) {
+      toast.error("Prénom et nom requis");
+      return;
+    }
+    const fullName = `${fn} ${ln}`.trim();
+    // Pas encore de fédération créée → on stocke pour insertion post-create
+    if (!editing) {
+      setPendingPresident({ ...memberForm, first_name: fn, last_name: ln });
+      setForm((f) => ({ ...f, president_name: fullName }));
+      setMemberOpen(false);
+      toast.success("Membre prêt — sera créé avec la fédération");
+      return;
+    }
+    setMemberSaving(true);
+    const { data, error } = await supabase
+      .from("federation_members")
+      .insert({
+        federation_id: editing.id,
+        first_name: fn,
+        last_name: ln,
+        role: memberForm.role,
+        email: memberForm.email.trim() || null,
+        phone: memberForm.phone.trim() || null,
+        is_active: true,
+      })
+      .select()
+      .single();
+    setMemberSaving(false);
+    if (error) {
+      toast.error("Échec de l'ajout du membre", { description: friendlyError(error) });
+      return;
+    }
+    setMembers((ms) => [...ms, data as FederationMember]);
+    setForm((f) => ({ ...f, president_name: fullName }));
+    setMemberOpen(false);
+    toast.success("Membre ajouté");
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -191,16 +269,49 @@ function FederationsPage() {
       international_federation: form.international_federation.trim() || null,
       is_olympic: form.is_olympic,
     };
-    const { error } = editing
-      ? await supabase.from("federations").update(payload).eq("id", editing.id)
-      : await supabase.from("federations").insert(payload);
-    setSaving(false);
-    if (error) {
-      toast.error("Échec de l'enregistrement", { description: friendlyError(error) });
-      return;
+    let newFedId: string | null = editing?.id ?? null;
+    if (editing) {
+      const { error } = await supabase
+        .from("federations")
+        .update(payload)
+        .eq("id", editing.id);
+      if (error) {
+        setSaving(false);
+        toast.error("Échec de l'enregistrement", { description: friendlyError(error) });
+        return;
+      }
+    } else {
+      const { data, error } = await supabase
+        .from("federations")
+        .insert(payload)
+        .select()
+        .single();
+      if (error || !data) {
+        setSaving(false);
+        toast.error("Échec de l'enregistrement", { description: friendlyError(error) });
+        return;
+      }
+      newFedId = (data as Federation).id;
     }
+    // Création du président en attente
+    if (!editing && pendingPresident && newFedId) {
+      const { error: me } = await supabase.from("federation_members").insert({
+        federation_id: newFedId,
+        first_name: pendingPresident.first_name,
+        last_name: pendingPresident.last_name,
+        role: pendingPresident.role,
+        email: pendingPresident.email.trim() || null,
+        phone: pendingPresident.phone.trim() || null,
+        is_active: true,
+      });
+      if (me) {
+        toast.error("Membre président non créé", { description: friendlyError(me) });
+      }
+    }
+    setSaving(false);
     toast.success(editing ? "Fédération modifiée" : "Fédération ajoutée");
     setOpen(false);
+    setPendingPresident(null);
     load();
   };
 
