@@ -151,6 +151,7 @@ function ClubDetailPage() {
   const [allPersons, setAllPersons] = useState<
     Array<{ id: string; first_name: string; last_name: string; email: string | null; phone: string | null; address: string | null }>
   >([]);
+  const [unlinkedMembers, setUnlinkedMembers] = useState<ClubMember[]>([]);
   const [pickedPersonId, setPickedPersonId] = useState("");
   const [, setSports] = useState<Sport[]>([]);
   const [loading, setLoading] = useState(true);
