@@ -467,6 +467,17 @@ function DelegationPage() {
                       <CommandInput placeholder="Rechercher…" />
                       <CommandList>
                         <CommandEmpty>Aucun résultat.</CommandEmpty>
+                        {memberType === "coach" && (
+                          <CommandGroup>
+                            <CommandItem
+                              value="__new_coach__"
+                              onSelect={() => { setPickerOpen(false); setCoachOpen(true); }}
+                              className="font-medium text-primary"
+                            >
+                              <Plus className="mr-2 h-4 w-4" /> Créer un nouvel encadrant
+                            </CommandItem>
+                          </CommandGroup>
+                        )}
                         <CommandGroup>
                           {(memberType === "athlete" ? athletes : coaches).slice(0, 200).map((p) => (
                             <CommandItem
