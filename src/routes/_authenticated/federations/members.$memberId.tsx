@@ -30,6 +30,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { EntityImageUpload } from "@/components/EntityImageUpload";
 
 export const Route = createFileRoute("/_authenticated/federations/members/$memberId")({
   component: FedMemberDetailPage,
