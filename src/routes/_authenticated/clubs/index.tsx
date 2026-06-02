@@ -404,6 +404,36 @@ function ClubsPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
+              {editing && (
+                <div className="flex justify-center pb-2">
+                  <EntityImageUpload
+                    entityId={editing.id}
+                    entityType="club"
+                    currentImageUrl={editing.logo_url}
+                    currentStoragePath={editing.logo_storage_path}
+                    shape="square"
+                    size="lg"
+                    label="Logo du club"
+                    placeholder={editing.name?.slice(0, 2).toUpperCase()}
+                    onUploaded={async (url, path) => {
+                      await supabase
+                        .from("clubs")
+                        .update({ logo_url: url, logo_storage_path: path })
+                        .eq("id", editing.id);
+                      setEditing((e) => (e ? { ...e, logo_url: url, logo_storage_path: path } : e));
+                      load();
+                    }}
+                    onDeleted={async () => {
+                      await supabase
+                        .from("clubs")
+                        .update({ logo_url: null, logo_storage_path: null })
+                        .eq("id", editing.id);
+                      setEditing((e) => (e ? { ...e, logo_url: null, logo_storage_path: null } : e));
+                      load();
+                    }}
+                  />
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label htmlFor="cname">Nom *</Label>
                 <Input
