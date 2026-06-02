@@ -5,6 +5,7 @@ import { Plus, Pencil, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import type { Club, Federation } from "@/lib/types";
+import { EntityImageUpload } from "@/components/EntityImageUpload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AddressSearch } from "@/components/AddressSearch";
@@ -303,6 +304,7 @@ function ClubsPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-14"></TableHead>
                 <TableHead>
                   <SortBtn
                     active={sort.key === "name"}
@@ -336,6 +338,17 @@ function ClubsPage() {
                     onClick={() => navigate({ to: "/clubs/$id", params: { id: c.id } })}
                     className="cursor-pointer hover:bg-slate-50"
                   >
+                    <TableCell>
+                      <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-md border border-slate-200 bg-slate-50">
+                        {c.logo_url ? (
+                          <img src={c.logo_url} alt={c.name} className="h-full w-full object-contain p-0.5" />
+                        ) : (
+                          <span className="text-[10px] font-semibold text-slate-500">
+                            {c.name?.slice(0, 2).toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="font-medium">{c.name}</TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       {f ? (
