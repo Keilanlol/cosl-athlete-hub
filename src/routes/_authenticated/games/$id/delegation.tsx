@@ -512,6 +512,57 @@ function DelegationPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Create encadrant sub-dialog */}
+      <Dialog open={coachOpen} onOpenChange={setCoachOpen}>
+        <DialogContent>
+          <form onSubmit={submitCoach}>
+            <DialogHeader>
+              <DialogTitle>Nouvel encadrant</DialogTitle>
+              <DialogDescription>Créer un encadrant et l'utiliser directement comme membre.</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="c-fn">Prénom *</Label>
+                  <Input id="c-fn" value={coachForm.first_name} onChange={(e) => setCoachForm({ ...coachForm, first_name: e.target.value })} required />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="c-ln">Nom *</Label>
+                  <Input id="c-ln" value={coachForm.last_name} onChange={(e) => setCoachForm({ ...coachForm, last_name: e.target.value })} required />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="c-role">Rôle *</Label>
+                <Select value={coachForm.role} onValueChange={(v) => setCoachForm({ ...coachForm, role: v })}>
+                  <SelectTrigger id="c-role"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {COACH_ROLES.map((r) => (
+                      <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="c-em">Email</Label>
+                  <Input id="c-em" type="email" value={coachForm.email} onChange={(e) => setCoachForm({ ...coachForm, email: e.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="c-ph">Téléphone</Label>
+                  <Input id="c-ph" value={coachForm.phone} onChange={(e) => setCoachForm({ ...coachForm, phone: e.target.value })} />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setCoachOpen(false)}>Annuler</Button>
+              <Button type="submit" disabled={coachSaving} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
+                {coachSaving ? "Création…" : "Créer"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
