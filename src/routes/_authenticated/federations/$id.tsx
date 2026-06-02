@@ -42,6 +42,7 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -64,7 +65,7 @@ import {
 } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/DataTableShell";
 import { AddressSearch } from "@/components/AddressSearch";
-import { PersonCombobox } from "@/components/PersonCombobox";
+
 import { confirmAction } from "@/components/ConfirmDialog";
 import { EntityImageUpload } from "@/components/EntityImageUpload";
 
@@ -155,6 +156,7 @@ function FederationDetailPage() {
   const [allPersons, setAllPersons] = useState<
     Array<{ id: string; first_name: string; last_name: string; email: string | null; phone: string | null; address: string | null }>
   >([]);
+  const [unlinkedMembers, setUnlinkedMembers] = useState<FederationMember[]>([]);
   const [pickedPersonId, setPickedPersonId] = useState("");
   const [, setSports] = useState<Sport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -212,6 +214,14 @@ function FederationDetailPage() {
       dedup.push(p);
     }
     setAllPersons(dedup);
+
+    const { data: unlinked } = await supabase
+      .from("federation_members")
+      .select("*")
+      .is("federation_id", null)
+      .order("last_name");
+    setUnlinkedMembers((unlinked ?? []) as FederationMember[]);
+
 
     const clubIds = clubsData.map((cl) => cl.id);
     // Athletes: those rattached to fed OR member of one of its clubs
@@ -420,14 +430,22 @@ function FederationDetailPage() {
           .from("federation_members")
           .update(payload)
           .eq("id", editingMember.id)
-      : await supabase.from("federation_members").insert(payload);
+      : pickedPersonId
+        ? await supabase
+            .from("federation_members")
+            .update(payload)
+            .eq("id", pickedPersonId)
+        : await supabase.from("federation_members").insert(payload);
     setMemberSaving(false);
     if (error) {
       toast.error("Échec de l'enregistrement", { description: friendlyError(error) });
       return;
     }
-    toast.success(editingMember ? "Membre modifié" : "Membre ajouté");
+    toast.success(
+      editingMember ? "Membre modifié" : pickedPersonId ? "Membre rattaché" : "Membre ajouté",
+    );
     setMemberOpen(false);
+    setPickedPersonId("");
     load();
   };
   const removeMember = async (m: FederationMember) => {
@@ -1042,24 +1060,62 @@ function FederationDetailPage() {
                   />
                 </div>
               )}
-              {!editingMember && allPersons.length > 0 && (
+              {!editingMember && (
                 <div className="space-y-1.5 rounded-md border border-dashed border-slate-300 bg-slate-50 p-3">
                   <Label className="text-xs uppercase tracking-wide text-slate-500">
-                    Choisir un membre déjà enregistré (optionnel)
+                    Choisir un membre existant ou créer un nouveau
                   </Label>
-                  <PersonCombobox
-                    value={pickedPersonId}
-                    onChange={onPickPerson}
-                    options={allPersons.map((p) => ({
-                      id: p.id,
-                      label: `${p.first_name} ${p.last_name}${p.email ? ` — ${p.email}` : ""}`,
-                    }))}
-                    placeholder="Sélectionner pour pré-remplir…"
-                    searchPlaceholder="Rechercher un membre existant…"
-                    emptyMessage="Aucun membre trouvé."
-                  />
+                  <Select
+                    value={pickedPersonId || "__new__"}
+                    onValueChange={(v) => {
+                      if (v === "__new__") {
+                        setPickedPersonId("");
+                        setMemberForm(emptyMember);
+                        return;
+                      }
+                      setPickedPersonId(v);
+                      const p = unlinkedMembers.find((x) => x.id === v);
+                      if (!p) return;
+                      setMemberForm({
+                        first_name: p.first_name,
+                        last_name: p.last_name,
+                        role: p.role ?? "president",
+                        email: p.email ?? "",
+                        phone: p.phone ?? "",
+                        address: p.address ?? "",
+                        street: p.street ?? "",
+                        postcode: p.postcode ?? "",
+                        city: p.city ?? "",
+                        country: p.country ?? "",
+                        start_date: "",
+                        end_date: "",
+                        notes: "",
+                        is_active: true,
+                      });
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Nouveau membre (champs vides ci-dessous)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__new__" className="text-[#C8102E] font-medium">
+                        + Ajouter un nouveau membre
+                      </SelectItem>
+                      {unlinkedMembers.length > 0 && (
+                        <>
+                          <SelectSeparator />
+                          {unlinkedMembers.map((m) => (
+                            <SelectItem key={m.id} value={m.id}>
+                              {m.first_name} {m.last_name}
+                              {m.email ? ` — ${m.email}` : ""}
+                            </SelectItem>
+                          ))}
+                        </>
+                      )}
+                    </SelectContent>
+                  </Select>
                   <p className="text-xs text-slate-500">
-                    Ou laissez vide et remplissez les champs ci-dessous pour créer un nouveau membre.
+                    Ou laissez sur "Nouveau membre" et remplissez les champs ci-dessous.
                   </p>
                 </div>
               )}
