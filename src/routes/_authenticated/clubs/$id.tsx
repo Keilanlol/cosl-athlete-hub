@@ -139,6 +139,15 @@ const emptyMember = {
   is_active: true,
 };
 
+const emptyCoach = {
+  first_name: "",
+  last_name: "",
+  email: "",
+  phone: "",
+  role: "coach",
+  is_active: true,
+};
+
 function ClubDetailPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
@@ -170,6 +179,13 @@ function ClubDetailPage() {
   const [editingMember, setEditingMember] = useState<ClubMember | null>(null);
   const [memberForm, setMemberForm] = useState(emptyMember);
   const [memberSaving, setMemberSaving] = useState(false);
+
+  // Coach dialog
+  const [coachOpen, setCoachOpen] = useState(false);
+  const [coachForm, setCoachForm] = useState(emptyCoach);
+  const [coachSaving, setCoachSaving] = useState(false);
+  const [pickedCoachId, setPickedCoachId] = useState("");
+  const [freeCoaches, setFreeCoaches] = useState<Coach[]>([]);
 
   const load = async () => {
     setLoading(true);
@@ -227,6 +243,13 @@ function ClubDetailPage() {
       .is("club_id", null)
       .order("last_name");
     setUnlinkedMembers((unlinked ?? []) as ClubMember[]);
+
+    const { data: freeC } = await supabase
+      .from("coaches")
+      .select("*")
+      .is("club_id", null)
+      .order("last_name");
+    setFreeCoaches((freeC ?? []) as Coach[]);
 
     setLoading(false);
   };
@@ -410,6 +433,44 @@ function ClubDetailPage() {
       load();
     }
   };
+
+  // ---------- Coach CRUD ----------
+  const openCreateCoach = () => {
+    setPickedCoachId("");
+    setCoachForm(emptyCoach);
+    setCoachOpen(true);
+  };
+  const submitCoach = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!coachForm.first_name.trim() || !coachForm.last_name.trim()) {
+      toast.error("Prénom et nom requis");
+      return;
+    }
+    setCoachSaving(true);
+    const payload = {
+      club_id: id,
+      federation_id: club?.federation_id ?? null,
+      first_name: coachForm.first_name.trim(),
+      last_name: coachForm.last_name.trim(),
+      email: coachForm.email.trim() || null,
+      phone: coachForm.phone.trim() || null,
+      role: coachForm.role,
+      is_active: coachForm.is_active,
+    };
+    const { error } = pickedCoachId
+      ? await supabase.from("coaches").update(payload).eq("id", pickedCoachId)
+      : await supabase.from("coaches").insert(payload);
+    setCoachSaving(false);
+    if (error) {
+      toast.error("Échec de l'enregistrement", { description: friendlyError(error) });
+      return;
+    }
+    toast.success(pickedCoachId ? "Encadrant rattaché" : "Encadrant ajouté");
+    setCoachOpen(false);
+    setPickedCoachId("");
+    load();
+  };
+
 
   if (loading) return <div className="p-6 text-muted-foreground">Chargement…</div>;
   if (!club) {
@@ -792,14 +853,19 @@ function ClubDetailPage() {
 
         {/* ============ COACHES ============ */}
         <TabsContent value="coaches" className="mt-4 space-y-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Nom, prénom, email, rôle…"
-              value={coachSearch}
-              onChange={(e) => setCoachSearch(e.target.value)}
-              className="pl-9"
-            />
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Nom, prénom, email, rôle…"
+                value={coachSearch}
+                onChange={(e) => setCoachSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <Button onClick={openCreateCoach} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
+              <Plus className="mr-2 h-4 w-4" /> Ajouter un encadrant
+            </Button>
           </div>
           {(() => {
             const q = coachSearch.trim().toLowerCase();
@@ -1186,6 +1252,155 @@ function ClubDetailPage() {
                   : editingMember
                   ? "Enregistrer"
                   : "Ajouter"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ============ Coach dialog ============ */}
+      <Dialog open={coachOpen} onOpenChange={setCoachOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <form onSubmit={submitCoach}>
+            <DialogHeader>
+              <DialogTitle>Ajouter un encadrant</DialogTitle>
+              <DialogDescription>
+                Rattacher un encadrant existant ou en créer un nouveau pour le club {club.name}.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-1.5 rounded-md border border-dashed border-border bg-muted p-3">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Choisir un encadrant existant ou créer un nouveau
+                </Label>
+                <Select
+                  value={pickedCoachId || "__new__"}
+                  onValueChange={(v) => {
+                    if (v === "__new__") {
+                      setPickedCoachId("");
+                      setCoachForm(emptyCoach);
+                      return;
+                    }
+                    setPickedCoachId(v);
+                    const c = freeCoaches.find((x) => x.id === v);
+                    if (!c) return;
+                    setCoachForm({
+                      first_name: c.first_name,
+                      last_name: c.last_name,
+                      email: c.email ?? "",
+                      phone: c.phone ?? "",
+                      role: c.role ?? "coach",
+                      is_active: c.is_active ?? true,
+                    });
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Nouvel encadrant" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__new__" className="text-primary font-medium">
+                      + Créer un nouvel encadrant
+                    </SelectItem>
+                    {freeCoaches.length > 0 && (
+                      <>
+                        <SelectSeparator />
+                        {freeCoaches.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.first_name} {c.last_name}
+                            {c.email ? ` — ${c.email}` : ""}
+                          </SelectItem>
+                        ))}
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Seuls les encadrants sans club sont listés.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="ccfn">Prénom *</Label>
+                  <Input
+                    id="ccfn"
+                    value={coachForm.first_name}
+                    onChange={(e) => setCoachForm({ ...coachForm, first_name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="ccln">Nom *</Label>
+                  <Input
+                    id="ccln"
+                    value={coachForm.last_name}
+                    onChange={(e) => setCoachForm({ ...coachForm, last_name: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="ccem">Email</Label>
+                  <Input
+                    id="ccem"
+                    type="email"
+                    value={coachForm.email}
+                    onChange={(e) => setCoachForm({ ...coachForm, email: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="ccph">Téléphone</Label>
+                  <Input
+                    id="ccph"
+                    value={coachForm.phone}
+                    onChange={(e) => setCoachForm({ ...coachForm, phone: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="ccrl">Rôle *</Label>
+                <Select
+                  value={coachForm.role}
+                  onValueChange={(v) => setCoachForm({ ...coachForm, role: v })}
+                >
+                  <SelectTrigger id="ccrl">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COACH_ROLES.map((r) => (
+                      <SelectItem key={r.value} value={r.value}>
+                        {r.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
+                <Label htmlFor="ccact" className="cursor-pointer">
+                  Encadrant actif
+                </Label>
+                <Switch
+                  id="ccact"
+                  checked={coachForm.is_active}
+                  onCheckedChange={(v) => setCoachForm({ ...coachForm, is_active: v })}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setCoachOpen(false)}
+                disabled={coachSaving}
+              >
+                Annuler
+              </Button>
+              <Button
+                type="submit"
+                disabled={coachSaving}
+                className="bg-primary hover:bg-[var(--cosl-red-dark)]"
+              >
+                {coachSaving ? "Enregistrement…" : pickedCoachId ? "Rattacher" : "Ajouter"}
               </Button>
             </DialogFooter>
           </form>
