@@ -81,6 +81,11 @@ function DelegationPage() {
   const [memberForm, setMemberForm] = useState({ entity_id: "", member_role: "", member_function: "" });
   const [saving, setSaving] = useState(false);
 
+  // Sub-dialog: create new encadrant
+  const [coachOpen, setCoachOpen] = useState(false);
+  const [coachForm, setCoachForm] = useState({ first_name: "", last_name: "", email: "", phone: "", role: "coach" });
+  const [coachSaving, setCoachSaving] = useState(false);
+
   const ensureDelegation = async (): Promise<Delegation | null> => {
     const { data: existing } = await supabase.from("delegations").select("*").eq("game_id", gameId).maybeSingle();
     if (existing) return existing as Delegation;
