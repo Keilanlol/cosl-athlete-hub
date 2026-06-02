@@ -180,6 +180,13 @@ function ClubDetailPage() {
   const [memberForm, setMemberForm] = useState(emptyMember);
   const [memberSaving, setMemberSaving] = useState(false);
 
+  // Coach dialog
+  const [coachOpen, setCoachOpen] = useState(false);
+  const [coachForm, setCoachForm] = useState(emptyCoach);
+  const [coachSaving, setCoachSaving] = useState(false);
+  const [pickedCoachId, setPickedCoachId] = useState("");
+  const [freeCoaches, setFreeCoaches] = useState<Coach[]>([]);
+
   const load = async () => {
     setLoading(true);
     const cl = await supabase.from("clubs").select("*").eq("id", id).maybeSingle();
