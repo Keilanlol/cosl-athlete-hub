@@ -218,11 +218,16 @@ function FederationsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">Fédérations</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Fédérations sportives nationales du COSL.
-          </p>
+        <div className="flex items-center gap-3">
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-white">
+            <Shield className="h-5 w-5" />
+          </span>
+          <div>
+            <h1 className="text-2xl font-semibold text-foreground">Fédérations</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Fédérations sportives nationales du COSL.
+            </p>
+          </div>
         </div>
         <Button onClick={openCreate} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
           <Plus className="mr-2 h-4 w-4" />
