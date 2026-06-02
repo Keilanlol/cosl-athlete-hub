@@ -61,6 +61,27 @@ TRUNCATE TABLE
   public.athlete_levels_ref
 RESTART IDENTITY CASCADE;
 
+-- Re-seed des référentiels tronqués ci-dessus
+INSERT INTO public.athlete_levels_ref (code, label, sort_order) VALUES
+  ('elite','Élite',1),('promotion','Promotion',2),
+  ('espoir','Espoir',3),('olympic_contract','Contrat olympique',4)
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO public.document_types (code, label, category, sort_order) VALUES
+  ('passport','Passeport','admin',1),
+  ('id_card','Carte d''identité','admin',2),
+  ('insurance','Assurance','admin',3),
+  ('medical_cert','Certificat médical','medical',1),
+  ('antidoping','Formulaire antidopage','medical',2),
+  ('rule40','Règle 40','medical',3),
+  ('license','Licence sportive','sportive',1),
+  ('selection','Notification de sélection','sportive',2),
+  ('contract','Contrat','contractual',1),
+  ('ethics','Charte éthique','contractual',2)
+ON CONFLICT (code) DO NOTHING;
+
+
+
 
 -- ============================================================================
 -- 1. USER PROFILES (seulement si auth.users existe déjà pour ces emails)
