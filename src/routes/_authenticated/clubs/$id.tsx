@@ -264,6 +264,16 @@ function ClubDetailPage() {
   // ---------- Athlete CRUD ----------
   const openAddAthlete = async () => {
     setSelectedAthleteId("");
+    setNewAthlete({
+      first_name: "",
+      last_name: "",
+      birth_date: "",
+      gender: "male",
+      nationality: "LUX",
+      email: "",
+      phone: "",
+      primary_sport_id: "",
+    });
     setAthleteOpen(true);
     // Load athletes not yet in this club
     const { data, error } = await supabase
@@ -281,6 +291,36 @@ function ClubDetailPage() {
       toast.error("Sélectionnez un adhérent");
       return;
     }
+    if (selectedAthleteId === "__new__") {
+      if (!newAthlete.first_name.trim() || !newAthlete.last_name.trim() || !newAthlete.birth_date) {
+        toast.error("Prénom, nom et date de naissance requis");
+        return;
+      }
+      setAthleteSaving(true);
+      const { error } = await supabase.from("athletes").insert({
+        first_name: newAthlete.first_name.trim(),
+        last_name: newAthlete.last_name.trim(),
+        birth_date: newAthlete.birth_date,
+        gender: newAthlete.gender,
+        nationality: newAthlete.nationality.trim() || "LUX",
+        email: newAthlete.email.trim() || null,
+        phone: newAthlete.phone.trim() || null,
+        primary_sport_id: newAthlete.primary_sport_id || null,
+        primary_federation_id: club?.federation_id ?? null,
+        current_club_id: id,
+        status: "active",
+        is_active: true,
+      });
+      setAthleteSaving(false);
+      if (error) {
+        toast.error("Échec", { description: friendlyError(error) });
+        return;
+      }
+      toast.success("Adhérent créé et ajouté au club");
+      setAthleteOpen(false);
+      load();
+      return;
+    }
     setAthleteSaving(true);
     const { error } = await supabase
       .from("athletes")
@@ -295,6 +335,7 @@ function ClubDetailPage() {
     setAthleteOpen(false);
     load();
   };
+
 
   const removeAthlete = async (a: AthleteRow) => {
     const ok = await confirmAction({
