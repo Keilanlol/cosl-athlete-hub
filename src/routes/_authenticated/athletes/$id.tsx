@@ -1865,6 +1865,7 @@ function KycTabContent({
   athlete,
   kyc,
   docs,
+  docTypes,
   history,
   reviewer,
   currentUserId,
@@ -1876,6 +1877,7 @@ function KycTabContent({
   athlete: Athlete;
   kyc: AthleteKyc | null;
   docs: AthleteDocument[];
+  docTypes: { code: string; label: string; category: string }[];
   history: KycHistoryRow[];
   reviewer: ReviewerProfile;
   currentUserId: string | null;
@@ -1884,6 +1886,7 @@ function KycTabContent({
   commentDraft: string;
   setCommentDraft: (v: string) => void;
 }) {
+
   const globalStatus = kyc?.global_status ?? null;
   const nbValid = countValidAxes(kyc);
 
