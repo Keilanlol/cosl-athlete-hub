@@ -659,6 +659,83 @@ function FederationsPage() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={memberOpen} onOpenChange={setMemberOpen}>
+        <DialogContent className="sm:max-w-md">
+          <form onSubmit={submitMember}>
+            <DialogHeader>
+              <DialogTitle>Ajouter un membre</DialogTitle>
+              <DialogDescription>
+                Ce membre sera rattaché à la fédération et sélectionné comme président.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="m_first">Prénom *</Label>
+                  <Input
+                    id="m_first"
+                    value={memberForm.first_name}
+                    onChange={(e) => setMemberForm({ ...memberForm, first_name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="m_last">Nom *</Label>
+                  <Input
+                    id="m_last"
+                    value={memberForm.last_name}
+                    onChange={(e) => setMemberForm({ ...memberForm, last_name: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="m_role">Rôle</Label>
+                <Select
+                  value={memberForm.role}
+                  onValueChange={(v) => setMemberForm({ ...memberForm, role: v })}
+                >
+                  <SelectTrigger id="m_role"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {FEDERATION_MEMBER_ROLES.map((r) => (
+                      <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="m_email">Email</Label>
+                  <Input
+                    id="m_email"
+                    type="email"
+                    value={memberForm.email}
+                    onChange={(e) => setMemberForm({ ...memberForm, email: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="m_phone">Téléphone</Label>
+                  <Input
+                    id="m_phone"
+                    value={memberForm.phone}
+                    onChange={(e) => setMemberForm({ ...memberForm, phone: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setMemberOpen(false)} disabled={memberSaving}>
+                Annuler
+              </Button>
+              <Button type="submit" disabled={memberSaving} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
+                {memberSaving ? "Enregistrement…" : "Ajouter"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
