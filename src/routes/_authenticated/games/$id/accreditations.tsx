@@ -40,7 +40,7 @@ const STATUSES: { value: string; label: string; cls: string }[] = [
   { value: "submitted", label: "Soumise", cls: "bg-amber-100 text-amber-700" },
   { value: "validated", label: "Validée", cls: "bg-emerald-100 text-emerald-700" },
   { value: "rejected", label: "Rejetée", cls: "bg-red-100 text-red-700" },
-  { value: "produced", label: "Produite", cls: "bg-indigo-100 text-indigo-700" },
+  { value: "produced", label: "Produite", cls: "bg-[var(--cosl-red-light)] text-primary" },
   { value: "delivered", label: "Délivrée", cls: "bg-blue-100 text-blue-800" },
 ];
 
@@ -357,7 +357,7 @@ ${accreds.map((a) => `  <accreditation status="${a.status}">
                 {STATUSES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Button onClick={() => setAccOpen(true)} className="ml-auto bg-indigo-500 hover:bg-indigo-600">
+            <Button onClick={() => setAccOpen(true)} className="ml-auto bg-primary hover:bg-[var(--cosl-red-dark)]">
               <Plus className="mr-2 h-4 w-4" /> Créer accréditation
             </Button>
           </div>
@@ -414,7 +414,7 @@ ${accreds.map((a) => `  <accreditation status="${a.status}">
         {/* Types */}
         <TabsContent value="types" className="space-y-4">
           <div className="flex justify-end">
-            <Button onClick={openCreateType} className="bg-indigo-500 hover:bg-indigo-600">
+            <Button onClick={openCreateType} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
               <Plus className="mr-2 h-4 w-4" /> Ajouter un type
             </Button>
           </div>
@@ -512,7 +512,7 @@ ${accreds.map((a) => `  <accreditation status="${a.status}">
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setTypeOpen(false)}>Annuler</Button>
-              <Button type="submit" className="bg-indigo-500 hover:bg-indigo-600">{editingType ? "Enregistrer" : "Ajouter"}</Button>
+              <Button type="submit" className="bg-primary hover:bg-[var(--cosl-red-dark)]">{editingType ? "Enregistrer" : "Ajouter"}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -575,7 +575,7 @@ ${accreds.map((a) => `  <accreditation status="${a.status}">
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setAccOpen(false)}>Annuler</Button>
-              <Button type="submit" className="bg-indigo-500 hover:bg-indigo-600">Créer</Button>
+              <Button type="submit" className="bg-primary hover:bg-[var(--cosl-red-dark)]">Créer</Button>
             </DialogFooter>
           </form>
         </DialogContent>

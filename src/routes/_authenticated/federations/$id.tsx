@@ -525,7 +525,7 @@ function FederationDetailPage() {
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2 mb-1">
               {fed.is_olympic && (
-                <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">
+                <Badge className="bg-[var(--cosl-red-light)] text-primary hover:bg-[var(--cosl-red-light)]">
                   🏅 Olympique
                 </Badge>
               )}
@@ -612,7 +612,7 @@ function FederationDetailPage() {
         {/* ============ CLUBS ============ */}
         <TabsContent value="clubs" className="mt-4 space-y-3">
           <div className="flex justify-end">
-            <Button onClick={openCreateClub} className="bg-indigo-500 hover:bg-indigo-600">
+            <Button onClick={openCreateClub} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
               <Plus className="mr-2 h-4 w-4" /> Ajouter un club
             </Button>
           </div>
@@ -727,7 +727,7 @@ function FederationDetailPage() {
         {/* ============ MEMBERS ============ */}
         <TabsContent value="members" className="mt-4 space-y-3">
           <div className="flex justify-end">
-            <Button onClick={openCreateMember} className="bg-indigo-500 hover:bg-indigo-600">
+            <Button onClick={openCreateMember} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
               <Plus className="mr-2 h-4 w-4" /> Ajouter un membre
             </Button>
           </div>
@@ -992,7 +992,7 @@ function FederationDetailPage() {
               <Button
                 type="submit"
                 disabled={clubSaving}
-                className="bg-indigo-500 hover:bg-indigo-600"
+                className="bg-primary hover:bg-[var(--cosl-red-dark)]"
               >
                 {clubSaving ? "Enregistrement…" : editingClub ? "Enregistrer" : "Ajouter"}
               </Button>
@@ -1260,7 +1260,7 @@ function FederationDetailPage() {
               <Button
                 type="submit"
                 disabled={memberSaving}
-                className="bg-indigo-500 hover:bg-indigo-600"
+                className="bg-primary hover:bg-[var(--cosl-red-dark)]"
               >
                 {memberSaving
                   ? "Enregistrement…"

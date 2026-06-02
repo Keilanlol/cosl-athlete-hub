@@ -165,7 +165,7 @@ function AdminUsersPage() {
           <h1 className="text-2xl font-semibold text-foreground">Comptes COSL</h1>
           <p className="text-sm text-muted-foreground">Gestion des utilisateurs et de leurs rôles.</p>
         </div>
-        <Button onClick={() => setOpen(true)} className="bg-indigo-500 hover:bg-indigo-600">
+        <Button onClick={() => setOpen(true)} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
           <Plus className="mr-2 h-4 w-4" /> Ajouter un utilisateur
         </Button>
       </div>
@@ -316,7 +316,7 @@ function AdminUsersPage() {
             <Button
               onClick={submit}
               disabled={submitting}
-              className="bg-indigo-500 hover:bg-indigo-600"
+              className="bg-primary hover:bg-[var(--cosl-red-dark)]"
             >
               {submitting ? "Création…" : "Créer"}
             </Button>

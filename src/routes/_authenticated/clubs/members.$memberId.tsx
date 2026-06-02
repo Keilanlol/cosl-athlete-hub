@@ -319,7 +319,7 @@ function ClubMemberDetailPage() {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
-              <Button type="submit" disabled={saving} className="bg-indigo-500 hover:bg-indigo-600">
+              <Button type="submit" disabled={saving} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
                 {saving ? "Enregistrement…" : "Enregistrer"}
               </Button>
             </DialogFooter>

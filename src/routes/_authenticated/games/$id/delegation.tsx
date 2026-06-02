@@ -299,7 +299,7 @@ function DelegationPage() {
           <Button variant="outline" onClick={exportCsv}>
             <Download className="mr-2 h-4 w-4" /> Exporter liste officielle CSV
           </Button>
-          <Button onClick={() => setMemberOpen(true)} className="bg-indigo-500 hover:bg-indigo-600">
+          <Button onClick={() => setMemberOpen(true)} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
             <Plus className="mr-2 h-4 w-4" /> Ajouter un membre
           </Button>
         </div>
@@ -329,7 +329,7 @@ function DelegationPage() {
                 return (
                   <TableRow key={m.id}>
                     <TableCell>
-                      <Badge className={isAth ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" : "bg-indigo-100 text-indigo-700 hover:bg-indigo-100"}>
+                      <Badge className={isAth ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" : "bg-[var(--cosl-red-light)] text-primary hover:bg-[var(--cosl-red-light)]"}>
                         {isAth ? "Athlète" : "Encadrant"}
                       </Badge>
                     </TableCell>
@@ -372,7 +372,7 @@ function DelegationPage() {
           </Select>
           <DialogFooter>
             <Button variant="outline" onClick={() => setChiefOpen(false)}>Annuler</Button>
-            <Button onClick={saveChief} className="bg-indigo-500 hover:bg-indigo-600">Enregistrer</Button>
+            <Button onClick={saveChief} className="bg-primary hover:bg-[var(--cosl-red-dark)]">Enregistrer</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -395,7 +395,7 @@ function DelegationPage() {
           </Select>
           <DialogFooter>
             <Button variant="outline" onClick={() => setMgrOpen(false)}>Annuler</Button>
-            <Button onClick={saveManager} className="bg-indigo-500 hover:bg-indigo-600">Enregistrer</Button>
+            <Button onClick={saveManager} className="bg-primary hover:bg-[var(--cosl-red-dark)]">Enregistrer</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -461,7 +461,7 @@ function DelegationPage() {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setMemberOpen(false)}>Annuler</Button>
-              <Button type="submit" disabled={saving} className="bg-indigo-500 hover:bg-indigo-600">
+              <Button type="submit" disabled={saving} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
                 {saving ? "Enregistrement…" : "Ajouter"}
               </Button>
             </DialogFooter>

@@ -589,7 +589,7 @@ function ClubDetailPage() {
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={openAddAthlete} className="bg-indigo-500 hover:bg-indigo-600">
+            <Button onClick={openAddAthlete} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
               <Plus className="mr-2 h-4 w-4" /> Ajouter un adhérent
             </Button>
           </div>
@@ -681,7 +681,7 @@ function ClubDetailPage() {
                 className="pl-9"
               />
             </div>
-            <Button onClick={openCreateMember} className="bg-indigo-500 hover:bg-indigo-600">
+            <Button onClick={openCreateMember} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
               <Plus className="mr-2 h-4 w-4" /> Ajouter un membre
             </Button>
           </div>
@@ -912,7 +912,7 @@ function ClubDetailPage() {
               type="button"
               onClick={submitAddAthlete}
               disabled={athleteSaving || !selectedAthleteId}
-              className="bg-indigo-500 hover:bg-indigo-600"
+              className="bg-primary hover:bg-[var(--cosl-red-dark)]"
             >
               {athleteSaving ? "Ajout…" : "Ajouter"}
             </Button>
@@ -1179,7 +1179,7 @@ function ClubDetailPage() {
               <Button
                 type="submit"
                 disabled={memberSaving}
-                className="bg-indigo-500 hover:bg-indigo-600"
+                className="bg-primary hover:bg-[var(--cosl-red-dark)]"
               >
                 {memberSaving
                   ? "Enregistrement…"

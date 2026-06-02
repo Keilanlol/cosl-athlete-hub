@@ -393,7 +393,7 @@ function LodgingPage() {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-foreground">Hébergements</h2>
-          <Button onClick={() => setAccOpen(true)} className="bg-indigo-500 hover:bg-indigo-600">
+          <Button onClick={() => setAccOpen(true)} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
             <Plus className="mr-2 h-4 w-4" /> Ajouter un hébergement
           </Button>
         </div>
@@ -405,7 +405,7 @@ function LodgingPage() {
               <div key={a.id} className="rounded-lg border border-border bg-card p-4">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
-                    <Building2 className="h-4 w-4 text-indigo-500 shrink-0" />
+                    <Building2 className="h-4 w-4 text-primary shrink-0" />
                     <h3 className="font-semibold text-foreground truncate">{a.name}</h3>
                   </div>
                   <Button variant="ghost" size="icon" onClick={() => openEditAcc(a)} aria-label="Modifier">
@@ -432,7 +432,7 @@ function LodgingPage() {
             <Button variant="outline" size="sm" onClick={exportCsv}>
               <Download className="mr-2 h-4 w-4" /> Exporter CSV
             </Button>
-            <Button onClick={() => setRoomOpen(true)} className="bg-indigo-500 hover:bg-indigo-600" size="sm">
+            <Button onClick={() => setRoomOpen(true)} className="bg-primary hover:bg-[var(--cosl-red-dark)]" size="sm">
               <Plus className="mr-2 h-4 w-4" /> Créer une chambre
             </Button>
           </div>
@@ -524,7 +524,7 @@ function LodgingPage() {
                             className={
                               it.coach_id
                                 ? "bg-amber-100 text-amber-800"
-                                : "bg-indigo-100 text-indigo-800"
+                                : "bg-[var(--cosl-red-light)] text-primary"
                             }
                           >
                             {occupantLabel(it)} · {it.coach_id ? "encadrant" : "athlète"}
@@ -592,7 +592,7 @@ function LodgingPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setAccOpen(false); setEditingAcc(null); setAccForm(emptyAcc); }}>Annuler</Button>
-            <Button onClick={submitAcc} className="bg-indigo-500 hover:bg-indigo-600">{editingAcc ? "Enregistrer" : "Créer"}</Button>
+            <Button onClick={submitAcc} className="bg-primary hover:bg-[var(--cosl-red-dark)]">{editingAcc ? "Enregistrer" : "Créer"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -636,7 +636,7 @@ function LodgingPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRoomOpen(false)}>Annuler</Button>
-            <Button onClick={submitRoom} className="bg-indigo-500 hover:bg-indigo-600">Créer</Button>
+            <Button onClick={submitRoom} className="bg-primary hover:bg-[var(--cosl-red-dark)]">Créer</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -674,7 +674,7 @@ function LodgingPage() {
                                 className={
                                   it.coach_id
                                     ? "bg-amber-100 text-amber-800"
-                                    : "bg-indigo-100 text-indigo-800"
+                                    : "bg-[var(--cosl-red-light)] text-primary"
                                 }
                               >
                                 {it.coach_id ? "Encadrant" : "Athlète"}
@@ -713,7 +713,7 @@ function LodgingPage() {
                   options={personOptions}
                   searchPlaceholder={`Rechercher ${paxKind === "athlete" ? "un athlète" : "un encadrant"}…`}
                 />
-                <Button onClick={addOccupantToRoom} className="w-full bg-indigo-500 hover:bg-indigo-600">
+                <Button onClick={addOccupantToRoom} className="w-full bg-primary hover:bg-[var(--cosl-red-dark)]">
                   <Plus className="mr-2 h-4 w-4" /> Ajouter
                 </Button>
               </div>

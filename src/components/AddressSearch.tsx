@@ -173,7 +173,7 @@ export function AddressSearch({
                   onClick={() => handleSelect(f)}
                   className="flex w-full items-start gap-2 px-3 py-2 text-left hover:bg-muted border-b border-slate-100 last:border-0"
                 >
-                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-indigo-500" />
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-foreground truncate">
                       {p.street || p.display_name}

@@ -26,7 +26,7 @@ const ACCRED_STATUSES: { value: string; label: string; cls: string }[] = [
   { value: "submitted", label: "Soumise", cls: "bg-amber-100 text-amber-700" },
   { value: "validated", label: "Validée", cls: "bg-emerald-100 text-emerald-700" },
   { value: "rejected", label: "Rejetée", cls: "bg-red-100 text-red-700" },
-  { value: "produced", label: "Produite", cls: "bg-indigo-100 text-indigo-700" },
+  { value: "produced", label: "Produite", cls: "bg-[var(--cosl-red-light)] text-primary" },
   { value: "delivered", label: "Délivrée", cls: "bg-blue-100 text-blue-800" },
 ];
 

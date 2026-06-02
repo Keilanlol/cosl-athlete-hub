@@ -421,7 +421,7 @@ function GameOverviewPage() {
       <TabsContent value="sports" className="space-y-4">
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">{gameSports.length} sport(s) liés à ces Games</p>
-          <Button size="sm" onClick={() => setSportDlgOpen(true)} className="bg-indigo-500 hover:bg-indigo-600">
+          <Button size="sm" onClick={() => setSportDlgOpen(true)} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
             <Plus className="mr-2 h-4 w-4" /> Ajouter un sport
           </Button>
         </div>
@@ -487,7 +487,7 @@ function GameOverviewPage() {
       <TabsContent value="quotas" className="space-y-4">
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">{quotas.length} quota(s) définis</p>
-          <Button size="sm" onClick={() => setQuotaDlgOpen(true)} className="bg-indigo-500 hover:bg-indigo-600">
+          <Button size="sm" onClick={() => setQuotaDlgOpen(true)} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
             <Plus className="mr-2 h-4 w-4" /> Ajouter un quota
           </Button>
         </div>
@@ -650,7 +650,7 @@ function GameOverviewPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSportDlgOpen(false)}>Annuler</Button>
-            <Button onClick={addSport} disabled={!newSportId} className="bg-indigo-500 hover:bg-indigo-600">Ajouter</Button>
+            <Button onClick={addSport} disabled={!newSportId} className="bg-primary hover:bg-[var(--cosl-red-dark)]">Ajouter</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -716,7 +716,7 @@ function GameOverviewPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setQuotaDlgOpen(false)}>Annuler</Button>
-            <Button onClick={addQuota} className="bg-indigo-500 hover:bg-indigo-600">Ajouter</Button>
+            <Button onClick={addQuota} className="bg-primary hover:bg-[var(--cosl-red-dark)]">Ajouter</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -795,7 +795,7 @@ function GameOverviewPage() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setDiscDlg(null)}>Annuler</Button>
-            <Button onClick={saveDiscDlg} className="bg-indigo-500 hover:bg-indigo-600">Enregistrer</Button>
+            <Button onClick={saveDiscDlg} className="bg-primary hover:bg-[var(--cosl-red-dark)]">Enregistrer</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

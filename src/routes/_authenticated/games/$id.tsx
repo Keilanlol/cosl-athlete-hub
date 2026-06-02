@@ -155,7 +155,7 @@ function GameLayout() {
             <Button variant="outline" size="sm" onClick={archive}>
               <Archive className="mr-2 h-4 w-4" /> Archiver
             </Button>
-            <Button size="sm" onClick={exportOfficial} className="bg-indigo-500 hover:bg-indigo-600">
+            <Button size="sm" onClick={exportOfficial} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
               <Download className="mr-2 h-4 w-4" /> Exporter liste officielle
             </Button>
           </div>

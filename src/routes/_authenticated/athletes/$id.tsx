@@ -765,7 +765,7 @@ function AthleteDetailPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button onClick={openEdit} className="bg-indigo-500 hover:bg-indigo-600">
+          <Button onClick={openEdit} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
             <Pencil className="mr-2 h-4 w-4" /> Modifier
           </Button>
         </div>
@@ -895,7 +895,7 @@ function AthleteDetailPage() {
             </div>
 
             <div className="flex justify-end">
-              <Button onClick={() => setDocOpen(true)} className="bg-indigo-500 hover:bg-indigo-600">
+              <Button onClick={() => setDocOpen(true)} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
                 <Upload className="mr-2 h-4 w-4" /> Ajouter un document
               </Button>
             </div>
@@ -1006,7 +1006,7 @@ function AthleteDetailPage() {
         <TabsContent value="relations">
           <div className="space-y-3">
             <div className="flex justify-end">
-              <Button onClick={() => setRelOpen(true)} className="bg-indigo-500 hover:bg-indigo-600">
+              <Button onClick={() => setRelOpen(true)} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
                 <Plus className="mr-2 h-4 w-4" /> Ajouter une relation
               </Button>
             </div>
@@ -1101,7 +1101,7 @@ function AthleteDetailPage() {
                   setApptForm({ title: "", description: "", location: "", starts_at: "", ends_at: "" });
                   setApptOpen(true);
                 }}
-                className="bg-indigo-500 hover:bg-indigo-600"
+                className="bg-primary hover:bg-[var(--cosl-red-dark)]"
               >
                 <Plus className="mr-2 h-4 w-4" /> Ajouter un rendez-vous
               </Button>
@@ -1156,13 +1156,13 @@ function AthleteDetailPage() {
                   <SummaryCard label="Or" value={gold} cls="bg-amber-100 text-amber-800" />
                   <SummaryCard label="Argent" value={silver} cls="bg-slate-200 text-foreground" />
                   <SummaryCard label="Bronze" value={bronze} cls="bg-orange-100 text-orange-700" />
-                  <SummaryCard label="Records nationaux" value={rn} cls="bg-indigo-100 text-indigo-700" />
+                  <SummaryCard label="Records nationaux" value={rn} cls="bg-[var(--cosl-red-light)] text-primary" />
                   <SummaryCard label="Personal bests" value={pb} cls="bg-emerald-100 text-emerald-700" />
                 </div>
               );
             })()}
             <div className="flex justify-end">
-              <Button onClick={() => setResultOpen(true)} className="bg-indigo-500 hover:bg-indigo-600">
+              <Button onClick={() => setResultOpen(true)} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
                 <Plus className="mr-2 h-4 w-4" /> Ajouter un résultat
               </Button>
             </div>
@@ -1200,7 +1200,7 @@ function AthleteDetailPage() {
                           <TableCell>{r.rank ?? "—"}</TableCell>
                           <TableCell>{med ? <Badge className={`${med.cls} hover:${med.cls}`}>{med.label}</Badge> : "—"}</TableCell>
                           <TableCell>{r.score ? `${r.score}${r.unit ? " " + r.unit : ""}` : "—"}</TableCell>
-                          <TableCell>{r.is_national_record ? <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">RN</Badge> : "—"}</TableCell>
+                          <TableCell>{r.is_national_record ? <Badge className="bg-[var(--cosl-red-light)] text-primary hover:bg-[var(--cosl-red-light)]">RN</Badge> : "—"}</TableCell>
                           <TableCell>{r.is_personal_best ? <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">PB</Badge> : "—"}</TableCell>
                         </TableRow>
                       );
@@ -1445,7 +1445,7 @@ function AthleteDetailPage() {
                 <Button type="button" variant="outline" onClick={() => setEditOpen(false)} disabled={saving}>
                   Annuler
                 </Button>
-                <Button type="submit" className="bg-indigo-500 hover:bg-indigo-600" disabled={saving}>
+                <Button type="submit" className="bg-primary hover:bg-[var(--cosl-red-dark)]" disabled={saving}>
                   {saving ? "Enregistrement…" : "Enregistrer"}
                 </Button>
               </DialogFooter>
@@ -1555,7 +1555,7 @@ function AthleteDetailPage() {
               <Button type="button" variant="outline" onClick={() => setDocOpen(false)}>
                 Annuler
               </Button>
-              <Button type="submit" className="bg-indigo-500 hover:bg-indigo-600">
+              <Button type="submit" className="bg-primary hover:bg-[var(--cosl-red-dark)]">
                 Ajouter
               </Button>
             </DialogFooter>
@@ -1624,7 +1624,7 @@ function AthleteDetailPage() {
               <Button type="button" variant="outline" onClick={() => setRelOpen(false)}>
                 Annuler
               </Button>
-              <Button type="submit" className="bg-indigo-500 hover:bg-indigo-600">
+              <Button type="submit" className="bg-primary hover:bg-[var(--cosl-red-dark)]">
                 Ajouter
               </Button>
             </DialogFooter>
@@ -1710,7 +1710,7 @@ function AthleteDetailPage() {
               </div>
               <div className="flex gap-2">
                 <Button type="button" variant="outline" onClick={() => setApptOpen(false)}>Annuler</Button>
-                <Button type="submit" className="bg-indigo-500 hover:bg-indigo-600">
+                <Button type="submit" className="bg-primary hover:bg-[var(--cosl-red-dark)]">
                   {apptEditing ? "Enregistrer" : "Ajouter"}
                 </Button>
               </div>
@@ -1810,7 +1810,7 @@ function AthleteDetailPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setResultOpen(false)}>Annuler</Button>
-            <Button onClick={submitResult} className="bg-indigo-500 hover:bg-indigo-600">Ajouter</Button>
+            <Button onClick={submitResult} className="bg-primary hover:bg-[var(--cosl-red-dark)]">Ajouter</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -2393,7 +2393,7 @@ function KycTabContent({
               <Button
                 type="button"
                 size="sm"
-                className="bg-indigo-500 hover:bg-indigo-600"
+                className="bg-primary hover:bg-[var(--cosl-red-dark)]"
                 onClick={() =>
                   updateKyc({ kyc_comment: commentDraft.trim() ? commentDraft : null })
                 }

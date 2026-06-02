@@ -234,7 +234,7 @@ function GamesListPage() {
             Événements multi-sports : JO, JPEE, EYOF, JOJ…
           </p>
         </div>
-        <Button onClick={openCreate} className="bg-indigo-500 hover:bg-indigo-600">
+        <Button onClick={openCreate} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
           <Plus className="mr-2 h-4 w-4" />
           Créer un Games
         </Button>
@@ -448,7 +448,7 @@ function GamesListPage() {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={saving}>Annuler</Button>
-              <Button type="submit" disabled={saving} className="bg-indigo-500 hover:bg-indigo-600">
+              <Button type="submit" disabled={saving} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
                 {saving ? "Enregistrement…" : editing ? "Enregistrer" : "Créer"}
               </Button>
             </DialogFooter>

@@ -252,7 +252,7 @@ function ClubsPage() {
             Clubs affiliés aux fédérations nationales.
           </p>
         </div>
-        <Button onClick={openCreate} className="bg-indigo-500 hover:bg-indigo-600">
+        <Button onClick={openCreate} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
           <Plus className="mr-2 h-4 w-4" />
           Ajouter un club
         </Button>
@@ -540,7 +540,7 @@ function ClubsPage() {
               <Button
                 type="submit"
                 disabled={saving}
-                className="bg-indigo-500 hover:bg-indigo-600"
+                className="bg-primary hover:bg-[var(--cosl-red-dark)]"
               >
                 {saving ? "Enregistrement…" : editing ? "Enregistrer" : "Ajouter"}
               </Button>

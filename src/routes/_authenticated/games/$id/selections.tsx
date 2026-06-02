@@ -333,7 +333,7 @@ function SelectionsPage() {
             <SelectItem value="red">Invalide</SelectItem>
           </SelectContent>
         </Select>
-        <Button onClick={() => { setEditingId(null); setForm({ athlete_id: "", sport_id: "", discipline_id: "", game_competition_id: "" }); setOpen(true); }} className="ml-auto bg-indigo-500 hover:bg-indigo-600">
+        <Button onClick={() => { setEditingId(null); setForm({ athlete_id: "", sport_id: "", discipline_id: "", game_competition_id: "" }); setOpen(true); }} className="ml-auto bg-primary hover:bg-[var(--cosl-red-dark)]">
           <Plus className="mr-2 h-4 w-4" /> Ajouter une sélection
         </Button>
       </div>
@@ -543,7 +543,7 @@ function SelectionsPage() {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
-              <Button type="submit" disabled={saving} className="bg-indigo-500 hover:bg-indigo-600">
+              <Button type="submit" disabled={saving} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
                 {saving ? "Enregistrement…" : editingId ? "Enregistrer" : "Ajouter"}
               </Button>
             </DialogFooter>

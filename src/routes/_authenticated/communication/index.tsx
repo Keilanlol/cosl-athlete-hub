@@ -68,7 +68,7 @@ function CommunicationDashboard() {
           <p className="text-sm text-muted-foreground">Tableau de bord des envois et notifications.</p>
         </div>
         <Link to="/communication/messages">
-          <Button className="bg-indigo-500 hover:bg-indigo-600">
+          <Button className="bg-primary hover:bg-[var(--cosl-red-dark)]">
             <Send className="mr-2 h-4 w-4" /> Envoyer un message
           </Button>
         </Link>
@@ -162,7 +162,7 @@ function Card({
   return (
     <div className="rounded-lg border border-border bg-card p-5">
       <div className="flex items-center gap-3 text-muted-foreground">
-        <span className={tone === "warn" ? "text-amber-600" : "text-indigo-500"}>{icon}</span>
+        <span className={tone === "warn" ? "text-amber-600" : "text-primary"}>{icon}</span>
         <span className="text-sm">{label}</span>
       </div>
       <p className="mt-2 text-3xl font-semibold text-foreground">{value}</p>

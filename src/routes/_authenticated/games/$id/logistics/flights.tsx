@@ -302,7 +302,7 @@ function FlightsPage() {
           <h2 className="text-lg font-semibold text-foreground">Vols</h2>
           <p className="text-sm text-muted-foreground">Vols internationaux et passagers.</p>
         </div>
-        <Button onClick={() => setDlgOpen(true)} className="bg-indigo-500 hover:bg-indigo-600">
+        <Button onClick={() => setDlgOpen(true)} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
           <Plus className="mr-2 h-4 w-4" /> Ajouter un vol
         </Button>
       </div>
@@ -434,7 +434,7 @@ function FlightsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDlgOpen(false)}>Annuler</Button>
-            <Button onClick={submitFlight} className="bg-indigo-500 hover:bg-indigo-600">Créer</Button>
+            <Button onClick={submitFlight} className="bg-primary hover:bg-[var(--cosl-red-dark)]">Créer</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -506,7 +506,7 @@ function FlightsPage() {
                               </>
                             ) : (
                               <>
-                                <Button size="sm" onClick={saveEditPax} className="bg-indigo-500 hover:bg-indigo-600">
+                                <Button size="sm" onClick={saveEditPax} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
                                   <Check className="mr-1 h-4 w-4" /> Enregistrer
                                 </Button>
                                 <Button variant="ghost" size="sm" onClick={() => setEditPaxId(null)}>
@@ -566,7 +566,7 @@ function FlightsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPaxOpen(false)}>Annuler</Button>
-            <Button onClick={addPax} className="bg-indigo-500 hover:bg-indigo-600">Ajouter</Button>
+            <Button onClick={addPax} className="bg-primary hover:bg-[var(--cosl-red-dark)]">Ajouter</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

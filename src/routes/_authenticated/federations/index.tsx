@@ -224,7 +224,7 @@ function FederationsPage() {
             Fédérations sportives nationales du COSL.
           </p>
         </div>
-        <Button onClick={openCreate} className="bg-indigo-500 hover:bg-indigo-600">
+        <Button onClick={openCreate} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
           <Plus className="mr-2 h-4 w-4" />
           Ajouter une fédération
         </Button>
@@ -325,7 +325,7 @@ function FederationsPage() {
                   </TableCell>
                   <TableCell>
                     {f.is_olympic ? (
-                      <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">
+                      <Badge className="bg-[var(--cosl-red-light)] text-primary hover:bg-[var(--cosl-red-light)]">
                         Olympique
                       </Badge>
                     ) : (
@@ -490,7 +490,7 @@ function FederationsPage() {
               <Button
                 type="submit"
                 disabled={saving}
-                className="bg-indigo-500 hover:bg-indigo-600"
+                className="bg-primary hover:bg-[var(--cosl-red-dark)]"
               >
                 {saving ? "Enregistrement…" : editing ? "Enregistrer" : "Ajouter"}
               </Button>

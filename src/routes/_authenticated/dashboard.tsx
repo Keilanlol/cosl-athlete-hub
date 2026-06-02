@@ -339,7 +339,7 @@ function DashboardPage() {
                 <li key={n.id} className="flex items-start gap-2 py-2.5">
                   <span
                     className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${
-                      n.is_read ? "bg-slate-300" : "bg-primary"
+                      n.is_read ? "bg-muted-foreground/40" : "bg-primary"
                     }`}
                   />
                   <div className="min-w-0 flex-1">

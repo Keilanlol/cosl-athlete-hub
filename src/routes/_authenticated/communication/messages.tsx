@@ -259,7 +259,7 @@ function MessagesPage() {
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-foreground">Templates</h2>
-          <Button onClick={openCreateTpl} className="bg-indigo-500 hover:bg-indigo-600">
+          <Button onClick={openCreateTpl} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
             <Plus className="mr-2 h-4 w-4" /> Créer template
           </Button>
         </div>
@@ -398,7 +398,7 @@ function MessagesPage() {
           </div>
 
           <div className="flex justify-end">
-            <Button onClick={startSend} className="bg-indigo-500 hover:bg-indigo-600">
+            <Button onClick={startSend} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
               <Send className="mr-2 h-4 w-4" /> Envoyer
             </Button>
           </div>
@@ -452,7 +452,7 @@ function MessagesPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setTplOpen(false)}>Annuler</Button>
-            <Button onClick={submitTpl} className="bg-indigo-500 hover:bg-indigo-600">
+            <Button onClick={submitTpl} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
               {tplEdit ? "Enregistrer" : "Créer"}
             </Button>
           </DialogFooter>
@@ -491,7 +491,7 @@ function MessagesPage() {
             <Button
               onClick={confirmSend}
               disabled={sending}
-              className="bg-indigo-500 hover:bg-indigo-600"
+              className="bg-primary hover:bg-[var(--cosl-red-dark)]"
             >
               {sending ? "Envoi…" : "Confirmer l'envoi"}
             </Button>

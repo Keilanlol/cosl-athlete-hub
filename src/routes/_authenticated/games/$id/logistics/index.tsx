@@ -175,7 +175,7 @@ function TravelPlansPage() {
           <h2 className="text-lg font-semibold text-foreground">Plans de voyage</h2>
           <p className="text-sm text-muted-foreground">Pilotage global, par sport ou individuel.</p>
         </div>
-        <Button onClick={openCreate} className="bg-indigo-500 hover:bg-indigo-600">
+        <Button onClick={openCreate} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
           <Plus className="mr-2 h-4 w-4" /> Créer un plan
         </Button>
       </div>
@@ -333,7 +333,7 @@ function TravelPlansPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
-            <Button onClick={submit} className="bg-indigo-500 hover:bg-indigo-600">
+            <Button onClick={submit} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
               {editing ? "Enregistrer" : "Créer"}
             </Button>
           </DialogFooter>

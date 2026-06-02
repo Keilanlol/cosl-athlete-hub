@@ -140,7 +140,7 @@ function LogisticsGlobal() {
                 key={game.id}
                 to="/games/$id/logistics"
                 params={{ id: game.id }}
-                className="flex items-center justify-between rounded-lg border border-border bg-card p-5 hover:border-indigo-300 hover:shadow-sm transition"
+                className="flex items-center justify-between rounded-lg border border-border bg-card p-5 hover:border-border hover:shadow-sm transition"
               >
                 <div className="space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
@@ -182,7 +182,7 @@ function KpiCard({
   return (
     <div className="rounded-lg border border-border bg-card p-5">
       <div className="flex items-center gap-3 text-muted-foreground">
-        <span className={tone === "warn" ? "text-amber-600" : "text-indigo-500"}>{icon}</span>
+        <span className={tone === "warn" ? "text-amber-600" : "text-primary"}>{icon}</span>
         <span className="text-sm">{label}</span>
       </div>
       <p className="mt-2 text-3xl font-semibold text-foreground">{value}</p>

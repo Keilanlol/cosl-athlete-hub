@@ -293,7 +293,7 @@ function CompetitionsPage() {
             <h2 className="text-lg font-semibold text-foreground">Épreuves du Games</h2>
             <p className="text-sm text-muted-foreground">Définissez les épreuves spécifiques (rounds, catégories…).</p>
           </div>
-          <Button onClick={() => setCompOpen(true)} className="bg-indigo-500 hover:bg-indigo-600">
+          <Button onClick={() => setCompOpen(true)} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
             <Plus className="mr-2 h-4 w-4" /> Ajouter une épreuve
           </Button>
         </div>
@@ -322,7 +322,7 @@ function CompetitionsPage() {
                   <TableRow key={c.id} className="cursor-pointer hover:bg-muted" onClick={() => openComp(c)}>
                     <TableCell>{sports.find((s) => s.id === c.sport_id)?.name ?? "—"}</TableCell>
                     <TableCell>{disciplines.find((d) => d.id === c.discipline_id)?.name ?? "—"}</TableCell>
-                    <TableCell className="font-medium text-indigo-700">{c.name}</TableCell>
+                    <TableCell className="font-medium text-primary">{c.name}</TableCell>
                     <TableCell>{c.round ?? "—"}</TableCell>
                     <TableCell>{GENDERS.find((g) => g.value === c.gender)?.label ?? "—"}</TableCell>
                     <TableCell>{c.competition_date ?? "—"}</TableCell>
@@ -412,7 +412,7 @@ function CompetitionsPage() {
                     <TableCell>{r.rank ?? "—"}</TableCell>
                     <TableCell>{medalBadge(r.medal)}</TableCell>
                     <TableCell>{r.score ? `${r.score}${r.unit ? " " + r.unit : ""}` : "—"}</TableCell>
-                    <TableCell>{r.is_national_record ? <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">RN</Badge> : "—"}</TableCell>
+                    <TableCell>{r.is_national_record ? <Badge className="bg-[var(--cosl-red-light)] text-primary hover:bg-[var(--cosl-red-light)]">RN</Badge> : "—"}</TableCell>
                     <TableCell>{r.is_personal_best ? <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">PB</Badge> : "—"}</TableCell>
                   </TableRow>
                 ))}
@@ -537,7 +537,7 @@ function CompetitionsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCompOpen(false)}>Annuler</Button>
-            <Button onClick={submitComp} className="bg-indigo-500 hover:bg-indigo-600">{editingComp ? "Enregistrer" : "Créer"}</Button>
+            <Button onClick={submitComp} className="bg-primary hover:bg-[var(--cosl-red-dark)]">{editingComp ? "Enregistrer" : "Créer"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -563,7 +563,7 @@ function CompetitionsPage() {
               <section>
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="text-sm font-semibold">Classement & médailles</h4>
-                  <Button size="sm" onClick={() => setResultDlgOpen(true)} className="bg-indigo-500 hover:bg-indigo-600">
+                  <Button size="sm" onClick={() => setResultDlgOpen(true)} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
                     <Plus className="mr-1 h-3 w-3" /> Ajouter résultat
                   </Button>
                 </div>
@@ -589,7 +589,7 @@ function CompetitionsPage() {
                             <TableCell>{medalBadge(r.medal)}</TableCell>
                             <TableCell>{r.score ? `${r.score}${r.unit ? " " + r.unit : ""}` : "—"}</TableCell>
                             <TableCell className="space-x-1">
-                              {r.is_national_record && <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">RN</Badge>}
+                              {r.is_national_record && <Badge className="bg-[var(--cosl-red-light)] text-primary hover:bg-[var(--cosl-red-light)]">RN</Badge>}
                               {r.is_personal_best && <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">PB</Badge>}
                             </TableCell>
                           </TableRow>
@@ -683,7 +683,7 @@ function CompetitionsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setResultDlgOpen(false)}>Annuler</Button>
-            <Button onClick={submitResult} className="bg-indigo-500 hover:bg-indigo-600">Enregistrer</Button>
+            <Button onClick={submitResult} className="bg-primary hover:bg-[var(--cosl-red-dark)]">Enregistrer</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

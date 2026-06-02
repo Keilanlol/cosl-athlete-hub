@@ -281,7 +281,7 @@ function TransportPage() {
           <h2 className="text-lg font-semibold text-foreground">Transports locaux</h2>
           <p className="text-sm text-muted-foreground">Navettes, bus, transferts.</p>
         </div>
-        <Button onClick={() => setOpen(true)} className="bg-indigo-500 hover:bg-indigo-600">
+        <Button onClick={() => setOpen(true)} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
           <Plus className="mr-2 h-4 w-4" /> Ajouter un transport
         </Button>
       </div>
@@ -386,7 +386,7 @@ function TransportPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
-            <Button onClick={submit} className="bg-indigo-500 hover:bg-indigo-600">Créer</Button>
+            <Button onClick={submit} className="bg-primary hover:bg-[var(--cosl-red-dark)]">Créer</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -459,7 +459,7 @@ function TransportPage() {
                               </>
                             ) : (
                               <>
-                                <Button size="sm" onClick={saveEditPax} className="bg-indigo-500 hover:bg-indigo-600">
+                                <Button size="sm" onClick={saveEditPax} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
                                   <Check className="mr-1 h-4 w-4" /> OK
                                 </Button>
                                 <Button variant="ghost" size="sm" onClick={() => setEditPaxId(null)}>
@@ -519,7 +519,7 @@ function TransportPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPaxOpen(false)}>Annuler</Button>
-            <Button onClick={addPax} className="bg-indigo-500 hover:bg-indigo-600">Ajouter</Button>
+            <Button onClick={addPax} className="bg-primary hover:bg-[var(--cosl-red-dark)]">Ajouter</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
