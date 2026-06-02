@@ -1012,6 +1012,36 @@ function FederationDetailPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
+              {editingMember && (
+                <div className="flex justify-center pb-2">
+                  <EntityImageUpload
+                    entityId={editingMember.id}
+                    entityType="federation_member"
+                    currentImageUrl={editingMember.photo_url}
+                    currentStoragePath={editingMember.photo_storage_path}
+                    shape="circle"
+                    size="lg"
+                    label="Photo"
+                    placeholder={(editingMember.first_name[0] ?? "") + (editingMember.last_name[0] ?? "")}
+                    onUploaded={async (url, path) => {
+                      await supabase
+                        .from("federation_members")
+                        .update({ photo_url: url, photo_storage_path: path })
+                        .eq("id", editingMember.id);
+                      setEditingMember((m) => (m ? { ...m, photo_url: url, photo_storage_path: path } : m));
+                      load();
+                    }}
+                    onDeleted={async () => {
+                      await supabase
+                        .from("federation_members")
+                        .update({ photo_url: null, photo_storage_path: null })
+                        .eq("id", editingMember.id);
+                      setEditingMember((m) => (m ? { ...m, photo_url: null, photo_storage_path: null } : m));
+                      load();
+                    }}
+                  />
+                </div>
+              )}
               {!editingMember && allPersons.length > 0 && (
                 <div className="space-y-1.5 rounded-md border border-dashed border-slate-300 bg-slate-50 p-3">
                   <Label className="text-xs uppercase tracking-wide text-slate-500">
