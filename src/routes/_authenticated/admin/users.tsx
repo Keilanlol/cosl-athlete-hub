@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, ShieldAlert, Search } from "lucide-react";
+import { Plus, ShieldAlert, Search, UserCog } from "lucide-react";
 import { toast } from "sonner";
 import { supabase, usernameToEmail } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
@@ -161,9 +161,14 @@ function AdminUsersPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">Comptes COSL</h1>
-          <p className="text-sm text-muted-foreground">Gestion des utilisateurs et de leurs rôles.</p>
+        <div className="flex items-center gap-3">
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-white">
+            <UserCog className="h-5 w-5" />
+          </span>
+          <div>
+            <h1 className="text-2xl font-semibold text-foreground">Comptes COSL</h1>
+            <p className="text-sm text-muted-foreground">Gestion des utilisateurs et de leurs rôles.</p>
+          </div>
         </div>
         <Button onClick={() => setOpen(true)} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
           <Plus className="mr-2 h-4 w-4" /> Ajouter un utilisateur

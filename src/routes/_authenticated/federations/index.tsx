@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, Search, Shield } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import type { Federation } from "@/lib/types";
@@ -220,7 +220,7 @@ function FederationsPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="flex items-center gap-3">
           <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-white">
-            <Shield className="h-5 w-5" />
+            <Building2 className="h-5 w-5" />
           </span>
           <div>
             <h1 className="text-2xl font-semibold text-foreground">Fédérations</h1>

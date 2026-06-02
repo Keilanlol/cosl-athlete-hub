@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { Search, BadgeCheck } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { Input } from "@/components/ui/input";
@@ -97,9 +97,14 @@ function GlobalAccreditationsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">Accréditations</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Vue globale toutes éditions confondues.</p>
+      <div className="flex items-center gap-3">
+        <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-white">
+          <BadgeCheck className="h-5 w-5" />
+        </span>
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground">Accréditations</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Vue globale toutes éditions confondues.</p>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
