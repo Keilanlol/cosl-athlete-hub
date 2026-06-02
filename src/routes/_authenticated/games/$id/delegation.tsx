@@ -25,6 +25,7 @@ import {
   Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { COACH_ROLES } from "@/lib/types";
 
 export const Route = createFileRoute("/_authenticated/games/$id/delegation")({
   component: DelegationPage,
@@ -80,6 +81,11 @@ function DelegationPage() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [memberForm, setMemberForm] = useState({ entity_id: "", member_role: "", member_function: "" });
   const [saving, setSaving] = useState(false);
+
+  // Sub-dialog: create new encadrant
+  const [coachOpen, setCoachOpen] = useState(false);
+  const [coachForm, setCoachForm] = useState({ first_name: "", last_name: "", email: "", phone: "", role: "coach" });
+  const [coachSaving, setCoachSaving] = useState(false);
 
   const ensureDelegation = async (): Promise<Delegation | null> => {
     const { data: existing } = await supabase.from("delegations").select("*").eq("game_id", gameId).maybeSingle();
@@ -181,6 +187,33 @@ function DelegationPage() {
     setMemberOpen(false);
     setMemberForm({ entity_id: "", member_role: "", member_function: "" });
     load();
+  };
+
+  const submitCoach = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const fn = coachForm.first_name.trim();
+    const ln = coachForm.last_name.trim();
+    if (!fn || !ln) { toast.error("Prénom et nom requis"); return; }
+    setCoachSaving(true);
+    const { data, error } = await supabase.from("coaches").insert({
+      first_name: fn,
+      last_name: ln,
+      email: coachForm.email.trim() || null,
+      phone: coachForm.phone.trim() || null,
+      role: coachForm.role,
+      is_active: true,
+    }).select().single();
+    setCoachSaving(false);
+    if (error || !data) {
+      toast.error("Échec création", { description: friendlyError(error!) });
+      return;
+    }
+    toast.success("Encadrant créé");
+    const created = data as Coach;
+    setCoaches((prev) => [...prev, created].sort((a, b) => a.last_name.localeCompare(b.last_name)));
+    setMemberForm((f) => ({ ...f, entity_id: created.id }));
+    setCoachOpen(false);
+    setCoachForm({ first_name: "", last_name: "", email: "", phone: "", role: "coach" });
   };
 
   const removeMember = async (m: Member) => {
@@ -434,6 +467,17 @@ function DelegationPage() {
                       <CommandInput placeholder="Rechercher…" />
                       <CommandList>
                         <CommandEmpty>Aucun résultat.</CommandEmpty>
+                        {memberType === "coach" && (
+                          <CommandGroup>
+                            <CommandItem
+                              value="__new_coach__"
+                              onSelect={() => { setPickerOpen(false); setCoachOpen(true); }}
+                              className="font-medium text-primary"
+                            >
+                              <Plus className="mr-2 h-4 w-4" /> Créer un nouvel encadrant
+                            </CommandItem>
+                          </CommandGroup>
+                        )}
                         <CommandGroup>
                           {(memberType === "athlete" ? athletes : coaches).slice(0, 200).map((p) => (
                             <CommandItem
@@ -463,6 +507,57 @@ function DelegationPage() {
               <Button type="button" variant="outline" onClick={() => setMemberOpen(false)}>Annuler</Button>
               <Button type="submit" disabled={saving} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
                 {saving ? "Enregistrement…" : "Ajouter"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create encadrant sub-dialog */}
+      <Dialog open={coachOpen} onOpenChange={setCoachOpen}>
+        <DialogContent>
+          <form onSubmit={submitCoach}>
+            <DialogHeader>
+              <DialogTitle>Nouvel encadrant</DialogTitle>
+              <DialogDescription>Créer un encadrant et l'utiliser directement comme membre.</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="c-fn">Prénom *</Label>
+                  <Input id="c-fn" value={coachForm.first_name} onChange={(e) => setCoachForm({ ...coachForm, first_name: e.target.value })} required />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="c-ln">Nom *</Label>
+                  <Input id="c-ln" value={coachForm.last_name} onChange={(e) => setCoachForm({ ...coachForm, last_name: e.target.value })} required />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="c-role">Rôle *</Label>
+                <Select value={coachForm.role} onValueChange={(v) => setCoachForm({ ...coachForm, role: v })}>
+                  <SelectTrigger id="c-role"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {COACH_ROLES.map((r) => (
+                      <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="c-em">Email</Label>
+                  <Input id="c-em" type="email" value={coachForm.email} onChange={(e) => setCoachForm({ ...coachForm, email: e.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="c-ph">Téléphone</Label>
+                  <Input id="c-ph" value={coachForm.phone} onChange={(e) => setCoachForm({ ...coachForm, phone: e.target.value })} />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setCoachOpen(false)}>Annuler</Button>
+              <Button type="submit" disabled={coachSaving} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
+                {coachSaving ? "Création…" : "Créer"}
               </Button>
             </DialogFooter>
           </form>

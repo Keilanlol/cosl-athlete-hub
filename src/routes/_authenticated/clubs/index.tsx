@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Plus, Pencil, Trash2, Search, Shield } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import type { Club, Federation } from "@/lib/types";
+import type { Club, ClubMember, Federation } from "@/lib/types";
 import { EntityImageUpload } from "@/components/EntityImageUpload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,6 +75,7 @@ function ClubsPage() {
   const navigate = useNavigate();
   const [rows, setRows] = useState<Club[] | null>(null);
   const [feds, setFeds] = useState<Federation[]>([]);
+  const [members, setMembers] = useState<ClubMember[]>([]);
   const [search, setSearch] = useState("");
   const [fedFilter, setFedFilter] = useState<string>("all");
   const [cityFilter, setCityFilter] = useState<string>("all");
@@ -95,11 +96,22 @@ function ClubsPage() {
     return m;
   }, [feds]);
 
+  const presidentByClub = useMemo(() => {
+    const m = new Map<string, ClubMember>();
+    members.forEach((mem) => {
+      if (mem.role === "president" && (mem.is_active ?? true) && !m.has(mem.club_id)) {
+        m.set(mem.club_id, mem);
+      }
+    });
+    return m;
+  }, [members]);
+
   const load = async () => {
     setRows(null);
-    const [{ data: cd, error: ce }, { data: fd, error: fe }] = await Promise.all([
+    const [{ data: cd, error: ce }, { data: fd, error: fe }, { data: md }] = await Promise.all([
       supabase.from("clubs").select("*").order("name"),
       supabase.from("federations").select("*").order("acronym"),
+      supabase.from("club_members").select("*"),
     ]);
     if (ce || fe) {
       toast.error("Erreur de chargement", {
@@ -110,6 +122,7 @@ function ClubsPage() {
     }
     setRows((cd ?? []) as Club[]);
     setFeds((fd ?? []) as Federation[]);
+    setMembers((md ?? []) as ClubMember[]);
   };
 
   useEffect(() => {
@@ -302,7 +315,7 @@ function ClubsPage() {
 
       <div className="rounded-lg border border-border bg-card">
         {rows === null ? (
-          <TableSkeleton cols={6} />
+          <TableSkeleton cols={7} />
         ) : filtered.length === 0 ? (
           <div className="p-6">
             <EmptyState message="Aucun club enregistré." />
@@ -331,6 +344,7 @@ function ClubsPage() {
                     Ville
                   </SortBtn>
                 </TableHead>
+                <TableHead>Président</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Téléphone</TableHead>
                 <TableHead className="w-24 text-right">Actions</TableHead>
@@ -339,6 +353,7 @@ function ClubsPage() {
             <TableBody>
               {visible.map((c) => {
                 const f = fedMap.get(c.federation_id);
+                const pres = presidentByClub.get(c.id);
                 return (
                   <TableRow
                     key={c.id}
@@ -369,8 +384,11 @@ function ClubsPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-muted-foreground">{c.city ?? "—"}</TableCell>
-                    <TableCell className="text-muted-foreground">{c.email ?? "—"}</TableCell>
-                    <TableCell className="text-muted-foreground">{c.phone ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {pres ? `${pres.first_name} ${pres.last_name}` : "—"}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{pres?.email ?? c.email ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{pres?.phone ?? c.phone ?? "—"}</TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <Button
                         variant="ghost"
