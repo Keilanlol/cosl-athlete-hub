@@ -266,9 +266,19 @@ function FederationDetailPage() {
       coachesQuery.eq("federation_id", id);
     }
 
-    const [a, co] = await Promise.all([athletesQuery, coachesQuery]);
+    const [a, co, fc] = await Promise.all([
+      athletesQuery,
+      coachesQuery,
+      supabase
+        .from("coaches")
+        .select("*")
+        .is("federation_id", null)
+        .is("club_id", null)
+        .order("last_name"),
+    ]);
     setAthletes((a.data ?? []) as AthleteRow[]);
     setCoaches((co.data ?? []) as Coach[]);
+    setFreeCoaches((fc.data ?? []) as Coach[]);
     setLoading(false);
   };
 
