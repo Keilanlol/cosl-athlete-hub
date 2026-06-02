@@ -143,7 +143,7 @@ export function FileUpload({
         onClick={() => inputRef.current?.click()}
         className={cn(
           "flex cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed p-4 text-center transition-colors",
-          dragging ? "border-indigo-500 bg-[var(--lux-blue-light)]" : "border-border hover:border-slate-400 hover:bg-muted",
+          dragging ? "border-primary bg-[var(--lux-blue-light)]" : "border-border hover:border-border hover:bg-muted",
         )}
       >
         <Upload className="mb-1 h-5 w-5 text-muted-foreground" />

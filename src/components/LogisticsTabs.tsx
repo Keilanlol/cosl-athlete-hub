@@ -30,7 +30,7 @@ export function LogisticsTabs({ id }: { id: string }) {
             params={{ id }}
             className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors ${
               active
-                ? "border-indigo-500 text-[var(--lux-blue)]"
+                ? "border-primary text-[var(--lux-blue)]"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
