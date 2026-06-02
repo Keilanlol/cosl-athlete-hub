@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EntityImageUpload } from "@/components/EntityImageUpload";
 
 export const Route = createFileRoute("/_authenticated/games/$id")({
   component: GameLayout,
@@ -134,19 +135,35 @@ function GameLayout() {
 
       <div className="rounded-lg border border-border bg-card p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              {t && <Badge className={`${t.cls} hover:${t.cls}`}>{t.label}</Badge>}
-              {s && <Badge className={`${s.cls} hover:${s.cls}`}>{s.label}</Badge>}
-              <span className="text-sm text-muted-foreground">Édition {game.edition_year}</span>
+          <div className="flex items-start gap-5">
+            <EntityImageUpload
+              entityId={game.id}
+              entityType="game"
+              currentImageUrl={game.logo_url}
+              currentStoragePath={game.logo_storage_path}
+              shape="square"
+              size="lg"
+              onUploaded={(url, path) => {
+                setGame({ ...game, logo_url: url, logo_storage_path: path });
+              }}
+              onDeleted={() => {
+                setGame({ ...game, logo_url: null, logo_storage_path: null });
+              }}
+            />
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                {t && <Badge className={`${t.cls} hover:${t.cls}`}>{t.label}</Badge>}
+                {s && <Badge className={`${s.cls} hover:${s.cls}`}>{s.label}</Badge>}
+                <span className="text-sm text-muted-foreground">Édition {game.edition_year}</span>
+              </div>
+              <h1 className="text-2xl font-semibold text-foreground">{game.name}</h1>
+              <p className="text-sm text-muted-foreground">
+                {fmt(game.competition_start)} → {fmt(game.competition_end)}
+                {(game.host_city || game.host_country) && (
+                  <span> · {[game.host_city, game.host_country].filter(Boolean).join(", ")}</span>
+                )}
+              </p>
             </div>
-            <h1 className="text-2xl font-semibold text-foreground">{game.name}</h1>
-            <p className="text-sm text-muted-foreground">
-              {fmt(game.competition_start)} → {fmt(game.competition_end)}
-              {(game.host_city || game.host_country) && (
-                <span> · {[game.host_city, game.host_country].filter(Boolean).join(", ")}</span>
-              )}
-            </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" onClick={() => navigate({ to: "/games" })}>
