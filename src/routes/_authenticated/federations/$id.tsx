@@ -215,6 +215,14 @@ function FederationDetailPage() {
     }
     setAllPersons(dedup);
 
+    const { data: unlinked } = await supabase
+      .from("federation_members")
+      .select("*")
+      .is("federation_id", null)
+      .order("last_name");
+    setUnlinkedMembers((unlinked ?? []) as FederationMember[]);
+
+
     const clubIds = clubsData.map((cl) => cl.id);
     // Athletes: those rattached to fed OR member of one of its clubs
     const athletesQuery = supabase
