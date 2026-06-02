@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Plus, Pencil, Trash2, Search, Shield } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import type { Club, Federation } from "@/lib/types";
+import type { Club, ClubMember, Federation } from "@/lib/types";
 import { EntityImageUpload } from "@/components/EntityImageUpload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
