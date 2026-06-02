@@ -29,6 +29,7 @@ type UpcomingGame = {
   host_country: string | null;
   host_city: string | null;
   competition_start: string;
+  logo_url: string | null;
 };
 
 type NotificationRow = {
