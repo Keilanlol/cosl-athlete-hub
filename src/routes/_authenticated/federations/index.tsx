@@ -239,6 +239,11 @@ function FederationsPage() {
       return;
     }
     setMemberSaving(true);
+    const street = memberForm.street.trim();
+    const postcode = memberForm.postcode.trim();
+    const city = memberForm.city.trim();
+    const country = memberForm.country.trim();
+    const address = [street, postcode, city, country].filter(Boolean).join(", ") || null;
     const { data, error } = await supabase
       .from("federation_members")
       .insert({
@@ -248,7 +253,15 @@ function FederationsPage() {
         role: memberForm.role,
         email: memberForm.email.trim() || null,
         phone: memberForm.phone.trim() || null,
-        is_active: true,
+        street: street || null,
+        postcode: postcode || null,
+        city: city || null,
+        country: country || null,
+        address,
+        start_date: memberForm.start_date || null,
+        end_date: memberForm.end_date || null,
+        notes: memberForm.notes.trim() || null,
+        is_active: memberForm.is_active,
       })
       .select()
       .single();
@@ -305,14 +318,28 @@ function FederationsPage() {
     }
     // Création du président en attente
     if (!editing && pendingPresident && newFedId) {
+      const p = pendingPresident;
+      const pStreet = p.street.trim();
+      const pPostcode = p.postcode.trim();
+      const pCity = p.city.trim();
+      const pCountry = p.country.trim();
+      const pAddress = [pStreet, pPostcode, pCity, pCountry].filter(Boolean).join(", ") || null;
       const { error: me } = await supabase.from("federation_members").insert({
         federation_id: newFedId,
-        first_name: pendingPresident.first_name,
-        last_name: pendingPresident.last_name,
-        role: pendingPresident.role,
-        email: pendingPresident.email.trim() || null,
-        phone: pendingPresident.phone.trim() || null,
-        is_active: true,
+        first_name: p.first_name,
+        last_name: p.last_name,
+        role: p.role,
+        email: p.email.trim() || null,
+        phone: p.phone.trim() || null,
+        street: pStreet || null,
+        postcode: pPostcode || null,
+        city: pCity || null,
+        country: pCountry || null,
+        address: pAddress,
+        start_date: p.start_date || null,
+        end_date: p.end_date || null,
+        notes: p.notes.trim() || null,
+        is_active: p.is_active,
       });
       if (me) {
         toast.error("Membre président non créé", { description: friendlyError(me) });
