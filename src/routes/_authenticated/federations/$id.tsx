@@ -738,6 +738,7 @@ function FederationDetailPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-14"></TableHead>
                     <TableHead>Nom</TableHead>
                     <TableHead>Fonction</TableHead>
                     <TableHead>Email</TableHead>
@@ -749,14 +750,25 @@ function FederationDetailPage() {
                 </TableHeader>
                 <TableBody>
                   {members.map((m) => (
-                    <TableRow
-                      key={m.id}
-                      onClick={() => navigate({ to: "/federations/members/$memberId", params: { memberId: m.id } })}
-                      className="cursor-pointer hover:bg-slate-50"
-                    >
-                      <TableCell className="font-medium">
-                        {m.first_name} {m.last_name}
-                      </TableCell>
+                  <TableRow
+                    key={m.id}
+                    onClick={() => navigate({ to: "/federations/members/$memberId", params: { memberId: m.id } })}
+                    className="cursor-pointer hover:bg-slate-50"
+                  >
+                    <TableCell>
+                      <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-100">
+                        {m.photo_url ? (
+                          <img src={m.photo_url} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <span className="text-xs font-semibold text-slate-500">
+                            {(m.first_name[0] ?? "") + (m.last_name[0] ?? "")}
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {m.first_name} {m.last_name}
+                    </TableCell>
                       <TableCell>
                         <Badge variant="outline">{memberRoleLabel(m.role)}</Badge>
                       </TableCell>
