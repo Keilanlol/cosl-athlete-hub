@@ -1062,65 +1062,8 @@ function FederationDetailPage() {
                   />
                 </div>
               )}
-              {!editingMember && (
-                <div className="space-y-1.5 rounded-md border border-dashed border-border bg-muted p-3">
-                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Choisir un membre existant ou créer un nouveau
-                  </Label>
-                  <Select
-                    value={pickedPersonId || "__new__"}
-                    onValueChange={(v) => {
-                      if (v === "__new__") {
-                        setPickedPersonId("");
-                        setMemberForm(emptyMember);
-                        return;
-                      }
-                      setPickedPersonId(v);
-                      const p = unlinkedMembers.find((x) => x.id === v);
-                      if (!p) return;
-                      setMemberForm({
-                        first_name: p.first_name,
-                        last_name: p.last_name,
-                        role: p.role ?? "president",
-                        email: p.email ?? "",
-                        phone: p.phone ?? "",
-                        address: p.address ?? "",
-                        street: p.street ?? "",
-                        postcode: p.postcode ?? "",
-                        city: p.city ?? "",
-                        country: p.country ?? "",
-                        start_date: "",
-                        end_date: "",
-                        notes: "",
-                        is_active: true,
-                      });
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Nouveau membre (champs vides ci-dessous)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__new__" className="text-primary font-medium">
-                        + Ajouter un nouveau membre
-                      </SelectItem>
-                      {unlinkedMembers.length > 0 && (
-                        <>
-                          <SelectSeparator />
-                          {unlinkedMembers.map((m) => (
-                            <SelectItem key={m.id} value={m.id}>
-                              {m.first_name} {m.last_name}
-                              {m.email ? ` — ${m.email}` : ""}
-                            </SelectItem>
-                          ))}
-                        </>
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    Ou laissez sur "Nouveau membre" et remplissez les champs ci-dessous.
-                  </p>
-                </div>
-              )}
+
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="mfname">Prénom *</Label>
