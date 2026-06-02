@@ -723,10 +723,13 @@ function ClubDetailPage() {
                     >
                       <TableCell>
                         <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-100">
-                          {/* ClubMember has no photo column — initials only */}
-                          <span className="text-xs font-semibold text-slate-500">
-                            {(m.first_name[0] ?? "") + (m.last_name[0] ?? "")}
-                          </span>
+                          {m.photo_url ? (
+                            <img src={m.photo_url} alt={`${m.first_name} ${m.last_name}`} className="h-full w-full object-cover" />
+                          ) : (
+                            <span className="text-xs font-semibold text-slate-500">
+                              {(m.first_name[0] ?? "") + (m.last_name[0] ?? "")}
+                            </span>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell className="font-medium">
@@ -932,6 +935,36 @@ function ClubDetailPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
+              {editingMember && (
+                <div className="flex justify-center pb-2">
+                  <EntityImageUpload
+                    entityId={editingMember.id}
+                    entityType="club_member"
+                    currentImageUrl={editingMember.photo_url}
+                    currentStoragePath={editingMember.photo_storage_path}
+                    shape="circle"
+                    size="lg"
+                    label="Photo"
+                    placeholder={(editingMember.first_name[0] ?? "") + (editingMember.last_name[0] ?? "")}
+                    onUploaded={async (url, path) => {
+                      await supabase
+                        .from("club_members")
+                        .update({ photo_url: url, photo_storage_path: path })
+                        .eq("id", editingMember.id);
+                      setEditingMember((m) => (m ? { ...m, photo_url: url, photo_storage_path: path } : m));
+                      load();
+                    }}
+                    onDeleted={async () => {
+                      await supabase
+                        .from("club_members")
+                        .update({ photo_url: null, photo_storage_path: null })
+                        .eq("id", editingMember.id);
+                      setEditingMember((m) => (m ? { ...m, photo_url: null, photo_storage_path: null } : m));
+                      load();
+                    }}
+                  />
+                </div>
+              )}
               {!editingMember && allPersons.length > 0 && (
                 <div className="space-y-1.5 rounded-md border border-dashed border-slate-300 bg-slate-50 p-3">
                   <Label className="text-xs uppercase tracking-wide text-slate-500">

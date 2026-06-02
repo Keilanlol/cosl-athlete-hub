@@ -102,6 +102,8 @@ export type ClubMember = {
   end_date: string | null;
   notes: string | null;
   is_active: boolean | null;
+  photo_url?: string | null;
+  photo_storage_path?: string | null;
   created_at: string;
 };
 
