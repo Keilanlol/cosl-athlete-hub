@@ -5,6 +5,7 @@ import { Plus, Pencil, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { COACH_ROLES, type Club, type Coach, type Federation } from "@/lib/types";
+import { EntityImageUpload } from "@/components/EntityImageUpload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -304,6 +305,7 @@ function CoachesPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-14"></TableHead>
                 <TableHead>
                   <SortBtn
                     active={sort.key === "first_name"}
@@ -349,6 +351,17 @@ function CoachesPage() {
                     onClick={() => navigate({ to: "/coaches/$id", params: { id: c.id } })}
                     className="cursor-pointer hover:bg-slate-50"
                   >
+                    <TableCell>
+                      <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-100">
+                        {c.photo_url ? (
+                          <img src={c.photo_url} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <span className="text-xs font-semibold text-slate-500">
+                            {(c.first_name[0] ?? "") + (c.last_name[0] ?? "")}
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>{c.first_name}</TableCell>
                     <TableCell className="font-medium">{c.last_name}</TableCell>
                     <TableCell className="text-slate-600">{c.email ?? "—"}</TableCell>
