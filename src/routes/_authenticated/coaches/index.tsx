@@ -428,6 +428,36 @@ function CoachesPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
+              {editing && (
+                <div className="flex justify-center pb-2">
+                  <EntityImageUpload
+                    entityId={editing.id}
+                    entityType="coach"
+                    currentImageUrl={editing.photo_url}
+                    currentStoragePath={editing.photo_storage_path}
+                    shape="circle"
+                    size="lg"
+                    label="Photo"
+                    placeholder={(editing.first_name[0] ?? "") + (editing.last_name[0] ?? "")}
+                    onUploaded={async (url, path) => {
+                      await supabase
+                        .from("coaches")
+                        .update({ photo_url: url, photo_storage_path: path })
+                        .eq("id", editing.id);
+                      setEditing((e) => (e ? { ...e, photo_url: url, photo_storage_path: path } : e));
+                      load();
+                    }}
+                    onDeleted={async () => {
+                      await supabase
+                        .from("coaches")
+                        .update({ photo_url: null, photo_storage_path: null })
+                        .eq("id", editing.id);
+                      setEditing((e) => (e ? { ...e, photo_url: null, photo_storage_path: null } : e));
+                      load();
+                    }}
+                  />
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="fn">Prénom *</Label>
