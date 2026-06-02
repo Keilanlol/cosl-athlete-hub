@@ -144,6 +144,16 @@ const emptyMember = {
   is_active: true,
 };
 
+const emptyCoach = {
+  first_name: "",
+  last_name: "",
+  email: "",
+  phone: "",
+  role: "coach",
+  club_id: "__none__",
+  is_active: true,
+};
+
 function FederationDetailPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
