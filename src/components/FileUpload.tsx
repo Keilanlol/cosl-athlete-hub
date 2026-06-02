@@ -110,7 +110,7 @@ export function FileUpload({
   return (
     <div className={cn("space-y-2", className)}>
       {currentUrl && (
-        <div className="flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50 p-2">
+        <div className="flex items-center gap-3 rounded-md border border-border bg-muted p-2">
           {showImage ? (
             <img
               src={currentUrl}
@@ -118,17 +118,17 @@ export function FileUpload({
               className="h-12 w-12 rounded object-cover"
             />
           ) : (
-            <FileText className="h-8 w-8 text-slate-400" />
+            <FileText className="h-8 w-8 text-muted-foreground" />
           )}
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-slate-700">
+            <p className="truncate text-sm font-medium text-foreground">
               {currentName ?? "Fichier actuel"}
             </p>
             <a
               href={currentUrl}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:underline"
+              className="inline-flex items-center gap-1 text-xs text-[var(--lux-blue)] hover:underline"
             >
               <Eye className="h-3 w-3" /> Aperçu
             </a>
@@ -143,14 +143,14 @@ export function FileUpload({
         onClick={() => inputRef.current?.click()}
         className={cn(
           "flex cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed p-4 text-center transition-colors",
-          dragging ? "border-indigo-500 bg-indigo-50" : "border-slate-300 hover:border-slate-400 hover:bg-slate-50",
+          dragging ? "border-primary bg-[var(--lux-blue-light)]" : "border-border hover:border-border hover:bg-muted",
         )}
       >
-        <Upload className="mb-1 h-5 w-5 text-slate-400" />
-        <p className="text-xs text-slate-600">
-          Glissez-déposez ou <span className="font-medium text-indigo-600">parcourez</span>
+        <Upload className="mb-1 h-5 w-5 text-muted-foreground" />
+        <p className="text-xs text-muted-foreground">
+          Glissez-déposez ou <span className="font-medium text-[var(--lux-blue)]">parcourez</span>
         </p>
-        <p className="text-[10px] text-slate-400">
+        <p className="text-[10px] text-muted-foreground">
           {accept.replace(/,/g, ", ")} · max {maxSizeMb} MB
         </p>
         <input
@@ -169,7 +169,7 @@ export function FileUpload({
       {progress !== null && (
         <div className="space-y-1">
           <Progress value={progress} className="h-1.5" />
-          <p className="text-[10px] text-slate-500">Téléversement… {progress}%</p>
+          <p className="text-[10px] text-muted-foreground">Téléversement… {progress}%</p>
         </div>
       )}
     </div>

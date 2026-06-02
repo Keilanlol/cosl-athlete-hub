@@ -204,19 +204,19 @@ function MembersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-500 text-white">
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-white">
             <UserRound className="h-5 w-5" />
           </span>
           <div>
-            <h1 className="text-2xl font-semibold text-slate-900">Membres</h1>
-            <p className="text-sm text-slate-600">
+            <h1 className="text-2xl font-semibold text-foreground">Membres</h1>
+            <p className="text-sm text-muted-foreground">
               Membres des bureaux des fédérations et clubs.
             </p>
           </div>
         </div>
         <Button
           onClick={() => setCreateOpen(true)}
-          className="bg-[#C8102E] hover:bg-[#A00D24]"
+          className="bg-primary hover:bg-[var(--cosl-red-dark)]"
         >
           <Plus className="mr-2 h-4 w-4" /> Ajouter un membre
         </Button>
@@ -224,7 +224,7 @@ function MembersPage() {
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-64">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
@@ -244,9 +244,9 @@ function MembersPage() {
         </Select>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white">
+      <div className="rounded-lg border border-border bg-card">
         {loading ? (
-          <div className="p-6 text-sm text-slate-500">Chargement…</div>
+          <div className="p-6 text-sm text-muted-foreground">Chargement…</div>
         ) : rows.length === 0 ? (
           <div className="p-6">
             <EmptyState message="Aucun membre." />
@@ -276,11 +276,11 @@ function MembersPage() {
                   <TableRow
                     key={`${r.kind}:${m.id}`}
                     onClick={onRowClick}
-                    className="cursor-pointer hover:bg-slate-50"
+                    className="cursor-pointer hover:bg-muted"
                   >
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-full overflow-hidden bg-slate-100 border border-slate-200 shrink-0 flex items-center justify-center">
+                        <div className="h-9 w-9 rounded-full overflow-hidden bg-muted border border-border shrink-0 flex items-center justify-center">
                           {m.photo_url ? (
                             <img
                               src={m.photo_url}
@@ -288,7 +288,7 @@ function MembersPage() {
                               className="h-full w-full object-cover"
                             />
                           ) : (
-                            <span className="text-xs font-semibold text-slate-500">
+                            <span className="text-xs font-semibold text-muted-foreground">
                               {m.first_name[0]}
                               {m.last_name[0]}
                             </span>
@@ -302,7 +302,7 @@ function MembersPage() {
                     <TableCell>
                       <Badge variant="outline">{roleLabel(r.kind, m.role)}</Badge>
                     </TableCell>
-                    <TableCell className="text-slate-600">
+                    <TableCell className="text-muted-foreground">
                       <Link
                         to={r.kind === "fed" ? "/federations/$id" : "/clubs/$id"}
                         params={{ id: r.orgId }}
@@ -317,10 +317,10 @@ function MembersPage() {
                         {r.orgLabel}
                       </Link>
                     </TableCell>
-                    <TableCell className="text-slate-600">
+                    <TableCell className="text-muted-foreground">
                       {m.email ?? "—"}
                     </TableCell>
-                    <TableCell className="text-slate-600">
+                    <TableCell className="text-muted-foreground">
                       {m.phone ?? "—"}
                     </TableCell>
                     <TableCell>
@@ -355,7 +355,7 @@ function MembersPage() {
                     variant={orgType === "fed" ? "default" : "outline"}
                     className={
                       orgType === "fed"
-                        ? "bg-[#C8102E] hover:bg-[#A00D24]"
+                        ? "bg-primary hover:bg-[var(--cosl-red-dark)]"
                         : ""
                     }
                     onClick={() => {
@@ -374,7 +374,7 @@ function MembersPage() {
                     variant={orgType === "club" ? "default" : "outline"}
                     className={
                       orgType === "club"
-                        ? "bg-[#C8102E] hover:bg-[#A00D24]"
+                        ? "bg-primary hover:bg-[var(--cosl-red-dark)]"
                         : ""
                     }
                     onClick={() => {
@@ -588,7 +588,7 @@ function MembersPage() {
                 />
               </div>
 
-              <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
+              <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
                 <Label className="cursor-pointer">Membre actif</Label>
                 <Switch
                   checked={createForm.is_active}
@@ -609,7 +609,7 @@ function MembersPage() {
               <Button
                 type="submit"
                 disabled={createSaving}
-                className="bg-[#C8102E] hover:bg-[#A00D24]"
+                className="bg-primary hover:bg-[var(--cosl-red-dark)]"
               >
                 {createSaving ? "Enregistrement…" : "Ajouter"}
               </Button>

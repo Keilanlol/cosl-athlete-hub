@@ -14,7 +14,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <div className="flex min-h-screen w-full bg-[#FAFAFA]">
         <AppSidebar />
         <div className="flex flex-1 flex-col">
-          <header className="flex h-14 items-center justify-between border-b border-[#E8E8E8] bg-white px-4">
+          <header className="flex h-14 items-center justify-between border-b border-[#E8E8E8] bg-card px-4">
             <div className="flex items-center gap-3">
               <SidebarTrigger />
               <div className="text-xs uppercase tracking-[0.15em] font-semibold text-[#717171]">
@@ -34,7 +34,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 variant="ghost"
                 size="sm"
                 onClick={() => signOut()}
-                className="gap-2 text-[#717171] hover:text-[#C8102E] hover:bg-[#F5E6E9]"
+                className="gap-2 text-[#717171] hover:text-primary hover:bg-[#F5E6E9]"
               >
                 <LogOut className="h-4 w-4" />
                 Déconnexion

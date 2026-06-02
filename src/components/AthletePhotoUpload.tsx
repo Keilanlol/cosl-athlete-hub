@@ -220,17 +220,17 @@ export function AthletePhotoUpload({
       >
         <div
           className={cn(
-            "rounded-full overflow-hidden border-2 bg-slate-100 flex items-center justify-center",
+            "rounded-full overflow-hidden border-2 bg-muted flex items-center justify-center",
             dim,
-            displayed ? "border-slate-200" : "border-dashed border-slate-300",
+            displayed ? "border-border" : "border-dashed border-border",
           )}
         >
           {displayed ? (
             <img src={displayed} alt="Photo" className="w-full h-full object-cover" />
           ) : initials ? (
-            <span className="font-semibold text-slate-500">{initials}</span>
+            <span className="font-semibold text-muted-foreground">{initials}</span>
           ) : (
-            <UserCircle className={cn(iconSize, "text-slate-400")} />
+            <UserCircle className={cn(iconSize, "text-muted-foreground")} />
           )}
         </div>
 

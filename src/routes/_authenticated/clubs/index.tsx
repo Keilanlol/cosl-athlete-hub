@@ -247,12 +247,12 @@ function ClubsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Clubs</h1>
-          <p className="mt-1 text-sm text-slate-600">
+          <h1 className="text-2xl font-semibold text-foreground">Clubs</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Clubs affiliés aux fédérations nationales.
           </p>
         </div>
-        <Button onClick={openCreate} className="bg-indigo-500 hover:bg-indigo-600">
+        <Button onClick={openCreate} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
           <Plus className="mr-2 h-4 w-4" />
           Ajouter un club
         </Button>
@@ -260,7 +260,7 @@ function ClubsPage() {
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative max-w-sm flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Rechercher par nom…"
             value={search}
@@ -290,10 +290,10 @@ function ClubsPage() {
             ))}
           </SelectContent>
         </Select>
-        <span className="text-sm text-slate-500">{filtered.length} résultat(s)</span>
+        <span className="text-sm text-muted-foreground">{filtered.length} résultat(s)</span>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white">
+      <div className="rounded-lg border border-border bg-card">
         {rows === null ? (
           <TableSkeleton cols={6} />
         ) : filtered.length === 0 ? (
@@ -336,14 +336,14 @@ function ClubsPage() {
                   <TableRow
                     key={c.id}
                     onClick={() => navigate({ to: "/clubs/$id", params: { id: c.id } })}
-                    className="cursor-pointer hover:bg-slate-50"
+                    className="cursor-pointer hover:bg-muted"
                   >
                     <TableCell>
-                      <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-md border border-slate-200 bg-slate-50">
+                      <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-md border border-border bg-muted">
                         {c.logo_url ? (
                           <img src={c.logo_url} alt={c.name} className="h-full w-full object-contain p-0.5" />
                         ) : (
-                          <span className="text-[10px] font-semibold text-slate-500">
+                          <span className="text-[10px] font-semibold text-muted-foreground">
                             {c.name?.slice(0, 2).toUpperCase()}
                           </span>
                         )}
@@ -353,17 +353,17 @@ function ClubsPage() {
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       {f ? (
                         <Link to="/federations/$id" params={{ id: f.id }}>
-                          <Badge variant="outline" className="font-mono hover:bg-slate-100">
+                          <Badge variant="outline" className="font-mono hover:bg-muted">
                             {f.acronym}
                           </Badge>
                         </Link>
                       ) : (
-                        <span className="text-slate-400">—</span>
+                        <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-slate-600">{c.city ?? "—"}</TableCell>
-                    <TableCell className="text-slate-600">{c.email ?? "—"}</TableCell>
-                    <TableCell className="text-slate-600">{c.phone ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{c.city ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{c.email ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{c.phone ?? "—"}</TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <Button
                         variant="ghost"
@@ -540,7 +540,7 @@ function ClubsPage() {
               <Button
                 type="submit"
                 disabled={saving}
-                className="bg-indigo-500 hover:bg-indigo-600"
+                className="bg-primary hover:bg-[var(--cosl-red-dark)]"
               >
                 {saving ? "Enregistrement…" : editing ? "Enregistrer" : "Ajouter"}
               </Button>

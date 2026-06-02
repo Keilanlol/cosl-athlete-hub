@@ -22,11 +22,11 @@ export const Route = createFileRoute("/_authenticated/accreditations/")({
 });
 
 const ACCRED_STATUSES: { value: string; label: string; cls: string }[] = [
-  { value: "draft", label: "Brouillon", cls: "bg-slate-200 text-slate-700" },
+  { value: "draft", label: "Brouillon", cls: "bg-slate-200 text-foreground" },
   { value: "submitted", label: "Soumise", cls: "bg-amber-100 text-amber-700" },
   { value: "validated", label: "Validée", cls: "bg-emerald-100 text-emerald-700" },
   { value: "rejected", label: "Rejetée", cls: "bg-red-100 text-red-700" },
-  { value: "produced", label: "Produite", cls: "bg-indigo-100 text-indigo-700" },
+  { value: "produced", label: "Produite", cls: "bg-[var(--cosl-red-light)] text-primary" },
   { value: "delivered", label: "Délivrée", cls: "bg-blue-100 text-blue-800" },
 ];
 
@@ -98,13 +98,13 @@ function GlobalAccreditationsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Accréditations</h1>
-        <p className="mt-1 text-sm text-slate-600">Vue globale toutes éditions confondues.</p>
+        <h1 className="text-2xl font-semibold text-foreground">Accréditations</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Vue globale toutes éditions confondues.</p>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative max-w-sm flex-1 min-w-[220px]">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Rechercher une personne…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
         <Select value={gameFilter} onValueChange={setGameFilter}>
@@ -128,10 +128,10 @@ function GlobalAccreditationsPage() {
             {ACCRED_STATUSES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
           </SelectContent>
         </Select>
-        <span className="ml-auto text-sm text-slate-500">{filtered.length} résultat(s)</span>
+        <span className="ml-auto text-sm text-muted-foreground">{filtered.length} résultat(s)</span>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white">
+      <div className="rounded-lg border border-border bg-card">
         {rows === null ? (
           <TableSkeleton cols={7} />
         ) : filtered.length === 0 ? (
@@ -159,9 +159,9 @@ function GlobalAccreditationsPage() {
                   <TableRow
                     key={r.id}
                     onClick={() => r.game && navigate({ to: "/games/$id/accreditations", params: { id: r.game.id } })}
-                    className={r.game ? "cursor-pointer hover:bg-slate-50" : ""}
+                    className={r.game ? "cursor-pointer hover:bg-muted" : ""}
                   >
-                    <TableCell className="text-slate-600">{r.game?.short_name ?? r.game?.name ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{r.game?.short_name ?? r.game?.name ?? "—"}</TableCell>
                     <TableCell className="font-medium">{r.full_name}</TableCell>
                     <TableCell>{cat ? <Badge variant="outline">{cat.label}</Badge> : "—"}</TableCell>
                     <TableCell className="font-mono text-xs">{r.type?.type_code ?? "—"}</TableCell>
@@ -169,7 +169,7 @@ function GlobalAccreditationsPage() {
                     <TableCell className="min-w-[160px]">
                       <div className="flex items-center gap-2">
                         <Progress value={pct} className="h-2 flex-1" />
-                        <span className="text-xs text-slate-600">{pct}%</span>
+                        <span className="text-xs text-muted-foreground">{pct}%</span>
                       </div>
                     </TableCell>
                   </TableRow>

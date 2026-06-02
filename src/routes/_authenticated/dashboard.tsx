@@ -139,10 +139,10 @@ function DashboardPage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">
+          <h1 className="text-2xl font-semibold text-foreground">
             Bonjour{firstName ? `, ${firstName}` : ""} 👋
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-muted-foreground">
             {new Date().toLocaleDateString("fr-FR", {
               weekday: "long",
               day: "numeric",
@@ -195,7 +195,7 @@ function DashboardPage() {
       {/* Alertes */}
       {hasAlerts && (
         <section className="space-y-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Actions requises
           </h2>
           <div className="space-y-2">
@@ -233,10 +233,10 @@ function DashboardPage() {
       {/* Prochains Games */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-900">Prochains Games</h2>
+          <h2 className="text-lg font-semibold text-foreground">Prochains Games</h2>
           <Link
             to="/games"
-            className="text-sm font-medium text-[#C8102E] hover:text-[#A00D24]"
+            className="text-sm font-medium text-primary hover:text-[var(--cosl-red-dark)]"
           >
             Voir tous →
           </Link>
@@ -244,11 +244,11 @@ function DashboardPage() {
         {loading ? (
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-28 rounded-xl border border-slate-200 bg-slate-50 animate-pulse" />
+              <div key={i} className="h-28 rounded-xl border border-border bg-muted animate-pulse" />
             ))}
           </div>
         ) : upcomingGames.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
+          <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
             Aucun Games à venir.
           </div>
         ) : (
@@ -263,12 +263,12 @@ function DashboardPage() {
                   key={g.id}
                   to="/games/$id"
                   params={{ id: g.id }}
-                  className="rounded-xl border border-slate-200 bg-white p-4 hover:shadow-md transition-shadow"
+                  className="rounded-xl border border-border bg-card p-4 hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="font-semibold text-slate-900 truncate">{g.name}</p>
-                      <p className="text-xs text-slate-500 mt-0.5">
+                      <p className="font-semibold text-foreground truncate">{g.name}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
                         {[g.host_city, g.host_country].filter(Boolean).join(", ") || "—"}
                       </p>
                     </div>
@@ -279,7 +279,7 @@ function DashboardPage() {
                     )}
                   </div>
                   <div className="mt-3 flex items-center justify-between">
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-muted-foreground">
                       {new Date(g.competition_start).toLocaleDateString("fr-FR", {
                         day: "numeric",
                         month: "short",
@@ -289,10 +289,10 @@ function DashboardPage() {
                     <span
                       className={`text-sm font-bold ${
                         daysUntil <= 30
-                          ? "text-[#C8102E]"
+                          ? "text-primary"
                           : daysUntil <= 90
                             ? "text-amber-600"
-                            : "text-slate-500"
+                            : "text-muted-foreground"
                       }`}
                     >
                       J{daysUntil > 0 ? `-${daysUntil}` : "+0"}
@@ -307,10 +307,10 @@ function DashboardPage() {
 
       {/* KYC + Notifications */}
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border border-slate-200 bg-white p-5">
+        <div className="rounded-xl border border-border bg-card p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold text-slate-900">Conformité KYC</h2>
-            <Link to="/athletes" className="text-xs text-[#C8102E] hover:underline">
+            <h2 className="text-base font-semibold text-foreground">Conformité KYC</h2>
+            <Link to="/athletes" className="text-xs text-primary hover:underline">
               Voir tout →
             </Link>
           </div>
@@ -321,32 +321,32 @@ function DashboardPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-5">
+        <div className="rounded-xl border border-border bg-card p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold text-slate-900">Notifications récentes</h2>
+            <h2 className="text-base font-semibold text-foreground">Notifications récentes</h2>
             <Link
               to="/communication/notifications"
-              className="text-xs text-[#C8102E] hover:underline"
+              className="text-xs text-primary hover:underline"
             >
               Voir tout →
             </Link>
           </div>
           {notifs.length === 0 ? (
-            <p className="text-sm text-slate-500">Aucune notification.</p>
+            <p className="text-sm text-muted-foreground">Aucune notification.</p>
           ) : (
             <ul className="divide-y">
               {notifs.slice(0, 4).map((n) => (
                 <li key={n.id} className="flex items-start gap-2 py-2.5">
                   <span
                     className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${
-                      n.is_read ? "bg-slate-300" : "bg-[#C8102E]"
+                      n.is_read ? "bg-muted-foreground/40" : "bg-primary"
                     }`}
                   />
                   <div className="min-w-0 flex-1">
                     <Badge variant="outline" className="text-[10px] mb-0.5">
                       {n.notification_type}
                     </Badge>
-                    <p className="text-xs text-slate-700 truncate">{n.message}</p>
+                    <p className="text-xs text-foreground truncate">{n.message}</p>
                   </div>
                 </li>
               ))}
@@ -376,7 +376,7 @@ function KpiCard({
   loading: boolean;
 }) {
   const toneCls = {
-    default: "bg-indigo-50 text-indigo-600",
+    default: "bg-[var(--lux-blue-light)] text-[var(--lux-blue)]",
     red: "bg-red-50 text-red-600",
     amber: "bg-amber-50 text-amber-600",
     emerald: "bg-emerald-50 text-emerald-600",
@@ -384,17 +384,17 @@ function KpiCard({
 
   const content = (
     <div
-      className={`rounded-xl border border-slate-200 bg-white p-5 flex items-center gap-4 ${to ? "cursor-pointer hover:shadow-md transition-shadow" : ""}`}
+      className={`rounded-xl border border-border bg-card p-5 flex items-center gap-4 ${to ? "cursor-pointer hover:shadow-md transition-shadow" : ""}`}
     >
       <div className={`rounded-lg p-3 ${toneCls}`}>{icon}</div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm text-slate-500 truncate">{label}</p>
+        <p className="text-sm text-muted-foreground truncate">{label}</p>
         {loading ? (
-          <div className="h-8 w-16 bg-slate-100 animate-pulse rounded mt-1" />
+          <div className="h-8 w-16 bg-muted animate-pulse rounded mt-1" />
         ) : (
-          <p className="text-3xl font-bold text-slate-900 mt-0.5">{value}</p>
+          <p className="text-3xl font-bold text-foreground mt-0.5">{value}</p>
         )}
-        {sublabel && <p className="text-xs text-slate-400 mt-0.5">{sublabel}</p>}
+        {sublabel && <p className="text-xs text-muted-foreground mt-0.5">{sublabel}</p>}
       </div>
     </div>
   );
@@ -456,7 +456,7 @@ function KycRow({
           className: "h-4 w-4",
         })}
       </div>
-      <span className="flex-1 text-sm text-slate-700">{label}</span>
+      <span className="flex-1 text-sm text-foreground">{label}</span>
       <span className={`text-lg font-bold ${textCls}`}>{value}</span>
     </div>
   );

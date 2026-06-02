@@ -104,7 +104,7 @@ export function AppSidebar() {
                         isActive={active}
                         className={
                           active
-                            ? "bg-[#C8102E] text-white hover:bg-[#C8102E] hover:text-white font-medium"
+                            ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-medium"
                             : "text-[#C0C0C0] hover:bg-[#2A2A2A] hover:text-white"
                         }
                       >

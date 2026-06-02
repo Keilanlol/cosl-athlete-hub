@@ -12,11 +12,11 @@ export function PageStub({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">{title}</h1>
-        {description && <p className="mt-1 text-sm text-slate-600">{description}</p>}
+        <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
+        {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
       </div>
-      <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center">
-        <p className="text-sm text-slate-500">
+      <div className="rounded-lg border border-dashed border-border bg-card p-8 text-center">
+        <p className="text-sm text-muted-foreground">
           {children ?? "Module à implémenter — scaffold uniquement."}
         </p>
       </div>

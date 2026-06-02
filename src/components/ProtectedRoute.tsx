@@ -9,8 +9,8 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
+      <div className="flex min-h-screen items-center justify-center bg-muted">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
       </div>
     );
   }

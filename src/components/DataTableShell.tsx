@@ -28,8 +28,8 @@ export function TableSkeleton({ cols }: { cols: number }) {
 
 export function EmptyState({ message, action }: { message: string; action?: ReactNode }) {
   return (
-    <div className="rounded-lg border border-dashed border-slate-300 bg-white p-10 text-center">
-      <p className="text-sm text-slate-500">{message}</p>
+    <div className="rounded-lg border border-dashed border-border bg-card p-10 text-center">
+      <p className="text-sm text-muted-foreground">{message}</p>
       {action && <div className="mt-4">{action}</div>}
     </div>
   );
@@ -62,7 +62,7 @@ export function PagerBar({
         {pages.map((p, idx) => (
           <PaginationItem key={p}>
             {idx > 0 && pages[idx - 1] !== p - 1 ? (
-              <span className="px-2 text-slate-400">…</span>
+              <span className="px-2 text-muted-foreground">…</span>
             ) : null}
             <PaginationLink
               isActive={p === page}
@@ -107,7 +107,7 @@ export function SortBtn({
       className="-ml-2 h-7 px-2 font-semibold"
     >
       {children}
-      <span className="ml-1 text-xs text-slate-400">
+      <span className="ml-1 text-xs text-muted-foreground">
         {active ? (dir === "asc" ? "▲" : "▼") : "↕"}
       </span>
     </Button>

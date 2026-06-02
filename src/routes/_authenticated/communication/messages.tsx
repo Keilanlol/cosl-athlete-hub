@@ -251,21 +251,21 @@ function MessagesPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Messages</h1>
-        <p className="text-sm text-slate-500">Templates et envois ciblés.</p>
+        <h1 className="text-2xl font-semibold text-foreground">Messages</h1>
+        <p className="text-sm text-muted-foreground">Templates et envois ciblés.</p>
       </div>
 
       {/* Templates */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-900">Templates</h2>
-          <Button onClick={openCreateTpl} className="bg-indigo-500 hover:bg-indigo-600">
+          <h2 className="text-lg font-semibold text-foreground">Templates</h2>
+          <Button onClick={openCreateTpl} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
             <Plus className="mr-2 h-4 w-4" /> Créer template
           </Button>
         </div>
         <div className="flex items-center gap-3">
           <div className="relative max-w-sm flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Rechercher un template…"
               value={tplSearch}
@@ -273,9 +273,9 @@ function MessagesPage() {
               className="pl-9"
             />
           </div>
-          <span className="text-sm text-slate-500">{filteredTemplates.length} résultat(s)</span>
+          <span className="text-sm text-muted-foreground">{filteredTemplates.length} résultat(s)</span>
         </div>
-        <div className="rounded-lg border border-slate-200 bg-white">
+        <div className="rounded-lg border border-border bg-card">
           {loading ? (
             <TableSkeleton cols={5} />
           ) : filteredTemplates.length === 0 ? (
@@ -326,8 +326,8 @@ function MessagesPage() {
 
       {/* Bulk send */}
       <section className="space-y-4">
-        <h2 className="text-lg font-semibold text-slate-900">Envoi groupé</h2>
-        <div className="rounded-lg border border-slate-200 bg-white p-5 space-y-4">
+        <h2 className="text-lg font-semibold text-foreground">Envoi groupé</h2>
+        <div className="rounded-lg border border-border bg-card p-5 space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
               <Label>Template (optionnel)</Label>
@@ -398,7 +398,7 @@ function MessagesPage() {
           </div>
 
           <div className="flex justify-end">
-            <Button onClick={startSend} className="bg-indigo-500 hover:bg-indigo-600">
+            <Button onClick={startSend} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
               <Send className="mr-2 h-4 w-4" /> Envoyer
             </Button>
           </div>
@@ -434,7 +434,7 @@ function MessagesPage() {
                   checked={tplForm.is_active}
                   onCheckedChange={(v) => setTplForm({ ...tplForm, is_active: v })}
                 />
-                <span className="text-sm text-slate-600">{tplForm.is_active ? "Activé" : "Désactivé"}</span>
+                <span className="text-sm text-muted-foreground">{tplForm.is_active ? "Activé" : "Désactivé"}</span>
               </div>
             </div>
             <div className="sm:col-span-2 space-y-1">
@@ -452,7 +452,7 @@ function MessagesPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setTplOpen(false)}>Annuler</Button>
-            <Button onClick={submitTpl} className="bg-indigo-500 hover:bg-indigo-600">
+            <Button onClick={submitTpl} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
               {tplEdit ? "Enregistrer" : "Créer"}
             </Button>
           </DialogFooter>
@@ -479,11 +479,11 @@ function MessagesPage() {
           <DialogHeader>
             <DialogTitle>Confirmer l'envoi</DialogTitle>
             <DialogDescription>
-              Audience : <span className="font-medium text-slate-700">{audienceLabel(audience)}</span>
+              Audience : <span className="font-medium text-foreground">{audienceLabel(audience)}</span>
               <br />
               Destinataires : <span className="font-semibold">{recipients ?? 0}</span>
               <br />
-              Canal : <span className="font-medium text-slate-700">{channel}</span>
+              Canal : <span className="font-medium text-foreground">{channel}</span>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -491,7 +491,7 @@ function MessagesPage() {
             <Button
               onClick={confirmSend}
               disabled={sending}
-              className="bg-indigo-500 hover:bg-indigo-600"
+              className="bg-primary hover:bg-[var(--cosl-red-dark)]"
             >
               {sending ? "Envoi…" : "Confirmer l'envoi"}
             </Button>

@@ -299,17 +299,17 @@ function FlightsPage() {
 
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-slate-900">Vols</h2>
-          <p className="text-sm text-slate-500">Vols internationaux et passagers.</p>
+          <h2 className="text-lg font-semibold text-foreground">Vols</h2>
+          <p className="text-sm text-muted-foreground">Vols internationaux et passagers.</p>
         </div>
-        <Button onClick={() => setDlgOpen(true)} className="bg-indigo-500 hover:bg-indigo-600">
+        <Button onClick={() => setDlgOpen(true)} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
           <Plus className="mr-2 h-4 w-4" /> Ajouter un vol
         </Button>
       </div>
 
       <div className="flex items-center gap-3">
         <div className="relative max-w-sm flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Rechercher vol, compagnie, aéroport…"
             value={search}
@@ -317,10 +317,10 @@ function FlightsPage() {
             className="pl-9"
           />
         </div>
-        <span className="text-sm text-slate-500">{filteredFlights.length} résultat(s)</span>
+        <span className="text-sm text-muted-foreground">{filteredFlights.length} résultat(s)</span>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white">
+      <div className="rounded-lg border border-border bg-card">
         {loading ? (
           <TableSkeleton cols={8} />
         ) : filteredFlights.length === 0 ? (
@@ -344,7 +344,7 @@ function FlightsPage() {
               {filteredFlights.map((f) => (
                 <TableRow
                   key={f.id}
-                  className="cursor-pointer hover:bg-slate-50"
+                  className="cursor-pointer hover:bg-muted"
                   onClick={() => openDrawer(f)}
                 >
                   <TableCell className="font-medium">{f.flight_number}</TableCell>
@@ -434,7 +434,7 @@ function FlightsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDlgOpen(false)}>Annuler</Button>
-            <Button onClick={submitFlight} className="bg-indigo-500 hover:bg-indigo-600">Créer</Button>
+            <Button onClick={submitFlight} className="bg-primary hover:bg-[var(--cosl-red-dark)]">Créer</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -449,14 +449,14 @@ function FlightsPage() {
           </SheetHeader>
           {drawerFlight && (
             <div className="mt-4 space-y-4">
-              <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm">
+              <div className="rounded-md border border-border bg-muted p-3 text-sm">
                 <div>{planName(drawerFlight.travel_plan_id)}</div>
-                <div className="text-slate-500">
+                <div className="text-muted-foreground">
                   {drawerFlight.departure_airport} → {drawerFlight.arrival_airport}
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-slate-700">
+                <h3 className="text-sm font-semibold text-foreground">
                   Passagers ({passengers.length})
                 </h3>
                 <Button size="sm" onClick={() => setPaxOpen(true)}>
@@ -464,18 +464,18 @@ function FlightsPage() {
                 </Button>
               </div>
               {passengers.length === 0 ? (
-                <p className="text-sm text-slate-500">Aucun passager.</p>
+                <p className="text-sm text-muted-foreground">Aucun passager.</p>
               ) : (
                 <ul className="space-y-2">
                   {passengers.map((p) => {
                     const isEdit = editPaxId === p.id;
                     return (
-                      <li key={p.id} className="rounded border border-slate-200 p-2 text-sm">
+                      <li key={p.id} className="rounded border border-border p-2 text-sm">
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1">
                             <div className="font-medium">{paxLabel(p)}</div>
                             {!isEdit ? (
-                              <div className="text-xs text-slate-500">
+                              <div className="text-xs text-muted-foreground">
                                 {p.seat ? `Siège ${p.seat}` : "Siège —"}
                                 {p.special_baggage ? ` · ${p.special_baggage}` : ""}
                               </div>
@@ -506,7 +506,7 @@ function FlightsPage() {
                               </>
                             ) : (
                               <>
-                                <Button size="sm" onClick={saveEditPax} className="bg-indigo-500 hover:bg-indigo-600">
+                                <Button size="sm" onClick={saveEditPax} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
                                   <Check className="mr-1 h-4 w-4" /> Enregistrer
                                 </Button>
                                 <Button variant="ghost" size="sm" onClick={() => setEditPaxId(null)}>
@@ -566,7 +566,7 @@ function FlightsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPaxOpen(false)}>Annuler</Button>
-            <Button onClick={addPax} className="bg-indigo-500 hover:bg-indigo-600">Ajouter</Button>
+            <Button onClick={addPax} className="bg-primary hover:bg-[var(--cosl-red-dark)]">Ajouter</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

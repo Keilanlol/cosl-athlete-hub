@@ -99,13 +99,13 @@ function StatPill({
   sub?: string;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg bg-slate-50 px-4 py-3">
-      <div className="text-[#C8102E]">
+    <div className="flex items-center gap-3 rounded-lg bg-muted px-4 py-3">
+      <div className="text-primary">
         <Icon className="h-5 w-5" />
       </div>
       <div>
-        <p className="text-xl font-bold text-slate-900">{value}</p>
-        <p className="text-xs text-slate-500">
+        <p className="text-xl font-bold text-foreground">{value}</p>
+        <p className="text-xs text-muted-foreground">
           {label}
           {sub ? ` · ${sub}` : ""}
         </p>
@@ -411,7 +411,7 @@ function ClubDetailPage() {
     }
   };
 
-  if (loading) return <div className="p-6 text-slate-500">Chargement…</div>;
+  if (loading) return <div className="p-6 text-muted-foreground">Chargement…</div>;
   if (!club) {
     return (
       <div className="space-y-4">
@@ -443,7 +443,7 @@ function ClubDetailPage() {
         </Button>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-6">
+      <div className="rounded-xl border border-border bg-card p-6">
         <div className="flex flex-wrap items-start gap-5">
           <EntityImageUpload
             entityId={club.id}
@@ -473,7 +473,7 @@ function ClubDetailPage() {
             <div className="flex flex-wrap items-center gap-2 mb-1">
               {fed && (
                 <Link to="/federations/$id" params={{ id: fed.id }}>
-                  <Badge variant="outline" className="font-mono hover:bg-slate-100">
+                  <Badge variant="outline" className="font-mono hover:bg-muted">
                     <Building2 className="mr-1 h-3 w-3" />
                     {fed.acronym}
                   </Badge>
@@ -486,13 +486,13 @@ function ClubDetailPage() {
                 </Badge>
               )}
             </div>
-            <h1 className="text-2xl font-bold text-slate-900">{club.name}</h1>
-            <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-slate-500">
+            <h1 className="text-2xl font-bold text-foreground">{club.name}</h1>
+            <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
               {president && (
                 <span className="flex items-center gap-1">
                   <UserRound className="h-3.5 w-3.5" />
                   Président :{" "}
-                  <span className="text-slate-700 font-medium ml-1">
+                  <span className="text-foreground font-medium ml-1">
                     {president.first_name} {president.last_name}
                   </span>
                 </span>
@@ -500,7 +500,7 @@ function ClubDetailPage() {
               {club.email && (
                 <a
                   href={`mailto:${club.email}`}
-                  className="flex items-center gap-1 text-indigo-600 hover:underline"
+                  className="flex items-center gap-1 text-[var(--lux-blue)] hover:underline"
                 >
                   <Mail className="h-3.5 w-3.5" /> {club.email}
                 </a>
@@ -538,17 +538,17 @@ function ClubDetailPage() {
 
         {stats.sportCounts.length > 0 && (
           <div className="mt-4 pt-4 border-t border-slate-100">
-            <p className="text-xs uppercase tracking-wide text-slate-400 mb-2">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">
               Sports pratiqués
             </p>
             <div className="flex flex-wrap gap-2">
               {stats.sportCounts.slice(0, 8).map(([name, n]) => (
                 <span
                   key={name}
-                  className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700"
+                  className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-xs text-foreground"
                 >
                   {name}{" "}
-                  <span className="font-semibold text-slate-900">{n}</span>
+                  <span className="font-semibold text-foreground">{n}</span>
                 </span>
               ))}
             </div>
@@ -569,7 +569,7 @@ function ClubDetailPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-1 flex-wrap items-center gap-2">
               <div className="relative min-w-[220px] flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Nom, prénom, COSL ID, sport…"
                   value={athleteSearch}
@@ -589,7 +589,7 @@ function ClubDetailPage() {
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={openAddAthlete} className="bg-indigo-500 hover:bg-indigo-600">
+            <Button onClick={openAddAthlete} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
               <Plus className="mr-2 h-4 w-4" /> Ajouter un adhérent
             </Button>
           </div>
@@ -605,7 +605,7 @@ function ClubDetailPage() {
               return true;
             });
             return (
-          <div className="rounded-lg border border-slate-200 bg-white">
+          <div className="rounded-lg border border-border bg-card">
             {visibleAthletes.length === 0 ? (
               <div className="p-6">
                 <EmptyState message="Aucun adhérent." />
@@ -627,26 +627,26 @@ function ClubDetailPage() {
                     <TableRow
                       key={a.id}
                       onClick={() => navigate({ to: "/athletes/$id", params: { id: a.id } })}
-                      className={`cursor-pointer hover:bg-slate-50 ${a.is_active === false ? "opacity-60" : ""}`}
+                      className={`cursor-pointer hover:bg-muted ${a.is_active === false ? "opacity-60" : ""}`}
                     >
                       <TableCell className="font-medium">
                         {a.first_name} {a.last_name}
                       </TableCell>
-                      <TableCell className="text-slate-600">
+                      <TableCell className="text-muted-foreground">
                         {a.primary_sport?.name ?? "—"}
                       </TableCell>
-                      <TableCell className="text-slate-600">
+                      <TableCell className="text-muted-foreground">
                         {ageOf(a.birth_date) ?? "—"}
                       </TableCell>
                       <TableCell>
                         {statusBadge(a.status)}
                         {a.is_active === false && (
-                          <Badge variant="outline" className="ml-2 border-slate-300 text-slate-500">
+                          <Badge variant="outline" className="ml-2 border-border text-muted-foreground">
                             Inactif
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell className="font-mono text-xs text-slate-500">
+                      <TableCell className="font-mono text-xs text-muted-foreground">
                         {a.cosl_id || "—"}
                       </TableCell>
                       <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
@@ -673,7 +673,7 @@ function ClubDetailPage() {
         <TabsContent value="members" className="mt-4 space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="relative min-w-[220px] flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Nom, prénom, email, fonction…"
                 value={memberSearch}
@@ -681,7 +681,7 @@ function ClubDetailPage() {
                 className="pl-9"
               />
             </div>
-            <Button onClick={openCreateMember} className="bg-indigo-500 hover:bg-indigo-600">
+            <Button onClick={openCreateMember} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
               <Plus className="mr-2 h-4 w-4" /> Ajouter un membre
             </Button>
           </div>
@@ -693,7 +693,7 @@ function ClubDetailPage() {
               return hay.includes(q);
             });
             return (
-          <div className="rounded-lg border border-slate-200 bg-white">
+          <div className="rounded-lg border border-border bg-card">
             {visibleMembers.length === 0 ? (
               <div className="p-6">
                 <EmptyState message="Aucun membre enregistré (président, trésorier…)." />
@@ -717,14 +717,14 @@ function ClubDetailPage() {
                     <TableRow
                       key={m.id}
                       onClick={() => navigate({ to: "/clubs/members/$memberId", params: { memberId: m.id } })}
-                      className="cursor-pointer hover:bg-slate-50"
+                      className="cursor-pointer hover:bg-muted"
                     >
                       <TableCell>
-                        <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-100">
+                        <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-border bg-muted">
                           {m.photo_url ? (
                             <img src={m.photo_url} alt={`${m.first_name} ${m.last_name}`} className="h-full w-full object-cover" />
                           ) : (
-                            <span className="text-xs font-semibold text-slate-500">
+                            <span className="text-xs font-semibold text-muted-foreground">
                               {(m.first_name[0] ?? "") + (m.last_name[0] ?? "")}
                             </span>
                           )}
@@ -736,11 +736,11 @@ function ClubDetailPage() {
                       <TableCell>
                         <Badge variant="outline">{memberRoleLabel(m.role)}</Badge>
                       </TableCell>
-                      <TableCell className="text-slate-600" onClick={(e) => e.stopPropagation()}>
+                      <TableCell className="text-muted-foreground" onClick={(e) => e.stopPropagation()}>
                         {m.email ? (
                           <a
                             href={`mailto:${m.email}`}
-                            className="text-indigo-600 hover:underline"
+                            className="text-[var(--lux-blue)] hover:underline"
                           >
                             {m.email}
                           </a>
@@ -748,8 +748,8 @@ function ClubDetailPage() {
                           "—"
                         )}
                       </TableCell>
-                      <TableCell className="text-slate-600">{m.phone ?? "—"}</TableCell>
-                      <TableCell className="text-xs text-slate-500">
+                      <TableCell className="text-muted-foreground">{m.phone ?? "—"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
                         {m.start_date ?? "—"}
                         {m.end_date ? ` → ${m.end_date}` : ""}
                       </TableCell>
@@ -793,7 +793,7 @@ function ClubDetailPage() {
         {/* ============ COACHES ============ */}
         <TabsContent value="coaches" className="mt-4 space-y-3">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Nom, prénom, email, rôle…"
               value={coachSearch}
@@ -810,7 +810,7 @@ function ClubDetailPage() {
               return hay.includes(q);
             });
             return (
-          <div className="rounded-lg border border-slate-200 bg-white">
+          <div className="rounded-lg border border-border bg-card">
             {visibleCoaches.length === 0 ? (
               <div className="p-6">
                 <EmptyState message="Aucun encadrant rattaché." />
@@ -834,14 +834,14 @@ function ClubDetailPage() {
                       <TableRow
                         key={c.id}
                         onClick={() => navigate({ to: "/coaches/$id", params: { id: c.id } })}
-                        className={`cursor-pointer hover:bg-slate-50 ${c.is_active ? "" : "opacity-60"}`}
+                        className={`cursor-pointer hover:bg-muted ${c.is_active ? "" : "opacity-60"}`}
                       >
                         <TableCell>
-                          <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-100">
+                          <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-border bg-muted">
                             {c.photo_url ? (
                               <img src={c.photo_url} alt="" className="h-full w-full object-cover" />
                             ) : (
-                              <span className="text-xs font-semibold text-slate-500">
+                              <span className="text-xs font-semibold text-muted-foreground">
                                 {(c.first_name[0] ?? "") + (c.last_name[0] ?? "")}
                               </span>
                             )}
@@ -850,9 +850,9 @@ function ClubDetailPage() {
                         <TableCell className="font-medium">
                           {c.first_name} {c.last_name}
                         </TableCell>
-                        <TableCell className="text-slate-600">{role}</TableCell>
-                        <TableCell className="text-slate-600">{c.email ?? "—"}</TableCell>
-                        <TableCell className="text-slate-600">{c.phone ?? "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">{role}</TableCell>
+                        <TableCell className="text-muted-foreground">{c.email ?? "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">{c.phone ?? "—"}</TableCell>
                         <TableCell>
                           {c.is_active ? (
                             <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
@@ -894,7 +894,7 @@ function ClubDetailPage() {
                 searchPlaceholder="Rechercher par nom ou COSL ID…"
                 emptyMessage="Aucun athlète disponible."
               />
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 Seuls les athlètes sans club ou rattachés à un autre club sont listés.
               </p>
             </div>
@@ -912,7 +912,7 @@ function ClubDetailPage() {
               type="button"
               onClick={submitAddAthlete}
               disabled={athleteSaving || !selectedAthleteId}
-              className="bg-indigo-500 hover:bg-indigo-600"
+              className="bg-primary hover:bg-[var(--cosl-red-dark)]"
             >
               {athleteSaving ? "Ajout…" : "Ajouter"}
             </Button>
@@ -964,8 +964,8 @@ function ClubDetailPage() {
                 </div>
               )}
               {!editingMember && (
-                <div className="space-y-1.5 rounded-md border border-dashed border-slate-300 bg-slate-50 p-3">
-                  <Label className="text-xs uppercase tracking-wide text-slate-500">
+                <div className="space-y-1.5 rounded-md border border-dashed border-border bg-muted p-3">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
                     Choisir un membre existant ou créer un nouveau
                   </Label>
                   <Select
@@ -1001,7 +1001,7 @@ function ClubDetailPage() {
                       <SelectValue placeholder="Nouveau membre (champs vides ci-dessous)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="__new__" className="text-[#C8102E] font-medium">
+                      <SelectItem value="__new__" className="text-primary font-medium">
                         + Ajouter un nouveau membre
                       </SelectItem>
                       {unlinkedMembers.length > 0 && (
@@ -1017,7 +1017,7 @@ function ClubDetailPage() {
                       )}
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted-foreground">
                     Ou laissez sur "Nouveau membre" et remplissez les champs ci-dessous.
                   </p>
                 </div>
@@ -1154,7 +1154,7 @@ function ClubDetailPage() {
                   }
                 />
               </div>
-              <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
+              <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
                 <Label htmlFor="cmactive" className="cursor-pointer">
                   Membre actif
                 </Label>
@@ -1179,7 +1179,7 @@ function ClubDetailPage() {
               <Button
                 type="submit"
                 disabled={memberSaving}
-                className="bg-indigo-500 hover:bg-indigo-600"
+                className="bg-primary hover:bg-[var(--cosl-red-dark)]"
               >
                 {memberSaving
                   ? "Enregistrement…"

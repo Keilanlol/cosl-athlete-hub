@@ -153,13 +153,13 @@ export function AddressSearch({
           autoComplete="off"
         />
         {loading && (
-          <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-slate-400" />
+          <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
         )}
       </div>
       {open && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border border-slate-200 bg-white shadow-lg max-h-72 overflow-auto">
+        <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-card shadow-lg max-h-72 overflow-auto">
           {results.length === 0 && searched && !loading ? (
-            <div className="px-3 py-2 text-sm text-slate-500">Aucune adresse trouvée</div>
+            <div className="px-3 py-2 text-sm text-muted-foreground">Aucune adresse trouvée</div>
           ) : (
             results.map((f, i) => {
               const p = parseFeature(f);
@@ -171,15 +171,15 @@ export function AddressSearch({
                   key={`${p.lat}-${p.lon}-${i}`}
                   type="button"
                   onClick={() => handleSelect(f)}
-                  className="flex w-full items-start gap-2 px-3 py-2 text-left hover:bg-slate-50 border-b border-slate-100 last:border-0"
+                  className="flex w-full items-start gap-2 px-3 py-2 text-left hover:bg-muted border-b border-slate-100 last:border-0"
                 >
-                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-indigo-500" />
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-slate-900 truncate">
+                    <p className="text-sm font-medium text-foreground truncate">
                       {p.street || p.display_name}
                     </p>
                     {secondary && (
-                      <p className="text-xs text-slate-500 truncate">{secondary}</p>
+                      <p className="text-xs text-muted-foreground truncate">{secondary}</p>
                     )}
                   </div>
                 </button>

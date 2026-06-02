@@ -392,8 +392,8 @@ function LodgingPage() {
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-900">Hébergements</h2>
-          <Button onClick={() => setAccOpen(true)} className="bg-indigo-500 hover:bg-indigo-600">
+          <h2 className="text-lg font-semibold text-foreground">Hébergements</h2>
+          <Button onClick={() => setAccOpen(true)} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
             <Plus className="mr-2 h-4 w-4" /> Ajouter un hébergement
           </Button>
         </div>
@@ -402,21 +402,21 @@ function LodgingPage() {
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {accs.map((a) => (
-              <div key={a.id} className="rounded-lg border border-slate-200 bg-white p-4">
+              <div key={a.id} className="rounded-lg border border-border bg-card p-4">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
-                    <Building2 className="h-4 w-4 text-indigo-500 shrink-0" />
-                    <h3 className="font-semibold text-slate-900 truncate">{a.name}</h3>
+                    <Building2 className="h-4 w-4 text-primary shrink-0" />
+                    <h3 className="font-semibold text-foreground truncate">{a.name}</h3>
                   </div>
                   <Button variant="ghost" size="icon" onClick={() => openEditAcc(a)} aria-label="Modifier">
                     <Pencil className="h-4 w-4" />
                   </Button>
                 </div>
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-muted-foreground">
                   {[a.type, [a.postcode, a.city].filter(Boolean).join(" "), a.country].filter(Boolean).join(" · ") || "—"}
                 </p>
-                {a.street && <p className="mt-1 text-xs text-slate-500">{a.street}</p>}
-                <p className="mt-2 text-xs text-slate-500">
+                {a.street && <p className="mt-1 text-xs text-muted-foreground">{a.street}</p>}
+                <p className="mt-2 text-xs text-muted-foreground">
                   Capacité : {a.total_rooms ?? "—"} chambres
                 </p>
               </div>
@@ -427,12 +427,12 @@ function LodgingPage() {
 
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-slate-900">Rooming list</h2>
+          <h2 className="text-lg font-semibold text-foreground">Rooming list</h2>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" onClick={exportCsv}>
               <Download className="mr-2 h-4 w-4" /> Exporter CSV
             </Button>
-            <Button onClick={() => setRoomOpen(true)} className="bg-indigo-500 hover:bg-indigo-600" size="sm">
+            <Button onClick={() => setRoomOpen(true)} className="bg-primary hover:bg-[var(--cosl-red-dark)]" size="sm">
               <Plus className="mr-2 h-4 w-4" /> Créer une chambre
             </Button>
           </div>
@@ -440,7 +440,7 @@ function LodgingPage() {
 
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative max-w-sm flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Rechercher chambre, occupant…"
               value={search}
@@ -477,7 +477,7 @@ function LodgingPage() {
           </Select>
         </div>
 
-        <div className="rounded-lg border border-slate-200 bg-white">
+        <div className="rounded-lg border border-border bg-card">
           {loading ? (
             <TableSkeleton cols={6} />
           ) : filteredGroups.length === 0 ? (
@@ -510,7 +510,7 @@ function LodgingPage() {
                       setPaxKind("athlete");
                       setPaxId("");
                     }}
-                    className="cursor-pointer hover:bg-slate-50"
+                    className="cursor-pointer hover:bg-muted"
                   >
                     <TableCell>{accName(g.accId)}</TableCell>
                     <TableCell className="font-medium">{g.roomNo}</TableCell>
@@ -524,7 +524,7 @@ function LodgingPage() {
                             className={
                               it.coach_id
                                 ? "bg-amber-100 text-amber-800"
-                                : "bg-indigo-100 text-indigo-800"
+                                : "bg-[var(--cosl-red-light)] text-primary"
                             }
                           >
                             {occupantLabel(it)} · {it.coach_id ? "encadrant" : "athlète"}
@@ -592,7 +592,7 @@ function LodgingPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setAccOpen(false); setEditingAcc(null); setAccForm(emptyAcc); }}>Annuler</Button>
-            <Button onClick={submitAcc} className="bg-indigo-500 hover:bg-indigo-600">{editingAcc ? "Enregistrer" : "Créer"}</Button>
+            <Button onClick={submitAcc} className="bg-primary hover:bg-[var(--cosl-red-dark)]">{editingAcc ? "Enregistrer" : "Créer"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -600,7 +600,7 @@ function LodgingPage() {
       <Dialog open={roomOpen} onOpenChange={setRoomOpen}>
         <DialogContent className="max-w-xl">
           <DialogHeader><DialogTitle>Créer une chambre</DialogTitle></DialogHeader>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             Définissez la chambre et ses dates. Ajoutez ensuite les occupants
             (athlètes et/ou encadrants) en cliquant sur la ligne de la chambre.
           </p>
@@ -636,7 +636,7 @@ function LodgingPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRoomOpen(false)}>Annuler</Button>
-            <Button onClick={submitRoom} className="bg-indigo-500 hover:bg-indigo-600">Créer</Button>
+            <Button onClick={submitRoom} className="bg-primary hover:bg-[var(--cosl-red-dark)]">Créer</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -650,7 +650,7 @@ function LodgingPage() {
           </SheetHeader>
           {drawer && (
             <div className="mt-4 space-y-4">
-              <div className="text-xs text-slate-500">
+              <div className="text-xs text-muted-foreground">
                 {drawer.checkIn} → {drawer.checkOut}
                 {drawer.roomType ? ` · ${drawer.roomType}` : ""}
               </div>
@@ -659,11 +659,11 @@ function LodgingPage() {
                 const real = drawer.items.filter((i) => i.athlete_id || i.coach_id);
                 return (
                   <div className="space-y-2">
-                    <div className="text-sm font-medium text-slate-700">
+                    <div className="text-sm font-medium text-foreground">
                       Occupants ({real.length})
                     </div>
                     {real.length === 0 ? (
-                      <p className="text-xs text-slate-500">Aucun occupant.</p>
+                      <p className="text-xs text-muted-foreground">Aucun occupant.</p>
                     ) : (
                       <ul className="divide-y rounded-md border">
                         {real.map((it) => (
@@ -674,7 +674,7 @@ function LodgingPage() {
                                 className={
                                   it.coach_id
                                     ? "bg-amber-100 text-amber-800"
-                                    : "bg-indigo-100 text-indigo-800"
+                                    : "bg-[var(--cosl-red-light)] text-primary"
                                 }
                               >
                                 {it.coach_id ? "Encadrant" : "Athlète"}
@@ -699,7 +699,7 @@ function LodgingPage() {
 
 
               <div className="space-y-2 rounded-md border p-3">
-                <div className="text-sm font-medium text-slate-700">Ajouter un occupant</div>
+                <div className="text-sm font-medium text-foreground">Ajouter un occupant</div>
                 <Select value={paxKind} onValueChange={(v) => { setPaxKind(v as "athlete" | "coach"); setPaxId(""); }}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -713,7 +713,7 @@ function LodgingPage() {
                   options={personOptions}
                   searchPlaceholder={`Rechercher ${paxKind === "athlete" ? "un athlète" : "un encadrant"}…`}
                 />
-                <Button onClick={addOccupantToRoom} className="w-full bg-indigo-500 hover:bg-indigo-600">
+                <Button onClick={addOccupantToRoom} className="w-full bg-primary hover:bg-[var(--cosl-red-dark)]">
                   <Plus className="mr-2 h-4 w-4" /> Ajouter
                 </Button>
               </div>

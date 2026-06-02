@@ -219,12 +219,12 @@ function FederationsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Fédérations</h1>
-          <p className="mt-1 text-sm text-slate-600">
+          <h1 className="text-2xl font-semibold text-foreground">Fédérations</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Fédérations sportives nationales du COSL.
           </p>
         </div>
-        <Button onClick={openCreate} className="bg-indigo-500 hover:bg-indigo-600">
+        <Button onClick={openCreate} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
           <Plus className="mr-2 h-4 w-4" />
           Ajouter une fédération
         </Button>
@@ -232,7 +232,7 @@ function FederationsPage() {
 
       <div className="flex items-center gap-3">
         <div className="relative max-w-sm flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Rechercher par nom ou acronyme…"
             value={search}
@@ -248,10 +248,10 @@ function FederationsPage() {
             <SelectItem value="non">Non olympiques</SelectItem>
           </SelectContent>
         </Select>
-        <span className="text-sm text-slate-500">{filtered.length} résultat(s)</span>
+        <span className="text-sm text-muted-foreground">{filtered.length} résultat(s)</span>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white">
+      <div className="rounded-lg border border-border bg-card">
         {rows === null ? (
           <TableSkeleton cols={7} />
         ) : filtered.length === 0 ? (
@@ -301,31 +301,31 @@ function FederationsPage() {
                 <TableRow
                   key={f.id}
                   onClick={() => navigate({ to: "/federations/$id", params: { id: f.id } })}
-                  className="cursor-pointer hover:bg-slate-50"
+                  className="cursor-pointer hover:bg-muted"
                 >
                   <TableCell>
-                    <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-md border border-slate-200 bg-slate-50">
+                    <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-md border border-border bg-muted">
                       {f.logo_url ? (
                         <img src={f.logo_url} alt={f.acronym} className="h-full w-full object-contain p-0.5" />
                       ) : (
-                        <span className="text-[10px] font-semibold text-slate-500">{f.acronym?.slice(0, 3)}</span>
+                        <span className="text-[10px] font-semibold text-muted-foreground">{f.acronym?.slice(0, 3)}</span>
                       )}
                     </div>
                   </TableCell>
                   <TableCell className="font-mono text-sm font-medium">{f.acronym}</TableCell>
                   <TableCell>{f.name}</TableCell>
-                  <TableCell className="text-slate-600">
+                  <TableCell className="text-muted-foreground">
                     {f.president_name ?? "—"}
                   </TableCell>
-                  <TableCell className="text-slate-600">
+                  <TableCell className="text-muted-foreground">
                     {f.contact_email ?? "—"}
                   </TableCell>
-                  <TableCell className="text-slate-600">
+                  <TableCell className="text-muted-foreground">
                     {f.contact_phone ?? "—"}
                   </TableCell>
                   <TableCell>
                     {f.is_olympic ? (
-                      <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">
+                      <Badge className="bg-[var(--cosl-red-light)] text-primary hover:bg-[var(--cosl-red-light)]">
                         Olympique
                       </Badge>
                     ) : (
@@ -467,7 +467,7 @@ function FederationsPage() {
                   }
                 />
               </div>
-              <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
+              <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
                 <Label htmlFor="is_olympic" className="cursor-pointer">
                   Fédération olympique
                 </Label>
@@ -490,7 +490,7 @@ function FederationsPage() {
               <Button
                 type="submit"
                 disabled={saving}
-                className="bg-indigo-500 hover:bg-indigo-600"
+                className="bg-primary hover:bg-[var(--cosl-red-dark)]"
               >
                 {saving ? "Enregistrement…" : editing ? "Enregistrer" : "Ajouter"}
               </Button>

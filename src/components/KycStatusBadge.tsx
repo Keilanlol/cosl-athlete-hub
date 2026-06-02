@@ -20,7 +20,7 @@ export function KycStatusBadge({ status, label, size = "md", showIcon = false, c
     return (
       <Badge
         className={cn(
-          "bg-slate-200 text-slate-500 hover:bg-slate-200 border-transparent",
+          "bg-slate-200 text-muted-foreground hover:bg-slate-200 border-transparent",
           size === "sm" && "text-[10px] px-1.5 py-0",
           className,
         )}

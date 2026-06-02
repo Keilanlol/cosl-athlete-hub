@@ -49,7 +49,7 @@ export function PersonCombobox({
           disabled={disabled}
           className={cn("w-full justify-between font-normal", className)}
         >
-          <span className={cn("truncate", !selected && "text-slate-500")}>
+          <span className={cn("truncate", !selected && "text-muted-foreground")}>
             {selected ? selected.label : placeholder}
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />

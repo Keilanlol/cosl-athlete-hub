@@ -98,13 +98,13 @@ function StatPill({
   sub?: string;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg bg-slate-50 px-4 py-3">
-      <div className="text-[#C8102E]">
+    <div className="flex items-center gap-3 rounded-lg bg-muted px-4 py-3">
+      <div className="text-primary">
         <Icon className="h-5 w-5" />
       </div>
       <div>
-        <p className="text-xl font-bold text-slate-900">{value}</p>
-        <p className="text-xs text-slate-500">
+        <p className="text-xl font-bold text-foreground">{value}</p>
+        <p className="text-xs text-muted-foreground">
           {label}
           {sub ? ` · ${sub}` : ""}
         </p>
@@ -467,7 +467,7 @@ function FederationDetailPage() {
   };
 
   if (loading) {
-    return <div className="p-6 text-slate-500">Chargement…</div>;
+    return <div className="p-6 text-muted-foreground">Chargement…</div>;
   }
   if (!fed) {
     return (
@@ -496,7 +496,7 @@ function FederationDetailPage() {
         </Button>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-6">
+      <div className="rounded-xl border border-border bg-card p-6">
         <div className="flex flex-wrap items-start gap-5">
           <EntityImageUpload
             entityId={fed.id}
@@ -525,7 +525,7 @@ function FederationDetailPage() {
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2 mb-1">
               {fed.is_olympic && (
-                <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">
+                <Badge className="bg-[var(--cosl-red-light)] text-primary hover:bg-[var(--cosl-red-light)]">
                   🏅 Olympique
                 </Badge>
               )}
@@ -536,15 +536,15 @@ function FederationDetailPage() {
                 </Badge>
               )}
             </div>
-            <h1 className="text-2xl font-bold text-slate-900">
-              <span className="text-[#C8102E] font-mono">{fed.acronym}</span> — {fed.name}
+            <h1 className="text-2xl font-bold text-foreground">
+              <span className="text-primary font-mono">{fed.acronym}</span> — {fed.name}
             </h1>
-            <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-slate-500">
+            <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
               {(president || fed.president_name) && (
                 <span className="flex items-center gap-1">
                   <UserRound className="h-3.5 w-3.5" />
                   Président :{" "}
-                  <span className="text-slate-700 font-medium ml-1">
+                  <span className="text-foreground font-medium ml-1">
                     {president
                       ? `${president.first_name} ${president.last_name}`
                       : fed.president_name}
@@ -554,7 +554,7 @@ function FederationDetailPage() {
               {fed.contact_email && (
                 <a
                   href={`mailto:${fed.contact_email}`}
-                  className="flex items-center gap-1 text-indigo-600 hover:underline"
+                  className="flex items-center gap-1 text-[var(--lux-blue)] hover:underline"
                 >
                   <Mail className="h-3.5 w-3.5" /> {fed.contact_email}
                 </a>
@@ -582,17 +582,17 @@ function FederationDetailPage() {
 
         {stats.sportCounts.length > 0 && (
           <div className="mt-4 pt-4 border-t border-slate-100">
-            <p className="text-xs uppercase tracking-wide text-slate-400 mb-2">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">
               Sports principaux
             </p>
             <div className="flex flex-wrap gap-2">
               {stats.sportCounts.slice(0, 8).map(([name, n]) => (
                 <span
                   key={name}
-                  className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700"
+                  className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-xs text-foreground"
                 >
                   {name}{" "}
-                  <span className="font-semibold text-slate-900">{n}</span>
+                  <span className="font-semibold text-foreground">{n}</span>
                 </span>
               ))}
             </div>
@@ -612,11 +612,11 @@ function FederationDetailPage() {
         {/* ============ CLUBS ============ */}
         <TabsContent value="clubs" className="mt-4 space-y-3">
           <div className="flex justify-end">
-            <Button onClick={openCreateClub} className="bg-indigo-500 hover:bg-indigo-600">
+            <Button onClick={openCreateClub} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
               <Plus className="mr-2 h-4 w-4" /> Ajouter un club
             </Button>
           </div>
-          <div className="rounded-lg border border-slate-200 bg-white">
+          <div className="rounded-lg border border-border bg-card">
             {clubs.length === 0 ? (
               <div className="p-6">
                 <EmptyState message="Aucun club affilié." />
@@ -640,14 +640,14 @@ function FederationDetailPage() {
                       <TableRow
                         key={c.id}
                         onClick={() => navigate({ to: "/clubs/$id", params: { id: c.id } })}
-                        className="cursor-pointer hover:bg-slate-50"
+                        className="cursor-pointer hover:bg-muted"
                       >
-                        <TableCell className="font-medium text-indigo-600">
+                        <TableCell className="font-medium text-[var(--lux-blue)]">
                           {c.name}
                         </TableCell>
-                        <TableCell className="text-slate-600">{c.city ?? "—"}</TableCell>
-                        <TableCell className="text-slate-600">{c.email ?? "—"}</TableCell>
-                        <TableCell className="text-slate-600">{c.phone ?? "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">{c.city ?? "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">{c.email ?? "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">{c.phone ?? "—"}</TableCell>
                         <TableCell className="text-right">
                           <Badge variant="outline">{n}</Badge>
                         </TableCell>
@@ -680,7 +680,7 @@ function FederationDetailPage() {
 
         {/* ============ ATHLETES (Adhérents) ============ */}
         <TabsContent value="athletes" className="mt-4">
-          <div className="rounded-lg border border-slate-200 bg-white">
+          <div className="rounded-lg border border-border bg-card">
             {athletes.length === 0 ? (
               <div className="p-6">
                 <EmptyState message="Aucun adhérent dans les clubs de cette fédération." />
@@ -701,19 +701,19 @@ function FederationDetailPage() {
                     <TableRow
                       key={a.id}
                       onClick={() => navigate({ to: "/athletes/$id", params: { id: a.id } })}
-                      className="cursor-pointer hover:bg-slate-50"
+                      className="cursor-pointer hover:bg-muted"
                     >
                       <TableCell className="font-medium">
                         {a.first_name} {a.last_name}
                       </TableCell>
-                      <TableCell className="text-slate-600">
+                      <TableCell className="text-muted-foreground">
                         {a.primary_sport?.name ?? "—"}
                       </TableCell>
-                      <TableCell className="text-slate-600">
+                      <TableCell className="text-muted-foreground">
                         {a.current_club?.name ?? "—"}
                       </TableCell>
                       <TableCell>{statusBadge(a.status)}</TableCell>
-                      <TableCell className="font-mono text-xs text-slate-500">
+                      <TableCell className="font-mono text-xs text-muted-foreground">
                         {a.cosl_id || "—"}
                       </TableCell>
                     </TableRow>
@@ -727,11 +727,11 @@ function FederationDetailPage() {
         {/* ============ MEMBERS ============ */}
         <TabsContent value="members" className="mt-4 space-y-3">
           <div className="flex justify-end">
-            <Button onClick={openCreateMember} className="bg-indigo-500 hover:bg-indigo-600">
+            <Button onClick={openCreateMember} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
               <Plus className="mr-2 h-4 w-4" /> Ajouter un membre
             </Button>
           </div>
-          <div className="rounded-lg border border-slate-200 bg-white">
+          <div className="rounded-lg border border-border bg-card">
             {members.length === 0 ? (
               <div className="p-6">
                 <EmptyState message="Aucun membre enregistré (président, trésorier…)." />
@@ -755,14 +755,14 @@ function FederationDetailPage() {
                   <TableRow
                     key={m.id}
                     onClick={() => navigate({ to: "/federations/members/$memberId", params: { memberId: m.id } })}
-                    className="cursor-pointer hover:bg-slate-50"
+                    className="cursor-pointer hover:bg-muted"
                   >
                     <TableCell>
-                      <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-100">
+                      <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-border bg-muted">
                         {m.photo_url ? (
                           <img src={m.photo_url} alt="" className="h-full w-full object-cover" />
                         ) : (
-                          <span className="text-xs font-semibold text-slate-500">
+                          <span className="text-xs font-semibold text-muted-foreground">
                             {(m.first_name[0] ?? "") + (m.last_name[0] ?? "")}
                           </span>
                         )}
@@ -774,11 +774,11 @@ function FederationDetailPage() {
                       <TableCell>
                         <Badge variant="outline">{memberRoleLabel(m.role)}</Badge>
                       </TableCell>
-                      <TableCell className="text-slate-600" onClick={(e) => e.stopPropagation()}>
+                      <TableCell className="text-muted-foreground" onClick={(e) => e.stopPropagation()}>
                         {m.email ? (
                           <a
                             href={`mailto:${m.email}`}
-                            className="text-indigo-600 hover:underline"
+                            className="text-[var(--lux-blue)] hover:underline"
                           >
                             {m.email}
                           </a>
@@ -786,8 +786,8 @@ function FederationDetailPage() {
                           "—"
                         )}
                       </TableCell>
-                      <TableCell className="text-slate-600">{m.phone ?? "—"}</TableCell>
-                      <TableCell className="text-xs text-slate-500">
+                      <TableCell className="text-muted-foreground">{m.phone ?? "—"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
                         {m.start_date ?? "—"}
                         {m.end_date ? ` → ${m.end_date}` : ""}
                       </TableCell>
@@ -828,7 +828,7 @@ function FederationDetailPage() {
 
         {/* ============ COACHES ============ */}
         <TabsContent value="coaches" className="mt-4">
-          <div className="rounded-lg border border-slate-200 bg-white">
+          <div className="rounded-lg border border-border bg-card">
             {coaches.length === 0 ? (
               <div className="p-6">
                 <EmptyState message="Aucun encadrant rattaché." />
@@ -853,13 +853,13 @@ function FederationDetailPage() {
                       <TableRow
                         key={c.id}
                         onClick={() => navigate({ to: "/coaches/$id", params: { id: c.id } })}
-                        className="cursor-pointer hover:bg-slate-50"
+                        className="cursor-pointer hover:bg-muted"
                       >
                         <TableCell className="font-medium">
                           {c.first_name} {c.last_name}
                         </TableCell>
-                        <TableCell className="text-slate-600">{role}</TableCell>
-                        <TableCell className="text-slate-600" onClick={(e) => e.stopPropagation()}>
+                        <TableCell className="text-muted-foreground">{role}</TableCell>
+                        <TableCell className="text-muted-foreground" onClick={(e) => e.stopPropagation()}>
                           {club ? (
                             <Link
                               to="/clubs/$id"
@@ -872,8 +872,8 @@ function FederationDetailPage() {
                             "—"
                           )}
                         </TableCell>
-                        <TableCell className="text-slate-600">{c.email ?? "—"}</TableCell>
-                        <TableCell className="text-slate-600">{c.phone ?? "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">{c.email ?? "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">{c.phone ?? "—"}</TableCell>
                         <TableCell>
                           {c.is_active ? (
                             <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
@@ -992,7 +992,7 @@ function FederationDetailPage() {
               <Button
                 type="submit"
                 disabled={clubSaving}
-                className="bg-indigo-500 hover:bg-indigo-600"
+                className="bg-primary hover:bg-[var(--cosl-red-dark)]"
               >
                 {clubSaving ? "Enregistrement…" : editingClub ? "Enregistrer" : "Ajouter"}
               </Button>
@@ -1045,8 +1045,8 @@ function FederationDetailPage() {
                 </div>
               )}
               {!editingMember && (
-                <div className="space-y-1.5 rounded-md border border-dashed border-slate-300 bg-slate-50 p-3">
-                  <Label className="text-xs uppercase tracking-wide text-slate-500">
+                <div className="space-y-1.5 rounded-md border border-dashed border-border bg-muted p-3">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
                     Choisir un membre existant ou créer un nouveau
                   </Label>
                   <Select
@@ -1082,7 +1082,7 @@ function FederationDetailPage() {
                       <SelectValue placeholder="Nouveau membre (champs vides ci-dessous)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="__new__" className="text-[#C8102E] font-medium">
+                      <SelectItem value="__new__" className="text-primary font-medium">
                         + Ajouter un nouveau membre
                       </SelectItem>
                       {unlinkedMembers.length > 0 && (
@@ -1098,7 +1098,7 @@ function FederationDetailPage() {
                       )}
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted-foreground">
                     Ou laissez sur "Nouveau membre" et remplissez les champs ci-dessous.
                   </p>
                 </div>
@@ -1235,7 +1235,7 @@ function FederationDetailPage() {
                   }
                 />
               </div>
-              <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
+              <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
                 <Label htmlFor="mactive" className="cursor-pointer">
                   Membre actif
                 </Label>
@@ -1260,7 +1260,7 @@ function FederationDetailPage() {
               <Button
                 type="submit"
                 disabled={memberSaving}
-                className="bg-indigo-500 hover:bg-indigo-600"
+                className="bg-primary hover:bg-[var(--cosl-red-dark)]"
               >
                 {memberSaving
                   ? "Enregistrement…"

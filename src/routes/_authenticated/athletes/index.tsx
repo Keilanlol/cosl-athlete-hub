@@ -419,12 +419,12 @@ function AthletesPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Athlètes</h1>
-          <p className="mt-1 text-sm text-slate-600">
+          <h1 className="text-2xl font-semibold text-foreground">Athlètes</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Référentiel central des athlètes COSL.
           </p>
         </div>
-        <Button onClick={openCreate} className="bg-indigo-500 hover:bg-indigo-600">
+        <Button onClick={openCreate} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
           <Plus className="mr-2 h-4 w-4" /> Ajouter un athlète
         </Button>
       </div>
@@ -453,9 +453,9 @@ function AthletesPage() {
         </div>
       )}
 
-      <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 lg:grid-cols-6">
+      <div className="grid gap-3 rounded-lg border border-border bg-card p-4 lg:grid-cols-6">
         <div className="relative lg:col-span-2">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Nom, prénom, ID COSL, email…"
             value={search}
@@ -527,12 +527,12 @@ function AthletesPage() {
             <SelectItem value="inactive">Athlètes désactivés</SelectItem>
           </SelectContent>
         </Select>
-        <div className="flex items-center text-sm text-slate-500">
+        <div className="flex items-center text-sm text-muted-foreground">
           {filtered.length} résultat(s)
         </div>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white">
+      <div className="rounded-lg border border-border bg-card">
         {rows === null ? (
           <TableSkeleton cols={11} />
         ) : filtered.length === 0 ? (
@@ -564,7 +564,7 @@ function AthletesPage() {
                   <TableRow
                     key={a.id}
                     onClick={() => navigate({ to: "/athletes/$id", params: { id: a.id } })}
-                    className={`cursor-pointer hover:bg-slate-50 ${a.is_active === false ? "opacity-60" : ""}`}
+                    className={`cursor-pointer hover:bg-muted ${a.is_active === false ? "opacity-60" : ""}`}
                   >
                     <TableCell className="font-mono text-xs">{a.cosl_id}</TableCell>
                     <TableCell>
@@ -577,7 +577,7 @@ function AthletesPage() {
                             className="h-full w-full object-cover"
                           />
                         ) : (
-                          <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-slate-500">
+                          <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-muted-foreground">
                             {a.first_name[0]}
                             {a.last_name[0]}
                           </div>
@@ -586,22 +586,22 @@ function AthletesPage() {
                     </TableCell>
                     <TableCell>{a.first_name}</TableCell>
                     <TableCell className="font-medium">{a.last_name}</TableCell>
-                    <TableCell className="text-slate-600">
+                    <TableCell className="text-muted-foreground">
                       {a.primary_sport?.name ?? "—"}
                     </TableCell>
-                    <TableCell className="text-slate-600">
+                    <TableCell className="text-muted-foreground">
                       {a.primary_federation?.acronym ?? "—"}
                     </TableCell>
-                    <TableCell className="text-slate-600">
+                    <TableCell className="text-muted-foreground">
                       {a.current_club?.name ?? "—"}
                     </TableCell>
                     <TableCell>
                       {statusBadge(a.status)}
                       {a.is_active === false && (
-                        <Badge variant="outline" className="ml-2 border-slate-300 text-slate-500">Inactif</Badge>
+                        <Badge variant="outline" className="ml-2 border-border text-muted-foreground">Inactif</Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-slate-600">{lvl?.label ?? a.level ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{lvl?.label ?? a.level ?? "—"}</TableCell>
                     <TableCell>{kycBadge(kyc)}</TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <Button
@@ -637,7 +637,7 @@ function AthletesPage() {
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <section className="space-y-3">
-                <h3 className="text-sm font-semibold text-slate-700">État civil</h3>
+                <h3 className="text-sm font-semibold text-foreground">État civil</h3>
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                   <div className="space-y-1.5">
                     <Label>ID COSL</Label>
@@ -739,7 +739,7 @@ function AthletesPage() {
                             setPendingPhotoPreview(null);
                           }}
                         />
-                        <p className="text-xs text-slate-400">
+                        <p className="text-xs text-muted-foreground">
                           Glisser une image ou cliquer
                           <br />
                           JPG, PNG, WebP · max 5 MB
@@ -752,7 +752,7 @@ function AthletesPage() {
               </section>
 
               <section className="space-y-3">
-                <h3 className="text-sm font-semibold text-slate-700">Sport</h3>
+                <h3 className="text-sm font-semibold text-foreground">Sport</h3>
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                   <div className="space-y-1.5">
                     <Label>Sport principal</Label>
@@ -844,7 +844,7 @@ function AthletesPage() {
               </section>
 
               <section className="space-y-3">
-                <h3 className="text-sm font-semibold text-slate-700">Contacts</h3>
+                <h3 className="text-sm font-semibold text-foreground">Contacts</h3>
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label>Email</Label>
@@ -917,7 +917,7 @@ function AthletesPage() {
               </section>
 
               <section className="space-y-3">
-                <h3 className="text-sm font-semibold text-slate-700">Tailles équipement</h3>
+                <h3 className="text-sm font-semibold text-foreground">Tailles équipement</h3>
                 <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-1.5">
                     <Label>Vêtement</Label>
@@ -946,7 +946,7 @@ function AthletesPage() {
               </section>
 
               <section className="space-y-3">
-                <h3 className="text-sm font-semibold text-slate-700">Identifiants externes</h3>
+                <h3 className="text-sm font-semibold text-foreground">Identifiants externes</h3>
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label>N° de licence</Label>
@@ -998,7 +998,7 @@ function AthletesPage() {
               <Button
                 type="submit"
                 disabled={saving}
-                className="bg-indigo-500 hover:bg-indigo-600"
+                className="bg-primary hover:bg-[var(--cosl-red-dark)]"
               >
                 {saving ? "Enregistrement…" : editing ? "Enregistrer" : "Ajouter"}
               </Button>

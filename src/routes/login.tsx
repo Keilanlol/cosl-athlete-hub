@@ -67,14 +67,14 @@ function LoginPage() {
           />
         </div>
         {error && (
-          <div className="rounded-md border border-[#E8B4BF] bg-[#F5E6E9] px-3 py-2 text-sm text-[#C8102E]">
+          <div className="rounded-md border border-[#E8B4BF] bg-[#F5E6E9] px-3 py-2 text-sm text-primary">
             {error}
           </div>
         )}
         <Button
           type="submit"
           disabled={submitting}
-          className="w-full bg-[#C8102E] hover:bg-[#A00D24] text-white font-semibold py-2.5"
+          className="w-full bg-primary hover:bg-[var(--cosl-red-dark)] text-white font-semibold py-2.5"
         >
           {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Se connecter

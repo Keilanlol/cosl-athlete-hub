@@ -237,30 +237,30 @@ function DelegationPage() {
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="rounded-lg border border-slate-200 bg-white p-5">
+        <div className="rounded-lg border border-border bg-card p-5">
           <div className="flex items-start gap-4">
             <Avatar className="h-14 w-14"><AvatarFallback>{chief ? initials(chief) : <UserCircle className="h-6 w-6" />}</AvatarFallback></Avatar>
             <div className="flex-1">
-              <p className="text-xs uppercase tracking-wide text-slate-500">Chef de Mission</p>
-              <p className="text-lg font-semibold text-slate-900">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Chef de Mission</p>
+              <p className="text-lg font-semibold text-foreground">
                 {chief ? `${chief.first_name} ${chief.last_name}` : "Non désigné"}
               </p>
-              {chief && <p className="text-sm text-slate-600">{chief.role}</p>}
+              {chief && <p className="text-sm text-muted-foreground">{chief.role}</p>}
             </div>
             <Button size="sm" variant="outline" onClick={() => setChiefOpen(true)}>
               <Pencil className="mr-2 h-3.5 w-3.5" /> {chief ? "Modifier" : "Désigner"}
             </Button>
           </div>
         </div>
-        <div className="rounded-lg border border-slate-200 bg-white p-5">
+        <div className="rounded-lg border border-border bg-card p-5">
           <div className="flex items-start gap-4">
             <Avatar className="h-14 w-14"><AvatarFallback>{manager ? manager.full_name.split(" ").map((s) => s[0]).slice(0, 2).join("") : <UserCircle className="h-6 w-6" />}</AvatarFallback></Avatar>
             <div className="flex-1">
-              <p className="text-xs uppercase tracking-wide text-slate-500">Games Manager COSL</p>
-              <p className="text-lg font-semibold text-slate-900">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Games Manager COSL</p>
+              <p className="text-lg font-semibold text-foreground">
                 {manager ? manager.full_name : "Non désigné"}
               </p>
-              {manager && <p className="text-sm text-slate-600">@{manager.username}</p>}
+              {manager && <p className="text-sm text-muted-foreground">@{manager.username}</p>}
             </div>
             <Button size="sm" variant="outline" onClick={() => setMgrOpen(true)}>
               <Pencil className="mr-2 h-3.5 w-3.5" /> {manager ? "Modifier" : "Désigner"}
@@ -271,7 +271,7 @@ function DelegationPage() {
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative max-w-sm flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Rechercher par nom…"
             value={search}
@@ -294,18 +294,18 @@ function DelegationPage() {
             {sports.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
           </SelectContent>
         </Select>
-        <span className="text-sm text-slate-500">{filtered.length} membre(s)</span>
+        <span className="text-sm text-muted-foreground">{filtered.length} membre(s)</span>
         <div className="ml-auto flex gap-2">
           <Button variant="outline" onClick={exportCsv}>
             <Download className="mr-2 h-4 w-4" /> Exporter liste officielle CSV
           </Button>
-          <Button onClick={() => setMemberOpen(true)} className="bg-indigo-500 hover:bg-indigo-600">
+          <Button onClick={() => setMemberOpen(true)} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
             <Plus className="mr-2 h-4 w-4" /> Ajouter un membre
           </Button>
         </div>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white">
+      <div className="rounded-lg border border-border bg-card">
         {members === null ? (
           <TableSkeleton cols={6} />
         ) : filtered.length === 0 ? (
@@ -329,7 +329,7 @@ function DelegationPage() {
                 return (
                   <TableRow key={m.id}>
                     <TableCell>
-                      <Badge className={isAth ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" : "bg-indigo-100 text-indigo-700 hover:bg-indigo-100"}>
+                      <Badge className={isAth ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" : "bg-[var(--cosl-red-light)] text-primary hover:bg-[var(--cosl-red-light)]"}>
                         {isAth ? "Athlète" : "Encadrant"}
                       </Badge>
                     </TableCell>
@@ -337,8 +337,8 @@ function DelegationPage() {
                       {person ? `${person.first_name} ${person.last_name}` : "—"}
                     </TableCell>
                     <TableCell>{m.member_role}</TableCell>
-                    <TableCell className="text-slate-600">{m.member_function ?? (m.coach?.role ?? "—")}</TableCell>
-                    <TableCell className="text-slate-600">
+                    <TableCell className="text-muted-foreground">{m.member_function ?? (m.coach?.role ?? "—")}</TableCell>
+                    <TableCell className="text-muted-foreground">
                       {isAth ? sportName(m.athlete?.primary_sport_id ?? null) : "—"}
                     </TableCell>
                     <TableCell className="text-right">
@@ -372,7 +372,7 @@ function DelegationPage() {
           </Select>
           <DialogFooter>
             <Button variant="outline" onClick={() => setChiefOpen(false)}>Annuler</Button>
-            <Button onClick={saveChief} className="bg-indigo-500 hover:bg-indigo-600">Enregistrer</Button>
+            <Button onClick={saveChief} className="bg-primary hover:bg-[var(--cosl-red-dark)]">Enregistrer</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -395,7 +395,7 @@ function DelegationPage() {
           </Select>
           <DialogFooter>
             <Button variant="outline" onClick={() => setMgrOpen(false)}>Annuler</Button>
-            <Button onClick={saveManager} className="bg-indigo-500 hover:bg-indigo-600">Enregistrer</Button>
+            <Button onClick={saveManager} className="bg-primary hover:bg-[var(--cosl-red-dark)]">Enregistrer</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -461,7 +461,7 @@ function DelegationPage() {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setMemberOpen(false)}>Annuler</Button>
-              <Button type="submit" disabled={saving} className="bg-indigo-500 hover:bg-indigo-600">
+              <Button type="submit" disabled={saving} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
                 {saving ? "Enregistrement…" : "Ajouter"}
               </Button>
             </DialogFooter>
