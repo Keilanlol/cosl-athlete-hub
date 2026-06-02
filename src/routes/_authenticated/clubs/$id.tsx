@@ -491,10 +491,14 @@ function ClubDetailPage() {
   const president =
     members.find((m) => m.role === "president" && (m.is_active ?? true)) ?? null;
 
-  const athletePoolOptions = athletePool.map((a) => ({
-    id: a.id,
-    label: `${a.first_name} ${a.last_name}${a.cosl_id ? ` (${a.cosl_id})` : ""}`,
-  }));
+  const athletePoolOptions = [
+    { id: "__new__", label: "+ Créer un nouvel adhérent" },
+    ...athletePool.map((a) => ({
+      id: a.id,
+      label: `${a.first_name} ${a.last_name}${a.cosl_id ? ` (${a.cosl_id})` : ""}`,
+    })),
+  ];
+
 
   return (
     <div className="space-y-6">
