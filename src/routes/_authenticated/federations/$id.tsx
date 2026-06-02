@@ -892,7 +892,12 @@ function FederationDetailPage() {
         </TabsContent>
 
         {/* ============ COACHES ============ */}
-        <TabsContent value="coaches" className="mt-4">
+        <TabsContent value="coaches" className="mt-4 space-y-3">
+          <div className="flex justify-end">
+            <Button onClick={openCreateCoach} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
+              <Plus className="mr-2 h-4 w-4" /> Ajouter un encadrant
+            </Button>
+          </div>
           <div className="rounded-lg border border-border bg-card">
             {coaches.length === 0 ? (
               <div className="p-6">
