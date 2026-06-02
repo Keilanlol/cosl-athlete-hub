@@ -189,6 +189,33 @@ function DelegationPage() {
     load();
   };
 
+  const submitCoach = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const fn = coachForm.first_name.trim();
+    const ln = coachForm.last_name.trim();
+    if (!fn || !ln) { toast.error("Prénom et nom requis"); return; }
+    setCoachSaving(true);
+    const { data, error } = await supabase.from("coaches").insert({
+      first_name: fn,
+      last_name: ln,
+      email: coachForm.email.trim() || null,
+      phone: coachForm.phone.trim() || null,
+      role: coachForm.role,
+      is_active: true,
+    }).select().single();
+    setCoachSaving(false);
+    if (error || !data) {
+      toast.error("Échec création", { description: friendlyError(error!) });
+      return;
+    }
+    toast.success("Encadrant créé");
+    const created = data as Coach;
+    setCoaches((prev) => [...prev, created].sort((a, b) => a.last_name.localeCompare(b.last_name)));
+    setMemberForm((f) => ({ ...f, entity_id: created.id }));
+    setCoachOpen(false);
+    setCoachForm({ first_name: "", last_name: "", email: "", phone: "", role: "coach" });
+  };
+
   const removeMember = async (m: Member) => {
     if (!(await confirmAction({ title: "Retirer ce membre ?", description: "Le membre sera retiré de la délégation.", confirmLabel: "Retirer" }))) return;
     const { error } = await supabase.from("delegation_members").delete().eq("id", m.id);
