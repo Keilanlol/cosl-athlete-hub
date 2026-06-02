@@ -221,6 +221,14 @@ function ClubDetailPage() {
       dedup.push(p);
     }
     setAllPersons(dedup);
+
+    const { data: unlinked } = await supabase
+      .from("club_members")
+      .select("*")
+      .is("club_id", null)
+      .order("last_name");
+    setUnlinkedMembers((unlinked ?? []) as ClubMember[]);
+
     setLoading(false);
   };
 
