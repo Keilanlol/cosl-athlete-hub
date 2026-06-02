@@ -176,9 +176,33 @@ function ClubMemberDetailPage() {
 
       <div className="rounded-xl border border-slate-200 bg-white p-6">
         <div className="flex flex-wrap items-center gap-5">
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-indigo-100 text-2xl font-semibold text-indigo-700">
-            {initials(member)}
-          </div>
+          <EntityImageUpload
+            entityId={member.id}
+            entityType="club_member"
+            currentImageUrl={member.photo_url}
+            currentStoragePath={member.photo_storage_path}
+            shape="circle"
+            size="lg"
+            placeholder={initials(member)}
+            onUploaded={async (url, path) => {
+              await supabase
+                .from("club_members")
+                .update({ photo_url: url, photo_storage_path: path })
+                .eq("id", member.id);
+              setMember((m) =>
+                m ? { ...m, photo_url: url, photo_storage_path: path } : m,
+              );
+            }}
+            onDeleted={async () => {
+              await supabase
+                .from("club_members")
+                .update({ photo_url: null, photo_storage_path: null })
+                .eq("id", member.id);
+              setMember((m) =>
+                m ? { ...m, photo_url: null, photo_storage_path: null } : m,
+              );
+            }}
+          />
           <div className="flex-1">
             <h1 className="text-2xl font-semibold text-slate-900">
               {member.first_name} {member.last_name}
