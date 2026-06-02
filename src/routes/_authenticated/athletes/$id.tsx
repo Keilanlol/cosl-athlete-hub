@@ -993,6 +993,7 @@ function AthleteDetailPage() {
             athlete={athlete}
             kyc={kyc}
             docs={docs ?? []}
+            docTypes={docTypes}
             history={kycHistory}
             reviewer={kycReviewer}
             currentUserId={user?.id ?? null}
@@ -1002,6 +1003,7 @@ function AthleteDetailPage() {
             setCommentDraft={setKycCommentDraft}
           />
         </TabsContent>
+
 
         <TabsContent value="relations">
           <div className="space-y-3">
@@ -1863,6 +1865,7 @@ function KycTabContent({
   athlete,
   kyc,
   docs,
+  docTypes,
   history,
   reviewer,
   currentUserId,
@@ -1874,6 +1877,7 @@ function KycTabContent({
   athlete: Athlete;
   kyc: AthleteKyc | null;
   docs: AthleteDocument[];
+  docTypes: { code: string; label: string; category: string }[];
   history: KycHistoryRow[];
   reviewer: ReviewerProfile;
   currentUserId: string | null;
@@ -1882,17 +1886,24 @@ function KycTabContent({
   commentDraft: string;
   setCommentDraft: (v: string) => void;
 }) {
+
   const globalStatus = kyc?.global_status ?? null;
   const nbValid = countValidAxes(kyc);
+
+  const labelOf = (code?: string | null) =>
+    (code && docTypes.find((t) => t.code === code)?.label) || code || "—";
+
+  const isIdentityDoc = (code?: string | null) =>
+    !!code && ["passport", "id_card"].includes(code);
+  const isEthicsDoc = (code?: string | null) =>
+    !!code && ["ethics", "ethics_charter"].includes(code);
+  const isRule40Doc = (code?: string | null) =>
+    !!code && ["rule40", "rule_40"].includes(code);
 
   const passportDoc = useMemo(
     () =>
       docs.find((d) => d.id === kyc?.passport_doc_id) ??
-      docs.find(
-        (d) =>
-          d.doc_type?.toLowerCase().includes("passeport") ||
-          d.doc_type?.toLowerCase().includes("identit"),
-      ),
+      docs.find((d) => isIdentityDoc(d.doc_type)),
     [docs, kyc?.passport_doc_id],
   );
 
@@ -1904,6 +1915,7 @@ function KycTabContent({
     () => docs.find((d) => d.id === kyc?.rule40_doc_id),
     [docs, kyc?.rule40_doc_id],
   );
+
 
   const age = useMemo(() => {
     if (!athlete.birth_date) return null;
@@ -1957,7 +1969,7 @@ function KycTabContent({
           <div className="flex items-center gap-3 rounded-md border border-border p-3">
             <FileText className="h-4 w-4 text-muted-foreground" />
             <div className="flex-1">
-              <p className="text-sm font-medium">{passportDoc.doc_type}</p>
+              <p className="text-sm font-medium">{labelOf(passportDoc.doc_type)}</p>
               <p className="text-xs text-muted-foreground">
                 Expire le : {passportDoc.expiry_date ?? "—"}
                 {passportDoc.expiry_date &&
@@ -2002,16 +2014,15 @@ function KycTabContent({
               {docs
                 .filter(
                   (d) =>
-                    d.category === "admin" ||
-                    d.doc_type?.toLowerCase().includes("passeport") ||
-                    d.doc_type?.toLowerCase().includes("identit"),
+                    d.category === "admin" || isIdentityDoc(d.doc_type),
                 )
                 .map((d) => (
                   <SelectItem key={d.id} value={d.id}>
-                    {d.doc_type} — {d.file_name}
+                    {labelOf(d.doc_type)} — {d.file_name}
                     {d.expiry_date ? ` (exp. ${d.expiry_date})` : ""}
                   </SelectItem>
                 ))}
+
             </SelectContent>
           </Select>
         </div>
@@ -2243,14 +2254,14 @@ function KycTabContent({
               {docs
                 .filter(
                   (d) =>
-                    d.category === "contractual" ||
-                    d.doc_type?.toLowerCase().includes("charte"),
+                    d.category === "contractual" || isEthicsDoc(d.doc_type),
                 )
                 .map((d) => (
                   <SelectItem key={d.id} value={d.id}>
-                    {d.doc_type} — {d.file_name}
+                    {labelOf(d.doc_type)} — {d.file_name}
                   </SelectItem>
                 ))}
+
             </SelectContent>
           </Select>
           {ethicsDoc?.file_url && (
@@ -2306,12 +2317,13 @@ function KycTabContent({
           <SelectContent>
             <SelectItem value="__none">— Aucun —</SelectItem>
             {docs
-              .filter((d) => d.category === "contractual")
+              .filter((d) => d.category === "contractual" || isRule40Doc(d.doc_type))
               .map((d) => (
                 <SelectItem key={d.id} value={d.id}>
-                  {d.doc_type} — {d.file_name}
+                  {labelOf(d.doc_type)} — {d.file_name}
                 </SelectItem>
               ))}
+
           </SelectContent>
         </Select>
         {rule40Doc?.file_url && (
