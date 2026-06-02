@@ -156,12 +156,7 @@ function ClubDetailPage() {
   const [coaches, setCoaches] = useState<Coach[]>([]);
   const [athletes, setAthletes] = useState<AthleteRow[]>([]);
   const [members, setMembers] = useState<ClubMember[]>([]);
-  const [allPersons, setAllPersons] = useState<
-    Array<{ id: string; first_name: string; last_name: string; email: string | null; phone: string | null; address: string | null }>
-  >([]);
-  const [unlinkedMembers, setUnlinkedMembers] = useState<ClubMember[]>([]);
-  const [pickedPersonId, setPickedPersonId] = useState("");
-  const [, setSports] = useState<Sport[]>([]);
+  const [sports, setSports] = useState<Sport[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Add athlete dialog
@@ -173,6 +168,16 @@ function ClubDetailPage() {
   const [athletePool, setAthletePool] = useState<AthleteRow[]>([]);
   const [selectedAthleteId, setSelectedAthleteId] = useState("");
   const [athleteSaving, setAthleteSaving] = useState(false);
+  const [newAthlete, setNewAthlete] = useState({
+    first_name: "",
+    last_name: "",
+    birth_date: "",
+    gender: "male" as "male" | "female" | "mixed",
+    nationality: "LUX",
+    email: "",
+    phone: "",
+    primary_sport_id: "",
+  });
 
   // Member dialog
   const [memberOpen, setMemberOpen] = useState(false);
@@ -186,6 +191,7 @@ function ClubDetailPage() {
   const [coachSaving, setCoachSaving] = useState(false);
   const [pickedCoachId, setPickedCoachId] = useState("");
   const [freeCoaches, setFreeCoaches] = useState<Coach[]>([]);
+
 
   const load = async () => {
     setLoading(true);
