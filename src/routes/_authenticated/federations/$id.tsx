@@ -162,12 +162,8 @@ function FederationDetailPage() {
   const [coaches, setCoaches] = useState<Coach[]>([]);
   const [athletes, setAthletes] = useState<AthleteRow[]>([]);
   const [members, setMembers] = useState<FederationMember[]>([]);
-  const [allPersons, setAllPersons] = useState<
-    Array<{ id: string; first_name: string; last_name: string; email: string | null; phone: string | null; address: string | null }>
-  >([]);
-  const [unlinkedMembers, setUnlinkedMembers] = useState<FederationMember[]>([]);
-  const [pickedPersonId, setPickedPersonId] = useState("");
   const [, setSports] = useState<Sport[]>([]);
+
   const [loading, setLoading] = useState(true);
 
   // Club dialog
@@ -192,7 +188,7 @@ function FederationDetailPage() {
   const load = async () => {
     setLoading(true);
     // First load federation + clubs to know which clubs belong
-    const [f, c, sp, m, fm, cm] = await Promise.all([
+    const [f, c, sp, m] = await Promise.all([
       supabase.from("federations").select("*").eq("id", id).maybeSingle(),
       supabase.from("clubs").select("*").eq("federation_id", id).order("name"),
       supabase.from("sports").select("*"),
@@ -201,14 +197,6 @@ function FederationDetailPage() {
         .select("*")
         .eq("federation_id", id)
         .order("created_at", { ascending: false }),
-      supabase
-        .from("federation_members")
-        .select("id,first_name,last_name,email,phone,address")
-        .order("last_name"),
-      supabase
-        .from("club_members")
-        .select("id,first_name,last_name,email,phone,address")
-        .order("last_name"),
     ]);
     if (f.error) toast.error("Erreur de chargement", { description: f.error.message });
     setFed((f.data ?? null) as Federation | null);
@@ -216,27 +204,8 @@ function FederationDetailPage() {
     setClubs(clubsData);
     setSports((sp.data ?? []) as Sport[]);
     setMembers((m.data ?? []) as FederationMember[]);
-    // Merge & dedupe by name+email
-    const merged = [
-      ...((fm.data ?? []) as Array<typeof allPersons[number]>),
-      ...((cm.data ?? []) as Array<typeof allPersons[number]>),
-    ];
-    const seen = new Set<string>();
-    const dedup: typeof allPersons = [];
-    for (const p of merged) {
-      const key = `${p.first_name.trim().toLowerCase()}|${p.last_name.trim().toLowerCase()}|${(p.email ?? "").trim().toLowerCase()}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      dedup.push(p);
-    }
-    setAllPersons(dedup);
 
-    const { data: unlinked } = await supabase
-      .from("federation_members")
-      .select("*")
-      .is("federation_id", null)
-      .order("last_name");
-    setUnlinkedMembers((unlinked ?? []) as FederationMember[]);
+
 
 
     const clubIds = clubsData.map((cl) => cl.id);
@@ -391,21 +360,7 @@ function FederationDetailPage() {
   const openCreateMember = () => {
     setEditingMember(null);
     setMemberForm(emptyMember);
-    setPickedPersonId("");
     setMemberOpen(true);
-  };
-  const onPickPerson = (pid: string) => {
-    setPickedPersonId(pid);
-    const p = allPersons.find((x) => x.id === pid);
-    if (!p) return;
-    setMemberForm((f) => ({
-      ...f,
-      first_name: p.first_name,
-      last_name: p.last_name,
-      email: p.email ?? "",
-      phone: p.phone ?? "",
-      address: p.address ?? "",
-    }));
   };
   const openEditMember = (m: FederationMember) => {
     setEditingMember(m);
@@ -456,24 +411,17 @@ function FederationDetailPage() {
           .from("federation_members")
           .update(payload)
           .eq("id", editingMember.id)
-      : pickedPersonId
-        ? await supabase
-            .from("federation_members")
-            .update(payload)
-            .eq("id", pickedPersonId)
-        : await supabase.from("federation_members").insert(payload);
+      : await supabase.from("federation_members").insert(payload);
     setMemberSaving(false);
     if (error) {
       toast.error("Échec de l'enregistrement", { description: friendlyError(error) });
       return;
     }
-    toast.success(
-      editingMember ? "Membre modifié" : pickedPersonId ? "Membre rattaché" : "Membre ajouté",
-    );
+    toast.success(editingMember ? "Membre modifié" : "Membre ajouté");
     setMemberOpen(false);
-    setPickedPersonId("");
     load();
   };
+
   const removeMember = async (m: FederationMember) => {
     const ok = await confirmAction({
       title: `Supprimer ${m.first_name} ${m.last_name} ?`,
@@ -1114,65 +1062,8 @@ function FederationDetailPage() {
                   />
                 </div>
               )}
-              {!editingMember && (
-                <div className="space-y-1.5 rounded-md border border-dashed border-border bg-muted p-3">
-                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Choisir un membre existant ou créer un nouveau
-                  </Label>
-                  <Select
-                    value={pickedPersonId || "__new__"}
-                    onValueChange={(v) => {
-                      if (v === "__new__") {
-                        setPickedPersonId("");
-                        setMemberForm(emptyMember);
-                        return;
-                      }
-                      setPickedPersonId(v);
-                      const p = unlinkedMembers.find((x) => x.id === v);
-                      if (!p) return;
-                      setMemberForm({
-                        first_name: p.first_name,
-                        last_name: p.last_name,
-                        role: p.role ?? "president",
-                        email: p.email ?? "",
-                        phone: p.phone ?? "",
-                        address: p.address ?? "",
-                        street: p.street ?? "",
-                        postcode: p.postcode ?? "",
-                        city: p.city ?? "",
-                        country: p.country ?? "",
-                        start_date: "",
-                        end_date: "",
-                        notes: "",
-                        is_active: true,
-                      });
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Nouveau membre (champs vides ci-dessous)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__new__" className="text-primary font-medium">
-                        + Ajouter un nouveau membre
-                      </SelectItem>
-                      {unlinkedMembers.length > 0 && (
-                        <>
-                          <SelectSeparator />
-                          {unlinkedMembers.map((m) => (
-                            <SelectItem key={m.id} value={m.id}>
-                              {m.first_name} {m.last_name}
-                              {m.email ? ` — ${m.email}` : ""}
-                            </SelectItem>
-                          ))}
-                        </>
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    Ou laissez sur "Nouveau membre" et remplissez les champs ci-dessous.
-                  </p>
-                </div>
-              )}
+
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="mfname">Prénom *</Label>

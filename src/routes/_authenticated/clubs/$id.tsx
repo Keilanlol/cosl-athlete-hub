@@ -156,12 +156,7 @@ function ClubDetailPage() {
   const [coaches, setCoaches] = useState<Coach[]>([]);
   const [athletes, setAthletes] = useState<AthleteRow[]>([]);
   const [members, setMembers] = useState<ClubMember[]>([]);
-  const [allPersons, setAllPersons] = useState<
-    Array<{ id: string; first_name: string; last_name: string; email: string | null; phone: string | null; address: string | null }>
-  >([]);
-  const [unlinkedMembers, setUnlinkedMembers] = useState<ClubMember[]>([]);
-  const [pickedPersonId, setPickedPersonId] = useState("");
-  const [, setSports] = useState<Sport[]>([]);
+  const [sports, setSports] = useState<Sport[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Add athlete dialog
@@ -173,6 +168,16 @@ function ClubDetailPage() {
   const [athletePool, setAthletePool] = useState<AthleteRow[]>([]);
   const [selectedAthleteId, setSelectedAthleteId] = useState("");
   const [athleteSaving, setAthleteSaving] = useState(false);
+  const [newAthlete, setNewAthlete] = useState({
+    first_name: "",
+    last_name: "",
+    birth_date: "",
+    gender: "male" as "male" | "female" | "mixed",
+    nationality: "LUX",
+    email: "",
+    phone: "",
+    primary_sport_id: "",
+  });
 
   // Member dialog
   const [memberOpen, setMemberOpen] = useState(false);
@@ -187,13 +192,14 @@ function ClubDetailPage() {
   const [pickedCoachId, setPickedCoachId] = useState("");
   const [freeCoaches, setFreeCoaches] = useState<Coach[]>([]);
 
+
   const load = async () => {
     setLoading(true);
     const cl = await supabase.from("clubs").select("*").eq("id", id).maybeSingle();
     if (cl.error) toast.error("Erreur de chargement", { description: cl.error.message });
     const c = (cl.data ?? null) as Club | null;
     setClub(c);
-    const [f, co, a, sp, m, fm, cm] = await Promise.all([
+    const [f, co, a, sp, m] = await Promise.all([
       c
         ? supabase.from("federations").select("*").eq("id", c.federation_id).maybeSingle()
         : Promise.resolve({ data: null }),
@@ -203,46 +209,18 @@ function ClubDetailPage() {
         .select("*, primary_sport:sports!athletes_primary_sport_id_fkey(name)")
         .eq("current_club_id", id)
         .order("last_name"),
-      supabase.from("sports").select("*"),
+      supabase.from("sports").select("*").order("name"),
       supabase
         .from("club_members")
         .select("*")
         .eq("club_id", id)
         .order("created_at", { ascending: false }),
-      supabase
-        .from("federation_members")
-        .select("id,first_name,last_name,email,phone,address")
-        .order("last_name"),
-      supabase
-        .from("club_members")
-        .select("id,first_name,last_name,email,phone,address")
-        .order("last_name"),
     ]);
     setFed(((f as { data: Federation | null }).data ?? null) as Federation | null);
     setCoaches((co.data ?? []) as Coach[]);
     setAthletes((a.data ?? []) as AthleteRow[]);
     setSports((sp.data ?? []) as Sport[]);
     setMembers((m.data ?? []) as ClubMember[]);
-    const merged = [
-      ...((fm.data ?? []) as Array<typeof allPersons[number]>),
-      ...((cm.data ?? []) as Array<typeof allPersons[number]>),
-    ];
-    const seen = new Set<string>();
-    const dedup: typeof allPersons = [];
-    for (const p of merged) {
-      const key = `${p.first_name.trim().toLowerCase()}|${p.last_name.trim().toLowerCase()}|${(p.email ?? "").trim().toLowerCase()}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      dedup.push(p);
-    }
-    setAllPersons(dedup);
-
-    const { data: unlinked } = await supabase
-      .from("club_members")
-      .select("*")
-      .is("club_id", null)
-      .order("last_name");
-    setUnlinkedMembers((unlinked ?? []) as ClubMember[]);
 
     const { data: freeC } = await supabase
       .from("coaches")
@@ -250,6 +228,7 @@ function ClubDetailPage() {
       .is("club_id", null)
       .order("last_name");
     setFreeCoaches((freeC ?? []) as Coach[]);
+
 
     setLoading(false);
   };
@@ -285,6 +264,16 @@ function ClubDetailPage() {
   // ---------- Athlete CRUD ----------
   const openAddAthlete = async () => {
     setSelectedAthleteId("");
+    setNewAthlete({
+      first_name: "",
+      last_name: "",
+      birth_date: "",
+      gender: "male",
+      nationality: "LUX",
+      email: "",
+      phone: "",
+      primary_sport_id: "",
+    });
     setAthleteOpen(true);
     // Load athletes not yet in this club
     const { data, error } = await supabase
@@ -302,6 +291,36 @@ function ClubDetailPage() {
       toast.error("Sélectionnez un adhérent");
       return;
     }
+    if (selectedAthleteId === "__new__") {
+      if (!newAthlete.first_name.trim() || !newAthlete.last_name.trim() || !newAthlete.birth_date) {
+        toast.error("Prénom, nom et date de naissance requis");
+        return;
+      }
+      setAthleteSaving(true);
+      const { error } = await supabase.from("athletes").insert({
+        first_name: newAthlete.first_name.trim(),
+        last_name: newAthlete.last_name.trim(),
+        birth_date: newAthlete.birth_date,
+        gender: newAthlete.gender,
+        nationality: newAthlete.nationality.trim() || "LUX",
+        email: newAthlete.email.trim() || null,
+        phone: newAthlete.phone.trim() || null,
+        primary_sport_id: newAthlete.primary_sport_id || null,
+        primary_federation_id: club?.federation_id ?? null,
+        current_club_id: id,
+        status: "active",
+        is_active: true,
+      });
+      setAthleteSaving(false);
+      if (error) {
+        toast.error("Échec", { description: friendlyError(error) });
+        return;
+      }
+      toast.success("Adhérent créé et ajouté au club");
+      setAthleteOpen(false);
+      load();
+      return;
+    }
     setAthleteSaving(true);
     const { error } = await supabase
       .from("athletes")
@@ -316,6 +335,7 @@ function ClubDetailPage() {
     setAthleteOpen(false);
     load();
   };
+
 
   const removeAthlete = async (a: AthleteRow) => {
     const ok = await confirmAction({
@@ -341,21 +361,7 @@ function ClubDetailPage() {
   const openCreateMember = () => {
     setEditingMember(null);
     setMemberForm(emptyMember);
-    setPickedPersonId("");
     setMemberOpen(true);
-  };
-  const onPickPerson = (pid: string) => {
-    setPickedPersonId(pid);
-    const p = allPersons.find((x) => x.id === pid);
-    if (!p) return;
-    setMemberForm((f) => ({
-      ...f,
-      first_name: p.first_name,
-      last_name: p.last_name,
-      email: p.email ?? "",
-      phone: p.phone ?? "",
-      address: p.address ?? "",
-    }));
   };
   const openEditMember = (m: ClubMember) => {
     setEditingMember(m);
@@ -403,21 +409,17 @@ function ClubDetailPage() {
     };
     const { error } = editingMember
       ? await supabase.from("club_members").update(payload).eq("id", editingMember.id)
-      : pickedPersonId
-        ? await supabase.from("club_members").update(payload).eq("id", pickedPersonId)
-        : await supabase.from("club_members").insert(payload);
+      : await supabase.from("club_members").insert(payload);
     setMemberSaving(false);
     if (error) {
       toast.error("Échec de l'enregistrement", { description: friendlyError(error) });
       return;
     }
-    toast.success(
-      editingMember ? "Membre modifié" : pickedPersonId ? "Membre rattaché" : "Membre ajouté",
-    );
+    toast.success(editingMember ? "Membre modifié" : "Membre ajouté");
     setMemberOpen(false);
-    setPickedPersonId("");
     load();
   };
+
   const removeMember = async (m: ClubMember) => {
     const ok = await confirmAction({
       title: `Supprimer ${m.first_name} ${m.last_name} ?`,
@@ -489,10 +491,14 @@ function ClubDetailPage() {
   const president =
     members.find((m) => m.role === "president" && (m.is_active ?? true)) ?? null;
 
-  const athletePoolOptions = athletePool.map((a) => ({
-    id: a.id,
-    label: `${a.first_name} ${a.last_name}${a.cosl_id ? ` (${a.cosl_id})` : ""}`,
-  }));
+  const athletePoolOptions = [
+    { id: "__new__", label: "+ Créer un nouvel adhérent" },
+    ...athletePool.map((a) => ({
+      id: a.id,
+      label: `${a.first_name} ${a.last_name}${a.cosl_id ? ` (${a.cosl_id})` : ""}`,
+    })),
+  ];
+
 
   return (
     <div className="space-y-6">
@@ -946,7 +952,7 @@ function ClubDetailPage() {
           <DialogHeader>
             <DialogTitle>Ajouter un adhérent</DialogTitle>
             <DialogDescription>
-              Rattacher un athlète existant au club {club.name}.
+              Rattacher un athlète existant ou en créer un nouveau pour le club {club.name}.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -956,14 +962,77 @@ function ClubDetailPage() {
                 value={selectedAthleteId}
                 onChange={setSelectedAthleteId}
                 options={athletePoolOptions}
-                placeholder="Choisir un athlète…"
+                placeholder="Choisir un athlète ou en créer un…"
                 searchPlaceholder="Rechercher par nom ou COSL ID…"
                 emptyMessage="Aucun athlète disponible."
               />
               <p className="text-xs text-muted-foreground">
-                Seuls les athlètes sans club ou rattachés à un autre club sont listés.
+                Sélectionnez un athlète existant ou « + Créer un nouvel adhérent ».
               </p>
             </div>
+
+            {selectedAthleteId === "__new__" && (
+              <div className="space-y-3 rounded-md border border-dashed border-border bg-muted p-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="naf">Prénom *</Label>
+                    <Input id="naf" value={newAthlete.first_name} onChange={(e) => setNewAthlete({ ...newAthlete, first_name: e.target.value })} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="nal">Nom *</Label>
+                    <Input id="nal" value={newAthlete.last_name} onChange={(e) => setNewAthlete({ ...newAthlete, last_name: e.target.value })} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="nabd">Date de naissance *</Label>
+                    <Input id="nabd" type="date" value={newAthlete.birth_date} onChange={(e) => setNewAthlete({ ...newAthlete, birth_date: e.target.value })} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="nag">Genre *</Label>
+                    <Select value={newAthlete.gender} onValueChange={(v) => setNewAthlete({ ...newAthlete, gender: v as "male" | "female" | "mixed" })}>
+                      <SelectTrigger id="nag"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="male">Homme</SelectItem>
+                        <SelectItem value="female">Femme</SelectItem>
+                        <SelectItem value="mixed">Mixte</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="nan">Nationalité</Label>
+                    <Input id="nan" value={newAthlete.nationality} onChange={(e) => setNewAthlete({ ...newAthlete, nationality: e.target.value.toUpperCase() })} maxLength={3} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="nas">Sport principal</Label>
+                    <Select value={newAthlete.primary_sport_id || "__none__"} onValueChange={(v) => setNewAthlete({ ...newAthlete, primary_sport_id: v === "__none__" ? "" : v })}>
+                      <SelectTrigger id="nas"><SelectValue placeholder="—" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">—</SelectItem>
+                        {sports.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="nae">Email</Label>
+                    <Input id="nae" type="email" value={newAthlete.email} onChange={(e) => setNewAthlete({ ...newAthlete, email: e.target.value })} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="nap">Téléphone</Label>
+                    <Input id="nap" value={newAthlete.phone} onChange={(e) => setNewAthlete({ ...newAthlete, phone: e.target.value })} />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  L'adhérent sera créé et automatiquement rattaché à ce club. Pour compléter sa fiche (KYC, adresse, etc.), rendez-vous sur sa page dédiée après création.
+                </p>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button
@@ -980,11 +1049,12 @@ function ClubDetailPage() {
               disabled={athleteSaving || !selectedAthleteId}
               className="bg-primary hover:bg-[var(--cosl-red-dark)]"
             >
-              {athleteSaving ? "Ajout…" : "Ajouter"}
+              {athleteSaving ? "Ajout…" : selectedAthleteId === "__new__" ? "Créer et ajouter" : "Ajouter"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
 
       {/* ============ Member dialog ============ */}
       <Dialog open={memberOpen} onOpenChange={setMemberOpen}>
@@ -1029,65 +1099,8 @@ function ClubDetailPage() {
                   />
                 </div>
               )}
-              {!editingMember && (
-                <div className="space-y-1.5 rounded-md border border-dashed border-border bg-muted p-3">
-                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Choisir un membre existant ou créer un nouveau
-                  </Label>
-                  <Select
-                    value={pickedPersonId || "__new__"}
-                    onValueChange={(v) => {
-                      if (v === "__new__") {
-                        setPickedPersonId("");
-                        setMemberForm(emptyMember);
-                        return;
-                      }
-                      setPickedPersonId(v);
-                      const p = unlinkedMembers.find((x) => x.id === v);
-                      if (!p) return;
-                      setMemberForm({
-                        first_name: p.first_name,
-                        last_name: p.last_name,
-                        role: p.role ?? "president",
-                        email: p.email ?? "",
-                        phone: p.phone ?? "",
-                        address: p.address ?? "",
-                        street: p.street ?? "",
-                        postcode: p.postcode ?? "",
-                        city: p.city ?? "",
-                        country: p.country ?? "",
-                        start_date: "",
-                        end_date: "",
-                        notes: "",
-                        is_active: true,
-                      });
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Nouveau membre (champs vides ci-dessous)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__new__" className="text-primary font-medium">
-                        + Ajouter un nouveau membre
-                      </SelectItem>
-                      {unlinkedMembers.length > 0 && (
-                        <>
-                          <SelectSeparator />
-                          {unlinkedMembers.map((m) => (
-                            <SelectItem key={m.id} value={m.id}>
-                              {m.first_name} {m.last_name}
-                              {m.email ? ` — ${m.email}` : ""}
-                            </SelectItem>
-                          ))}
-                        </>
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    Ou laissez sur "Nouveau membre" et remplissez les champs ci-dessous.
-                  </p>
-                </div>
-              )}
+
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="cmfname">Prénom *</Label>
