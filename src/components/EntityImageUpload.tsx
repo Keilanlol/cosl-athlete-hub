@@ -9,7 +9,12 @@ const ACCEPTED = ["image/jpeg", "image/png", "image/webp"];
 const MAX_MB = 5;
 const ONE_YEAR = 60 * 60 * 24 * 365;
 
-export type EntityType = "federation" | "club" | "federation_member" | "coach";
+export type EntityType =
+  | "federation"
+  | "club"
+  | "federation_member"
+  | "club_member"
+  | "coach";
 
 export interface EntityImageUploadProps {
   entityId: string;
@@ -33,6 +38,8 @@ const buildStoragePath = (entityType: EntityType, entityId: string, ext: string)
       return `clubs/${entityId}/logo/logo.${ext}`;
     case "federation_member":
       return `federation-members/${entityId}/photo/photo.${ext}`;
+    case "club_member":
+      return `club-members/${entityId}/photo/photo.${ext}`;
     case "coach":
       return `coaches/${entityId}/photo/photo.${ext}`;
   }
