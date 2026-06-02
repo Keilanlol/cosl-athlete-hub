@@ -489,133 +489,118 @@ function FederationDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-2">
-          <Button asChild variant="ghost" size="sm" className="-ml-2">
-            <Link to="/federations">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Fédérations
-            </Link>
-          </Button>
-          <div className="flex items-center gap-3">
-            <EntityImageUpload
-              entityId={fed.id}
-              entityType="federation"
-              currentImageUrl={fed.logo_url}
-              currentStoragePath={fed.logo_storage_path}
-              shape="square"
-              size="lg"
-              placeholder={fed.acronym?.slice(0, 3)}
-              onUploaded={async (url, path) => {
-                await supabase
-                  .from("federations")
-                  .update({ logo_url: url, logo_storage_path: path })
-                  .eq("id", id);
-                setFed((f) => (f ? { ...f, logo_url: url, logo_storage_path: path } : f));
-              }}
-              onDeleted={async () => {
-                await supabase
-                  .from("federations")
-                  .update({ logo_url: null, logo_storage_path: null })
-                  .eq("id", id);
-                setFed((f) => (f ? { ...f, logo_url: null, logo_storage_path: null } : f));
-              }}
-            />
-            <div>
-              <h1 className="text-2xl font-semibold text-slate-900">
-                <span className="font-mono text-indigo-600">{fed.acronym}</span>{" "}
-                <span className="text-slate-900">— {fed.name}</span>
-              </h1>
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-600">
-                {fed.is_olympic && (
-                  <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">
-                    Olympique
-                  </Badge>
-                )}
-                {fed.international_federation && (
-                  <span className="inline-flex items-center gap-1">
-                    <Globe className="h-3.5 w-3.5" /> {fed.international_federation}
+      <div>
+        <Button asChild variant="ghost" size="sm" className="-ml-2 mb-2">
+          <Link to="/federations">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Fédérations
+          </Link>
+        </Button>
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white p-6">
+        <div className="flex flex-wrap items-start gap-5">
+          <EntityImageUpload
+            entityId={fed.id}
+            entityType="federation"
+            currentImageUrl={fed.logo_url}
+            currentStoragePath={fed.logo_storage_path}
+            shape="square"
+            size="lg"
+            placeholder={fed.acronym?.slice(0, 3)}
+            onUploaded={async (url, path) => {
+              await supabase
+                .from("federations")
+                .update({ logo_url: url, logo_storage_path: path })
+                .eq("id", id);
+              setFed((f) => (f ? { ...f, logo_url: url, logo_storage_path: path } : f));
+            }}
+            onDeleted={async () => {
+              await supabase
+                .from("federations")
+                .update({ logo_url: null, logo_storage_path: null })
+                .eq("id", id);
+              setFed((f) => (f ? { ...f, logo_url: null, logo_storage_path: null } : f));
+            }}
+          />
+
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+              {fed.is_olympic && (
+                <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">
+                  🏅 Olympique
+                </Badge>
+              )}
+              {fed.international_federation && (
+                <Badge variant="outline" className="font-normal">
+                  <Globe className="mr-1 h-3 w-3" />
+                  {fed.international_federation}
+                </Badge>
+              )}
+            </div>
+            <h1 className="text-2xl font-bold text-slate-900">
+              <span className="text-[#C8102E] font-mono">{fed.acronym}</span> — {fed.name}
+            </h1>
+            <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-slate-500">
+              {(president || fed.president_name) && (
+                <span className="flex items-center gap-1">
+                  <UserRound className="h-3.5 w-3.5" />
+                  Président :{" "}
+                  <span className="text-slate-700 font-medium ml-1">
+                    {president
+                      ? `${president.first_name} ${president.last_name}`
+                      : fed.president_name}
                   </span>
-                )}
-              </div>
+                </span>
+              )}
+              {fed.contact_email && (
+                <a
+                  href={`mailto:${fed.contact_email}`}
+                  className="flex items-center gap-1 text-indigo-600 hover:underline"
+                >
+                  <Mail className="h-3.5 w-3.5" /> {fed.contact_email}
+                </a>
+              )}
+              {fed.contact_phone && (
+                <span className="flex items-center gap-1">
+                  <Phone className="h-3.5 w-3.5" /> {fed.contact_phone}
+                </span>
+              )}
             </div>
           </div>
         </div>
+
+        <div className="mt-5 pt-5 border-t border-slate-100 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <StatPill icon={Shield} label="Clubs" value={stats.clubs} />
+          <StatPill
+            icon={Users}
+            label="Adhérents"
+            value={stats.athletes}
+            sub={`${stats.active} actifs`}
+          />
+          <StatPill icon={UserCog} label="Encadrants" value={stats.coaches} />
+          <StatPill icon={UserRound} label="Membres bureau" value={stats.members} />
+        </div>
+
+        {stats.sportCounts.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-slate-100">
+            <p className="text-xs uppercase tracking-wide text-slate-400 mb-2">
+              Sports principaux
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {stats.sportCounts.slice(0, 8).map(([name, n]) => (
+                <span
+                  key={name}
+                  className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700"
+                >
+                  {name}{" "}
+                  <span className="font-semibold text-slate-900">{n}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
-        <StatCard icon={Shield} label="Clubs" value={stats.clubs} />
-        <StatCard
-          icon={Users}
-          label="Adhérents"
-          value={stats.athletes}
-          hint={`${stats.active} actif(s)`}
-        />
-        <StatCard icon={UserCog} label="Encadrants" value={stats.coaches} />
-        <StatCard icon={UserRound} label="Membres" value={stats.members} />
-        <StatCard
-          icon={Trophy}
-          label="Sports"
-          value={stats.sportCounts.length}
-        />
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-base">Coordonnées</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-3 text-sm md:grid-cols-2">
-            <div>
-              <div className="text-xs uppercase tracking-wide text-slate-500">Président</div>
-              <div className="text-slate-900">
-                {president
-                  ? `${president.first_name} ${president.last_name}`
-                  : fed.president_name ?? "—"}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs uppercase tracking-wide text-slate-500">
-                Fédération internationale
-              </div>
-              <div className="text-slate-900">{fed.international_federation ?? "—"}</div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Mail className="h-4 w-4 text-slate-400" />
-              {fed.contact_email ? (
-                <a href={`mailto:${fed.contact_email}`} className="text-indigo-600 hover:underline">
-                  {fed.contact_email}
-                </a>
-              ) : (
-                <span className="text-slate-400">—</span>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <Phone className="h-4 w-4 text-slate-400" />
-              <span className="text-slate-700">{fed.contact_phone ?? "—"}</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Top sports</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {stats.sportCounts.length === 0 ? (
-              <p className="text-sm text-slate-500">Aucun athlète enregistré.</p>
-            ) : (
-              <ul className="space-y-1.5 text-sm">
-                {stats.sportCounts.slice(0, 6).map(([name, n]) => (
-                  <li key={name} className="flex items-center justify-between">
-                    <span className="text-slate-700">{name}</span>
-                    <Badge variant="outline">{n}</Badge>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-      </div>
 
       <Tabs defaultValue="clubs">
         <TabsList>
