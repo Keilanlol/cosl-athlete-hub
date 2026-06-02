@@ -3,16 +3,16 @@
 -- URLs publiques DiceBear (SVG) ; le storage_path reste NULL — il sera renseigné
 -- automatiquement quand l'utilisateur uploadera une vraie image via l'UI.
 
--- Fédérations : logo « initiales » coloré
+-- Fédérations : logo « initiales » coloré (acronyme si dispo, sinon nom)
 UPDATE public.federations
 SET logo_url = 'https://api.dicebear.com/9.x/initials/svg?radius=20&backgroundType=gradientLinear&seed='
-              || regexp_replace(coalesce(NULLIF(short_name, ''), name), '\s+', '+', 'g')
+              || regexp_replace(coalesce(NULLIF(acronym, ''), name), '\s+', '+', 'g')
 WHERE logo_url IS NULL;
 
--- Clubs : logo « initiales » coloré (acronyme si dispo, sinon nom)
+-- Clubs : logo « initiales » coloré (sur le nom — pas de colonne acronym)
 UPDATE public.clubs
 SET logo_url = 'https://api.dicebear.com/9.x/initials/svg?radius=20&backgroundType=gradientLinear&seed='
-              || regexp_replace(coalesce(NULLIF(acronym, ''), name), '\s+', '+', 'g')
+              || regexp_replace(name, '\s+', '+', 'g')
 WHERE logo_url IS NULL;
 
 -- Membres de fédération : avatar style « avataaars » seedé sur l'id
