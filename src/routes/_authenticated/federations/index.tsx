@@ -371,7 +371,36 @@ function FederationsPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-3">
+              {editing && (
+                <div className="flex justify-center pb-2">
+                  <EntityImageUpload
+                    entityId={editing.id}
+                    entityType="federation"
+                    currentImageUrl={editing.logo_url}
+                    currentStoragePath={editing.logo_storage_path}
+                    shape="square"
+                    size="lg"
+                    label="Logo de la fédération"
+                    placeholder={editing.acronym?.slice(0, 3)}
+                    onUploaded={async (url, path) => {
+                      await supabase
+                        .from("federations")
+                        .update({ logo_url: url, logo_storage_path: path })
+                        .eq("id", editing.id);
+                      setEditing((e) => (e ? { ...e, logo_url: url, logo_storage_path: path } : e));
+                      load();
+                    }}
+                    onDeleted={async () => {
+                      await supabase
+                        .from("federations")
+                        .update({ logo_url: null, logo_storage_path: null })
+                        .eq("id", editing.id);
+                      setEditing((e) => (e ? { ...e, logo_url: null, logo_storage_path: null } : e));
+                      load();
+                    }}
+                  />
+                </div>
+              )}
                 <div className="space-y-1.5">
                   <Label htmlFor="acronym">Acronyme *</Label>
                   <Input
