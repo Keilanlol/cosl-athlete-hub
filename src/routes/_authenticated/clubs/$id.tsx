@@ -88,30 +88,30 @@ function memberRoleLabel(role: string) {
   return CLUB_MEMBER_ROLES.find((r) => r.value === role)?.label ?? role;
 }
 
-function StatCard({
+function StatPill({
   icon: Icon,
   label,
   value,
-  hint,
+  sub,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   value: number | string;
-  hint?: string;
+  sub?: string;
 }) {
   return (
-    <Card>
-      <CardContent className="flex items-center gap-4 p-5">
-        <div className="rounded-lg bg-indigo-50 p-3 text-indigo-600">
-          <Icon className="h-5 w-5" />
-        </div>
-        <div>
-          <div className="text-2xl font-semibold text-slate-900">{value}</div>
-          <div className="text-sm text-slate-600">{label}</div>
-          {hint && <div className="mt-0.5 text-xs text-slate-400">{hint}</div>}
-        </div>
-      </CardContent>
-    </Card>
+    <div className="flex items-center gap-3 rounded-lg bg-slate-50 px-4 py-3">
+      <div className="text-[#C8102E]">
+        <Icon className="h-5 w-5" />
+      </div>
+      <div>
+        <p className="text-xl font-bold text-slate-900">{value}</p>
+        <p className="text-xs text-slate-500">
+          {label}
+          {sub ? ` · ${sub}` : ""}
+        </p>
+      </div>
+    </div>
   );
 }
 
