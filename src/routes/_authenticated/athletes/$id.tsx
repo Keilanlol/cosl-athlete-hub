@@ -2254,14 +2254,14 @@ function KycTabContent({
               {docs
                 .filter(
                   (d) =>
-                    d.category === "contractual" ||
-                    d.doc_type?.toLowerCase().includes("charte"),
+                    d.category === "contractual" || isEthicsDoc(d.doc_type),
                 )
                 .map((d) => (
                   <SelectItem key={d.id} value={d.id}>
-                    {d.doc_type} — {d.file_name}
+                    {labelOf(d.doc_type)} — {d.file_name}
                   </SelectItem>
                 ))}
+
             </SelectContent>
           </Select>
           {ethicsDoc?.file_url && (
