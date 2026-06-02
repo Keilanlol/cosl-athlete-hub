@@ -2317,12 +2317,13 @@ function KycTabContent({
           <SelectContent>
             <SelectItem value="__none">— Aucun —</SelectItem>
             {docs
-              .filter((d) => d.category === "contractual")
+              .filter((d) => d.category === "contractual" || isRule40Doc(d.doc_type))
               .map((d) => (
                 <SelectItem key={d.id} value={d.id}>
-                  {d.doc_type} — {d.file_name}
+                  {labelOf(d.doc_type)} — {d.file_name}
                 </SelectItem>
               ))}
+
           </SelectContent>
         </Select>
         {rule40Doc?.file_url && (
