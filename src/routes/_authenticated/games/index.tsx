@@ -318,10 +318,21 @@ function GamesListPage() {
                     className="cursor-pointer hover:bg-muted"
                   >
                     <TableCell className="font-medium">
-                      {g.name}
-                      {g.short_name && (
-                        <span className="ml-2 text-xs text-muted-foreground">{g.short_name}</span>
-                      )}
+                      <div className="flex items-center gap-3">
+                        {g.logo_url ? (
+                          <img src={g.logo_url} alt="" className="h-9 w-9 rounded-lg object-cover border border-border bg-white" />
+                        ) : (
+                          <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center">
+                            <Trophy className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div>
+                          <div>{g.name}</div>
+                          {g.short_name && (
+                            <span className="text-xs text-muted-foreground">{g.short_name}</span>
+                          )}
+                        </div>
+                      </div>
                     </TableCell>
                     <TableCell>
                       {t && <Badge className={`${t.cls} hover:${t.cls}`}>{t.label}</Badge>}
