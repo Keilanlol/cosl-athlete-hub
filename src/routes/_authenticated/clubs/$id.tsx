@@ -818,6 +818,7 @@ function ClubDetailPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-14"></TableHead>
                     <TableHead>Nom</TableHead>
                     <TableHead>Rôle</TableHead>
                     <TableHead>Email</TableHead>
@@ -834,6 +835,17 @@ function ClubDetailPage() {
                         onClick={() => navigate({ to: "/coaches/$id", params: { id: c.id } })}
                         className={`cursor-pointer hover:bg-slate-50 ${c.is_active ? "" : "opacity-60"}`}
                       >
+                        <TableCell>
+                          <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-100">
+                            {c.photo_url ? (
+                              <img src={c.photo_url} alt="" className="h-full w-full object-cover" />
+                            ) : (
+                              <span className="text-xs font-semibold text-slate-500">
+                                {(c.first_name[0] ?? "") + (c.last_name[0] ?? "")}
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell className="font-medium">
                           {c.first_name} {c.last_name}
                         </TableCell>
