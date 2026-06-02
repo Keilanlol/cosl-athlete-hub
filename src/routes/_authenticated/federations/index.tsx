@@ -51,6 +51,8 @@ import {
   SortBtn,
   TableSkeleton,
 } from "@/components/DataTableShell";
+import { AddressSearch } from "@/components/AddressSearch";
+import { Textarea } from "@/components/ui/textarea";
 
 export const Route = createFileRoute("/_authenticated/federations/")({
   component: FederationsPage,
@@ -74,6 +76,14 @@ const emptyMember = {
   role: "president",
   email: "",
   phone: "",
+  street: "",
+  postcode: "",
+  city: "",
+  country: "",
+  start_date: "",
+  end_date: "",
+  notes: "",
+  is_active: true,
 };
 
 function FederationsPage() {
