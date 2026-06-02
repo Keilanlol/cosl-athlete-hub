@@ -89,7 +89,7 @@ function DashboardPage() {
             .limit(5),
           supabase
             .from("games")
-            .select("id, name, short_name, game_type, competition_start, host_city, host_country, status")
+            .select("id, name, short_name, game_type, competition_start, host_city, host_country, status, logo_url")
             .in("status", ["preparation", "in_progress"])
             .gte("competition_start", today)
             .order("competition_start", { ascending: true })
