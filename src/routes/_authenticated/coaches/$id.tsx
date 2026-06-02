@@ -172,7 +172,7 @@ function CoachDetailPage() {
   };
 
   if (!coach) {
-    return <div className="p-6 text-sm text-slate-500">Chargement…</div>;
+    return <div className="p-6 text-sm text-muted-foreground">Chargement…</div>;
   }
 
   const clubsForForm =
@@ -185,7 +185,7 @@ function CoachDetailPage() {
       <div className="flex items-center justify-between">
         <Link
           to="/coaches"
-          className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" /> Retour aux encadrants
         </Link>
@@ -199,7 +199,7 @@ function CoachDetailPage() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-6">
+      <div className="rounded-xl border border-border bg-card p-6">
         <div className="flex flex-wrap items-center gap-5">
           <EntityImageUpload
             entityId={coach.id}
@@ -225,7 +225,7 @@ function CoachDetailPage() {
             }}
           />
           <div className="flex-1">
-            <h1 className="text-2xl font-semibold text-slate-900">
+            <h1 className="text-2xl font-semibold text-foreground">
               {coach.first_name} {coach.last_name}
             </h1>
             <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -241,7 +241,7 @@ function CoachDetailPage() {
               )}
               {fed && (
                 <Link to="/federations/$id" params={{ id: fed.id }}>
-                  <Badge variant="outline" className="font-mono hover:bg-slate-100">
+                  <Badge variant="outline" className="font-mono hover:bg-muted">
                     {fed.acronym}
                   </Badge>
                 </Link>
@@ -250,7 +250,7 @@ function CoachDetailPage() {
                 <Link
                   to="/clubs/$id"
                   params={{ id: club.id }}
-                  className="text-sm text-slate-600 hover:underline"
+                  className="text-sm text-muted-foreground hover:underline"
                 >
                   {club.name}
                 </Link>
@@ -262,7 +262,7 @@ function CoachDetailPage() {
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           <InfoLine icon={<Mail className="h-4 w-4" />} label="Email">
             {coach.email ? (
-              <a href={`mailto:${coach.email}`} className="text-indigo-600 hover:underline">
+              <a href={`mailto:${coach.email}`} className="text-[var(--lux-blue)] hover:underline">
                 {coach.email}
               </a>
             ) : (
@@ -275,9 +275,9 @@ function CoachDetailPage() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white">
-        <div className="border-b border-slate-200 p-4">
-          <h2 className="text-sm font-semibold text-slate-900">
+      <div className="rounded-xl border border-border bg-card">
+        <div className="border-b border-border p-4">
+          <h2 className="text-sm font-semibold text-foreground">
             Athlètes encadrés ({athletes.length})
           </h2>
         </div>
@@ -300,16 +300,16 @@ function CoachDetailPage() {
                 <TableRow
                   key={a.id}
                   onClick={() => navigate({ to: "/athletes/$id", params: { id: a.id } })}
-                  className="cursor-pointer hover:bg-slate-50"
+                  className="cursor-pointer hover:bg-muted"
                 >
                   <TableCell className="font-medium">
                     {a.first_name} {a.last_name}
                   </TableCell>
-                  <TableCell className="font-mono text-xs text-slate-600">
+                  <TableCell className="font-mono text-xs text-muted-foreground">
                     {a.cosl_id}
                   </TableCell>
-                  <TableCell className="text-slate-600">{a.relation_role}</TableCell>
-                  <TableCell className="text-xs text-slate-500">
+                  <TableCell className="text-muted-foreground">{a.relation_role}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
                     {a.start_date}
                     {a.end_date ? ` → ${a.end_date}` : ""}
                   </TableCell>
@@ -439,10 +439,10 @@ function InfoLine({
 }) {
   return (
     <div className="flex items-start gap-3">
-      <div className="mt-0.5 text-slate-400">{icon}</div>
+      <div className="mt-0.5 text-muted-foreground">{icon}</div>
       <div>
-        <div className="text-xs uppercase tracking-wide text-slate-500">{label}</div>
-        <div className="text-sm text-slate-800">{children}</div>
+        <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
+        <div className="text-sm text-foreground">{children}</div>
       </div>
     </div>
   );

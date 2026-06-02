@@ -152,7 +152,7 @@ function ClubMemberDetailPage() {
     navigate({ to: "/clubs/$id", params: { id: member.club_id } });
   };
 
-  if (!member) return <div className="p-6 text-sm text-slate-500">Chargement…</div>;
+  if (!member) return <div className="p-6 text-sm text-muted-foreground">Chargement…</div>;
 
   return (
     <div className="space-y-6">
@@ -160,7 +160,7 @@ function ClubMemberDetailPage() {
         <Link
           to="/clubs/$id"
           params={{ id: member.club_id }}
-          className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" /> Retour au club
         </Link>
@@ -174,7 +174,7 @@ function ClubMemberDetailPage() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-6">
+      <div className="rounded-xl border border-border bg-card p-6">
         <div className="flex flex-wrap items-center gap-5">
           <EntityImageUpload
             entityId={member.id}
@@ -204,7 +204,7 @@ function ClubMemberDetailPage() {
             }}
           />
           <div className="flex-1">
-            <h1 className="text-2xl font-semibold text-slate-900">
+            <h1 className="text-2xl font-semibold text-foreground">
               {member.first_name} {member.last_name}
             </h1>
             <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -220,7 +220,7 @@ function ClubMemberDetailPage() {
                 <Link
                   to="/clubs/$id"
                   params={{ id: club.id }}
-                  className="text-sm text-slate-600 hover:underline"
+                  className="text-sm text-muted-foreground hover:underline"
                 >
                   {club.name}
                 </Link>
@@ -232,7 +232,7 @@ function ClubMemberDetailPage() {
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           <InfoLine icon={<Mail className="h-4 w-4" />} label="Email">
             {member.email ? (
-              <a href={`mailto:${member.email}`} className="text-indigo-600 hover:underline">
+              <a href={`mailto:${member.email}`} className="text-[var(--lux-blue)] hover:underline">
                 {member.email}
               </a>
             ) : "—"}
@@ -341,10 +341,10 @@ function InfoLine({
 }) {
   return (
     <div className="flex items-start gap-3">
-      <div className="mt-0.5 text-slate-400">{icon}</div>
+      <div className="mt-0.5 text-muted-foreground">{icon}</div>
       <div>
-        <div className="text-xs uppercase tracking-wide text-slate-500">{label}</div>
-        <div className="text-sm text-slate-800">{children}</div>
+        <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
+        <div className="text-sm text-foreground">{children}</div>
       </div>
     </div>
   );

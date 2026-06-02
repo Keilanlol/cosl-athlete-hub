@@ -124,7 +124,7 @@ export function EditableSelect({
           {canEdit && (
             <>
               <SelectSeparator />
-              <SelectItem value={ADD} className="text-indigo-600 font-medium">
+              <SelectItem value={ADD} className="text-[var(--lux-blue)] font-medium">
                 {addLabel}
               </SelectItem>
             </>
@@ -151,7 +151,7 @@ export function EditableSelect({
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7 text-slate-400 hover:text-red-600"
+                        className="h-7 w-7 text-muted-foreground hover:text-red-600"
                         onClick={() => handleDelete(o.value)}
                         disabled={busy}
                       >

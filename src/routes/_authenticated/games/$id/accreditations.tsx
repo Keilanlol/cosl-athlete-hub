@@ -36,7 +36,7 @@ export const Route = createFileRoute("/_authenticated/games/$id/accreditations")
 });
 
 const STATUSES: { value: string; label: string; cls: string }[] = [
-  { value: "draft", label: "Brouillon", cls: "bg-slate-200 text-slate-700" },
+  { value: "draft", label: "Brouillon", cls: "bg-slate-200 text-foreground" },
   { value: "submitted", label: "Soumise", cls: "bg-amber-100 text-amber-700" },
   { value: "validated", label: "Validée", cls: "bg-emerald-100 text-emerald-700" },
   { value: "rejected", label: "Rejetée", cls: "bg-red-100 text-red-700" },
@@ -54,7 +54,7 @@ const CATEGORIES: { value: string; label: string }[] = [
 ];
 
 const DOC_STATUSES: Record<string, { label: string; cls: string }> = {
-  missing: { label: "Manquant", cls: "bg-slate-200 text-slate-700" },
+  missing: { label: "Manquant", cls: "bg-slate-200 text-foreground" },
   pending: { label: "En attente", cls: "bg-amber-100 text-amber-700" },
   valid: { label: "Valide", cls: "bg-emerald-100 text-emerald-700" },
   expired: { label: "Expiré", cls: "bg-red-100 text-red-700" },
@@ -335,7 +335,7 @@ ${accreds.map((a) => `  <accreditation status="${a.status}">
         <TabsContent value="list" className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative max-w-xs flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Rechercher par nom…"
                 value={search}
@@ -362,7 +362,7 @@ ${accreds.map((a) => `  <accreditation status="${a.status}">
             </Button>
           </div>
 
-          <div className="rounded-lg border border-slate-200 bg-white">
+          <div className="rounded-lg border border-border bg-card">
             {accreds === null ? (
               <TableSkeleton cols={6} />
             ) : filteredAccreds.length === 0 ? (
@@ -418,7 +418,7 @@ ${accreds.map((a) => `  <accreditation status="${a.status}">
               <Plus className="mr-2 h-4 w-4" /> Ajouter un type
             </Button>
           </div>
-          <div className="rounded-lg border border-slate-200 bg-white">
+          <div className="rounded-lg border border-border bg-card">
             {types === null ? (
               <TableSkeleton cols={5} />
             ) : types.length === 0 ? (
@@ -441,8 +441,8 @@ ${accreds.map((a) => `  <accreditation status="${a.status}">
                       <TableRow key={t.id}>
                         <TableCell>{cat ? <Badge variant="outline">{cat.label}</Badge> : t.category}</TableCell>
                         <TableCell className="font-mono text-xs">{t.type_code}</TableCell>
-                        <TableCell className="text-slate-600">{t.description ?? "—"}</TableCell>
-                        <TableCell className="text-slate-600">
+                        <TableCell className="text-muted-foreground">{t.description ?? "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">
                           <div className="flex flex-wrap gap-1">
                             {(t.required_documents ?? []).map((d) => (
                               <Badge key={d} variant="outline" className="font-normal">{d}</Badge>
@@ -652,38 +652,38 @@ function AccredDrawerBody({
 
   return (
     <>
-      <section className="rounded-lg border border-slate-200 p-4">
-        <h3 className="text-sm font-semibold mb-2 text-slate-700">Personne</h3>
+      <section className="rounded-lg border border-border p-4">
+        <h3 className="text-sm font-semibold mb-2 text-foreground">Personne</h3>
         <dl className="grid grid-cols-2 gap-2 text-sm">
-          <div><dt className="text-xs text-slate-500">Type</dt><dd>{a.athlete_id ? "Athlète" : "Encadrant"}</dd></div>
-          <div><dt className="text-xs text-slate-500">Fonction</dt><dd>{a.function_label ?? "—"}</dd></div>
-          {a.athlete?.cosl_id && <div><dt className="text-xs text-slate-500">COSL ID</dt><dd className="font-mono text-xs">{a.athlete.cosl_id}</dd></div>}
-          {a.coach?.role && <div><dt className="text-xs text-slate-500">Rôle</dt><dd>{a.coach.role}</dd></div>}
-          <div><dt className="text-xs text-slate-500">Email</dt><dd>{person?.email ?? "—"}</dd></div>
-          <div><dt className="text-xs text-slate-500">Téléphone</dt><dd>{person?.phone ?? "—"}</dd></div>
+          <div><dt className="text-xs text-muted-foreground">Type</dt><dd>{a.athlete_id ? "Athlète" : "Encadrant"}</dd></div>
+          <div><dt className="text-xs text-muted-foreground">Fonction</dt><dd>{a.function_label ?? "—"}</dd></div>
+          {a.athlete?.cosl_id && <div><dt className="text-xs text-muted-foreground">COSL ID</dt><dd className="font-mono text-xs">{a.athlete.cosl_id}</dd></div>}
+          {a.coach?.role && <div><dt className="text-xs text-muted-foreground">Rôle</dt><dd>{a.coach.role}</dd></div>}
+          <div><dt className="text-xs text-muted-foreground">Email</dt><dd>{person?.email ?? "—"}</dd></div>
+          <div><dt className="text-xs text-muted-foreground">Téléphone</dt><dd>{person?.phone ?? "—"}</dd></div>
         </dl>
       </section>
 
-      <section className="rounded-lg border border-slate-200 p-4">
+      <section className="rounded-lg border border-border p-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-slate-700">Complétude</h3>
+          <h3 className="text-sm font-semibold text-foreground">Complétude</h3>
           <span className="text-sm font-medium">{completeness}%</span>
         </div>
         <Progress value={completeness} className="h-2" />
       </section>
 
-      <section className="rounded-lg border border-slate-200 p-4">
-        <h3 className="text-sm font-semibold mb-3 text-slate-700">Documents</h3>
+      <section className="rounded-lg border border-border p-4">
+        <h3 className="text-sm font-semibold mb-3 text-foreground">Documents</h3>
         {allDocTypes.length === 0 ? (
-          <p className="text-sm text-slate-500">Aucun document requis pour ce type.</p>
+          <p className="text-sm text-muted-foreground">Aucun document requis pour ce type.</p>
         ) : (
           <ul className="space-y-2">
             {allDocTypes.map((dt) => {
               const doc = docMap.get(dt);
               const sb = doc ? DOC_STATUSES[doc.status] : DOC_STATUSES.missing;
               return (
-                <li key={dt} className="flex flex-col gap-2 rounded border border-slate-200 p-3 sm:flex-row sm:items-start">
-                  <FileText className="h-4 w-4 text-slate-400 shrink-0 mt-1" />
+                <li key={dt} className="flex flex-col gap-2 rounded border border-border p-3 sm:flex-row sm:items-start">
+                  <FileText className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
                   <div className="flex-1 min-w-0 space-y-2">
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium flex-1">{dt}</p>
@@ -730,10 +730,10 @@ function Kpi({ label, value, tone }: { label: string; value: string | number; to
   const toneCls =
     tone === "emerald" ? "text-emerald-700" :
     tone === "amber" ? "text-amber-700" :
-    tone === "red" ? "text-red-700" : "text-slate-900";
+    tone === "red" ? "text-red-700" : "text-foreground";
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">
-      <p className="text-sm text-slate-500">{label}</p>
+    <div className="rounded-lg border border-border bg-card p-4">
+      <p className="text-sm text-muted-foreground">{label}</p>
       <p className={`mt-1 text-2xl font-semibold ${toneCls}`}>{value}</p>
     </div>
   );

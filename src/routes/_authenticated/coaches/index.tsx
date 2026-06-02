@@ -236,8 +236,8 @@ function CoachesPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Encadrants</h1>
-          <p className="mt-1 text-sm text-slate-600">
+          <h1 className="text-2xl font-semibold text-foreground">Encadrants</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Coachs, managers, personnel médical et officiels.
           </p>
         </div>
@@ -249,7 +249,7 @@ function CoachesPage() {
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative max-w-sm flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Rechercher par nom…"
             value={search}
@@ -291,10 +291,10 @@ function CoachesPage() {
             <SelectItem value="inactive">Inactifs</SelectItem>
           </SelectContent>
         </Select>
-        <span className="text-sm text-slate-500">{filtered.length} résultat(s)</span>
+        <span className="text-sm text-muted-foreground">{filtered.length} résultat(s)</span>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white">
+      <div className="rounded-lg border border-border bg-card">
         {rows === null ? (
           <TableSkeleton cols={9} />
         ) : filtered.length === 0 ? (
@@ -349,14 +349,14 @@ function CoachesPage() {
                   <TableRow
                     key={c.id}
                     onClick={() => navigate({ to: "/coaches/$id", params: { id: c.id } })}
-                    className="cursor-pointer hover:bg-slate-50"
+                    className="cursor-pointer hover:bg-muted"
                   >
                     <TableCell>
-                      <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-100">
+                      <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-border bg-muted">
                         {c.photo_url ? (
                           <img src={c.photo_url} alt="" className="h-full w-full object-cover" />
                         ) : (
-                          <span className="text-xs font-semibold text-slate-500">
+                          <span className="text-xs font-semibold text-muted-foreground">
                             {(c.first_name[0] ?? "") + (c.last_name[0] ?? "")}
                           </span>
                         )}
@@ -364,8 +364,8 @@ function CoachesPage() {
                     </TableCell>
                     <TableCell>{c.first_name}</TableCell>
                     <TableCell className="font-medium">{c.last_name}</TableCell>
-                    <TableCell className="text-slate-600">{c.email ?? "—"}</TableCell>
-                    <TableCell className="text-slate-600">{c.phone ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{c.email ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{c.phone ?? "—"}</TableCell>
                     <TableCell>
                       <Badge variant="secondary">{roleLabel(c.role)}</Badge>
                     </TableCell>
@@ -375,10 +375,10 @@ function CoachesPage() {
                           {f.acronym}
                         </Badge>
                       ) : (
-                        <span className="text-slate-400">—</span>
+                        <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-slate-600">{cl?.name ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{cl?.name ?? "—"}</TableCell>
                     <TableCell>
                       {c.is_active ? (
                         <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
@@ -557,7 +557,7 @@ function CoachesPage() {
                   </Select>
                 </div>
               </div>
-              <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
+              <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
                 <Label htmlFor="act" className="cursor-pointer">
                   Encadrant actif
                 </Label>

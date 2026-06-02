@@ -115,7 +115,7 @@ function GameLayout() {
         <Button variant="ghost" onClick={() => navigate({ to: "/games" })}>
           <ArrowLeft className="mr-2 h-4 w-4" /> Retour
         </Button>
-        <p className="text-slate-600">Games introuvable.</p>
+        <p className="text-muted-foreground">Games introuvable.</p>
       </div>
     );
   }
@@ -127,21 +127,21 @@ function GameLayout() {
   return (
     <div className="space-y-6">
       <div>
-        <Link to="/games" className="inline-flex items-center text-sm text-slate-500 hover:text-slate-900">
+        <Link to="/games" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="mr-1 h-4 w-4" /> Tous les Games
         </Link>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white p-6">
+      <div className="rounded-lg border border-border bg-card p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               {t && <Badge className={`${t.cls} hover:${t.cls}`}>{t.label}</Badge>}
               {s && <Badge className={`${s.cls} hover:${s.cls}`}>{s.label}</Badge>}
-              <span className="text-sm text-slate-500">Édition {game.edition_year}</span>
+              <span className="text-sm text-muted-foreground">Édition {game.edition_year}</span>
             </div>
-            <h1 className="text-2xl font-semibold text-slate-900">{game.name}</h1>
-            <p className="text-sm text-slate-600">
+            <h1 className="text-2xl font-semibold text-foreground">{game.name}</h1>
+            <p className="text-sm text-muted-foreground">
               {fmt(game.competition_start)} → {fmt(game.competition_end)}
               {(game.host_city || game.host_country) && (
                 <span> · {[game.host_city, game.host_country].filter(Boolean).join(", ")}</span>
@@ -162,7 +162,7 @@ function GameLayout() {
         </div>
       </div>
 
-      <nav className="flex gap-1 border-b border-slate-200 overflow-x-auto">
+      <nav className="flex gap-1 border-b border-border overflow-x-auto">
         {TABS.map((t) => {
           const fullPath = t.to.replace("$id", id);
           const isActive = t.exact
@@ -175,8 +175,8 @@ function GameLayout() {
               params={{ id }}
               className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${
                 isActive
-                  ? "border-indigo-500 text-indigo-600"
-                  : "border-transparent text-slate-600 hover:text-slate-900"
+                  ? "border-indigo-500 text-[var(--lux-blue)]"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
               {t.label}

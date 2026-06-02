@@ -229,8 +229,8 @@ function GamesListPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Games</h1>
-          <p className="mt-1 text-sm text-slate-600">
+          <h1 className="text-2xl font-semibold text-foreground">Games</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Événements multi-sports : JO, JPEE, EYOF, JOJ…
           </p>
         </div>
@@ -242,7 +242,7 @@ function GamesListPage() {
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative max-w-sm flex-1 min-w-[220px]">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Rechercher par nom…"
             value={search}
@@ -277,10 +277,10 @@ function GamesListPage() {
             ))}
           </SelectContent>
         </Select>
-        <span className="ml-auto text-sm text-slate-500">{filtered.length} résultat(s)</span>
+        <span className="ml-auto text-sm text-muted-foreground">{filtered.length} résultat(s)</span>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white">
+      <div className="rounded-lg border border-border bg-card">
         {rows === null ? (
           <TableSkeleton cols={9} />
         ) : filtered.length === 0 ? (
@@ -310,20 +310,20 @@ function GamesListPage() {
                   <TableRow
                     key={g.id}
                     onClick={() => navigate({ to: "/games/$id", params: { id: g.id } })}
-                    className="cursor-pointer hover:bg-slate-50"
+                    className="cursor-pointer hover:bg-muted"
                   >
                     <TableCell className="font-medium">
                       {g.name}
                       {g.short_name && (
-                        <span className="ml-2 text-xs text-slate-500">{g.short_name}</span>
+                        <span className="ml-2 text-xs text-muted-foreground">{g.short_name}</span>
                       )}
                     </TableCell>
                     <TableCell>
                       {t && <Badge className={`${t.cls} hover:${t.cls}`}>{t.label}</Badge>}
                     </TableCell>
                     <TableCell>{g.edition_year}</TableCell>
-                    <TableCell className="text-slate-600">{g.host_country ?? "—"}</TableCell>
-                    <TableCell className="text-slate-600">{g.host_city ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{g.host_country ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{g.host_city ?? "—"}</TableCell>
                     <TableCell>{fmtDate(g.competition_start)}</TableCell>
                     <TableCell>{fmtDate(g.competition_end)}</TableCell>
                     <TableCell>

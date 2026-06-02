@@ -49,7 +49,7 @@ type ResultRow = AthleteResult & {
 };
 
 function medalBadge(m: AthleteResult["medal"]) {
-  if (!m) return <span className="text-slate-400">—</span>;
+  if (!m) return <span className="text-muted-foreground">—</span>;
   const meta = MEDAL_LABELS.find((x) => x.value === m);
   return <Badge className={`${meta?.cls} hover:${meta?.cls}`}>{meta?.label}</Badge>;
 }
@@ -290,14 +290,14 @@ function CompetitionsPage() {
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Épreuves du Games</h2>
-            <p className="text-sm text-slate-500">Définissez les épreuves spécifiques (rounds, catégories…).</p>
+            <h2 className="text-lg font-semibold text-foreground">Épreuves du Games</h2>
+            <p className="text-sm text-muted-foreground">Définissez les épreuves spécifiques (rounds, catégories…).</p>
           </div>
           <Button onClick={() => setCompOpen(true)} className="bg-indigo-500 hover:bg-indigo-600">
             <Plus className="mr-2 h-4 w-4" /> Ajouter une épreuve
           </Button>
         </div>
-        <div className="rounded-lg border border-slate-200 bg-white">
+        <div className="rounded-lg border border-border bg-card">
           {comps === null ? (
             <TableSkeleton cols={8} />
           ) : comps.length === 0 ? (
@@ -319,7 +319,7 @@ function CompetitionsPage() {
               </TableHeader>
               <TableBody>
                 {comps.map((c) => (
-                  <TableRow key={c.id} className="cursor-pointer hover:bg-slate-50" onClick={() => openComp(c)}>
+                  <TableRow key={c.id} className="cursor-pointer hover:bg-muted" onClick={() => openComp(c)}>
                     <TableCell>{sports.find((s) => s.id === c.sport_id)?.name ?? "—"}</TableCell>
                     <TableCell>{disciplines.find((d) => d.id === c.discipline_id)?.name ?? "—"}</TableCell>
                     <TableCell className="font-medium text-indigo-700">{c.name}</TableCell>
@@ -327,7 +327,7 @@ function CompetitionsPage() {
                     <TableCell>{GENDERS.find((g) => g.value === c.gender)?.label ?? "—"}</TableCell>
                     <TableCell>{c.competition_date ?? "—"}</TableCell>
                     <TableCell>{c.venue ?? "—"}</TableCell>
-                    <TableCell className="text-xs text-slate-600">
+                    <TableCell className="text-xs text-muted-foreground">
                       {c.min_age != null && c.max_age != null
                         ? `${c.min_age}–${c.max_age} ans`
                         : c.min_age != null
@@ -356,12 +356,12 @@ function CompetitionsPage() {
       <section className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Résultats du Games</h2>
-            <div className="mt-1 flex items-center gap-3 text-sm text-slate-700">
+            <h2 className="text-lg font-semibold text-foreground">Résultats du Games</h2>
+            <div className="mt-1 flex items-center gap-3 text-sm text-foreground">
               <span>🥇 {medalCounts.gold}</span>
               <span>🥈 {medalCounts.silver}</span>
               <span>🥉 {medalCounts.bronze}</span>
-              <span className="text-slate-500">· Total podiums : {medalCounts.gold + medalCounts.silver + medalCounts.bronze}</span>
+              <span className="text-muted-foreground">· Total podiums : {medalCounts.gold + medalCounts.silver + medalCounts.bronze}</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -384,7 +384,7 @@ function CompetitionsPage() {
             </Button>
           </div>
         </div>
-        <div className="rounded-lg border border-slate-200 bg-white">
+        <div className="rounded-lg border border-border bg-card">
           {results === null ? (
             <TableSkeleton cols={7} />
           ) : filteredResults.length === 0 ? (
@@ -433,7 +433,7 @@ function CompetitionsPage() {
                 <SelectTrigger><SelectValue placeholder="Choisir" /></SelectTrigger>
                 <SelectContent>
                   {allowedSports.length === 0 ? (
-                    <div className="px-3 py-2 text-xs text-slate-500">Aucun sport admis. Configurez-les dans l'onglet Sports.</div>
+                    <div className="px-3 py-2 text-xs text-muted-foreground">Aucun sport admis. Configurez-les dans l'onglet Sports.</div>
                   ) : (
                     allowedSports.map((s) => (<SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>))
                   )}
@@ -551,13 +551,13 @@ function CompetitionsPage() {
           {viewComp && (
             <div className="space-y-5">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-                <div><div className="text-xs text-slate-500">Sport</div><div>{sports.find((s) => s.id === viewComp.sport_id)?.name ?? "—"}</div></div>
-                <div><div className="text-xs text-slate-500">Discipline</div><div>{disciplines.find((d) => d.id === viewComp.discipline_id)?.name ?? "—"}</div></div>
-                <div><div className="text-xs text-slate-500">Round</div><div>{viewComp.round ?? "—"}</div></div>
-                <div><div className="text-xs text-slate-500">Genre</div><div>{GENDERS.find((g) => g.value === viewComp.gender)?.label ?? "—"}</div></div>
-                <div><div className="text-xs text-slate-500">Date</div><div>{viewComp.competition_date ?? "—"}</div></div>
-                <div><div className="text-xs text-slate-500">Lieu</div><div>{viewComp.venue ?? "—"}</div></div>
-                <div><div className="text-xs text-slate-500">Catégorie</div><div>{viewComp.category ?? "—"}</div></div>
+                <div><div className="text-xs text-muted-foreground">Sport</div><div>{sports.find((s) => s.id === viewComp.sport_id)?.name ?? "—"}</div></div>
+                <div><div className="text-xs text-muted-foreground">Discipline</div><div>{disciplines.find((d) => d.id === viewComp.discipline_id)?.name ?? "—"}</div></div>
+                <div><div className="text-xs text-muted-foreground">Round</div><div>{viewComp.round ?? "—"}</div></div>
+                <div><div className="text-xs text-muted-foreground">Genre</div><div>{GENDERS.find((g) => g.value === viewComp.gender)?.label ?? "—"}</div></div>
+                <div><div className="text-xs text-muted-foreground">Date</div><div>{viewComp.competition_date ?? "—"}</div></div>
+                <div><div className="text-xs text-muted-foreground">Lieu</div><div>{viewComp.venue ?? "—"}</div></div>
+                <div><div className="text-xs text-muted-foreground">Catégorie</div><div>{viewComp.category ?? "—"}</div></div>
               </div>
 
               <section>
@@ -567,9 +567,9 @@ function CompetitionsPage() {
                     <Plus className="mr-1 h-3 w-3" /> Ajouter résultat
                   </Button>
                 </div>
-                <div className="rounded-md border border-slate-200">
+                <div className="rounded-md border border-border">
                   {compResults.length === 0 ? (
-                    <p className="p-4 text-sm text-slate-500">Aucun résultat enregistré pour cette épreuve.</p>
+                    <p className="p-4 text-sm text-muted-foreground">Aucun résultat enregistré pour cette épreuve.</p>
                   ) : (
                     <Table>
                       <TableHeader>
@@ -585,7 +585,7 @@ function CompetitionsPage() {
                         {compResults.map((r) => (
                           <TableRow key={r.id} className={r.medal === "gold" ? "bg-amber-50" : ""}>
                             <TableCell className="font-semibold">{r.rank ?? "—"}</TableCell>
-                            <TableCell>{r.athlete ? `${r.athlete.last_name} ${r.athlete.first_name}` : "—"} <span className="text-xs text-slate-400 ml-1">{r.athlete?.cosl_id}</span></TableCell>
+                            <TableCell>{r.athlete ? `${r.athlete.last_name} ${r.athlete.first_name}` : "—"} <span className="text-xs text-muted-foreground ml-1">{r.athlete?.cosl_id}</span></TableCell>
                             <TableCell>{medalBadge(r.medal)}</TableCell>
                             <TableCell>{r.score ? `${r.score}${r.unit ? " " + r.unit : ""}` : "—"}</TableCell>
                             <TableCell className="space-x-1">
@@ -602,9 +602,9 @@ function CompetitionsPage() {
 
               <section>
                 <h4 className="text-sm font-semibold mb-2">Participants sélectionnés ({selRows.length})</h4>
-                <div className="rounded-md border border-slate-200 max-h-56 overflow-auto">
+                <div className="rounded-md border border-border max-h-56 overflow-auto">
                   {selRows.length === 0 ? (
-                    <p className="p-4 text-sm text-slate-500">Aucune sélection liée à ce sport/discipline.</p>
+                    <p className="p-4 text-sm text-muted-foreground">Aucune sélection liée à ce sport/discipline.</p>
                   ) : (
                     <Table>
                       <TableHeader>

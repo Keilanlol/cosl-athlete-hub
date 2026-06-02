@@ -41,9 +41,9 @@ type AthItem = {
 };
 
 function AthleteList({ items, emptyLabel, showStatus }: { items: AthItem[]; emptyLabel: string; showStatus?: boolean }) {
-  if (items.length === 0) return <p className="p-6 text-sm text-slate-500 text-center">{emptyLabel}</p>;
+  if (items.length === 0) return <p className="p-6 text-sm text-muted-foreground text-center">{emptyLabel}</p>;
   return (
-    <div className="max-h-96 overflow-y-auto divide-y divide-slate-100 rounded-md border border-slate-200">
+    <div className="max-h-96 overflow-y-auto divide-y divide-slate-100 rounded-md border border-border">
       {items.map((a) => {
         const initials = `${a.first_name?.[0] ?? ""}${a.last_name?.[0] ?? ""}`;
         const kycCls =
@@ -53,12 +53,12 @@ function AthleteList({ items, emptyLabel, showStatus }: { items: AthItem[]; empt
         const kycLabel = a.kyc === "green" ? "KYC valide" : a.kyc === "orange" ? "KYC en attente" : "KYC invalide";
         return (
           <div key={a.id} className="flex items-center gap-3 px-3 py-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-xs font-medium text-slate-700 overflow-hidden">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-xs font-medium text-foreground overflow-hidden">
               {a.photo_url ? <img src={a.photo_url} alt="" className="h-full w-full object-cover" /> : initials}
             </div>
             <div className="flex-1">
-              <p className="text-sm font-medium text-slate-900">{a.first_name} {a.last_name}</p>
-              <p className="text-xs text-slate-500">{a.gender}</p>
+              <p className="text-sm font-medium text-foreground">{a.first_name} {a.last_name}</p>
+              <p className="text-xs text-muted-foreground">{a.gender}</p>
             </div>
             {showStatus && a.selection_status && (
               <Badge variant="outline" className="capitalize">{a.selection_status === "selected" ? "Sélectionné" : "Réserviste"}</Badge>
@@ -399,7 +399,7 @@ function GameOverviewPage() {
           <Kpi label="Accréditations validées" value={kpi.accred} />
           <Kpi label="Plans de voyage" value={kpi.plans} />
         </div>
-        <div className="rounded-lg border border-slate-200 bg-white p-6">
+        <div className="rounded-lg border border-border bg-card p-6">
           <h3 className="mb-4 text-base font-semibold">Informations générales</h3>
           <dl className="grid gap-3 sm:grid-cols-2 text-sm">
             <Info label="Acronyme" value={game.short_name} />
@@ -412,7 +412,7 @@ function GameOverviewPage() {
             <Info label="Édition" value={String(game.edition_year)} />
           </dl>
           {game.description && (
-            <p className="mt-4 text-sm text-slate-600 whitespace-pre-wrap">{game.description}</p>
+            <p className="mt-4 text-sm text-muted-foreground whitespace-pre-wrap">{game.description}</p>
           )}
         </div>
       </TabsContent>
@@ -420,14 +420,14 @@ function GameOverviewPage() {
       {/* Sports */}
       <TabsContent value="sports" className="space-y-4">
         <div className="flex items-center justify-between">
-          <p className="text-sm text-slate-600">{gameSports.length} sport(s) liés à ces Games</p>
+          <p className="text-sm text-muted-foreground">{gameSports.length} sport(s) liés à ces Games</p>
           <Button size="sm" onClick={() => setSportDlgOpen(true)} className="bg-indigo-500 hover:bg-indigo-600">
             <Plus className="mr-2 h-4 w-4" /> Ajouter un sport
           </Button>
         </div>
-        <div className="rounded-lg border border-slate-200 bg-white">
+        <div className="rounded-lg border border-border bg-card">
           {gameSports.length === 0 ? (
-            <p className="p-6 text-sm text-slate-500">Aucun sport activé.</p>
+            <p className="p-6 text-sm text-muted-foreground">Aucun sport activé.</p>
           ) : (
             <Table>
               <TableHeader>
@@ -448,17 +448,17 @@ function GameOverviewPage() {
                   return (
                     <TableRow key={gs.id}>
                       <TableCell className="font-medium">{gs.sport?.name ?? sportName(gs.sport_id)}</TableCell>
-                      <TableCell className="text-slate-600">
+                      <TableCell className="text-muted-foreground">
                         {shown.length === 0
-                          ? <span className="text-slate-400">Aucune discipline admise</span>
+                          ? <span className="text-muted-foreground">Aucune discipline admise</span>
                           : <div className="flex flex-wrap gap-1">
                               {shown.map((d) => (
                                 <Badge key={d.id} variant="outline" className="font-normal">
-                                  {d.name} <span className="ml-1 text-xs text-slate-400">{d.gender}</span>
+                                  {d.name} <span className="ml-1 text-xs text-muted-foreground">{d.gender}</span>
                                 </Badge>
                               ))}
                               {allowed.length === 0 && (
-                                <span className="text-xs text-slate-400 ml-1">(toutes par défaut)</span>
+                                <span className="text-xs text-muted-foreground ml-1">(toutes par défaut)</span>
                               )}
                             </div>
                         }
@@ -468,7 +468,7 @@ function GameOverviewPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <Button variant="ghost" size="icon" onClick={() => openDiscDlg(gs)} aria-label="Disciplines">
-                          <Settings2 className="h-4 w-4 text-indigo-600" />
+                          <Settings2 className="h-4 w-4 text-[var(--lux-blue)]" />
                         </Button>
                         <Button variant="ghost" size="icon" onClick={() => removeSport(gs)} aria-label="Retirer">
                           <Trash2 className="h-4 w-4 text-red-600" />
@@ -486,14 +486,14 @@ function GameOverviewPage() {
       {/* Quotas */}
       <TabsContent value="quotas" className="space-y-4">
         <div className="flex items-center justify-between">
-          <p className="text-sm text-slate-600">{quotas.length} quota(s) définis</p>
+          <p className="text-sm text-muted-foreground">{quotas.length} quota(s) définis</p>
           <Button size="sm" onClick={() => setQuotaDlgOpen(true)} className="bg-indigo-500 hover:bg-indigo-600">
             <Plus className="mr-2 h-4 w-4" /> Ajouter un quota
           </Button>
         </div>
-        <div className="rounded-lg border border-slate-200 bg-white">
+        <div className="rounded-lg border border-border bg-card">
           {quotas.length === 0 ? (
-            <p className="p-6 text-sm text-slate-500">Aucun quota défini.</p>
+            <p className="p-6 text-sm text-muted-foreground">Aucun quota défini.</p>
           ) : (
             <Table>
               <TableHeader>
@@ -525,12 +525,12 @@ function GameOverviewPage() {
                           <span className={`text-xs font-medium ${tone}`}>{filled}/{q.quota_max}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-slate-600">
+                      <TableCell className="text-muted-foreground">
                         {q.qualification_deadline ? new Date(q.qualification_deadline).toLocaleDateString("fr-FR") : "—"}
                       </TableCell>
                       <TableCell className="text-right">
                         <Button variant="ghost" size="icon" onClick={() => openDetails(q)} aria-label="Détails">
-                          <Eye className="h-4 w-4 text-indigo-600" />
+                          <Eye className="h-4 w-4 text-[var(--lux-blue)]" />
                         </Button>
                         <Button variant="ghost" size="icon" onClick={() => removeQuota(q)} aria-label="Supprimer">
                           <Trash2 className="h-4 w-4 text-red-600" />
@@ -579,17 +579,17 @@ function GameOverviewPage() {
             {newSportId && (
               <div className="space-y-2">
                 <Label>Disciplines admises</Label>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                   Cochez les disciplines admises (laisser vide = toutes admises par défaut).
                 </p>
-                <div className="max-h-56 overflow-y-auto space-y-1.5 rounded-md border border-slate-200 p-2">
+                <div className="max-h-56 overflow-y-auto space-y-1.5 rounded-md border border-border p-2">
                   {disciplines.filter((d) => d.sport_id === newSportId).length === 0 && (
-                    <p className="text-xs text-slate-400 px-1 py-1">Aucune discipline pour ce sport.</p>
+                    <p className="text-xs text-muted-foreground px-1 py-1">Aucune discipline pour ce sport.</p>
                   )}
                   {disciplines.filter((d) => d.sport_id === newSportId).map((d) => {
                     const checked = newSportDiscIds.includes(d.id);
                     return (
-                      <div key={d.id} className="flex items-center gap-2 rounded px-2 py-1 hover:bg-slate-50">
+                      <div key={d.id} className="flex items-center gap-2 rounded px-2 py-1 hover:bg-muted">
                         <Checkbox
                           checked={checked}
                           onCheckedChange={(v) =>
@@ -604,7 +604,7 @@ function GameOverviewPage() {
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 text-slate-400 hover:text-red-600"
+                          className="h-7 w-7 text-muted-foreground hover:text-red-600"
                           onClick={() => deleteDiscipline(d.id)}
                           aria-label="Supprimer la discipline"
                         >
@@ -734,7 +734,7 @@ function GameOverviewPage() {
             {discDlg && disciplines.filter((d) => d.sport_id === discDlg.sport_id).map((d) => {
               const checked = discPicked.includes(d.id);
               return (
-                <div key={d.id} className="flex items-center gap-3 rounded-md border border-slate-200 px-3 py-2 hover:bg-slate-50">
+                <div key={d.id} className="flex items-center gap-3 rounded-md border border-border px-3 py-2 hover:bg-muted">
                   <Checkbox
                     checked={checked}
                     onCheckedChange={(v) => {
@@ -749,7 +749,7 @@ function GameOverviewPage() {
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7 text-slate-400 hover:text-red-600"
+                    className="h-7 w-7 text-muted-foreground hover:text-red-600"
                     onClick={() => deleteDiscipline(d.id)}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -758,7 +758,7 @@ function GameOverviewPage() {
               );
             })}
             {discDlg && disciplines.filter((d) => d.sport_id === discDlg.sport_id).length === 0 && (
-              <p className="text-sm text-slate-500">Ce sport n'a aucune discipline référencée.</p>
+              <p className="text-sm text-muted-foreground">Ce sport n'a aucune discipline référencée.</p>
             )}
           </div>
           {discDlg && (
@@ -844,9 +844,9 @@ function GameOverviewPage() {
 
 function Kpi({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">
-      <p className="text-sm text-slate-500">{label}</p>
-      <p className="mt-1 text-3xl font-semibold text-slate-900">{value}</p>
+    <div className="rounded-lg border border-border bg-card p-4">
+      <p className="text-sm text-muted-foreground">{label}</p>
+      <p className="mt-1 text-3xl font-semibold text-foreground">{value}</p>
     </div>
   );
 }
@@ -854,8 +854,8 @@ function Kpi({ label, value }: { label: string; value: number }) {
 function Info({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div>
-      <dt className="text-xs uppercase tracking-wide text-slate-500">{label}</dt>
-      <dd className="text-slate-900">{value || "—"}</dd>
+      <dt className="text-xs uppercase tracking-wide text-muted-foreground">{label}</dt>
+      <dd className="text-foreground">{value || "—"}</dd>
     </div>
   );
 }

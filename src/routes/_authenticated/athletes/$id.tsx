@@ -683,7 +683,7 @@ function AthleteDetailPage() {
   );
 
   if (loading) {
-    return <div className="rounded-lg border border-slate-200 bg-white"><TableSkeleton cols={4} /></div>;
+    return <div className="rounded-lg border border-border bg-card"><TableSkeleton cols={4} /></div>;
   }
   if (!athlete) {
     return (
@@ -749,15 +749,15 @@ function AthleteDetailPage() {
             }}
           />
           <div>
-            <h1 className="text-2xl font-semibold text-slate-900">
+            <h1 className="text-2xl font-semibold text-foreground">
               {athlete.first_name} {athlete.last_name}
             </h1>
-            <div className="mt-1 flex items-center gap-2 text-sm text-slate-600">
+            <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
               <span className="font-mono">{athlete.cosl_id}</span>
               {statusBadge(athlete.status)}
               {kycPill(globalKyc)}
               {athlete.is_active === false && (
-                <Badge variant="outline" className="border-slate-300 text-slate-500">
+                <Badge variant="outline" className="border-border text-muted-foreground">
                   Inactif
                 </Badge>
               )}
@@ -785,7 +785,7 @@ function AthleteDetailPage() {
         </TabsList>
 
         <TabsContent value="profil">
-          <div className="grid gap-4 rounded-lg border border-slate-200 bg-white p-6 md:grid-cols-2">
+          <div className="grid gap-4 rounded-lg border border-border bg-card p-6 md:grid-cols-2">
             <Field
               label="Date de naissance"
               value={
@@ -819,7 +819,7 @@ function AthleteDetailPage() {
         </TabsContent>
 
         <TabsContent value="sportif">
-          <div className="grid gap-4 rounded-lg border border-slate-200 bg-white p-6 md:grid-cols-2">
+          <div className="grid gap-4 rounded-lg border border-border bg-card p-6 md:grid-cols-2">
             <Field label="Sport principal" value={sport?.name} />
             <Field label="Fédération" value={federation ? `${federation.acronym} — ${federation.name}` : null} />
             <Field label="Club" value={club?.name} />
@@ -830,7 +830,7 @@ function AthleteDetailPage() {
             <Field label="Niveau" value={lvl?.label} />
             <Field label="N° de licence" value={athlete.license_number} />
             <Field label="N° antidopage" value={athlete.ada_number} />
-            <div className="md:col-span-2 text-sm text-slate-500">
+            <div className="md:col-span-2 text-sm text-muted-foreground">
               Historique des statuts — à enrichir lors d'évolutions du statut.
             </div>
           </div>
@@ -839,8 +839,8 @@ function AthleteDetailPage() {
         <TabsContent value="documents">
           <div className="space-y-3">
             {/* Encart photo officielle — un seul document de type photo_identite par athlète */}
-            <div className="rounded-lg border border-slate-200 bg-white p-4">
-              <h3 className="text-sm font-semibold text-slate-700 mb-3">Photo officielle</h3>
+            <div className="rounded-lg border border-border bg-card p-4">
+              <h3 className="text-sm font-semibold text-foreground mb-3">Photo officielle</h3>
               <div className="flex items-center gap-4">
                 <AthletePhotoUpload
                   athleteId={id}
@@ -882,14 +882,14 @@ function AthleteDetailPage() {
                     });
                   }}
                 />
-                <div className="text-sm text-slate-500">
+                <div className="text-sm text-muted-foreground">
                   {(docs ?? []).find((d) => d.doc_type === "photo_identite") ? (
                     <p className="text-emerald-600">✓ Photo uploadée</p>
                   ) : (
                     <p>Aucune photo — cliquez pour ajouter</p>
                   )}
                   <p className="text-xs mt-1">JPG, PNG ou WebP · max 5 MB</p>
-                  <p className="text-xs text-slate-400">Une seule photo d'identité par athlète</p>
+                  <p className="text-xs text-muted-foreground">Une seule photo d'identité par athlète</p>
                 </div>
               </div>
             </div>
@@ -899,7 +899,7 @@ function AthleteDetailPage() {
                 <Upload className="mr-2 h-4 w-4" /> Ajouter un document
               </Button>
             </div>
-            <div className="rounded-lg border border-slate-200 bg-white">
+            <div className="rounded-lg border border-border bg-card">
               {docs === null ? (
                 <TableSkeleton cols={6} />
               ) : docs.filter((d) => d.doc_type !== "photo_identite").length === 0 ? (
@@ -930,7 +930,7 @@ function AthleteDetailPage() {
                               <img
                                 src={d.file_url}
                                 alt=""
-                                className="h-10 w-10 rounded object-cover border border-slate-200"
+                                className="h-10 w-10 rounded object-cover border border-border"
                               />
                             )}
                             {d.file_url ? (
@@ -938,7 +938,7 @@ function AthleteDetailPage() {
                                 href={d.file_url}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="text-indigo-600 hover:underline"
+                                className="text-[var(--lux-blue)] hover:underline"
                               >
                                 {d.file_name}
                               </a>
@@ -1010,7 +1010,7 @@ function AthleteDetailPage() {
                 <Plus className="mr-2 h-4 w-4" /> Ajouter une relation
               </Button>
             </div>
-            <div className="rounded-lg border border-slate-200 bg-white">
+            <div className="rounded-lg border border-border bg-card">
               {relations === null ? (
                 <TableSkeleton cols={5} />
               ) : relations.length === 0 ? (
@@ -1055,7 +1055,7 @@ function AthleteDetailPage() {
         </TabsContent>
 
         <TabsContent value="selections">
-          <div className="rounded-lg border border-slate-200 bg-white">
+          <div className="rounded-lg border border-border bg-card">
             {selections === null ? (
               <TableSkeleton cols={4} />
             ) : selections.length === 0 ? (
@@ -1082,7 +1082,7 @@ function AthleteDetailPage() {
                       <TableCell>
                         {s.decided_at ? new Date(s.decided_at).toLocaleDateString() : "—"}
                       </TableCell>
-                      <TableCell className="text-slate-600">{s.comment ?? "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">{s.comment ?? "—"}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -1154,7 +1154,7 @@ function AthleteDetailPage() {
               return (
                 <div className="grid gap-3 md:grid-cols-5">
                   <SummaryCard label="Or" value={gold} cls="bg-amber-100 text-amber-800" />
-                  <SummaryCard label="Argent" value={silver} cls="bg-slate-200 text-slate-700" />
+                  <SummaryCard label="Argent" value={silver} cls="bg-slate-200 text-foreground" />
                   <SummaryCard label="Bronze" value={bronze} cls="bg-orange-100 text-orange-700" />
                   <SummaryCard label="Records nationaux" value={rn} cls="bg-indigo-100 text-indigo-700" />
                   <SummaryCard label="Personal bests" value={pb} cls="bg-emerald-100 text-emerald-700" />
@@ -1166,7 +1166,7 @@ function AthleteDetailPage() {
                 <Plus className="mr-2 h-4 w-4" /> Ajouter un résultat
               </Button>
             </div>
-            <div className="rounded-lg border border-slate-200 bg-white">
+            <div className="rounded-lg border border-border bg-card">
               {results === null ? (
                 <TableSkeleton cols={9} />
               ) : results.length === 0 ? (
@@ -1213,7 +1213,7 @@ function AthleteDetailPage() {
         </TabsContent>
 
         <TabsContent value="messages">
-          <div className="rounded-lg border border-slate-200 bg-white">
+          <div className="rounded-lg border border-border bg-card">
             {athleteMessages === null ? (
               <TableSkeleton cols={4} />
             ) : athleteMessages.length === 0 ? (
@@ -1234,7 +1234,7 @@ function AthleteDetailPage() {
                   {athleteMessages.map((m) => (
                     <TableRow
                       key={m.id}
-                      className="cursor-pointer hover:bg-slate-50"
+                      className="cursor-pointer hover:bg-muted"
                       onClick={() => setOpenMsgId(m.id)}
                     >
                       <TableCell>
@@ -1244,7 +1244,7 @@ function AthleteDetailPage() {
                       <TableCell>
                         <Badge variant="outline">{m.channel}</Badge>
                       </TableCell>
-                      <TableCell className="text-xs text-slate-500">{m.audience_segment}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{m.audience_segment}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -1256,7 +1256,7 @@ function AthleteDetailPage() {
 
       <MessageDetailDialog messageId={openMsgId} onClose={() => setOpenMsgId(null)} />
 
-      <div className="flex justify-end border-t border-slate-200 pt-4">
+      <div className="flex justify-end border-t border-border pt-4">
         {athlete.is_active === false && isAdmin ? (
           <Button
             className="bg-emerald-500 hover:bg-emerald-600 text-white"
@@ -1795,11 +1795,11 @@ function AthleteDetailPage() {
               <Label>Unité</Label>
               <Input value={resultForm.unit} onChange={(e) => setResultForm({ ...resultForm, unit: e.target.value })} placeholder="s, m, pts" />
             </div>
-            <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
+            <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
               <Label>Record national</Label>
               <Switch checked={resultForm.is_national_record} onCheckedChange={(v) => setResultForm({ ...resultForm, is_national_record: v })} />
             </div>
-            <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
+            <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
               <Label>Personal best</Label>
               <Switch checked={resultForm.is_personal_best} onCheckedChange={(v) => setResultForm({ ...resultForm, is_personal_best: v })} />
             </div>
@@ -1848,8 +1848,8 @@ function AthleteDetailPage() {
 function Field({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div className="space-y-1">
-      <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="text-sm font-medium text-slate-900">{value || "—"}</p>
+      <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-sm font-medium text-foreground">{value || "—"}</p>
     </div>
   );
 }
@@ -1929,10 +1929,10 @@ function KycTabContent({
         <div className="flex items-center gap-3">
           <KycStatusBadge status={globalStatus} size="md" showIcon />
           <div>
-            <p className="font-semibold text-slate-900">
+            <p className="font-semibold text-foreground">
               Conformité KYC globale — {athlete.first_name} {athlete.last_name}
             </p>
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-muted-foreground">
               {nbValid}/6 axes validés
               {kyc?.kyc_reviewed_at &&
                 ` · Vérifié le ${new Date(kyc.kyc_reviewed_at).toLocaleDateString("fr-FR")}`}
@@ -1952,13 +1952,13 @@ function KycTabContent({
         status={kyc?.identity_verified ? "green" : "red"}
         required
       >
-        <p className="text-xs font-medium text-slate-700">Document lié</p>
+        <p className="text-xs font-medium text-foreground">Document lié</p>
         {passportDoc ? (
-          <div className="flex items-center gap-3 rounded-md border border-slate-200 p-3">
-            <FileText className="h-4 w-4 text-slate-400" />
+          <div className="flex items-center gap-3 rounded-md border border-border p-3">
+            <FileText className="h-4 w-4 text-muted-foreground" />
             <div className="flex-1">
               <p className="text-sm font-medium">{passportDoc.doc_type}</p>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 Expire le : {passportDoc.expiry_date ?? "—"}
                 {passportDoc.expiry_date &&
                   new Date(passportDoc.expiry_date) < new Date() && (
@@ -1979,7 +1979,7 @@ function KycTabContent({
         )}
 
         <div className="space-y-1">
-          <Label className="text-xs text-slate-500">
+          <Label className="text-xs text-muted-foreground">
             Lier un document existant comme pièce d'identité :
           </Label>
           <Select
@@ -2016,7 +2016,7 @@ function KycTabContent({
           </Select>
         </div>
 
-        <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
+        <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
           <Label className="text-sm">Identité vérifiée manuellement</Label>
           <Switch
             checked={!!kyc?.identity_verified}
@@ -2056,11 +2056,11 @@ function KycTabContent({
             />
           </div>
         </div>
-        <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
+        <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
           <div>
             <Label className="text-sm">Nationalité sportive vérifiée</Label>
             {kyc?.eligibility_verified_at && (
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 Vérifié le {new Date(kyc.eligibility_verified_at).toLocaleDateString("fr-FR")}
               </p>
             )}
@@ -2118,7 +2118,7 @@ function KycTabContent({
             />
           </div>
         </div>
-        <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
+        <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
           <Label>Whereabouts à jour</Label>
           <Switch
             checked={!!kyc?.antidoping_whereabouts_ok}
@@ -2152,11 +2152,11 @@ function KycTabContent({
         description="Formation en ligne AMA obligatoire"
         status={kyc?.elearning_antidoping_completed ? "green" : "orange"}
       >
-        <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
+        <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
           <div>
             <Label>Formation e-learning complétée</Label>
             {kyc?.elearning_completed_at && (
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 Complétée le {new Date(kyc.elearning_completed_at).toLocaleDateString("fr-FR")}
               </p>
             )}
@@ -2205,11 +2205,11 @@ function KycTabContent({
         description="Signature obligatoire de la charte éthique du COSL"
         status={kyc?.ethics_charter_signed ? "green" : "orange"}
       >
-        <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
+        <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
           <div>
             <Label>Charte éthique signée</Label>
             {kyc?.ethics_charter_signed_at && (
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 Signée le {new Date(kyc.ethics_charter_signed_at).toLocaleDateString("fr-FR")}
               </p>
             )}
@@ -2228,7 +2228,7 @@ function KycTabContent({
           />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs text-slate-500">Document signé (scan / PDF)</Label>
+          <Label className="text-xs text-muted-foreground">Document signé (scan / PDF)</Label>
           <Select
             value={kyc?.ethics_charter_doc_id ?? "__none"}
             onValueChange={(v) =>
@@ -2258,7 +2258,7 @@ function KycTabContent({
               href={ethicsDoc.file_url}
               target="_blank"
               rel="noreferrer"
-              className="text-xs text-slate-600 hover:underline"
+              className="text-xs text-muted-foreground hover:underline"
             >
               📄 Voir le document signé
             </a>
@@ -2272,11 +2272,11 @@ function KycTabContent({
         description="Restrictions de communication commerciale pendant les Jeux"
         status={kyc?.rule40_signed ? "green" : "orange"}
       >
-        <div className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
+        <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
           <div>
             <Label>Règle 40 signée</Label>
             {kyc?.rule40_signed_at && (
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 Signée le {new Date(kyc.rule40_signed_at).toLocaleDateString("fr-FR")}
               </p>
             )}
@@ -2319,7 +2319,7 @@ function KycTabContent({
             href={rule40Doc.file_url}
             target="_blank"
             rel="noreferrer"
-            className="text-xs text-slate-600 hover:underline"
+            className="text-xs text-muted-foreground hover:underline"
           >
             📄 Voir le document signé
           </a>
@@ -2327,16 +2327,16 @@ function KycTabContent({
       </KycAxis>
 
       {/* SECTION I — Historique */}
-      <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-2">
-        <h4 className="text-sm font-semibold text-slate-700">Historique des modifications KYC</h4>
+      <div className="rounded-lg border border-border bg-card p-4 space-y-2">
+        <h4 className="text-sm font-semibold text-foreground">Historique des modifications KYC</h4>
         {history.length === 0 ? (
-          <p className="text-sm text-slate-500">Aucun historique.</p>
+          <p className="text-sm text-muted-foreground">Aucun historique.</p>
         ) : (
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {history.map((h) => (
               <div
                 key={h.id}
-                className="flex items-start gap-3 text-sm border-l-2 border-slate-200 pl-3 py-1"
+                className="flex items-start gap-3 text-sm border-l-2 border-border pl-3 py-1"
               >
                 <div className="flex-1">
                   <span className="font-medium">
@@ -2352,10 +2352,10 @@ function KycTabContent({
                     size="sm"
                   />
                   {h.comment && (
-                    <p className="text-xs text-slate-500 mt-0.5">{h.comment}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{h.comment}</p>
                   )}
                 </div>
-                <div className="text-right text-xs text-slate-400 shrink-0">
+                <div className="text-right text-xs text-muted-foreground shrink-0">
                   <p>{new Date(h.changed_at).toLocaleDateString("fr-FR")}</p>
                   <p>
                     {h.changed_by_profile?.full_name ??
@@ -2370,8 +2370,8 @@ function KycTabContent({
       </div>
 
       {/* SECTION J — Commentaire */}
-      <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-3">
-        <h4 className="text-sm font-semibold text-slate-700">Notes & validation</h4>
+      <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+        <h4 className="text-sm font-semibold text-foreground">Notes & validation</h4>
         <div className="space-y-1">
           <Label>Commentaire interne</Label>
           <Textarea
@@ -2404,7 +2404,7 @@ function KycTabContent({
           )}
         </div>
         {kyc?.kyc_reviewed_at && reviewerName && (
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             Dernière révision :{" "}
             {new Date(kyc.kyc_reviewed_at).toLocaleDateString("fr-FR")} par {reviewerName}
           </p>
@@ -2416,7 +2416,7 @@ function KycTabContent({
 
 function SummaryCard({ label, value, cls }: { label: string; value: number; cls: string }) {
   return (
-    <div className={`rounded-lg border border-slate-200 p-4 ${cls}`}>
+    <div className={`rounded-lg border border-border p-4 ${cls}`}>
       <p className="text-xs uppercase tracking-wide opacity-80">{label}</p>
       <p className="text-2xl font-semibold">{value}</p>
     </div>

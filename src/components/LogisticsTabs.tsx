@@ -17,7 +17,7 @@ export function LogisticsTabs({ id }: { id: string }) {
   const location = useLocation();
   const base = `/games/${id}/logistics`;
   return (
-    <nav className="flex gap-1 border-b border-slate-200 overflow-x-auto">
+    <nav className="flex gap-1 border-b border-border overflow-x-auto">
       {TABS.map((t) => {
         const full = t.to.replace("$id", id);
         const active = t.exact
@@ -30,8 +30,8 @@ export function LogisticsTabs({ id }: { id: string }) {
             params={{ id }}
             className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors ${
               active
-                ? "border-indigo-500 text-indigo-600"
-                : "border-transparent text-slate-600 hover:text-slate-900"
+                ? "border-indigo-500 text-[var(--lux-blue)]"
+                : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
             {t.label}

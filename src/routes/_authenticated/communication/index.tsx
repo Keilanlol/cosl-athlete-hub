@@ -64,8 +64,8 @@ function CommunicationDashboard() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Communication</h1>
-          <p className="text-sm text-slate-500">Tableau de bord des envois et notifications.</p>
+          <h1 className="text-2xl font-semibold text-foreground">Communication</h1>
+          <p className="text-sm text-muted-foreground">Tableau de bord des envois et notifications.</p>
         </div>
         <Link to="/communication/messages">
           <Button className="bg-indigo-500 hover:bg-indigo-600">
@@ -86,8 +86,8 @@ function CommunicationDashboard() {
       </div>
 
       <div className="space-y-3">
-        <h2 className="text-lg font-semibold text-slate-900">Derniers envois</h2>
-        <div className="rounded-lg border border-slate-200 bg-white">
+        <h2 className="text-lg font-semibold text-foreground">Derniers envois</h2>
+        <div className="rounded-lg border border-border bg-card">
           {loading ? (
             <div className="p-4 space-y-2">
               {Array.from({ length: 4 }).map((_, i) => (
@@ -101,7 +101,7 @@ function CommunicationDashboard() {
                 action={
                   <Link
                     to="/communication/messages"
-                    className="text-sm text-indigo-600 hover:underline"
+                    className="text-sm text-[var(--lux-blue)] hover:underline"
                   >
                     Créer un premier envoi
                   </Link>
@@ -123,12 +123,12 @@ function CommunicationDashboard() {
                 {latest.map((m) => (
                   <TableRow
                     key={m.id}
-                    className="cursor-pointer hover:bg-slate-50"
+                    className="cursor-pointer hover:bg-muted"
                     onClick={() => setOpenMsgId(m.id)}
                   >
                     <TableCell className="font-medium">{m.subject}</TableCell>
                     <TableCell>{m.recipients_count}</TableCell>
-                    <TableCell className="text-xs text-slate-500">{m.audience_segment}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{m.audience_segment}</TableCell>
                     <TableCell>
                       <Badge variant="outline">{m.channel}</Badge>
                     </TableCell>
@@ -160,13 +160,13 @@ function Card({
   hint?: string;
 }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-5">
-      <div className="flex items-center gap-3 text-slate-500">
+    <div className="rounded-lg border border-border bg-card p-5">
+      <div className="flex items-center gap-3 text-muted-foreground">
         <span className={tone === "warn" ? "text-amber-600" : "text-indigo-500"}>{icon}</span>
         <span className="text-sm">{label}</span>
       </div>
-      <p className="mt-2 text-3xl font-semibold text-slate-900">{value}</p>
-      {hint && <p className="mt-1 text-xs text-slate-400">{hint}</p>}
+      <p className="mt-2 text-3xl font-semibold text-foreground">{value}</p>
+      {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
     </div>
   );
 }

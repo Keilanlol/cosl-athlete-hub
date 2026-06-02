@@ -105,8 +105,8 @@ function LogisticsGlobal() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Logistique</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="text-2xl font-semibold text-foreground">Logistique</h1>
+        <p className="text-sm text-muted-foreground">
           Vue transverse des Games actifs : voyages, hébergement, transport.
         </p>
       </div>
@@ -140,16 +140,16 @@ function LogisticsGlobal() {
                 key={game.id}
                 to="/games/$id/logistics"
                 params={{ id: game.id }}
-                className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-5 hover:border-indigo-300 hover:shadow-sm transition"
+                className="flex items-center justify-between rounded-lg border border-border bg-card p-5 hover:border-indigo-300 hover:shadow-sm transition"
               >
                 <div className="space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
                     {t && <Badge className={`${t.cls} hover:${t.cls}`}>{t.label}</Badge>}
                     {s && <Badge className={`${s.cls} hover:${s.cls}`}>{s.label}</Badge>}
-                    <span className="text-xs text-slate-500">Édition {game.edition_year}</span>
+                    <span className="text-xs text-muted-foreground">Édition {game.edition_year}</span>
                   </div>
-                  <h2 className="text-base font-semibold text-slate-900">{game.name}</h2>
-                  <p className="text-xs text-slate-500">
+                  <h2 className="text-base font-semibold text-foreground">{game.name}</h2>
+                  <p className="text-xs text-muted-foreground">
                     {[game.host_city, game.host_country].filter(Boolean).join(", ") || "—"}
                   </p>
                 </div>
@@ -157,7 +157,7 @@ function LogisticsGlobal() {
                   <Stat label="Plans" value={plansCount} />
                   <Stat label="Voyageurs" value={travellers} />
                   <Stat label="Alertes" value={alerts} tone={alerts > 0 ? "warn" : undefined} />
-                  <ArrowRight className="h-4 w-4 text-slate-400" />
+                  <ArrowRight className="h-4 w-4 text-muted-foreground" />
                 </div>
               </Link>
             );
@@ -180,12 +180,12 @@ function KpiCard({
   tone?: "ok" | "warn";
 }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-5">
-      <div className="flex items-center gap-3 text-slate-500">
+    <div className="rounded-lg border border-border bg-card p-5">
+      <div className="flex items-center gap-3 text-muted-foreground">
         <span className={tone === "warn" ? "text-amber-600" : "text-indigo-500"}>{icon}</span>
         <span className="text-sm">{label}</span>
       </div>
-      <p className="mt-2 text-3xl font-semibold text-slate-900">{value}</p>
+      <p className="mt-2 text-3xl font-semibold text-foreground">{value}</p>
     </div>
   );
 }
@@ -193,10 +193,10 @@ function KpiCard({
 function Stat({ label, value, tone }: { label: string; value: number; tone?: "warn" }) {
   return (
     <div className="text-center">
-      <p className={`text-lg font-semibold ${tone === "warn" ? "text-amber-600" : "text-slate-900"}`}>
+      <p className={`text-lg font-semibold ${tone === "warn" ? "text-amber-600" : "text-foreground"}`}>
         {value}
       </p>
-      <p className="text-xs uppercase tracking-wide text-slate-400">{label}</p>
+      <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
     </div>
   );
 }

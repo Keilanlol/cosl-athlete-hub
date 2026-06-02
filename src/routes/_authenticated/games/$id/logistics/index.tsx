@@ -172,15 +172,15 @@ function TravelPlansPage() {
 
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-slate-900">Plans de voyage</h2>
-          <p className="text-sm text-slate-500">Pilotage global, par sport ou individuel.</p>
+          <h2 className="text-lg font-semibold text-foreground">Plans de voyage</h2>
+          <p className="text-sm text-muted-foreground">Pilotage global, par sport ou individuel.</p>
         </div>
         <Button onClick={openCreate} className="bg-indigo-500 hover:bg-indigo-600">
           <Plus className="mr-2 h-4 w-4" /> Créer un plan
         </Button>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white">
+      <div className="rounded-lg border border-border bg-card">
         {loading ? (
           <TableSkeleton cols={6} />
         ) : plans.length === 0 ? (

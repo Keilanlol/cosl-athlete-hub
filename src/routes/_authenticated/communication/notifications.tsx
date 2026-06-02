@@ -117,8 +117,8 @@ function NotificationsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Notifications</h1>
-          <p className="text-sm text-slate-500">Historique des alertes système.</p>
+          <h1 className="text-2xl font-semibold text-foreground">Notifications</h1>
+          <p className="text-sm text-muted-foreground">Historique des alertes système.</p>
         </div>
         <Button variant="outline" onClick={markAllRead}>
           <CheckCheck className="mr-2 h-4 w-4" /> Tout marquer comme lu
@@ -127,7 +127,7 @@ function NotificationsPage() {
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative max-w-sm flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Rechercher dans les messages…"
             value={search}
@@ -154,7 +154,7 @@ function NotificationsPage() {
         </Select>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white">
+      <div className="rounded-lg border border-border bg-card">
         {loading ? (
           <TableSkeleton cols={5} />
         ) : filtered.length === 0 ? (
@@ -180,12 +180,12 @@ function NotificationsPage() {
                       <Badge variant="outline">{n.notification_type}</Badge>
                     </TableCell>
                     <TableCell className="max-w-md">{n.message}</TableCell>
-                    <TableCell className="text-xs text-slate-600">
+                    <TableCell className="text-xs text-muted-foreground">
                       {a && <div>👤 {a.first_name} {a.last_name}</div>}
                       {g && <div>🏟 {g.name}</div>}
                       {!a && !g && "—"}
                     </TableCell>
-                    <TableCell className="text-sm text-slate-500">{fmt(n.created_at)}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{fmt(n.created_at)}</TableCell>
                     <TableCell className="text-right">
                       <Switch
                         checked={!!n.is_read}

@@ -278,15 +278,15 @@ function TransportPage() {
 
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-slate-900">Transports locaux</h2>
-          <p className="text-sm text-slate-500">Navettes, bus, transferts.</p>
+          <h2 className="text-lg font-semibold text-foreground">Transports locaux</h2>
+          <p className="text-sm text-muted-foreground">Navettes, bus, transferts.</p>
         </div>
         <Button onClick={() => setOpen(true)} className="bg-indigo-500 hover:bg-indigo-600">
           <Plus className="mr-2 h-4 w-4" /> Ajouter un transport
         </Button>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white">
+      <div className="rounded-lg border border-border bg-card">
         {loading ? (
           <TableSkeleton cols={8} />
         ) : items.length === 0 ? (
@@ -312,7 +312,7 @@ function TransportPage() {
                 return (
                   <TableRow
                     key={t.id}
-                    className="cursor-pointer hover:bg-slate-50"
+                    className="cursor-pointer hover:bg-muted"
                     onClick={() => openDrawer(t)}
                   >
                     <TableCell className="font-medium">{t.transport_type}</TableCell>
@@ -401,14 +401,14 @@ function TransportPage() {
           </SheetHeader>
           {drawer && (
             <div className="mt-4 space-y-4">
-              <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm">
+              <div className="rounded-md border border-border bg-muted p-3 text-sm">
                 <div>{drawer.pickup_location} → {drawer.dropoff_location}</div>
-                <div className="text-slate-500">
+                <div className="text-muted-foreground">
                   Capacité {drawer.capacity ?? "—"} · {passengers.length} passager(s)
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-slate-700">
+                <h3 className="text-sm font-semibold text-foreground">
                   Passagers ({passengers.length}{drawer.capacity != null ? ` / ${drawer.capacity}` : ""})
                 </h3>
                 <Button
@@ -424,18 +424,18 @@ function TransportPage() {
                 <p className="text-xs text-red-600">Capacité maximale atteinte.</p>
               )}
               {passengers.length === 0 ? (
-                <p className="text-sm text-slate-500">Aucun passager.</p>
+                <p className="text-sm text-muted-foreground">Aucun passager.</p>
               ) : (
                 <ul className="space-y-2">
                   {passengers.map((p) => {
                     const isEdit = editPaxId === p.id;
                     return (
-                      <li key={p.id} className="rounded border border-slate-200 p-2 text-sm">
+                      <li key={p.id} className="rounded border border-border p-2 text-sm">
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1">
                             <div className="font-medium">{paxLabel(p)}</div>
                             {!isEdit ? (
-                              <div className="text-xs text-slate-500">
+                              <div className="text-xs text-muted-foreground">
                                 {p.seat ? `Siège ${p.seat}` : "Siège —"}
                               </div>
                             ) : (

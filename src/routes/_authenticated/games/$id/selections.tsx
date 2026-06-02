@@ -295,19 +295,19 @@ function SelectionsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border border-slate-200 bg-white p-4">
+      <div className="rounded-lg border border-border bg-card p-4">
         <div className="flex items-center justify-between mb-2">
-          <p className="text-sm font-medium text-slate-700">
+          <p className="text-sm font-medium text-foreground">
             {selectedCount} athlète(s) sélectionné(s) / {quotaSum} quota total
           </p>
-          <span className="text-xs text-slate-500">{pct.toFixed(0)}%</span>
+          <span className="text-xs text-muted-foreground">{pct.toFixed(0)}%</span>
         </div>
         <Progress value={pct} className="h-2" />
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative max-w-sm flex-1 min-w-[220px]">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Rechercher un athlète…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
         <Select value={sportFilter} onValueChange={setSportFilter}>
@@ -338,7 +338,7 @@ function SelectionsPage() {
         </Button>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white">
+      <div className="rounded-lg border border-border bg-card">
         {rows === null ? (
           <TableSkeleton cols={8} />
         ) : filtered.length === 0 ? (
@@ -379,15 +379,15 @@ function SelectionsPage() {
                     <TableCell>{r.discipline?.name ?? "—"}</TableCell>
                     <TableCell className="text-sm">
                       {r.game_competition ? (
-                        <span className="font-medium text-slate-700">{r.game_competition.name}</span>
+                        <span className="font-medium text-foreground">{r.game_competition.name}</span>
                       ) : (
-                        <span className="text-xs text-slate-400">—</span>
+                        <span className="text-xs text-muted-foreground">—</span>
                       )}
                     </TableCell>
                     <TableCell className="text-xs">
                       {(() => {
                         const age = computeAge(r.athlete?.birth_date);
-                        if (age == null) return <span className="text-slate-400">—</span>;
+                        if (age == null) return <span className="text-muted-foreground">—</span>;
                         const comp = r.game_competition;
                         if (!comp || (comp.min_age == null && comp.max_age == null)) {
                           return <span>{age} ans</span>;
@@ -405,7 +405,7 @@ function SelectionsPage() {
                     <TableCell><Badge className={`${kb.cls} hover:${kb.cls}`}>{kb.label}</Badge></TableCell>
                     <TableCell className="text-right">
                       {r.is_locked ? (
-                        <span className="inline-flex items-center text-xs text-slate-500">
+                        <span className="inline-flex items-center text-xs text-muted-foreground">
                           <Lock className="mr-1 h-3 w-3" /> Verrouillé
                         </span>
                       ) : (
@@ -463,7 +463,7 @@ function SelectionsPage() {
                               onSelect={() => onPickAthlete(a)}
                             >
                               {a.first_name} {a.last_name}
-                              <span className="ml-auto text-xs text-slate-500">{a.gender}</span>
+                              <span className="ml-auto text-xs text-muted-foreground">{a.gender}</span>
                             </CommandItem>
                           ))}
                         </CommandGroup>

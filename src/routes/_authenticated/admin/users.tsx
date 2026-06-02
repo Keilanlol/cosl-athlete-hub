@@ -143,15 +143,15 @@ function AdminUsersPage() {
   };
 
   if (authLoading) {
-    return <div className="p-6 text-sm text-slate-500">Chargement…</div>;
+    return <div className="p-6 text-sm text-muted-foreground">Chargement…</div>;
   }
 
   if (!isAdmin) {
     return (
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-8 text-center">
         <ShieldAlert className="mx-auto h-8 w-8 text-amber-600" />
-        <h1 className="mt-3 text-lg font-semibold text-slate-900">Accès restreint</h1>
-        <p className="mt-1 text-sm text-slate-600">Accès réservé aux administrateurs.</p>
+        <h1 className="mt-3 text-lg font-semibold text-foreground">Accès restreint</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Accès réservé aux administrateurs.</p>
       </div>
     );
   }
@@ -162,8 +162,8 @@ function AdminUsersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Comptes COSL</h1>
-          <p className="text-sm text-slate-500">Gestion des utilisateurs et de leurs rôles.</p>
+          <h1 className="text-2xl font-semibold text-foreground">Comptes COSL</h1>
+          <p className="text-sm text-muted-foreground">Gestion des utilisateurs et de leurs rôles.</p>
         </div>
         <Button onClick={() => setOpen(true)} className="bg-indigo-500 hover:bg-indigo-600">
           <Plus className="mr-2 h-4 w-4" /> Ajouter un utilisateur
@@ -172,7 +172,7 @@ function AdminUsersPage() {
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Rechercher (username, nom, email)…"
             value={search}
@@ -189,10 +189,10 @@ function AdminUsersPage() {
             ))}
           </SelectContent>
         </Select>
-        <p className="text-sm text-slate-500 sm:ml-auto">{filtered.length} utilisateur(s)</p>
+        <p className="text-sm text-muted-foreground sm:ml-auto">{filtered.length} utilisateur(s)</p>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white">
+      <div className="rounded-lg border border-border bg-card">
         {loading ? (
           <TableSkeleton cols={6} />
         ) : filtered.length === 0 ? (
@@ -216,11 +216,11 @@ function AdminUsersPage() {
                   <TableRow key={u.id}>
                     <TableCell className="font-medium">{u.username}</TableCell>
                     <TableCell>{u.full_name}</TableCell>
-                    <TableCell className="text-sm text-slate-600">{u.email}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{u.email}</TableCell>
                     <TableCell>
                       {r && <Badge className={`${r.cls} hover:${r.cls}`}>{r.label}</Badge>}
                     </TableCell>
-                    <TableCell className="text-sm text-slate-500">{fmt(u.created_at)}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{fmt(u.created_at)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
                         <Select

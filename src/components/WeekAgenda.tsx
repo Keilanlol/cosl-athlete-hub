@@ -147,8 +147,8 @@ export function WeekAgenda({ events, onCreate, onEdit }: Props) {
   const today = new Date();
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white">
-      <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+    <div className="rounded-lg border border-border bg-card">
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setAnchor(startOfWeek(new Date()))}>
             Aujourd'hui
@@ -159,26 +159,26 @@ export function WeekAgenda({ events, onCreate, onEdit }: Props) {
           <Button variant="ghost" size="icon" onClick={() => setAnchor(addDays(anchor, 7))}>
             <ChevronRight className="h-4 w-4" />
           </Button>
-          <span className="ml-2 text-sm font-medium text-slate-700">{weekLabel}</span>
+          <span className="ml-2 text-sm font-medium text-foreground">{weekLabel}</span>
         </div>
       </div>
 
       <div className="overflow-x-auto">
         <div className="min-w-[760px]">
           {/* Header row */}
-          <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-slate-200 bg-slate-50">
+          <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-border bg-muted">
             <div />
             {days.map((d, i) => {
               const isToday = sameDay(d, today);
               return (
                 <div
                   key={i}
-                  className={`border-l border-slate-200 px-2 py-2 text-center text-xs ${
-                    isToday ? "bg-indigo-50 text-indigo-700 font-semibold" : "text-slate-600"
+                  className={`border-l border-border px-2 py-2 text-center text-xs ${
+                    isToday ? "bg-[var(--lux-blue-light)] text-indigo-700 font-semibold" : "text-muted-foreground"
                   }`}
                 >
                   <div>{DAY_LABELS[i]}</div>
-                  <div className="text-base font-semibold text-slate-900">{d.getDate()}</div>
+                  <div className="text-base font-semibold text-foreground">{d.getDate()}</div>
                 </div>
               );
             })}
@@ -187,12 +187,12 @@ export function WeekAgenda({ events, onCreate, onEdit }: Props) {
           {/* Body grid */}
           <div className="relative grid grid-cols-[60px_repeat(7,1fr)]">
             {/* Hours column */}
-            <div className="border-r border-slate-200">
+            <div className="border-r border-border">
               {hours.map((h) => (
                 <div
                   key={h}
                   style={{ height: HOUR_PX }}
-                  className="-mt-2 pr-2 text-right text-[11px] text-slate-400"
+                  className="-mt-2 pr-2 text-right text-[11px] text-muted-foreground"
                 >
                   {h}:00
                 </div>
@@ -201,13 +201,13 @@ export function WeekAgenda({ events, onCreate, onEdit }: Props) {
 
             {/* Day columns */}
             {days.map((d, di) => (
-              <div key={di} className="relative border-l border-slate-200">
+              <div key={di} className="relative border-l border-border">
                 {hours.map((h) => (
                   <button
                     key={h}
                     type="button"
                     style={{ height: HOUR_PX }}
-                    className="block w-full border-b border-slate-100 hover:bg-indigo-50/40"
+                    className="block w-full border-b border-slate-100 hover:bg-[var(--lux-blue-light)]/40"
                     onClick={() => {
                       const dt = new Date(d);
                       dt.setHours(h, 0, 0, 0);

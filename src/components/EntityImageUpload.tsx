@@ -162,18 +162,18 @@ export function EntityImageUpload({
         >
           <div
             className={cn(
-              "overflow-hidden border-2 bg-slate-100 flex items-center justify-center",
+              "overflow-hidden border-2 bg-muted flex items-center justify-center",
               radius,
               dim,
-              displayed ? "border-slate-200" : "border-dashed border-slate-300",
+              displayed ? "border-border" : "border-dashed border-border",
             )}
           >
             {displayed ? (
               <img src={displayed} alt={label ?? "Image"} className={cn("w-full h-full", fit)} />
             ) : placeholder ? (
-              <span className="font-semibold text-slate-500 text-sm">{placeholder}</span>
+              <span className="font-semibold text-muted-foreground text-sm">{placeholder}</span>
             ) : (
-              <FallbackIcon className={cn(iconSize, "text-slate-400")} />
+              <FallbackIcon className={cn(iconSize, "text-muted-foreground")} />
             )}
           </div>
 
@@ -211,7 +211,7 @@ export function EntityImageUpload({
         )}
       </div>
 
-      {label && <span className="text-xs text-slate-500">{label}</span>}
+      {label && <span className="text-xs text-muted-foreground">{label}</span>}
 
       <input
         ref={inputRef}
