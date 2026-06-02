@@ -75,6 +75,7 @@ function ClubsPage() {
   const navigate = useNavigate();
   const [rows, setRows] = useState<Club[] | null>(null);
   const [feds, setFeds] = useState<Federation[]>([]);
+  const [members, setMembers] = useState<ClubMember[]>([]);
   const [search, setSearch] = useState("");
   const [fedFilter, setFedFilter] = useState<string>("all");
   const [cityFilter, setCityFilter] = useState<string>("all");
@@ -95,11 +96,22 @@ function ClubsPage() {
     return m;
   }, [feds]);
 
+  const presidentByClub = useMemo(() => {
+    const m = new Map<string, ClubMember>();
+    members.forEach((mem) => {
+      if (mem.role === "president" && (mem.is_active ?? true) && !m.has(mem.club_id)) {
+        m.set(mem.club_id, mem);
+      }
+    });
+    return m;
+  }, [members]);
+
   const load = async () => {
     setRows(null);
-    const [{ data: cd, error: ce }, { data: fd, error: fe }] = await Promise.all([
+    const [{ data: cd, error: ce }, { data: fd, error: fe }, { data: md }] = await Promise.all([
       supabase.from("clubs").select("*").order("name"),
       supabase.from("federations").select("*").order("acronym"),
+      supabase.from("club_members").select("*"),
     ]);
     if (ce || fe) {
       toast.error("Erreur de chargement", {
@@ -110,6 +122,7 @@ function ClubsPage() {
     }
     setRows((cd ?? []) as Club[]);
     setFeds((fd ?? []) as Federation[]);
+    setMembers((md ?? []) as ClubMember[]);
   };
 
   useEffect(() => {
