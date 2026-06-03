@@ -801,151 +801,55 @@ function PersonDetailPage() {
 }
 
 // ============================================================
-// Role-specific tabs
+// Role list item
 // ============================================================
 
-function Field({ label, value }: { label: string; value: React.ReactNode }) {
+function RoleListItem({
+  icon,
+  role,
+  title,
+  subtitle,
+  to,
+}: {
+  icon: React.ReactNode;
+  role: PersonRoleType;
+  title: string;
+  subtitle?: string;
+  to: { to: string; params?: Record<string, string> } | null;
+}) {
   return (
-    <div className="space-y-1">
-      <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        {label}
+    <li className="flex items-center justify-between gap-4 rounded-lg border border-border bg-card p-4">
+      <div className="flex min-w-0 items-start gap-3">
+        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+          {icon}
+        </div>
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <PersonRoleBadge role={role} />
+            <span className="truncate text-sm font-medium text-foreground">
+              {title}
+            </span>
+          </div>
+          {subtitle && (
+            <p className="mt-1 truncate text-xs text-muted-foreground">
+              {subtitle}
+            </p>
+          )}
+        </div>
       </div>
-      <div className="text-sm text-foreground">{value || "—"}</div>
-    </div>
-  );
-}
-
-function AthleteTab({ profile }: { profile: AthleteProfile | null }) {
-  if (!profile) {
-    return (
-      <div className="rounded-lg border border-dashed border-border bg-card p-6 text-sm text-muted-foreground">
-        Aucun profil athlète détaillé.
-      </div>
-    );
-  }
-  return (
-    <div className="space-y-4 rounded-lg border border-border bg-card p-6">
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <Field label="COSL ID" value={profile.cosl_id} />
-        <Field label="Statut" value={profile.status} />
-        <Field label="Niveau" value={profile.level} />
-        <Field label="Licence" value={profile.license_number} />
-        <Field label="ADA" value={profile.ada_number} />
-        <Field label="Passeport" value={profile.passport_number} />
-        <Field
-          label="Expiration passeport"
-          value={
-            profile.passport_expiry
-              ? new Date(profile.passport_expiry).toLocaleDateString("fr-FR")
-              : null
-          }
-        />
-        <Field label="Lieu de naissance" value={profile.birth_place} />
-        <Field label="Vêtements" value={profile.size_clothing} />
-        <Field label="Chaussures" value={profile.size_shoes} />
-        <Field label="Gants" value={profile.size_gloves} />
-      </div>
-      {profile.legacy_athlete_id && (
-        <div className="border-t border-border pt-3">
+      {to ? (
+        <Button asChild size="sm" variant="outline" className="shrink-0">
+          {/* TanStack Link typing requires literal paths — cast is fine here. */}
           <Link
-            to="/athletes/$id"
-            params={{ id: profile.legacy_athlete_id }}
-            className="text-sm text-primary hover:underline"
+            to={to.to as never}
+            params={(to.params ?? {}) as never}
           >
-            Voir la fiche athlète complète →
+            Voir la fiche
+            <ArrowRight className="ml-1 h-3 w-3" />
           </Link>
-        </div>
-      )}
-    </div>
+        </Button>
+      ) : null}
+    </li>
   );
 }
 
-function CoachTab({ profiles }: { profiles: CoachProfile[] }) {
-  if (profiles.length === 0) {
-    return (
-      <div className="rounded-lg border border-dashed border-border bg-card p-6 text-sm text-muted-foreground">
-        Aucune mission d'encadrement enregistrée.
-      </div>
-    );
-  }
-  return (
-    <div className="space-y-3">
-      {profiles.map((p) => (
-        <div
-          key={p.id}
-          className="flex items-center justify-between rounded-lg border border-border bg-card p-4"
-        >
-          <div className="space-y-1">
-            <div className="text-sm font-medium">{p.role}</div>
-            <div className="text-xs text-muted-foreground">
-              {p.is_active ? "Actif" : "Inactif"}
-            </div>
-          </div>
-          {p.legacy_coach_id && (
-            <Link
-              to="/coaches/$id"
-              params={{ id: p.legacy_coach_id }}
-              className="text-sm text-primary hover:underline"
-            >
-              Fiche encadrant →
-            </Link>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function FederationMemberTab({ profiles }: { profiles: FederationMemberProfile[] }) {
-  if (profiles.length === 0) {
-    return (
-      <div className="rounded-lg border border-dashed border-border bg-card p-6 text-sm text-muted-foreground">
-        Aucune affiliation fédération.
-      </div>
-    );
-  }
-  return (
-    <div className="space-y-3">
-      {profiles.map((p) => (
-        <div key={p.id} className="rounded-lg border border-border bg-card p-4">
-          <div className="flex items-center justify-between">
-            <div className="text-sm font-medium">{p.role}</div>
-            <Badge variant={p.is_active ? "default" : "outline"}>
-              {p.is_active ? "Actif" : "Inactif"}
-            </Badge>
-          </div>
-          {p.notes && (
-            <p className="mt-2 text-sm text-muted-foreground">{p.notes}</p>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function ClubMemberTab({ profiles }: { profiles: ClubMemberProfile[] }) {
-  if (profiles.length === 0) {
-    return (
-      <div className="rounded-lg border border-dashed border-border bg-card p-6 text-sm text-muted-foreground">
-        Aucune affiliation club.
-      </div>
-    );
-  }
-  return (
-    <div className="space-y-3">
-      {profiles.map((p) => (
-        <div key={p.id} className="rounded-lg border border-border bg-card p-4">
-          <div className="flex items-center justify-between">
-            <div className="text-sm font-medium">{p.role}</div>
-            <Badge variant={p.is_active ? "default" : "outline"}>
-              {p.is_active ? "Actif" : "Inactif"}
-            </Badge>
-          </div>
-          {p.notes && (
-            <p className="mt-2 text-sm text-muted-foreground">{p.notes}</p>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
