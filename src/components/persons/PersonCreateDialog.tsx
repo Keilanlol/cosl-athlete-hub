@@ -169,26 +169,25 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
   const stepIndex = STEPS.indexOf(step);
 
   const canNext = (): boolean => {
-    if (step === "general") return !!(form.first_name.trim() && form.last_name.trim());
+    if (step === "general") {
+      return !!(
+        form.first_name.trim() &&
+        form.last_name.trim() &&
+        form.birth_date &&
+        form.gender &&
+        form.nationality.trim() &&
+        form.email.trim() &&
+        form.phone.trim()
+      );
+    }
     if (step === "roles") {
       if (form.selectedRoles.length === 0) return false;
-      // Athlète a besoin de birth_date + gender (NOT NULL en BDD)
-      if (form.selectedRoles.includes("athlete")) {
-        return !!(form.birth_date && form.gender);
-      }
       return true;
     }
     return true;
   };
 
   const goNext = () => {
-    if (step === "roles" && form.selectedRoles.includes("athlete")) {
-      if (!form.birth_date || !form.gender) {
-        toast.error("Date de naissance et genre requis pour un athlète");
-        setStep("general");
-        return;
-      }
-    }
     setStep(STEPS[stepIndex + 1]!);
   };
 
@@ -458,10 +457,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="bd">
-                  Date de naissance{" "}
-                  <span className="text-xs text-muted-foreground">(requis si athlète)</span>
-                </Label>
+                <Label htmlFor="bd">Date de naissance *</Label>
                 <Input
                   id="bd"
                   type="date"
@@ -470,10 +466,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>
-                  Genre{" "}
-                  <span className="text-xs text-muted-foreground">(requis si athlète)</span>
-                </Label>
+                <Label>Genre *</Label>
                 <Select
                   value={form.gender}
                   onValueChange={(v) => setForm({ ...form, gender: v })}
@@ -490,7 +483,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="nat">Nationalité</Label>
+              <Label htmlFor="nat">Nationalité *</Label>
               <Input
                 id="nat"
                 value={form.nationality}
@@ -500,7 +493,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="em">Email</Label>
+                <Label htmlFor="em">Email *</Label>
                 <Input
                   id="em"
                   type="email"
@@ -509,7 +502,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="ph">Téléphone</Label>
+                <Label htmlFor="ph">Téléphone *</Label>
                 <Input
                   id="ph"
                   value={form.phone}
@@ -545,12 +538,6 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
                 </div>
               </label>
             ))}
-            {form.selectedRoles.includes("athlete") &&
-              (!form.birth_date || !form.gender) && (
-                <p className="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">
-                  Pour le rôle Athlète, renseigne la date de naissance et le genre à l'étape 1.
-                </p>
-              )}
           </div>
         )}
 
