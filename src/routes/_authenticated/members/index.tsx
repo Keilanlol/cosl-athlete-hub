@@ -91,6 +91,8 @@ function MembersPage() {
   const [createSaving, setCreateSaving] = useState(false);
   const [orgType, setOrgType] = useState<"fed" | "club">("fed");
   const [createForm, setCreateForm] = useState(emptyForm);
+  const [persons, setPersons] = useState<PersonLite[]>([]);
+  const [selectedPersonId, setSelectedPersonId] = useState("");
 
   const load = async () => {
     const [f, c, fm, cm] = await Promise.all([
