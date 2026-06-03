@@ -194,6 +194,11 @@ function FederationDetailPage() {
   const [pickedCoachId, setPickedCoachId] = useState("");
   const [freeCoaches, setFreeCoaches] = useState<Coach[]>([]);
 
+  // Persons for "use existing person" combobox
+  const [persons, setPersons] = useState<PersonLite[]>([]);
+  const [selectedMemberPersonId, setSelectedMemberPersonId] = useState("");
+  const [selectedCoachPersonId, setSelectedCoachPersonId] = useState("");
+
   const load = async () => {
     setLoading(true);
     // First load federation + clubs to know which clubs belong
