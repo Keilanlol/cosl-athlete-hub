@@ -1119,6 +1119,13 @@ function ClubDetailPage() {
                         setSelectedMemberPersonId("");
                         return;
                       }
+                      if (v === "__new__") {
+                        setMemberOpen(false);
+                        setSelectedMemberPersonId("");
+                        setPersonCreateRoles(["club_member"]);
+                        setPersonCreateOpen(true);
+                        return;
+                      }
                       setSelectedMemberPersonId(v);
                       const p = personsPool.find((x) => x.id === v);
                       if (!p) return;
