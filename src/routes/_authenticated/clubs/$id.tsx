@@ -80,6 +80,14 @@ type AthleteRow = Athlete & {
   primary_sport?: { name: string } | null;
 };
 
+type PersonLite = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  photo_url: string | null;
+};
+
 function statusBadge(s: string) {
   const m = ATHLETE_STATUSES.find((x) => x.value === s);
   return <Badge className={`${m?.cls ?? ""} hover:${m?.cls ?? ""}`}>{m?.label ?? s}</Badge>;
