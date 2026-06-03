@@ -276,79 +276,54 @@ function ClubDetailPage() {
   }, [athletes, coaches, members]);
 
   // ---------- Athlete CRUD ----------
-  const openAddAthlete = async () => {
+  const openAddAthlete = () => {
     setSelectedAthleteId("");
-    setNewAthlete({
-      first_name: "",
-      last_name: "",
-      birth_date: "",
-      gender: "male",
-      nationality: "LUX",
-      email: "",
-      phone: "",
-      primary_sport_id: "",
-    });
     setAthleteOpen(true);
-    // Load athletes not yet in this club
-    const { data, error } = await supabase
-      .from("athletes")
-      .select("id, first_name, last_name, current_club_id, cosl_id, gender, birth_date, status, primary_sport:sports!athletes_primary_sport_id_fkey(name)")
-      .or(`current_club_id.is.null,current_club_id.neq.${id}`)
-      .eq("is_active", true)
-      .order("last_name");
-    if (error) toast.error("Erreur", { description: friendlyError(error) });
-    setAthletePool((data ?? []) as unknown as AthleteRow[]);
   };
 
   const submitAddAthlete = async () => {
     if (!selectedAthleteId) {
-      toast.error("Sélectionnez un adhérent");
+      toast.error("Sélectionnez une personne");
       return;
     }
     if (selectedAthleteId === "__new__") {
-      if (!newAthlete.first_name.trim() || !newAthlete.last_name.trim() || !newAthlete.birth_date) {
-        toast.error("Prénom, nom et date de naissance requis");
-        return;
-      }
-      setAthleteSaving(true);
-      const { error } = await supabase.from("athletes").insert({
-        first_name: newAthlete.first_name.trim(),
-        last_name: newAthlete.last_name.trim(),
-        birth_date: newAthlete.birth_date,
-        gender: newAthlete.gender,
-        nationality: newAthlete.nationality.trim() || "LUX",
-        email: newAthlete.email.trim() || null,
-        phone: newAthlete.phone.trim() || null,
-        primary_sport_id: newAthlete.primary_sport_id || null,
-        primary_federation_id: club?.federation_id ?? null,
-        current_club_id: id,
-        status: "active",
-        is_active: true,
-      });
+      setAthleteOpen(false);
+      setPersonCreateRoles(["athlete"]);
+      setPersonCreateOpen(true);
+      return;
+    }
+    setAthleteSaving(true);
+    const { data: ap, error: ape } = await supabase
+      .from("athlete_profiles")
+      .select("legacy_athlete_id")
+      .eq("person_id", selectedAthleteId)
+      .maybeSingle();
+    if (ape) {
+      setAthleteSaving(false);
+      toast.error("Erreur", { description: friendlyError(ape) });
+      return;
+    }
+    if (ap?.legacy_athlete_id) {
+      const { error } = await supabase
+        .from("athletes")
+        .update({ current_club_id: id })
+        .eq("id", ap.legacy_athlete_id);
       setAthleteSaving(false);
       if (error) {
         toast.error("Échec", { description: friendlyError(error) });
         return;
       }
-      toast.success("Adhérent créé et ajouté au club");
+      toast.success("Athlète rattaché à ce club");
       setAthleteOpen(false);
       load();
       return;
     }
-    setAthleteSaving(true);
-    const { error } = await supabase
-      .from("athletes")
-      .update({ current_club_id: id })
-      .eq("id", selectedAthleteId);
     setAthleteSaving(false);
-    if (error) {
-      toast.error("Échec", { description: friendlyError(error) });
-      return;
-    }
-    toast.success("Adhérent ajouté au club");
     setAthleteOpen(false);
-    load();
+    toast.info("Ajoute le rôle Athlète depuis la fiche de la personne");
+    navigate({ to: "/persons/$personId", params: { personId: selectedAthleteId } });
   };
+
 
 
   const removeAthlete = async (a: AthleteRow) => {
