@@ -1088,7 +1088,13 @@ function ClubDetailPage() {
 
 
       {/* ============ Member dialog ============ */}
-      <Dialog open={memberOpen} onOpenChange={setMemberOpen}>
+      <Dialog
+        open={memberOpen}
+        onOpenChange={(v) => {
+          setMemberOpen(v);
+          if (!v) setSelectedMemberPersonId("");
+        }}
+      >
         <DialogContent className="sm:max-w-lg">
           <form onSubmit={submitMember}>
             <DialogHeader>
@@ -1100,6 +1106,35 @@ function ClubDetailPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
+              {!editingMember && (
+                <div className="space-y-1.5 rounded-md border border-dashed border-border bg-muted p-3">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Lier à une personne existante (optionnel)
+                  </Label>
+                  <PersonCombobox
+                    value={selectedMemberPersonId || "__none__"}
+                    onChange={(v) => {
+                      if (v === "__none__") {
+                        setSelectedMemberPersonId("");
+                        return;
+                      }
+                      setSelectedMemberPersonId(v);
+                      const p = personsPool.find((x) => x.id === v);
+                      if (!p) return;
+                      setMemberForm((f) => ({
+                        ...f,
+                        first_name: p.first_name,
+                        last_name: p.last_name,
+                        email: p.email ?? f.email,
+                      }));
+                    }}
+                    options={personPickOptions}
+                    placeholder="Aucune (créer sans personne liée)"
+                    searchPlaceholder="Rechercher une personne…"
+                  />
+                </div>
+              )}
+
               {editingMember && (
                 <div className="flex justify-center pb-2">
                   <EntityImageUpload
