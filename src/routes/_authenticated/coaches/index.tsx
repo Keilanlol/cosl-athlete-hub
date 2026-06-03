@@ -90,6 +90,7 @@ function CoachesPage() {
   });
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState(false);
+  const [personDialogOpen, setPersonDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Coach | null>(null);
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
