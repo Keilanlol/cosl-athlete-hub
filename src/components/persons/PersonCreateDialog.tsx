@@ -538,12 +538,6 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
                 </div>
               </label>
             ))}
-            {form.selectedRoles.includes("athlete") &&
-              (!form.birth_date || !form.gender) && (
-                <p className="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">
-                  Pour le rôle Athlète, renseigne la date de naissance et le genre à l'étape 1.
-                </p>
-              )}
           </div>
         )}
 
