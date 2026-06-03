@@ -31,6 +31,7 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated?: (personId: string) => void;
+  initialRoles?: PersonRoleType[];
 };
 
 type Step = "general" | "roles" | "details";
