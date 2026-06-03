@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Mail, Phone, MapPin, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, Mail, Phone, MapPin, Pencil, Trash2, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { friendlyError } from "@/lib/error-messages";
@@ -18,6 +18,7 @@ import {
   type PersonRoleType,
 } from "@/lib/persons";
 import { PersonRoleBadge } from "@/components/persons/PersonRoleBadge";
+import { AddRoleDialog } from "@/components/persons/AddRoleDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -56,6 +57,7 @@ function PersonDetailPage() {
   const [bundle, setBundle] = useState<PersonBundle | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [rolesOpen, setRolesOpen] = useState(false);
+  const [addRoleTarget, setAddRoleTarget] = useState<PersonRoleType | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     first_name: "",
@@ -172,29 +174,118 @@ function PersonDetailPage() {
     load();
   };
 
-  const toggleRole = async (r: PersonRoleType, current: boolean) => {
-    if (current) {
-      const { error } = await supabase
+  const addRole = (r: PersonRoleType) => {
+    setRolesOpen(false);
+    setAddRoleTarget(r);
+  };
+
+  const removeRole = async (r: PersonRoleType) => {
+    const ok = await confirmAction({
+      destructive: true,
+      title: `Supprimer le rôle « ${ROLE_LABELS[r]} » ?`,
+      description:
+        "Les données de profil liées seront supprimées définitivement.",
+      confirmLabel: "Supprimer",
+    });
+    if (!ok) return;
+
+    try {
+      if (r === "athlete") {
+        const { data: ap } = await supabase
+          .from("athlete_profiles")
+          .select("legacy_athlete_id")
+          .eq("person_id", personId)
+          .maybeSingle();
+        const legacyId = (ap as { legacy_athlete_id?: string } | null)
+          ?.legacy_athlete_id;
+        if (legacyId) {
+          const { error: ue } = await supabase
+            .from("athletes")
+            .update({ is_active: false })
+            .eq("id", legacyId);
+          if (ue) throw ue;
+        }
+        const { error: de } = await supabase
+          .from("athlete_profiles")
+          .delete()
+          .eq("person_id", personId);
+        if (de) throw de;
+      } else if (r === "coach") {
+        const { data: cps } = await supabase
+          .from("coach_profiles")
+          .select("legacy_coach_id")
+          .eq("person_id", personId);
+        const ids = ((cps ?? []) as { legacy_coach_id?: string }[])
+          .map((x) => x.legacy_coach_id)
+          .filter((x): x is string => !!x);
+        if (ids.length > 0) {
+          const { error: de } = await supabase
+            .from("coaches")
+            .delete()
+            .in("id", ids);
+          if (de) throw de;
+        }
+        const { error: cpe } = await supabase
+          .from("coach_profiles")
+          .delete()
+          .eq("person_id", personId);
+        if (cpe) throw cpe;
+      } else if (r === "federation_member") {
+        const { data: fms } = await supabase
+          .from("federation_member_profiles")
+          .select("legacy_federation_member_id")
+          .eq("person_id", personId);
+        const ids = ((fms ?? []) as { legacy_federation_member_id?: string }[])
+          .map((x) => x.legacy_federation_member_id)
+          .filter((x): x is string => !!x);
+        if (ids.length > 0) {
+          const { error: de } = await supabase
+            .from("federation_members")
+            .delete()
+            .in("id", ids);
+          if (de) throw de;
+        }
+        const { error: fpe } = await supabase
+          .from("federation_member_profiles")
+          .delete()
+          .eq("person_id", personId);
+        if (fpe) throw fpe;
+      } else if (r === "club_member") {
+        const { data: cms } = await supabase
+          .from("club_member_profiles")
+          .select("legacy_club_member_id")
+          .eq("person_id", personId);
+        const ids = ((cms ?? []) as { legacy_club_member_id?: string }[])
+          .map((x) => x.legacy_club_member_id)
+          .filter((x): x is string => !!x);
+        if (ids.length > 0) {
+          const { error: de } = await supabase
+            .from("club_members")
+            .delete()
+            .in("id", ids);
+          if (de) throw de;
+        }
+        const { error: cpe } = await supabase
+          .from("club_member_profiles")
+          .delete()
+          .eq("person_id", personId);
+        if (cpe) throw cpe;
+      }
+
+      const { error: pre } = await supabase
         .from("person_roles")
         .delete()
         .eq("person_id", personId)
         .eq("role_type", r);
-      if (error) {
-        toast.error("Impossible de retirer le rôle", { description: friendlyError(error) });
-        return;
-      }
-      toast.success("Rôle retiré");
-    } else {
-      const { error } = await supabase
-        .from("person_roles")
-        .insert({ person_id: personId, role_type: r });
-      if (error) {
-        toast.error("Impossible d'ajouter le rôle", { description: friendlyError(error) });
-        return;
-      }
-      toast.success("Rôle ajouté");
+      if (pre) throw pre;
+
+      toast.success("Rôle supprimé");
+      load();
+    } catch (err) {
+      toast.error("Suppression impossible", {
+        description: friendlyError(err as never),
+      });
     }
-    load();
   };
 
   const remove = async () => {
@@ -510,18 +601,36 @@ function PersonDetailPage() {
             {PERSON_ROLE_TYPES.map((r) => {
               const has = activeRoles.includes(r);
               return (
-                <label
+                <div
                   key={r}
                   className="flex items-center justify-between rounded-md border border-border p-3 text-sm"
                 >
-                  <span className="flex items-center gap-2">
+                  {has ? (
                     <PersonRoleBadge role={r} />
-                  </span>
-                  <Checkbox
-                    checked={has}
-                    onCheckedChange={() => toggleRole(r, has)}
-                  />
-                </label>
+                  ) : (
+                    <span className="text-muted-foreground">{ROLE_LABELS[r]}</span>
+                  )}
+                  {has ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                      onClick={() => removeRole(r)}
+                      aria-label={`Retirer ${ROLE_LABELS[r]}`}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => addRole(r)}
+                      aria-label={`Ajouter ${ROLE_LABELS[r]}`}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
               );
             })}
           </div>
@@ -530,6 +639,20 @@ function PersonDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {addRoleTarget && bundle && (
+        <AddRoleDialog
+          open={!!addRoleTarget}
+          onOpenChange={(o) => !o && setAddRoleTarget(null)}
+          personId={personId}
+          person={bundle.person}
+          role={addRoleTarget}
+          onAdded={() => {
+            setAddRoleTarget(null);
+            load();
+          }}
+        />
+      )}
     </div>
   );
 }
