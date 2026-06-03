@@ -475,57 +475,145 @@ function PersonDetailPage() {
         </div>
       </div>
 
-      <Tabs defaultValue={defaultTab} className="space-y-4">
-        <TabsList className="flex-wrap h-auto">
-          {tabRoles.map((r) => (
-            <TabsTrigger key={r} value={r}>
-              {ROLE_LABELS[r]}
-            </TabsTrigger>
-          ))}
-          {tabRoles.length === 0 && (
-            <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
-          )}
-        </TabsList>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-foreground">Rôles</h2>
+          <Button size="sm" variant="outline" onClick={() => setRolesOpen(true)}>
+            <Plus className="mr-1 h-4 w-4" /> Ajouter un rôle
+          </Button>
+        </div>
 
-        {tabRoles.includes("athlete") && (
-          <TabsContent value="athlete">
-            <AthleteTab profile={bundle.athlete_profile} />
-          </TabsContent>
-        )}
-        {tabRoles.includes("coach") && (
-          <TabsContent value="coach">
-            <CoachTab profiles={bundle.coach_profiles} />
-          </TabsContent>
-        )}
-        {tabRoles.includes("federation_member") && (
-          <TabsContent value="federation_member">
-            <FederationMemberTab profiles={bundle.federation_member_profiles} />
-          </TabsContent>
-        )}
-        {tabRoles.includes("club_member") && (
-          <TabsContent value="club_member">
-            <ClubMemberTab profiles={bundle.club_member_profiles} />
-          </TabsContent>
-        )}
-        {(["official", "volunteer", "staff"] as PersonRoleType[]).map(
-          (r) =>
-            tabRoles.includes(r) && (
-              <TabsContent key={r} value={r}>
-                <div className="rounded-lg border border-dashed border-border bg-card p-6 text-sm text-muted-foreground">
-                  Pas encore de profil détaillé pour le rôle « {ROLE_LABELS[r]} ».
-                </div>
-              </TabsContent>
-            ),
-        )}
+        {activeRoles.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border bg-card p-6 text-sm text-muted-foreground">
+            Aucun rôle assigné. Clique sur « Ajouter un rôle » pour en attribuer un.
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {activeRoles.includes("athlete") && bundle.athlete_profile && (
+              <RoleListItem
+                icon={<Trophy className="h-4 w-4" />}
+                role="athlete"
+                title={
+                  bundle.athlete_profile.current_club_id
+                    ? bundle.clubs[bundle.athlete_profile.current_club_id] ?? "Club inconnu"
+                    : "Athlète indépendant"
+                }
+                subtitle={[
+                  bundle.athlete_profile.status,
+                  bundle.athlete_profile.level && `Niveau ${bundle.athlete_profile.level}`,
+                  bundle.athlete_profile.license_number &&
+                    `Licence ${bundle.athlete_profile.license_number}`,
+                  bundle.athlete_profile.primary_federation_id &&
+                    bundle.federations[bundle.athlete_profile.primary_federation_id],
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+                to={
+                  bundle.athlete_profile.legacy_athlete_id
+                    ? { to: "/athletes/$id", params: { id: bundle.athlete_profile.legacy_athlete_id } }
+                    : null
+                }
+              />
+            )}
 
-        {tabRoles.length === 0 && (
-          <TabsContent value="overview">
-            <div className="rounded-lg border border-dashed border-border bg-card p-6 text-sm text-muted-foreground">
-              Aucun rôle assigné. Clique sur « Gérer les rôles » pour en ajouter.
-            </div>
-          </TabsContent>
+            {bundle.coach_profiles.map((p) => (
+              <RoleListItem
+                key={p.id}
+                icon={<Shield className="h-4 w-4" />}
+                role="coach"
+                title={
+                  (p.club_id && bundle.clubs[p.club_id]) ||
+                  (p.federation_id && bundle.federations[p.federation_id]) ||
+                  "Encadrant"
+                }
+                subtitle={[
+                  p.role,
+                  p.club_id && bundle.clubs[p.club_id] ? `Club : ${bundle.clubs[p.club_id]}` : null,
+                  p.federation_id && bundle.federations[p.federation_id]
+                    ? `Fédération : ${bundle.federations[p.federation_id]}`
+                    : null,
+                  p.is_active ? "Actif" : "Inactif",
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+                to={
+                  p.legacy_coach_id
+                    ? { to: "/coaches/$id", params: { id: p.legacy_coach_id } }
+                    : null
+                }
+              />
+            ))}
+
+            {bundle.federation_member_profiles.map((p) => (
+              <RoleListItem
+                key={p.id}
+                icon={<Building2 className="h-4 w-4" />}
+                role="federation_member"
+                title={bundle.federations[p.federation_id] ?? "Fédération"}
+                subtitle={[
+                  p.role,
+                  p.start_date &&
+                    `Depuis ${new Date(p.start_date).toLocaleDateString("fr-FR")}`,
+                  p.end_date &&
+                    `Jusqu'au ${new Date(p.end_date).toLocaleDateString("fr-FR")}`,
+                  p.is_active ? "Actif" : "Inactif",
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+                to={
+                  p.legacy_federation_member_id
+                    ? {
+                        to: "/federations/members/$memberId",
+                        params: { memberId: p.legacy_federation_member_id },
+                      }
+                    : null
+                }
+              />
+            ))}
+
+            {bundle.club_member_profiles.map((p) => (
+              <RoleListItem
+                key={p.id}
+                icon={<Users className="h-4 w-4" />}
+                role="club_member"
+                title={bundle.clubs[p.club_id] ?? "Club"}
+                subtitle={[
+                  p.role,
+                  p.start_date &&
+                    `Depuis ${new Date(p.start_date).toLocaleDateString("fr-FR")}`,
+                  p.end_date &&
+                    `Jusqu'au ${new Date(p.end_date).toLocaleDateString("fr-FR")}`,
+                  p.is_active ? "Actif" : "Inactif",
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+                to={
+                  p.legacy_club_member_id
+                    ? {
+                        to: "/clubs/members/$memberId",
+                        params: { memberId: p.legacy_club_member_id },
+                      }
+                    : null
+                }
+              />
+            ))}
+
+            {(["official", "volunteer", "staff"] as PersonRoleType[])
+              .filter((r) => activeRoles.includes(r))
+              .map((r) => (
+                <RoleListItem
+                  key={r}
+                  icon={<Users className="h-4 w-4" />}
+                  role={r}
+                  title={ROLE_LABELS[r]}
+                  subtitle="Pas de profil détaillé"
+                  to={null}
+                />
+              ))}
+          </ul>
         )}
-      </Tabs>
+      </div>
+
 
       {/* Edit dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
