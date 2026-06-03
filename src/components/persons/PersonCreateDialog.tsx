@@ -328,6 +328,29 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
             is_active: true,
           });
         if (fme) throw fme;
+
+        const { data: legFm, error: lfme } = await supabase
+          .from("federation_members")
+          .insert({
+            federation_id: form.fedMember.federation_id,
+            first_name: form.first_name.trim(),
+            last_name: form.last_name.trim(),
+            email: form.email.trim() || null,
+            phone: form.phone.trim() || null,
+            role: form.fedMember.role,
+            start_date: form.fedMember.start_date || null,
+            is_active: true,
+            person_id: personId,
+          })
+          .select("id")
+          .single();
+        if (lfme) throw lfme;
+
+        await supabase
+          .from("federation_member_profiles")
+          .update({ legacy_federation_member_id: legFm.id })
+          .eq("person_id", personId)
+          .eq("federation_id", form.fedMember.federation_id);
       }
 
       // 6. club_member
@@ -340,7 +363,31 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
           is_active: true,
         });
         if (cme) throw cme;
+
+        const { data: legCm, error: lcme } = await supabase
+          .from("club_members")
+          .insert({
+            club_id: form.clubMember.club_id,
+            first_name: form.first_name.trim(),
+            last_name: form.last_name.trim(),
+            email: form.email.trim() || null,
+            phone: form.phone.trim() || null,
+            role: form.clubMember.role,
+            start_date: form.clubMember.start_date || null,
+            is_active: true,
+            person_id: personId,
+          })
+          .select("id")
+          .single();
+        if (lcme) throw lcme;
+
+        await supabase
+          .from("club_member_profiles")
+          .update({ legacy_club_member_id: legCm.id })
+          .eq("person_id", personId)
+          .eq("club_id", form.clubMember.club_id);
       }
+
 
       toast.success("Personne créée avec succès");
       onOpenChange(false);
