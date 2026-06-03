@@ -196,14 +196,68 @@ function MembersPage() {
       notes: createForm.notes.trim() || null,
       is_active: createForm.is_active,
     };
-    const { error } =
+    const insertPayload = selectedPersonId
+      ? { ...base, person_id: selectedPersonId }
+      : base;
+    const { data: inserted, error } =
       orgType === "fed"
         ? await supabase
             .from("federation_members")
-            .insert({ ...base, federation_id: createForm.org_id })
+            .insert({ ...insertPayload, federation_id: createForm.org_id })
+            .select("id")
+            .single()
         : await supabase
             .from("club_members")
-            .insert({ ...base, club_id: createForm.org_id });
+            .insert({ ...insertPayload, club_id: createForm.org_id })
+            .select("id")
+            .single();
+
+    const newId = (inserted?.id as string | undefined) ?? null;
+
+    if (!error && selectedPersonId && newId) {
+      if (orgType === "fed") {
+        const { error: profErr } = await supabase
+          .from("federation_member_profiles")
+          .insert({
+            person_id: selectedPersonId,
+            legacy_federation_member_id: newId,
+            federation_id: createForm.org_id,
+            role: createForm.role,
+            start_date: createForm.start_date || null,
+            is_active: createForm.is_active,
+          });
+        if (profErr && !/duplicate|unique/i.test(profErr.message)) {
+          console.warn("federation_member_profiles insert:", profErr.message);
+        }
+        const { error: roleErr } = await supabase
+          .from("person_roles")
+          .insert({ person_id: selectedPersonId, role_type: "federation_member" });
+        if (roleErr && !/duplicate|unique/i.test(roleErr.message)) {
+          console.warn("person_roles insert:", roleErr.message);
+        }
+      } else {
+        const { error: profErr } = await supabase
+          .from("club_member_profiles")
+          .insert({
+            person_id: selectedPersonId,
+            legacy_club_member_id: newId,
+            club_id: createForm.org_id,
+            role: createForm.role,
+            start_date: createForm.start_date || null,
+            is_active: createForm.is_active,
+          });
+        if (profErr && !/duplicate|unique/i.test(profErr.message)) {
+          console.warn("club_member_profiles insert:", profErr.message);
+        }
+        const { error: roleErr } = await supabase
+          .from("person_roles")
+          .insert({ person_id: selectedPersonId, role_type: "club_member" });
+        if (roleErr && !/duplicate|unique/i.test(roleErr.message)) {
+          console.warn("person_roles insert:", roleErr.message);
+        }
+      }
+    }
+
     setCreateSaving(false);
     if (error) {
       toast.error("Échec", { description: friendlyError(error) });
@@ -213,7 +267,30 @@ function MembersPage() {
     setCreateOpen(false);
     setCreateForm(emptyForm);
     setOrgType("fed");
+    setSelectedPersonId("");
     load();
+  };
+
+  const personOptions = useMemo(
+    () =>
+      persons.map((p) => ({
+        id: p.id,
+        label: `${p.first_name} ${p.last_name}${p.email ? ` — ${p.email}` : ""}`,
+      })),
+    [persons],
+  );
+
+  const applyPerson = (personId: string) => {
+    setSelectedPersonId(personId);
+    const p = persons.find((x) => x.id === personId);
+    if (!p) return;
+    setCreateForm((f) => ({
+      ...f,
+      first_name: p.first_name,
+      last_name: p.last_name,
+      email: p.email ?? f.email,
+      phone: p.phone ?? f.phone,
+    }));
   };
 
   return (
