@@ -104,14 +104,56 @@ function PersonDetailPage() {
       navigate({ to: "/persons" });
       return;
     }
+    const athleteProfile = (apRes.data as AthleteProfile | null) ?? null;
+    const coachProfiles = (cpRes.data ?? []) as CoachProfile[];
+    const fmProfiles = (fmRes.data ?? []) as FederationMemberProfile[];
+    const cmProfiles = (cmRes.data ?? []) as ClubMemberProfile[];
+
+    const clubIds = Array.from(
+      new Set(
+        [
+          athleteProfile?.current_club_id,
+          ...coachProfiles.map((c) => c.club_id),
+          ...cmProfiles.map((c) => c.club_id),
+        ].filter((x): x is string => !!x),
+      ),
+    );
+    const fedIds = Array.from(
+      new Set(
+        [
+          athleteProfile?.primary_federation_id,
+          ...coachProfiles.map((c) => c.federation_id),
+          ...fmProfiles.map((f) => f.federation_id),
+        ].filter((x): x is string => !!x),
+      ),
+    );
+
+    const [clubsRes, fedsRes] = await Promise.all([
+      clubIds.length
+        ? supabase.from("clubs").select("id,name").in("id", clubIds)
+        : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+      fedIds.length
+        ? supabase.from("federations").select("id,name").in("id", fedIds)
+        : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+    ]);
+    const clubsMap = Object.fromEntries(
+      ((clubsRes.data ?? []) as { id: string; name: string }[]).map((c) => [c.id, c.name]),
+    );
+    const fedsMap = Object.fromEntries(
+      ((fedsRes.data ?? []) as { id: string; name: string }[]).map((f) => [f.id, f.name]),
+    );
+
     setBundle({
       person: pRes.data as Person,
       roles: (rRes.data ?? []) as PersonRole[],
-      athlete_profile: (apRes.data as AthleteProfile | null) ?? null,
-      coach_profiles: (cpRes.data ?? []) as CoachProfile[],
-      federation_member_profiles: (fmRes.data ?? []) as FederationMemberProfile[],
-      club_member_profiles: (cmRes.data ?? []) as ClubMemberProfile[],
+      athlete_profile: athleteProfile,
+      coach_profiles: coachProfiles,
+      federation_member_profiles: fmProfiles,
+      club_member_profiles: cmProfiles,
+      clubs: clubsMap,
+      federations: fedsMap,
     });
+
   };
 
   useEffect(() => {
