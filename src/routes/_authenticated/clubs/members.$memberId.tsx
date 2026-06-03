@@ -192,6 +192,12 @@ function ClubMemberDetailPage() {
               setMember((m) =>
                 m ? { ...m, photo_url: url, photo_storage_path: path } : m,
               );
+              const personId = await findPersonIdForLegacy(
+                "club_member_profiles",
+                "legacy_club_member_id",
+                member.id,
+              );
+              await syncPhotoFromLegacy(personId, { photo_url: url, photo_storage_path: path });
             }}
             onDeleted={async () => {
               await supabase
@@ -201,7 +207,14 @@ function ClubMemberDetailPage() {
               setMember((m) =>
                 m ? { ...m, photo_url: null, photo_storage_path: null } : m,
               );
+              const personId = await findPersonIdForLegacy(
+                "club_member_profiles",
+                "legacy_club_member_id",
+                member.id,
+              );
+              await syncPhotoFromLegacy(personId, { photo_url: null, photo_storage_path: null });
             }}
+
           />
           <div className="flex-1">
             <h1 className="text-2xl font-semibold text-foreground">
