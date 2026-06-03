@@ -51,6 +51,7 @@ import {
   SortBtn,
   TableSkeleton,
 } from "@/components/DataTableShell";
+import { PersonCreateDialog } from "@/components/persons/PersonCreateDialog";
 
 export const Route = createFileRoute("/_authenticated/coaches/")({
   component: CoachesPage,
