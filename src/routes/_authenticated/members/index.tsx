@@ -307,12 +307,12 @@ function MembersPage() {
             </p>
           </div>
         </div>
-        <Button
-          onClick={() => setCreateOpen(true)}
-          className="bg-primary hover:bg-[var(--cosl-red-dark)]"
-        >
-          <Plus className="mr-2 h-4 w-4" /> Ajouter un membre
-        </Button>
+        <AddPersonButton
+          role="club_member"
+          label="Ajouter un membre"
+          onChanged={() => load()}
+        />
+
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
