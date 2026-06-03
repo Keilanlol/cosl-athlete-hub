@@ -344,7 +344,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
 
       toast.success("Personne créée avec succès");
       onOpenChange(false);
-      setForm({ ...defaultForm });
+      setForm({ ...defaultForm, selectedRoles: initialRoles ?? [] });
       setStep("general");
       onCreated?.(personId);
     } catch (err) {
