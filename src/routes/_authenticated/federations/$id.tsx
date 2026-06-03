@@ -1164,7 +1164,7 @@ function FederationDetailPage() {
       </Dialog>
 
       {/* ============ Member dialog ============ */}
-      <Dialog open={memberOpen} onOpenChange={setMemberOpen}>
+      <Dialog open={memberOpen} onOpenChange={(o) => { setMemberOpen(o); if (!o) setSelectedMemberPersonId(""); }}>
         <DialogContent className="sm:max-w-lg">
           <form onSubmit={submitMember}>
             <DialogHeader>
