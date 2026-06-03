@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Mail, Phone, MapPin, Pencil, Trash2, Plus, X } from "lucide-react";
+import { ArrowLeft, Mail, Phone, MapPin, Pencil, Trash2, Plus, X, ArrowRight, Building2, Trophy, Users, Shield } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { friendlyError } from "@/lib/error-messages";
