@@ -67,6 +67,8 @@ import {
 import { EmptyState } from "@/components/DataTableShell";
 import { AddressSearch } from "@/components/AddressSearch";
 import { PersonCombobox } from "@/components/PersonCombobox";
+import { PersonCreateDialog } from "@/components/persons/PersonCreateDialog";
+import type { PersonRoleType } from "@/lib/persons";
 import { confirmAction } from "@/components/ConfirmDialog";
 import { EntityImageUpload } from "@/components/EntityImageUpload";
 
