@@ -52,29 +52,42 @@ export async function syncPhotoFromPerson(
   fields: PhotoFields,
 ) {
   const { athleteId, coachIds, fmIds, cmIds } = await getLegacyIds(personId);
-  const tasks: Promise<unknown>[] = [];
+  const tasks: PromiseLike<unknown>[] = [];
   if (athleteId) {
-    // athletes table doesn't have photo_storage_path
     tasks.push(
       supabase
         .from("athletes")
         .update({ photo_url: fields.photo_url })
-        .eq("id", athleteId),
+        .eq("id", athleteId)
+        .then((r) => r),
     );
   }
   if (coachIds.length) {
-    tasks.push(supabase.from("coaches").update(fields).in("id", coachIds));
+    tasks.push(
+      supabase.from("coaches").update(fields).in("id", coachIds).then((r) => r),
+    );
   }
   if (fmIds.length) {
     tasks.push(
-      supabase.from("federation_members").update(fields).in("id", fmIds),
+      supabase
+        .from("federation_members")
+        .update(fields)
+        .in("id", fmIds)
+        .then((r) => r),
     );
   }
   if (cmIds.length) {
-    tasks.push(supabase.from("club_members").update(fields).in("id", cmIds));
+    tasks.push(
+      supabase
+        .from("club_members")
+        .update(fields)
+        .in("id", cmIds)
+        .then((r) => r),
+    );
   }
   await Promise.all(tasks);
 }
+
 
 /** Update the person's photo from a legacy record edit, then fan out to the others. */
 export async function syncPhotoFromLegacy(
