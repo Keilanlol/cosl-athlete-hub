@@ -149,6 +149,7 @@ function AthletesPage() {
 
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState(false);
+  const [personDialogOpen, setPersonDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Athlete | null>(null);
   const [form, setForm] = useState<AthleteForm>(emptyForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
