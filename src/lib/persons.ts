@@ -33,6 +33,9 @@ export const ROLE_BADGE_CLASSES: Record<PersonRoleType, string> = {
   staff: "bg-slate-200 text-slate-700 border-slate-300",
 };
 
+// Alias sémantique
+export const ROLE_COLORS = ROLE_BADGE_CLASSES;
+
 export type Person = {
   id: string;
   first_name: string;
