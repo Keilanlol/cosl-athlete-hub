@@ -1373,6 +1373,13 @@ function ClubDetailPage() {
                       setSelectedCoachPersonId("");
                       return;
                     }
+                    if (v === "__new__") {
+                      setCoachOpen(false);
+                      setSelectedCoachPersonId("");
+                      setPersonCreateRoles(["coach"]);
+                      setPersonCreateOpen(true);
+                      return;
+                    }
                     setSelectedCoachPersonId(v);
                     setPickedCoachId("");
                     const p = personsPool.find((x) => x.id === v);
