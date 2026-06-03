@@ -33,6 +33,8 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EntityImageUpload } from "@/components/EntityImageUpload";
+import { syncPhotoFromPerson } from "@/lib/person-photo-sync";
+
 
 export const Route = createFileRoute("/_authenticated/persons/$personId")({
   component: PersonDetailPage,
