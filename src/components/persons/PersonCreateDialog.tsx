@@ -457,10 +457,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="bd">
-                  Date de naissance{" "}
-                  <span className="text-xs text-muted-foreground">(requis si athlète)</span>
-                </Label>
+                <Label htmlFor="bd">Date de naissance *</Label>
                 <Input
                   id="bd"
                   type="date"
@@ -469,10 +466,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>
-                  Genre{" "}
-                  <span className="text-xs text-muted-foreground">(requis si athlète)</span>
-                </Label>
+                <Label>Genre *</Label>
                 <Select
                   value={form.gender}
                   onValueChange={(v) => setForm({ ...form, gender: v })}
