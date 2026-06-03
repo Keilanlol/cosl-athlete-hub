@@ -433,7 +433,7 @@ function MembersPage() {
         )}
       </div>
 
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+      <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) setSelectedPersonId(""); }}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <form onSubmit={submitCreate}>
             <DialogHeader>
