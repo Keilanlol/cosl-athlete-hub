@@ -35,6 +35,7 @@ const groups: { label: string; items: Item[] }[] = [
   {
     label: "Athlete Management",
     items: [
+      { title: "Personnes", url: "/persons", icon: Users },
       { title: "Athlètes", url: "/athletes", icon: Users },
       { title: "Fédérations", url: "/federations", icon: Building2 },
       { title: "Clubs", url: "/clubs", icon: Shield },
