@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Plus, Trash2, Upload, Pencil, UserCheck, FileText, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Upload, Pencil, UserCheck, FileText, AlertTriangle, CheckCircle2, Users } from "lucide-react";
 import { KycStatusBadge } from "@/components/KycStatusBadge";
 import { KycAxis } from "@/components/KycAxis";
 import { computeKycGlobalStatus, countValidAxes, computeAge } from "@/lib/kyc-utils";
@@ -130,6 +130,11 @@ function AthleteDetailPage() {
   const { items: sportsRef, add: addSport, remove: removeSport } = useSports();
   const { items: docTypes, add: addDocType, remove: removeDocType } = useDocumentTypes();
   const [athlete, setAthlete] = useState<Athlete | null>(null);
+  const [personId, setPersonId] = useState<string | null>(null);
+  useEffect(() => {
+    supabase.from("athletes").select("person_id").eq("id", id).maybeSingle()
+      .then(({ data }) => setPersonId(((data as { person_id?: string | null } | null)?.person_id) ?? null));
+  }, [id]);
   const [loading, setLoading] = useState(true);
   const [sport, setSport] = useState<Sport | null>(null);
   const [federation, setFederation] = useState<Federation | null>(null);
@@ -765,6 +770,13 @@ function AthleteDetailPage() {
           </div>
         </div>
         <div className="flex gap-2">
+          {personId && (
+            <Button asChild variant="outline">
+              <Link to="/persons/$personId" params={{ personId }}>
+                <Users className="mr-2 h-4 w-4" /> Fiche personne
+              </Link>
+            </Button>
+          )}
           <Button onClick={openEdit} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
             <Pencil className="mr-2 h-4 w-4" /> Modifier
           </Button>

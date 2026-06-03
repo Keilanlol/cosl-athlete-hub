@@ -31,6 +31,7 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated?: (personId: string) => void;
+  initialRoles?: PersonRoleType[];
 };
 
 type Step = "general" | "roles" | "details";
@@ -115,9 +116,9 @@ async function nextCoslId(): Promise<string> {
   return `COSL-${year}-${String(seq).padStart(4, "0")}`;
 }
 
-export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
+export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles }: Props) {
   const [step, setStep] = useState<Step>("general");
-  const [form, setForm] = useState({ ...defaultForm });
+  const [form, setForm] = useState({ ...defaultForm, selectedRoles: initialRoles ?? [] });
   const [sports, setSports] = useState<{ id: string; name: string }[]>([]);
   const [federations, setFederations] = useState<
     { id: string; name: string; acronym: string | null }[]
@@ -130,9 +131,10 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
   useEffect(() => {
     if (!open) {
       setStep("general");
-      setForm({ ...defaultForm });
+      setForm({ ...defaultForm, selectedRoles: initialRoles ?? [] });
       return;
     }
+    setForm((f) => ({ ...f, selectedRoles: initialRoles ?? f.selectedRoles }));
     supabase
       .from("sports")
       .select("id, name")
@@ -342,7 +344,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
 
       toast.success("Personne créée avec succès");
       onOpenChange(false);
-      setForm({ ...defaultForm });
+      setForm({ ...defaultForm, selectedRoles: initialRoles ?? [] });
       setStep("general");
       onCreated?.(personId);
     } catch (err) {
