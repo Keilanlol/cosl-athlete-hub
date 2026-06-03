@@ -169,31 +169,28 @@ function ClubDetailPage() {
   const [sports, setSports] = useState<Sport[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Persons referential (shared by all 3 add dialogs)
+  const [personsPool, setPersonsPool] = useState<PersonLite[]>([]);
+
   // Add athlete dialog
   const [athleteOpen, setAthleteOpen] = useState(false);
   const [athletesActive, setAthletesActive] = useState<"active" | "inactive" | "all">("active");
   const [athleteSearch, setAthleteSearch] = useState("");
   const [memberSearch, setMemberSearch] = useState("");
   const [coachSearch, setCoachSearch] = useState("");
-  const [athletePool, setAthletePool] = useState<AthleteRow[]>([]);
   const [selectedAthleteId, setSelectedAthleteId] = useState("");
   const [athleteSaving, setAthleteSaving] = useState(false);
-  const [newAthlete, setNewAthlete] = useState({
-    first_name: "",
-    last_name: "",
-    birth_date: "",
-    gender: "male" as "male" | "female" | "mixed",
-    nationality: "LUX",
-    email: "",
-    phone: "",
-    primary_sport_id: "",
-  });
+
+  // PersonCreateDialog (new person flow)
+  const [personCreateOpen, setPersonCreateOpen] = useState(false);
+  const [personCreateRoles, setPersonCreateRoles] = useState<PersonRoleType[]>([]);
 
   // Member dialog
   const [memberOpen, setMemberOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<ClubMember | null>(null);
   const [memberForm, setMemberForm] = useState(emptyMember);
   const [memberSaving, setMemberSaving] = useState(false);
+  const [selectedMemberPersonId, setSelectedMemberPersonId] = useState("");
 
   // Coach dialog
   const [coachOpen, setCoachOpen] = useState(false);
@@ -201,6 +198,7 @@ function ClubDetailPage() {
   const [coachSaving, setCoachSaving] = useState(false);
   const [pickedCoachId, setPickedCoachId] = useState("");
   const [freeCoaches, setFreeCoaches] = useState<Coach[]>([]);
+  const [selectedCoachPersonId, setSelectedCoachPersonId] = useState("");
 
 
   const load = async () => {
