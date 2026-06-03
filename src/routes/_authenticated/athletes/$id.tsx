@@ -36,6 +36,8 @@ import {
 } from "@/lib/types";
 import { EditableSelect } from "@/components/EditableSelect";
 import { AthletePhotoUpload } from "@/components/AthletePhotoUpload";
+import { findPersonIdForLegacy, syncPhotoFromLegacy } from "@/lib/person-photo-sync";
+
 import {
   useAthleteLevels,
   useDocumentTypes,
