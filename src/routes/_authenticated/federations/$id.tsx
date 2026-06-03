@@ -1415,56 +1415,59 @@ function FederationDetailPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              <div className="space-y-1.5 rounded-md border border-dashed border-border bg-muted p-3">
-                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Choisir un encadrant existant ou créer un nouveau
-                </Label>
-                <Select
-                  value={pickedCoachId || "__new__"}
-                  onValueChange={(v) => {
-                    if (v === "__new__") {
-                      setPickedCoachId("");
-                      setCoachForm(emptyCoach);
-                      return;
-                    }
-                    setPickedCoachId(v);
-                    const c = freeCoaches.find((x) => x.id === v);
-                    if (!c) return;
-                    setCoachForm({
-                      first_name: c.first_name,
-                      last_name: c.last_name,
-                      email: c.email ?? "",
-                      phone: c.phone ?? "",
-                      role: c.role ?? "coach",
-                      club_id: "__none__",
-                      is_active: c.is_active ?? true,
-                    });
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Nouvel encadrant" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__new__" className="text-primary font-medium">
-                      + Créer un nouvel encadrant
-                    </SelectItem>
-                    {freeCoaches.length > 0 && (
-                      <>
-                        <SelectSeparator />
-                        {freeCoaches.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.first_name} {c.last_name}
-                            {c.email ? ` — ${c.email}` : ""}
-                          </SelectItem>
-                        ))}
-                      </>
-                    )}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Seuls les encadrants sans fédération ni club sont listés.
-                </p>
-              </div>
+              {!selectedCoachPersonId && (
+                <div className="space-y-1.5 rounded-md border border-dashed border-border bg-muted p-3">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Choisir un encadrant existant ou créer un nouveau
+                  </Label>
+                  <Select
+                    value={pickedCoachId || "__new__"}
+                    onValueChange={(v) => {
+                      if (v === "__new__") {
+                        setPickedCoachId("");
+                        setCoachForm(emptyCoach);
+                        return;
+                      }
+                      setPickedCoachId(v);
+                      const c = freeCoaches.find((x) => x.id === v);
+                      if (!c) return;
+                      setCoachForm({
+                        first_name: c.first_name,
+                        last_name: c.last_name,
+                        email: c.email ?? "",
+                        phone: c.phone ?? "",
+                        role: c.role ?? "coach",
+                        club_id: "__none__",
+                        is_active: c.is_active ?? true,
+                      });
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Nouvel encadrant" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__new__" className="text-primary font-medium">
+                        + Créer un nouvel encadrant
+                      </SelectItem>
+                      {freeCoaches.length > 0 && (
+                        <>
+                          <SelectSeparator />
+                          {freeCoaches.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.first_name} {c.last_name}
+                              {c.email ? ` — ${c.email}` : ""}
+                            </SelectItem>
+                          ))}
+                        </>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Seuls les encadrants sans fédération ni club sont listés.
+                  </p>
+                </div>
+              )}
+
 
               {!pickedCoachId && (
                 <div className="space-y-1.5 rounded-md border border-dashed border-border bg-muted/40 p-3">
