@@ -358,8 +358,7 @@ function PersonDetailPage() {
   }
 
   const { person } = bundle;
-  const tabRoles = activeRoles.length > 0 ? activeRoles : ([] as PersonRoleType[]);
-  const defaultTab = tabRoles[0] ?? "overview";
+
 
   return (
     <div className="space-y-6">
