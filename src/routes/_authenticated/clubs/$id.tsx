@@ -579,6 +579,7 @@ function ClubDetailPage() {
 
   const personPickOptions = [
     { id: "__none__", label: "Aucune (créer sans personne liée)" },
+    { id: "__new__", label: "+ Créer une nouvelle personne" },
     ...personsPool.map((p) => ({
       id: p.id,
       label: `${p.first_name} ${p.last_name}${p.email ? ` — ${p.email}` : ""}`,
@@ -1118,6 +1119,13 @@ function ClubDetailPage() {
                         setSelectedMemberPersonId("");
                         return;
                       }
+                      if (v === "__new__") {
+                        setMemberOpen(false);
+                        setSelectedMemberPersonId("");
+                        setPersonCreateRoles(["club_member"]);
+                        setPersonCreateOpen(true);
+                        return;
+                      }
                       setSelectedMemberPersonId(v);
                       const p = personsPool.find((x) => x.id === v);
                       if (!p) return;
@@ -1363,6 +1371,13 @@ function ClubDetailPage() {
                   onChange={(v) => {
                     if (v === "__none__") {
                       setSelectedCoachPersonId("");
+                      return;
+                    }
+                    if (v === "__new__") {
+                      setCoachOpen(false);
+                      setSelectedCoachPersonId("");
+                      setPersonCreateRoles(["coach"]);
+                      setPersonCreateOpen(true);
                       return;
                     }
                     setSelectedCoachPersonId(v);
