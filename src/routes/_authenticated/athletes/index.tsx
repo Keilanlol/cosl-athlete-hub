@@ -18,7 +18,6 @@ import {
 } from "@/lib/types";
 import { EditableSelect } from "@/components/EditableSelect";
 import { AthletePhotoUpload } from "@/components/AthletePhotoUpload";
-import { PersonCreateDialog } from "@/components/persons/PersonCreateDialog";
 import { AddPersonButton } from "@/components/persons/AddPersonButton";
 import { useAthleteLevels, useSports } from "@/hooks/useReferenceData";
 import { Button } from "@/components/ui/button";
