@@ -1,71 +1,73 @@
-# Plan — Création multi-étapes & dual-write Person ↔ legacy
+# Plan — Intégrer PersonCreateDialog dans Athlètes & Encadrants
 
-## Décisions retenues (suite aux clarifications)
+## Constat préalable
 
-- Types restent dans `src/lib/persons.ts` (pas de migration vers `src/types/`).
-- Pas de couche service/hooks React Query : appels Supabase directs dans les composants (cohérent avec athletes/coaches/clubs).
-- On **enrichit** l'existant au lieu de tout réécrire : filtre Actif/Inactif et photo conservés, 7 rôles préservés, mais Dialog passe en 3 étapes.
+- **Sidebar** : "Personnes" est déjà ajouté avant "Athlètes" (`src/components/AppSidebar.tsx` ligne 38). **Rien à faire**.
+- **Athlètes (`athletes/index.tsx`)** : le Dialog existant (lignes 631-1013) sert à la fois pour création ET édition (via `openEdit` ligne 615). On garde ce dialog pour l'édition, on remplace uniquement le **bouton "Ajouter un athlète"** (ligne 432).
+- **Coaches (`coaches/index.tsx`)** : même pattern (Dialog ligne 424-595 utilisé pour create+edit). Idem.
+- **Fiche athlète (`athletes/$id.tsx`)** : header lignes 706-772. `person_id` n'est pas dans le type `Athlete` ni dans le `select` actuel — requête séparée nécessaire.
 
-## Périmètre
+## 1. `src/components/persons/PersonCreateDialog.tsx` — ajouter `initialRoles`
 
-3 fichiers touchés. Aucun changement sur `athletes/`, `coaches/`, `clubs/`, `lib/supabase.ts`, `AuthContext`, ni sur la migration SQL 30.
+Nouvelle prop optionnelle pour pré-cocher des rôles à l'étape 2 :
 
-## 1. `src/lib/persons.ts` — ajouts mineurs
+```ts
+initialRoles?: PersonRoleType[]
+```
 
-Ajouter un alias `ROLE_COLORS = ROLE_BADGE_CLASSES` pour cohérence sémantique, sans casser les imports existants.
+Initialiser `selectedRoles` avec `initialRoles ?? []` lors du reset (montage + `open=true`). Le wizard commence toujours à l'étape 1 "Général" pour que l'utilisateur saisisse nom/prénom (+ birth_date/gender requis si athlète).
 
-## 2. `src/components/persons/PersonCreateDialog.tsx` — refonte en 3 étapes
+## 2. `src/routes/_authenticated/athletes/index.tsx`
 
-Remplacer le Dialog actuel (1 écran) par un wizard :
+- Imports : ajouter `PersonCreateDialog` et un state `personDialogOpen`.
+- Bouton ligne 432 : `onClick={() => setPersonDialogOpen(true)}`, conserver le label "Ajouter un athlète" et l'icône `Plus`.
+- Ajouter en bas du JSX (à côté du Dialog existant) :
+  ```tsx
+  <PersonCreateDialog
+    open={personDialogOpen}
+    onOpenChange={setPersonDialogOpen}
+    initialRoles={["athlete"]}
+    onCreated={(personId) => {
+      load(); // recharger la liste athlètes
+      navigate({ to: "/persons/$personId", params: { personId } });
+    }}
+  />
+  ```
+- Conserver `openCreate`/le Dialog existant pour ne pas casser l'édition (`openEdit` line 615 l'utilise toujours). `openCreate` devient code mort côté UI mais on ne le supprime pas (hors scope).
 
-- **Step 1 — Général** : prénom*, nom*, date de naissance, genre, nationalité (défaut LUX), email, téléphone.
-- **Step 2 — Rôles** : checkboxes pour les **7 rôles** (`athlete`, `coach`, `federation_member`, `club_member`, `official`, `volunteer`, `staff`) avec description courte. Au moins 1 requis.
-- **Step 3 — Profils spécifiques** : sections conditionnelles uniquement pour athlete / coach / fed_member / club_member (les 3 autres rôles n'ont pas de profil dédié, juste l'entrée `person_roles`).
-  - Athlète : sport, fédération, club (filtré par fédération), statut, niveau, n° licence, passeport.
-  - Coach : fonction, fédération, club.
-  - Membre fédération : fédération*, rôle, date début.
-  - Membre club : club*, rôle, date début.
+## 3. `src/routes/_authenticated/coaches/index.tsx`
 
-Indicateur d'étapes en haut, boutons Précédent/Suivant/Créer en bas. Chargement de sports/federations/clubs au `open=true`.
+Pattern identique :
+- State `personDialogOpen` + import `PersonCreateDialog`.
+- Remplacer l'`onClick` du bouton "Ajouter un encadrant" pour ouvrir `PersonCreateDialog` avec `initialRoles={["coach"]}`.
+- `onCreated` → `load()` + navigation vers `/persons/$personId`.
+- Conserver le Dialog existant pour l'édition.
 
-### Dual-write (logique métier)
+## 4. `src/routes/_authenticated/athletes/$id.tsx` — lien "Fiche personne"
 
-Lors de la création (Step 3 → Créer) :
-
-1. `INSERT INTO persons` → récupérer `personId`.
-2. `INSERT INTO person_roles` pour chaque rôle coché.
-3. Si `athlete` coché :
-   - Générer `cosl_id` (`COSL-{year}-{seq:0000}`) en lisant le max existant.
-   - `INSERT INTO athletes` (legacy, avec `person_id` pour traçabilité) → récupérer `legacyAthleteId`.
-   - `INSERT INTO athlete_profiles` (source de vérité future, avec `legacy_athlete_id`).
-   - `INSERT INTO athlete_kyc` (global_status = 'red').
-4. Si `coach` coché :
-   - `INSERT INTO coaches` (legacy, avec `person_id`) → récupérer `legacyCoachId`.
-   - `INSERT INTO coach_profiles` (avec `legacy_coach_id`).
-5. Si `federation_member` coché → `INSERT INTO federation_member_profiles` (pas de legacy dual-write demandé).
-6. Si `club_member` coché → `INSERT INTO club_member_profiles`.
-7. Toasts succès/erreur, fermeture, callback `onCreated(personId)`.
-
-Les rôles `official` / `volunteer` / `staff` créent uniquement la ligne `person_roles` (pas de profil dédié dans le schéma).
-
-## 3. `src/routes/_authenticated/persons/index.tsx` — conservation + petits ajustements
-
-Garder la version actuelle (Select rôle + Select Actif/Inactif + recherche + pagination shadcn maison + photo dans la 1re colonne). Aucune migration vers tabs/compteurs.
-
-Seul changement : passer le `onCreated` au nouveau Dialog (déjà fait), aucune autre modification.
-
-## Détails techniques
-
-- Pas de React Query : `useState` + `await supabase…`, `toast` de `sonner`, `friendlyError` pour les messages.
-- Génération `cosl_id` : `SELECT cosl_id FROM athletes WHERE cosl_id ILIKE 'COSL-{year}-%' ORDER BY cosl_id DESC LIMIT 1`, puis `+1` padded sur 4 digits. Tolère collision (très improbable) — affichera l'erreur PG si conflit.
-- Tous les profils utilisent `person_id` comme lien vers `persons` (créé par la migration 30).
-- Filtrage clubs par fédération dans le Step Athlète (UX).
-- Genre stocké via enum PG existante (`'male' | 'female' | 'mixed'`).
-- Validation minimale : prénom/nom non vides (Step 1), ≥1 rôle (Step 2). Step 3 sans validation forte — les profils incomplets sont insérés tels quels.
+- Ajouter `Users` aux imports `lucide-react` (ligne 4).
+- Charger `person_id` via une requête séparée au montage (évite de toucher au type `Athlete` global) :
+  ```ts
+  const [personId, setPersonId] = useState<string | null>(null);
+  useEffect(() => {
+    supabase.from("athletes").select("person_id").eq("id", id).maybeSingle()
+      .then(({ data }) => setPersonId((data?.person_id as string | null) ?? null));
+  }, [id]);
+  ```
+- Dans le header (lignes 767-771), ajouter avant le bouton "Modifier" :
+  ```tsx
+  {personId && (
+    <Button asChild variant="outline">
+      <Link to="/persons/$personId" params={{ personId }}>
+        <Users className="mr-2 h-4 w-4" /> Fiche personne
+      </Link>
+    </Button>
+  )}
+  ```
 
 ## Hors périmètre
 
-- Édition ultérieure des profils (déjà partiellement gérée dans `$personId.tsx`).
-- Sync inverse legacy → persons (les écritures dans `athletes/coaches` faites depuis les anciens écrans ne créent toujours pas de `person`).
-- Suppression/archivage cascade.
-- Upload photo dans le Dialog (la photo s'ajoute depuis la fiche détail, comme aujourd'hui).
+- Page `members/index.tsx` : déjà existante mais hors scope (le user dit "si elles existent" pour les encadrants/membres, on traite uniquement coaches qui suit le même pattern de dialog create/edit).
+- Refactor du Dialog create/edit des pages athletes/coaches (le code de création reste mais n'est plus accessible via UI).
+- Synchronisation rétroactive : les anciens athlètes/coaches sans `person_id` n'auront pas de lien "Fiche personne" — comportement attendu.
+- Modification du type `Athlete` dans `src/lib/types.ts`.
