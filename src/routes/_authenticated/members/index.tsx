@@ -42,6 +42,15 @@ import {
 } from "@/components/ui/dialog";
 import { AddressSearch } from "@/components/AddressSearch";
 import { EmptyState } from "@/components/DataTableShell";
+import { PersonCombobox } from "@/components/PersonCombobox";
+
+type PersonLite = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  phone: string | null;
+};
 
 export const Route = createFileRoute("/_authenticated/members/")({
   component: MembersPage,
@@ -82,18 +91,25 @@ function MembersPage() {
   const [createSaving, setCreateSaving] = useState(false);
   const [orgType, setOrgType] = useState<"fed" | "club">("fed");
   const [createForm, setCreateForm] = useState(emptyForm);
+  const [persons, setPersons] = useState<PersonLite[]>([]);
+  const [selectedPersonId, setSelectedPersonId] = useState("");
 
   const load = async () => {
-    const [f, c, fm, cm] = await Promise.all([
+    const [f, c, fm, cm, pe] = await Promise.all([
       supabase.from("federations").select("*"),
       supabase.from("clubs").select("*"),
       supabase.from("federation_members").select("*").order("last_name"),
       supabase.from("club_members").select("*").order("last_name"),
+      supabase
+        .from("persons")
+        .select("id, first_name, last_name, email, phone")
+        .order("last_name"),
     ]);
     setFeds((f.data ?? []) as Federation[]);
     setClubs((c.data ?? []) as Club[]);
     setFedMembers((fm.data ?? []) as FederationMember[]);
     setClubMembers((cm.data ?? []) as ClubMember[]);
+    setPersons((pe.data ?? []) as PersonLite[]);
     setLoading(false);
   };
 
@@ -180,14 +196,68 @@ function MembersPage() {
       notes: createForm.notes.trim() || null,
       is_active: createForm.is_active,
     };
-    const { error } =
+    const insertPayload = selectedPersonId
+      ? { ...base, person_id: selectedPersonId }
+      : base;
+    const { data: inserted, error } =
       orgType === "fed"
         ? await supabase
             .from("federation_members")
-            .insert({ ...base, federation_id: createForm.org_id })
+            .insert({ ...insertPayload, federation_id: createForm.org_id })
+            .select("id")
+            .single()
         : await supabase
             .from("club_members")
-            .insert({ ...base, club_id: createForm.org_id });
+            .insert({ ...insertPayload, club_id: createForm.org_id })
+            .select("id")
+            .single();
+
+    const newId = (inserted?.id as string | undefined) ?? null;
+
+    if (!error && selectedPersonId && newId) {
+      if (orgType === "fed") {
+        const { error: profErr } = await supabase
+          .from("federation_member_profiles")
+          .insert({
+            person_id: selectedPersonId,
+            legacy_federation_member_id: newId,
+            federation_id: createForm.org_id,
+            role: createForm.role,
+            start_date: createForm.start_date || null,
+            is_active: createForm.is_active,
+          });
+        if (profErr && !/duplicate|unique/i.test(profErr.message)) {
+          console.warn("federation_member_profiles insert:", profErr.message);
+        }
+        const { error: roleErr } = await supabase
+          .from("person_roles")
+          .insert({ person_id: selectedPersonId, role_type: "federation_member" });
+        if (roleErr && !/duplicate|unique/i.test(roleErr.message)) {
+          console.warn("person_roles insert:", roleErr.message);
+        }
+      } else {
+        const { error: profErr } = await supabase
+          .from("club_member_profiles")
+          .insert({
+            person_id: selectedPersonId,
+            legacy_club_member_id: newId,
+            club_id: createForm.org_id,
+            role: createForm.role,
+            start_date: createForm.start_date || null,
+            is_active: createForm.is_active,
+          });
+        if (profErr && !/duplicate|unique/i.test(profErr.message)) {
+          console.warn("club_member_profiles insert:", profErr.message);
+        }
+        const { error: roleErr } = await supabase
+          .from("person_roles")
+          .insert({ person_id: selectedPersonId, role_type: "club_member" });
+        if (roleErr && !/duplicate|unique/i.test(roleErr.message)) {
+          console.warn("person_roles insert:", roleErr.message);
+        }
+      }
+    }
+
     setCreateSaving(false);
     if (error) {
       toast.error("Échec", { description: friendlyError(error) });
@@ -197,7 +267,30 @@ function MembersPage() {
     setCreateOpen(false);
     setCreateForm(emptyForm);
     setOrgType("fed");
+    setSelectedPersonId("");
     load();
+  };
+
+  const personOptions = useMemo(
+    () =>
+      persons.map((p) => ({
+        id: p.id,
+        label: `${p.first_name} ${p.last_name}${p.email ? ` — ${p.email}` : ""}`,
+      })),
+    [persons],
+  );
+
+  const applyPerson = (personId: string) => {
+    setSelectedPersonId(personId);
+    const p = persons.find((x) => x.id === personId);
+    if (!p) return;
+    setCreateForm((f) => ({
+      ...f,
+      first_name: p.first_name,
+      last_name: p.last_name,
+      email: p.email ?? f.email,
+      phone: p.phone ?? f.phone,
+    }));
   };
 
   return (
@@ -340,13 +433,34 @@ function MembersPage() {
         )}
       </div>
 
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+      <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) setSelectedPersonId(""); }}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <form onSubmit={submitCreate}>
             <DialogHeader>
               <DialogTitle>Ajouter un membre</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-4">
+              <div className="space-y-1.5 rounded-md border border-dashed border-border bg-muted/40 p-3">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Personne existante (optionnel)
+                </Label>
+                <PersonCombobox
+                  value={selectedPersonId}
+                  onChange={applyPerson}
+                  options={personOptions}
+                  placeholder="Lier à une personne déjà enregistrée…"
+                  searchPlaceholder="Rechercher une personne…"
+                />
+                {selectedPersonId && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPersonId("")}
+                    className="text-xs text-muted-foreground hover:text-foreground underline"
+                  >
+                    Détacher
+                  </button>
+                )}
+              </div>
               <div className="space-y-1.5">
                 <Label>Organisation *</Label>
                 <div className="flex gap-3">
