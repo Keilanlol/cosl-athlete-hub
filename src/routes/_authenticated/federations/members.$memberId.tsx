@@ -195,6 +195,12 @@ function FedMemberDetailPage() {
               setMember((m) =>
                 m ? { ...m, photo_url: url, photo_storage_path: path } : m,
               );
+              const personId = await findPersonIdForLegacy(
+                "federation_member_profiles",
+                "legacy_federation_member_id",
+                member.id,
+              );
+              await syncPhotoFromLegacy(personId, { photo_url: url, photo_storage_path: path });
             }}
             onDeleted={async () => {
               await supabase
@@ -204,7 +210,14 @@ function FedMemberDetailPage() {
               setMember((m) =>
                 m ? { ...m, photo_url: null, photo_storage_path: null } : m,
               );
+              const personId = await findPersonIdForLegacy(
+                "federation_member_profiles",
+                "legacy_federation_member_id",
+                member.id,
+              );
+              await syncPhotoFromLegacy(personId, { photo_url: null, photo_storage_path: null });
             }}
+
           />
           <div className="flex-1">
             <h1 className="text-2xl font-semibold text-foreground">
