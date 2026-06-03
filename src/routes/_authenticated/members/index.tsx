@@ -42,6 +42,15 @@ import {
 } from "@/components/ui/dialog";
 import { AddressSearch } from "@/components/AddressSearch";
 import { EmptyState } from "@/components/DataTableShell";
+import { PersonCombobox } from "@/components/PersonCombobox";
+
+type PersonLite = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  phone: string | null;
+};
 
 export const Route = createFileRoute("/_authenticated/members/")({
   component: MembersPage,
