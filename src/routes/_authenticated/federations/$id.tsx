@@ -1405,7 +1405,7 @@ function FederationDetailPage() {
       </Dialog>
 
       {/* ============ Coach dialog ============ */}
-      <Dialog open={coachOpen} onOpenChange={setCoachOpen}>
+      <Dialog open={coachOpen} onOpenChange={(o) => { setCoachOpen(o); if (!o) setSelectedCoachPersonId(""); }}>
         <DialogContent className="sm:max-w-lg">
           <form onSubmit={submitCoach}>
             <DialogHeader>
