@@ -1,73 +1,150 @@
-# Plan — Intégrer PersonCreateDialog dans Athlètes & Encadrants
+# Liaison "personne existante" sur les dialogs Fédération & Membres
 
-## Constat préalable
+## Objectif
 
-- **Sidebar** : "Personnes" est déjà ajouté avant "Athlètes" (`src/components/AppSidebar.tsx` ligne 38). **Rien à faire**.
-- **Athlètes (`athletes/index.tsx`)** : le Dialog existant (lignes 631-1013) sert à la fois pour création ET édition (via `openEdit` ligne 615). On garde ce dialog pour l'édition, on remplace uniquement le **bouton "Ajouter un athlète"** (ligne 432).
-- **Coaches (`coaches/index.tsx`)** : même pattern (Dialog ligne 424-595 utilisé pour create+edit). Idem.
-- **Fiche athlète (`athletes/$id.tsx`)** : header lignes 706-772. `person_id` n'est pas dans le type `Athlete` ni dans le `select` actuel — requête séparée nécessaire.
+Sur les trois dialogs ci-dessous, ajouter en tête un `PersonCombobox` qui :
+- préremplit le formulaire existant (nom, prénom, email, téléphone) à la sélection ;
+- au submit, déclenche un dual-write : profil correspondant + `person_roles`
+  (les deux en `ON CONFLICT DO NOTHING`).
+Si aucune personne n'est sélectionnée, le comportement actuel est conservé à l'identique.
 
-## 1. `src/components/persons/PersonCreateDialog.tsx` — ajouter `initialRoles`
+## Fichiers
 
-Nouvelle prop optionnelle pour pré-cocher des rôles à l'étape 2 :
+| Fichier | Action |
+|---|---|
+| `src/routes/_authenticated/federations/$id.tsx` | Modifier (2 dialogs) |
+| `src/routes/_authenticated/members/index.tsx` | Modifier (1 dialog) |
 
-```ts
-initialRoles?: PersonRoleType[]
-```
+Aucun autre fichier touché. `PersonCombobox.tsx`, `PersonCreateDialog.tsx`,
+`federations/index.tsx`, `FedMemberDetailPage`, `ClubMemberDetailPage` :
+inchangés.
 
-Initialiser `selectedRoles` avec `initialRoles ?? []` lors du reset (montage + `open=true`). Le wizard commence toujours à l'étape 1 "Général" pour que l'utilisateur saisisse nom/prénom (+ birth_date/gender requis si athlète).
+## 1. `federations/$id.tsx` — Dialog "Ajouter un membre"
 
-## 2. `src/routes/_authenticated/athletes/index.tsx`
-
-- Imports : ajouter `PersonCreateDialog` et un state `personDialogOpen`.
-- Bouton ligne 432 : `onClick={() => setPersonDialogOpen(true)}`, conserver le label "Ajouter un athlète" et l'icône `Plus`.
-- Ajouter en bas du JSX (à côté du Dialog existant) :
+- Nouveau state local : `selectedMemberPersonId: string | null`.
+- En tête du `DialogContent` (juste sous `DialogHeader`), insérer :
   ```tsx
-  <PersonCreateDialog
-    open={personDialogOpen}
-    onOpenChange={setPersonDialogOpen}
-    initialRoles={["athlete"]}
-    onCreated={(personId) => {
-      load(); // recharger la liste athlètes
-      navigate({ to: "/persons/$personId", params: { personId } });
-    }}
-  />
+  <div className="space-y-1.5">
+    <Label>Personne existante (optionnel)</Label>
+    <PersonCombobox
+      value={selectedMemberPersonId}
+      onChange={(personId, person) => {
+        setSelectedMemberPersonId(personId);
+        if (person) setMemberForm(f => ({
+          ...f,
+          first_name: person.first_name,
+          last_name: person.last_name,
+          email: person.email ?? "",
+          phone: person.phone ?? "",
+        }));
+      }}
+    />
+  </div>
   ```
-- Conserver `openCreate`/le Dialog existant pour ne pas casser l'édition (`openEdit` line 615 l'utilise toujours). `openCreate` devient code mort côté UI mais on ne le supprime pas (hors scope).
-
-## 3. `src/routes/_authenticated/coaches/index.tsx`
-
-Pattern identique :
-- State `personDialogOpen` + import `PersonCreateDialog`.
-- Remplacer l'`onClick` du bouton "Ajouter un encadrant" pour ouvrir `PersonCreateDialog` avec `initialRoles={["coach"]}`.
-- `onCreated` → `load()` + navigation vers `/persons/$personId`.
-- Conserver le Dialog existant pour l'édition.
-
-## 4. `src/routes/_authenticated/athletes/$id.tsx` — lien "Fiche personne"
-
-- Ajouter `Users` aux imports `lucide-react` (ligne 4).
-- Charger `person_id` via une requête séparée au montage (évite de toucher au type `Athlete` global) :
+- Reset de `selectedMemberPersonId` à `null` quand le dialog se ferme ou
+  passe en mode édition (`editingMember` non nul) — la liaison ne s'applique
+  qu'en création.
+- Au submit (création uniquement, pas d'édition), juste après le `INSERT
+  federation_members` réussi : récupérer l'`id` créé via `.select("id").single()`
+  puis :
   ```ts
-  const [personId, setPersonId] = useState<string | null>(null);
-  useEffect(() => {
-    supabase.from("athletes").select("person_id").eq("id", id).maybeSingle()
-      .then(({ data }) => setPersonId((data?.person_id as string | null) ?? null));
-  }, [id]);
+  if (!editingMember && selectedMemberPersonId) {
+    await supabase.from("federation_member_profiles")
+      .upsert({
+        person_id: selectedMemberPersonId,
+        legacy_federation_member_id: newId,
+        federation_id, role: memberForm.role,
+        start_date: memberForm.start_date || null,
+        is_active: memberForm.is_active,
+      }, { onConflict: "person_id,federation_id,role", ignoreDuplicates: true });
+    await supabase.from("person_roles")
+      .upsert({ person_id: selectedMemberPersonId, role_type: "federation_member" },
+        { onConflict: "person_id,role_type", ignoreDuplicates: true });
+  }
   ```
-- Dans le header (lignes 767-771), ajouter avant le bouton "Modifier" :
-  ```tsx
-  {personId && (
-    <Button asChild variant="outline">
-      <Link to="/persons/$personId" params={{ personId }}>
-        <Users className="mr-2 h-4 w-4" /> Fiche personne
-      </Link>
-    </Button>
-  )}
+  Note : la stratégie `upsert + ignoreDuplicates` est l'équivalent supabase de
+  `ON CONFLICT DO NOTHING`. Les colonnes `onConflict` sont les contraintes UNIQUE
+  existantes (à vérifier au moment du code ; à défaut, fallback : SELECT + INSERT
+  conditionnel).
+
+## 2. `federations/$id.tsx` — Dialog "Ajouter un encadrant"
+
+Même schéma :
+- State `selectedCoachPersonId`.
+- `PersonCombobox` en tête, préremplit `coachForm.first_name/last_name/email/phone`.
+- Au submit création (pas d'édition), après `INSERT coaches` (modifié pour
+  `.select("id").single()`) :
+  ```ts
+  if (!pickedCoachId && selectedCoachPersonId) {
+    await supabase.from("coaches").update({ person_id: selectedCoachPersonId })
+      .eq("id", newCoachId);
+    await supabase.from("coach_profiles").upsert({
+      person_id: selectedCoachPersonId,
+      legacy_coach_id: newCoachId,
+      role: coachForm.role,
+      federation_id, club_id: coachForm.club_id || null,
+      is_active: coachForm.is_active,
+    }, { onConflict: "person_id,legacy_coach_id", ignoreDuplicates: true });
+    await supabase.from("person_roles").upsert(
+      { person_id: selectedCoachPersonId, role_type: "coach" },
+      { onConflict: "person_id,role_type", ignoreDuplicates: true });
+  }
   ```
 
-## Hors périmètre
+## 3. `members/index.tsx` — Dialog global "Ajouter un membre"
 
-- Page `members/index.tsx` : déjà existante mais hors scope (le user dit "si elles existent" pour les encadrants/membres, on traite uniquement coaches qui suit le même pattern de dialog create/edit).
-- Refactor du Dialog create/edit des pages athletes/coaches (le code de création reste mais n'est plus accessible via UI).
-- Synchronisation rétroactive : les anciens athlètes/coaches sans `person_id` n'auront pas de lien "Fiche personne" — comportement attendu.
-- Modification du type `Athlete` dans `src/lib/types.ts`.
+- State `selectedPersonId`.
+- `PersonCombobox` en tête, préremplit `createForm.first_name/last_name/email/phone`.
+- Au submit, après le `INSERT` (la table dépend de `orgType` :
+  `federation_members` ou `club_members`) qu'on modifie pour renvoyer `.select("id").single()` :
+  ```ts
+  if (selectedPersonId) {
+    if (orgType === "fed") {
+      await supabase.from("federation_member_profiles").upsert({
+        person_id: selectedPersonId,
+        legacy_federation_member_id: newId,
+        federation_id: createForm.federation_id,
+        role: createForm.role,
+        start_date: createForm.start_date || null,
+        is_active: true,
+      }, { onConflict: "person_id,federation_id,role", ignoreDuplicates: true });
+      await supabase.from("person_roles").upsert(
+        { person_id: selectedPersonId, role_type: "federation_member" },
+        { onConflict: "person_id,role_type", ignoreDuplicates: true });
+    } else {
+      await supabase.from("club_member_profiles").upsert({
+        person_id: selectedPersonId,
+        legacy_club_member_id: newId,
+        club_id: createForm.club_id,
+        role: createForm.role,
+        start_date: createForm.start_date || null,
+        is_active: true,
+      }, { onConflict: "person_id,club_id,role", ignoreDuplicates: true });
+      await supabase.from("person_roles").upsert(
+        { person_id: selectedPersonId, role_type: "club_member" },
+        { onConflict: "person_id,role_type", ignoreDuplicates: true });
+    }
+  }
+  ```
+- Reset de `selectedPersonId` à la fermeture du dialog.
+
+## Détails d'implémentation
+
+- `PersonCombobox` existe déjà (`src/components/PersonCombobox.tsx`, 88 lignes) ;
+  je vérifie sa signature exacte avant le câblage et adapte le contrat
+  `onChange(personId, person?)` si nécessaire (fallback : fetch `persons` par id
+  juste après sélection pour récupérer email/phone).
+- Modifier les `INSERT` existants pour récupérer l'`id` (`.select("id").single()`)
+  est requis pour pouvoir écrire `legacy_*_id` dans le profil.
+- Si la contrainte UNIQUE utilisée pour `onConflict` n'existe pas en BDD,
+  fallback : `SELECT … WHERE …` puis `INSERT` conditionnel — pas de migration.
+- Aucun champ ajouté au form ; aucune restructuration ; aucun changement de
+  layout en dehors d'un bloc unique inséré en tête.
+
+## Hors scope
+
+- `federations/index.tsx` (logique `pendingPresident`).
+- `FedMemberDetailPage`, `ClubMemberDetailPage`.
+- `PersonCreateDialog.tsx`.
+- Structure des formulaires existants.
+- Toute migration BDD.
