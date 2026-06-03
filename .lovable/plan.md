@@ -1,28 +1,67 @@
 ## Résumé
 
-Corriger `PersonCreateDialog.tsx` pour que la création d'une personne avec les rôles **Membre de fédération** et **Membre de club** écrive aussi dans les tables legacy (`federation_members` / `club_members`), puis mette à jour le profil avec le `legacy_id` correspondant. Ces personnes apparaîtront alors dans les pages fédération et club.
+Migrer les 3 dialogs de création de la page club (`clubs/$id.tsx`) — **Adhérent**, **Encadrant**, **Membre du bureau** — pour qu'ils s'appuient sur le référentiel `persons` plutôt que sur les tables legacy seules. Pour chaque dialog : sélection d'une personne existante via `PersonCombobox`, préremplissage du formulaire, dual-write `*_profiles` + table legacy + `person_roles`, ou ouverture de `PersonCreateDialog` pour créer une nouvelle personne avec le bon `initialRoles`.
 
 ## Fichier modifié
 
-`src/components/persons/PersonCreateDialog.tsx`
+`src/routes/_authenticated/clubs/$id.tsx`
 
-## Modifications
+## Changement 1 — Dialog « Ajouter un adhérent »
 
-### Section `federation_member` (ligne ~319)
+État/données :
+- Remplacer `athletePool` par `personsPool: { id, first_name, last_name, email, photo_url }[]`.
+- Dans `openAddAthlete`, charger `SELECT id, first_name, last_name, email, photo_url FROM persons WHERE is_active = true ORDER BY last_name`.
+- Garder `selectedAthleteId` (renommé conceptuellement en `selectedPersonId`) + l'option `"__new__"`.
+- Ajouter un state `personCreateOpen` + `personInitialRoles`.
 
-Actuellement, seul un `INSERT` dans `federation_member_profiles` est fait. Il faut ajouter **immédiatement après** :
+Options du `PersonCombobox` :
+```
+[
+  { id: "__new__", label: "+ Créer une nouvelle personne" },
+  ...persons.map(p => ({ id: p.id, label: `${p.first_name} ${p.last_name}${p.email ? ` — ${p.email}` : ""}` }))
+]
+```
 
-1. `INSERT` dans `federation_members` (legacy) avec `federation_id`, `first_name`, `last_name`, `email`, `phone`, `role`, `start_date`, `is_active: true`, `person_id`.
-2. `UPDATE` de `federation_member_profiles` pour positionner `legacy_federation_member_id` avec l'`id` retourné par l'insertion legacy.
+Comportement au submit (`submitAddAthlete`) :
+- Si `selectedPersonId === "__new__"` → fermer ce dialog, ouvrir `<PersonCreateDialog open initialRoles={["athlete"]} onCreated={() => load()} />`. Supprimer tout le sous-formulaire « nouveau athlète » embarqué dans ce dialog (devenu inutile).
+- Sinon, vérifier si la personne a déjà un athlete_profile :
+  - `SELECT legacy_athlete_id FROM athlete_profiles WHERE person_id = selectedPersonId`
+  - Si trouvé : `UPDATE athletes SET current_club_id = id WHERE id = legacy_athlete_id` → toast « Athlète rattaché à ce club » → `load()`.
+  - Si non trouvé : fermer ce dialog, ouvrir `<PersonCreateDialog open initialRoles={["athlete"]} />` (création complète du profil athlète). Note : `PersonCreateDialog` actuel ne sait pas pré-attacher une personne existante ; on laisse donc l'utilisateur compléter sur `/persons/$id`. Pour cette branche on affichera plutôt un toast d'info + redirection vers `/persons/$selectedPersonId` (« Ajoute le rôle Athlète depuis sa fiche »).
 
-### Section `club_member` (ligne ~333)
+## Changement 2 — Dialog « Ajouter un encadrant »
 
-Idem : après le `INSERT` dans `club_member_profiles`, ajouter :
+- Ajouter en haut du dialog (au-dessus du select `freeCoaches` existant) un `PersonCombobox` « Sélectionner une personne existante (optionnel) » alimenté par le même `personsPool` chargé dans `load()` (ou un nouveau state partagé `persons`).
+- Nouveau state `selectedCoachPersonId`.
+- Quand une personne est sélectionnée : préremplir `coachForm.first_name/last_name/email/phone` ; réinitialiser `pickedCoachId`.
+- Au submit (`submitCoach`), si `selectedCoachPersonId` :
+  1. INSERT `coaches` (legacy) avec `club_id`, `federation_id`, champs du form, `person_id`.
+  2. INSERT `coach_profiles` avec `person_id`, `legacy_coach_id`, `role`, `federation_id`, `club_id`, `is_active`.
+  3. INSERT `person_roles` `{ person_id, role_type: 'coach' }` ON CONFLICT DO NOTHING (via `upsert` avec `onConflict: 'person_id,role_type', ignoreDuplicates: true`).
+  4. Toast + close + reset `selectedCoachPersonId` + `load()`.
+- Si pas de `selectedCoachPersonId` : conserver exactement le comportement actuel (insert/update `coaches`).
 
-1. `INSERT` dans `club_members` (legacy) avec `club_id`, `first_name`, `last_name`, `email`, `phone`, `role`, `start_date`, `is_active: true`, `person_id`.
-2. `UPDATE` de `club_member_profiles` pour positionner `legacy_club_member_id` avec l'`id` retourné.
+## Changement 3 — Dialog « Ajouter un membre » (bureau)
+
+- Ajouter en haut du dialog un `PersonCombobox` (uniquement quand `!editingMember`).
+- Nouveau state `selectedMemberPersonId`.
+- Quand une personne est sélectionnée : préremplir `memberForm.first_name/last_name/email/phone`.
+- Au submit (`submitMember`), si `!editingMember && selectedMemberPersonId` :
+  1. INSERT `club_members` (legacy) — payload actuel + `person_id`.
+  2. INSERT `club_member_profiles` `{ person_id, club_id, role, start_date, is_active, legacy_club_member_id }`.
+  3. INSERT `person_roles` `{ person_id, role_type: 'club_member' }` (upsert ignoreDuplicates).
+- Sinon (edit ou pas de personne sélectionnée) : conserver le comportement actuel.
+
+## Détails techniques
+
+- Chargement `personsPool` : déplacer dans `load()` pour qu'il soit dispo pour les 3 dialogs (et rechargé après création).
+- Imports à ajouter : `PersonCreateDialog` depuis `@/components/persons/PersonCreateDialog`.
+- Reset des nouveaux states sur `onOpenChange(false)` de chaque dialog.
+- Le sous-formulaire « nouveau athlète » embarqué (`newAthlete`, fields `naf/nal/nabd/nag/nan/nas/nae/nap`) est supprimé : il est remplacé par `PersonCreateDialog`.
 
 ## Hors scope
 
-- Les sections `athlete` et `coach` du même fichier (déjà correctes).
-- Tous les autres fichiers du projet.
+- Le flow `editingMember` (modification d'un membre existant).
+- Les tabs Athletes/Members/Coaches en lecture.
+- `PersonCreateDialog.tsx`.
+- Toute autre page.
