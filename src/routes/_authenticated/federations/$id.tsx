@@ -379,10 +379,12 @@ function FederationDetailPage() {
   const openCreateMember = () => {
     setEditingMember(null);
     setMemberForm(emptyMember);
+    setSelectedMemberPersonId("");
     setMemberOpen(true);
   };
   const openEditMember = (m: FederationMember) => {
     setEditingMember(m);
+    setSelectedMemberPersonId("");
     setMemberForm({
       first_name: m.first_name,
       last_name: m.last_name,
@@ -425,19 +427,62 @@ function FederationDetailPage() {
       notes: memberForm.notes.trim() || null,
       is_active: memberForm.is_active,
     };
-    const { error } = editingMember
-      ? await supabase
-          .from("federation_members")
-          .update(payload)
-          .eq("id", editingMember.id)
-      : await supabase.from("federation_members").insert(payload);
+
+    let newMemberId: string | null = null;
+    let opError: { message: string } | null = null;
+    if (editingMember) {
+      const { error } = await supabase
+        .from("federation_members")
+        .update(payload)
+        .eq("id", editingMember.id);
+      opError = error;
+    } else {
+      const insertPayload = selectedMemberPersonId
+        ? { ...payload, person_id: selectedMemberPersonId }
+        : payload;
+      const { data, error } = await supabase
+        .from("federation_members")
+        .insert(insertPayload)
+        .select("id")
+        .single();
+      opError = error;
+      newMemberId = (data?.id as string | undefined) ?? null;
+    }
+
+    // Dual-write profile + person_roles when linked to an existing person (create only)
+    if (!opError && !editingMember && selectedMemberPersonId && newMemberId) {
+      const { error: profErr } = await supabase
+        .from("federation_member_profiles")
+        .insert({
+          person_id: selectedMemberPersonId,
+          legacy_federation_member_id: newMemberId,
+          federation_id: id,
+          role: memberForm.role,
+          start_date: memberForm.start_date || null,
+          is_active: memberForm.is_active,
+        });
+      if (profErr && !/duplicate|unique/i.test(profErr.message)) {
+        console.warn("federation_member_profiles insert:", profErr.message);
+      }
+      const { error: roleErr } = await supabase
+        .from("person_roles")
+        .insert({
+          person_id: selectedMemberPersonId,
+          role_type: "federation_member",
+        });
+      if (roleErr && !/duplicate|unique/i.test(roleErr.message)) {
+        console.warn("person_roles insert:", roleErr.message);
+      }
+    }
+
     setMemberSaving(false);
-    if (error) {
-      toast.error("Échec de l'enregistrement", { description: friendlyError(error) });
+    if (opError) {
+      toast.error("Échec de l'enregistrement", { description: friendlyError(opError) });
       return;
     }
     toast.success(editingMember ? "Membre modifié" : "Membre ajouté");
     setMemberOpen(false);
+    setSelectedMemberPersonId("");
     load();
   };
 
@@ -463,6 +508,7 @@ function FederationDetailPage() {
   // ---------- Coach CRUD ----------
   const openCreateCoach = () => {
     setPickedCoachId("");
+    setSelectedCoachPersonId("");
     setCoachForm(emptyCoach);
     setCoachOpen(true);
   };
@@ -483,19 +529,98 @@ function FederationDetailPage() {
       role: coachForm.role,
       is_active: coachForm.is_active,
     };
-    const { error } = pickedCoachId
-      ? await supabase.from("coaches").update(payload).eq("id", pickedCoachId)
-      : await supabase.from("coaches").insert(payload);
+
+    let newCoachId: string | null = null;
+    let opError: { message: string } | null = null;
+    if (pickedCoachId) {
+      const { error } = await supabase
+        .from("coaches")
+        .update(payload)
+        .eq("id", pickedCoachId);
+      opError = error;
+      newCoachId = pickedCoachId;
+    } else {
+      const insertPayload = selectedCoachPersonId
+        ? { ...payload, person_id: selectedCoachPersonId }
+        : payload;
+      const { data, error } = await supabase
+        .from("coaches")
+        .insert(insertPayload)
+        .select("id")
+        .single();
+      opError = error;
+      newCoachId = (data?.id as string | undefined) ?? null;
+    }
+
+    if (!opError && !pickedCoachId && selectedCoachPersonId && newCoachId) {
+      const { error: profErr } = await supabase
+        .from("coach_profiles")
+        .insert({
+          person_id: selectedCoachPersonId,
+          legacy_coach_id: newCoachId,
+          role: coachForm.role,
+          federation_id: id,
+          club_id: payload.club_id,
+          is_active: coachForm.is_active,
+        });
+      if (profErr && !/duplicate|unique/i.test(profErr.message)) {
+        console.warn("coach_profiles insert:", profErr.message);
+      }
+      const { error: roleErr } = await supabase
+        .from("person_roles")
+        .insert({ person_id: selectedCoachPersonId, role_type: "coach" });
+      if (roleErr && !/duplicate|unique/i.test(roleErr.message)) {
+        console.warn("person_roles insert:", roleErr.message);
+      }
+    }
+
     setCoachSaving(false);
-    if (error) {
-      toast.error("Échec de l'enregistrement", { description: friendlyError(error) });
+    if (opError) {
+      toast.error("Échec de l'enregistrement", { description: friendlyError(opError) });
       return;
     }
     toast.success(pickedCoachId ? "Encadrant rattaché" : "Encadrant ajouté");
     setCoachOpen(false);
     setPickedCoachId("");
+    setSelectedCoachPersonId("");
     load();
   };
+
+  const personOptions = useMemo(
+    () =>
+      persons.map((p) => ({
+        id: p.id,
+        label: `${p.first_name} ${p.last_name}${p.email ? ` — ${p.email}` : ""}`,
+      })),
+    [persons],
+  );
+
+  const applyPersonToMember = (personId: string) => {
+    setSelectedMemberPersonId(personId);
+    const p = persons.find((x) => x.id === personId);
+    if (!p) return;
+    setMemberForm((f) => ({
+      ...f,
+      first_name: p.first_name,
+      last_name: p.last_name,
+      email: p.email ?? f.email,
+      phone: p.phone ?? f.phone,
+    }));
+  };
+
+  const applyPersonToCoach = (personId: string) => {
+    setSelectedCoachPersonId(personId);
+    const p = persons.find((x) => x.id === personId);
+    if (!p) return;
+    setCoachForm((f) => ({
+      ...f,
+      first_name: p.first_name,
+      last_name: p.last_name,
+      email: p.email ?? f.email,
+      phone: p.phone ?? f.phone,
+    }));
+  };
+
 
 
   if (loading) {
