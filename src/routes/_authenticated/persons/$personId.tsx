@@ -355,6 +355,10 @@ function PersonDetailPage() {
                 .from("persons")
                 .update({ photo_url: url, photo_storage_path: path })
                 .eq("id", person.id);
+              await syncPhotoFromPerson(person.id, {
+                photo_url: url,
+                photo_storage_path: path,
+              });
               load();
             }}
             onDeleted={async () => {
@@ -362,8 +366,13 @@ function PersonDetailPage() {
                 .from("persons")
                 .update({ photo_url: null, photo_storage_path: null })
                 .eq("id", person.id);
+              await syncPhotoFromPerson(person.id, {
+                photo_url: null,
+                photo_storage_path: null,
+              });
               load();
             }}
+
           />
           <div className="flex-1 min-w-[240px] space-y-3">
             <div>
