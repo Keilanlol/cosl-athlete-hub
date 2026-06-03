@@ -570,12 +570,21 @@ function ClubDetailPage() {
     members.find((m) => m.role === "president" && (m.is_active ?? true)) ?? null;
 
   const athletePoolOptions = [
-    { id: "__new__", label: "+ Créer un nouvel adhérent" },
-    ...athletePool.map((a) => ({
-      id: a.id,
-      label: `${a.first_name} ${a.last_name}${a.cosl_id ? ` (${a.cosl_id})` : ""}`,
+    { id: "__new__", label: "+ Créer une nouvelle personne" },
+    ...personsPool.map((p) => ({
+      id: p.id,
+      label: `${p.first_name} ${p.last_name}${p.email ? ` — ${p.email}` : ""}`,
     })),
   ];
+
+  const personPickOptions = [
+    { id: "__none__", label: "Aucune (créer sans personne liée)" },
+    ...personsPool.map((p) => ({
+      id: p.id,
+      label: `${p.first_name} ${p.last_name}${p.email ? ` — ${p.email}` : ""}`,
+    })),
+  ];
+
 
 
   return (
