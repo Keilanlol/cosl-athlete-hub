@@ -34,6 +34,8 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState } from "@/components/DataTableShell";
 import { EntityImageUpload } from "@/components/EntityImageUpload";
+import { findPersonIdForLegacy, syncPhotoFromLegacy } from "@/lib/person-photo-sync";
+
 
 export const Route = createFileRoute("/_authenticated/coaches/$id")({
   component: CoachDetailPage,
