@@ -1338,7 +1338,13 @@ function ClubDetailPage() {
       </Dialog>
 
       {/* ============ Coach dialog ============ */}
-      <Dialog open={coachOpen} onOpenChange={setCoachOpen}>
+      <Dialog
+        open={coachOpen}
+        onOpenChange={(v) => {
+          setCoachOpen(v);
+          if (!v) setSelectedCoachPersonId("");
+        }}
+      >
         <DialogContent className="sm:max-w-lg">
           <form onSubmit={submitCoach}>
             <DialogHeader>
@@ -1348,6 +1354,34 @@ function ClubDetailPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
+              <div className="space-y-1.5 rounded-md border border-dashed border-border bg-muted p-3">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Lier à une personne existante (optionnel)
+                </Label>
+                <PersonCombobox
+                  value={selectedCoachPersonId || "__none__"}
+                  onChange={(v) => {
+                    if (v === "__none__") {
+                      setSelectedCoachPersonId("");
+                      return;
+                    }
+                    setSelectedCoachPersonId(v);
+                    setPickedCoachId("");
+                    const p = personsPool.find((x) => x.id === v);
+                    if (!p) return;
+                    setCoachForm((f) => ({
+                      ...f,
+                      first_name: p.first_name,
+                      last_name: p.last_name,
+                      email: p.email ?? f.email,
+                    }));
+                  }}
+                  options={personPickOptions}
+                  placeholder="Aucune (créer sans personne liée)"
+                  searchPlaceholder="Rechercher une personne…"
+                />
+              </div>
+
               <div className="space-y-1.5 rounded-md border border-dashed border-border bg-muted p-3">
                 <Label className="text-xs uppercase tracking-wide text-muted-foreground">
                   Choisir un encadrant existant ou créer un nouveau
