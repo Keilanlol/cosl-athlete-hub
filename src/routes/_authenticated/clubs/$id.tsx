@@ -1362,90 +1362,107 @@ function ClubDetailPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              <div className="space-y-1.5 rounded-md border border-dashed border-border bg-muted p-3">
-                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Lier à une personne existante (optionnel)
-                </Label>
-                <PersonCombobox
-                  value={selectedCoachPersonId || "__none__"}
-                  onChange={(v) => {
-                    if (v === "__none__") {
-                      setSelectedCoachPersonId("");
-                      return;
-                    }
-                    if (v === "__new__") {
-                      setCoachOpen(false);
-                      setSelectedCoachPersonId("");
-                      setPersonCreateRoles(["coach"]);
-                      setPersonCreateOpen(true);
-                      return;
-                    }
-                    setSelectedCoachPersonId(v);
-                    setPickedCoachId("");
-                    const p = personsPool.find((x) => x.id === v);
-                    if (!p) return;
-                    setCoachForm((f) => ({
-                      ...f,
-                      first_name: p.first_name,
-                      last_name: p.last_name,
-                      email: p.email ?? f.email,
-                    }));
-                  }}
-                  options={personPickOptions}
-                  placeholder="Aucune (créer sans personne liée)"
-                  searchPlaceholder="Rechercher une personne…"
-                />
-              </div>
-
-              <div className="space-y-1.5 rounded-md border border-dashed border-border bg-muted p-3">
-                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Choisir un encadrant existant ou créer un nouveau
-                </Label>
-                <Select
-                  value={pickedCoachId || "__new__"}
-                  onValueChange={(v) => {
-                    if (v === "__new__") {
+              {!pickedCoachId && (
+                <div className="space-y-1.5 rounded-md border border-dashed border-border bg-muted p-3">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Lier à une personne existante (optionnel)
+                  </Label>
+                  <PersonCombobox
+                    value={selectedCoachPersonId || "__none__"}
+                    onChange={(v) => {
+                      if (v === "__none__") {
+                        setSelectedCoachPersonId("");
+                        return;
+                      }
+                      if (v === "__new__") {
+                        setCoachOpen(false);
+                        setSelectedCoachPersonId("");
+                        setPersonCreateRoles(["coach"]);
+                        setPersonCreateOpen(true);
+                        return;
+                      }
+                      setSelectedCoachPersonId(v);
                       setPickedCoachId("");
-                      setCoachForm(emptyCoach);
-                      return;
-                    }
-                    setPickedCoachId(v);
-                    const c = freeCoaches.find((x) => x.id === v);
-                    if (!c) return;
-                    setCoachForm({
-                      first_name: c.first_name,
-                      last_name: c.last_name,
-                      email: c.email ?? "",
-                      phone: c.phone ?? "",
-                      role: c.role ?? "coach",
-                      is_active: c.is_active ?? true,
-                    });
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Nouvel encadrant" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__new__" className="text-primary font-medium">
-                      + Créer un nouvel encadrant
-                    </SelectItem>
-                    {freeCoaches.length > 0 && (
-                      <>
-                        <SelectSeparator />
-                        {freeCoaches.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.first_name} {c.last_name}
-                            {c.email ? ` — ${c.email}` : ""}
-                          </SelectItem>
-                        ))}
-                      </>
-                    )}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Seuls les encadrants sans club sont listés.
-                </p>
-              </div>
+                      const p = personsPool.find((x) => x.id === v);
+                      if (!p) return;
+                      setCoachForm((f) => ({
+                        ...f,
+                        first_name: p.first_name,
+                        last_name: p.last_name,
+                        email: p.email ?? f.email,
+                      }));
+                    }}
+                    options={personPickOptions}
+                    placeholder="Aucune (créer sans personne liée)"
+                    searchPlaceholder="Rechercher une personne…"
+                  />
+                  {selectedCoachPersonId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCoachPersonId("");
+                        setCoachForm(emptyCoach);
+                      }}
+                      className="text-xs text-muted-foreground hover:text-foreground underline"
+                    >
+                      Détacher
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {!selectedCoachPersonId && (
+                <div className="space-y-1.5 rounded-md border border-dashed border-border bg-muted p-3">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Choisir un encadrant existant ou créer un nouveau
+                  </Label>
+                  <Select
+                    value={pickedCoachId || "__new__"}
+                    onValueChange={(v) => {
+                      if (v === "__new__") {
+                        setPickedCoachId("");
+                        setCoachForm(emptyCoach);
+                        return;
+                      }
+                      setPickedCoachId(v);
+                      const c = freeCoaches.find((x) => x.id === v);
+                      if (!c) return;
+                      setCoachForm({
+                        first_name: c.first_name,
+                        last_name: c.last_name,
+                        email: c.email ?? "",
+                        phone: c.phone ?? "",
+                        role: c.role ?? "coach",
+                        is_active: c.is_active ?? true,
+                      });
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Nouvel encadrant" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__new__" className="text-primary font-medium">
+                        + Créer un nouvel encadrant
+                      </SelectItem>
+                      {freeCoaches.length > 0 && (
+                        <>
+                          <SelectSeparator />
+                          {freeCoaches.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.first_name} {c.last_name}
+                              {c.email ? ` — ${c.email}` : ""}
+                            </SelectItem>
+                          ))}
+                        </>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Seuls les encadrants sans club sont listés.
+                  </p>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="ccfn">Prénom *</Label>
