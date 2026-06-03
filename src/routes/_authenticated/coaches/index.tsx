@@ -248,11 +248,21 @@ function CoachesPage() {
             </p>
           </div>
         </div>
-        <Button onClick={openCreate} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
+        <Button onClick={() => setPersonDialogOpen(true)} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
           <Plus className="mr-2 h-4 w-4" />
           Ajouter un encadrant
         </Button>
       </div>
+
+      <PersonCreateDialog
+        open={personDialogOpen}
+        onOpenChange={setPersonDialogOpen}
+        initialRoles={["coach"]}
+        onCreated={(personId) => {
+          load();
+          navigate({ to: "/persons/$personId", params: { personId } });
+        }}
+      />
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative max-w-sm flex-1">
