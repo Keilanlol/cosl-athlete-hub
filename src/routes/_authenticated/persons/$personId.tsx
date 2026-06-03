@@ -601,18 +601,36 @@ function PersonDetailPage() {
             {PERSON_ROLE_TYPES.map((r) => {
               const has = activeRoles.includes(r);
               return (
-                <label
+                <div
                   key={r}
                   className="flex items-center justify-between rounded-md border border-border p-3 text-sm"
                 >
-                  <span className="flex items-center gap-2">
+                  {has ? (
                     <PersonRoleBadge role={r} />
-                  </span>
-                  <Checkbox
-                    checked={has}
-                    onCheckedChange={() => toggleRole(r, has)}
-                  />
-                </label>
+                  ) : (
+                    <span className="text-muted-foreground">{ROLE_LABELS[r]}</span>
+                  )}
+                  {has ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                      onClick={() => removeRole(r)}
+                      aria-label={`Retirer ${ROLE_LABELS[r]}`}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => addRole(r)}
+                      aria-label={`Ajouter ${ROLE_LABELS[r]}`}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
               );
             })}
           </div>
@@ -621,6 +639,20 @@ function PersonDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {addRoleTarget && bundle && (
+        <AddRoleDialog
+          open={!!addRoleTarget}
+          onOpenChange={(o) => !o && setAddRoleTarget(null)}
+          personId={personId}
+          person={bundle.person}
+          role={addRoleTarget}
+          onAdded={() => {
+            setAddRoleTarget(null);
+            load();
+          }}
+        />
+      )}
     </div>
   );
 }
