@@ -1059,67 +1059,11 @@ function ClubDetailPage() {
             </div>
 
             {selectedAthleteId === "__new__" && (
-              <div className="space-y-3 rounded-md border border-dashed border-border bg-muted p-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="naf">Prénom *</Label>
-                    <Input id="naf" value={newAthlete.first_name} onChange={(e) => setNewAthlete({ ...newAthlete, first_name: e.target.value })} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="nal">Nom *</Label>
-                    <Input id="nal" value={newAthlete.last_name} onChange={(e) => setNewAthlete({ ...newAthlete, last_name: e.target.value })} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="nabd">Date de naissance *</Label>
-                    <Input id="nabd" type="date" value={newAthlete.birth_date} onChange={(e) => setNewAthlete({ ...newAthlete, birth_date: e.target.value })} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="nag">Genre *</Label>
-                    <Select value={newAthlete.gender} onValueChange={(v) => setNewAthlete({ ...newAthlete, gender: v as "male" | "female" | "mixed" })}>
-                      <SelectTrigger id="nag"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="male">Homme</SelectItem>
-                        <SelectItem value="female">Femme</SelectItem>
-                        <SelectItem value="mixed">Mixte</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="nan">Nationalité</Label>
-                    <Input id="nan" value={newAthlete.nationality} onChange={(e) => setNewAthlete({ ...newAthlete, nationality: e.target.value.toUpperCase() })} maxLength={3} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="nas">Sport principal</Label>
-                    <Select value={newAthlete.primary_sport_id || "__none__"} onValueChange={(v) => setNewAthlete({ ...newAthlete, primary_sport_id: v === "__none__" ? "" : v })}>
-                      <SelectTrigger id="nas"><SelectValue placeholder="—" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">—</SelectItem>
-                        {sports.map((s) => (
-                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="nae">Email</Label>
-                    <Input id="nae" type="email" value={newAthlete.email} onChange={(e) => setNewAthlete({ ...newAthlete, email: e.target.value })} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="nap">Téléphone</Label>
-                    <Input id="nap" value={newAthlete.phone} onChange={(e) => setNewAthlete({ ...newAthlete, phone: e.target.value })} />
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  L'adhérent sera créé et automatiquement rattaché à ce club. Pour compléter sa fiche (KYC, adresse, etc.), rendez-vous sur sa page dédiée après création.
-                </p>
-              </div>
+              <p className="rounded-md border border-dashed border-border bg-muted p-3 text-xs text-muted-foreground">
+                Vous allez ouvrir le formulaire complet de création de personne avec le rôle <strong>Athlète</strong> pré-coché.
+              </p>
             )}
+
           </div>
           <DialogFooter>
             <Button
