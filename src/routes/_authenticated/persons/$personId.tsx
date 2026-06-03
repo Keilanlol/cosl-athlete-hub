@@ -47,7 +47,10 @@ type PersonBundle = {
   coach_profiles: CoachProfile[];
   federation_member_profiles: FederationMemberProfile[];
   club_member_profiles: ClubMemberProfile[];
+  clubs: Record<string, string>;
+  federations: Record<string, string>;
 };
+
 
 function initials(p: Pick<Person, "first_name" | "last_name">) {
   return `${p.first_name?.[0] ?? ""}${p.last_name?.[0] ?? ""}`.toUpperCase();
