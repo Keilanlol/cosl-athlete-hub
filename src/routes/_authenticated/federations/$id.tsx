@@ -67,6 +67,15 @@ import { AddressSearch } from "@/components/AddressSearch";
 
 import { confirmAction } from "@/components/ConfirmDialog";
 import { EntityImageUpload } from "@/components/EntityImageUpload";
+import { PersonCombobox } from "@/components/PersonCombobox";
+
+type PersonLite = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  phone: string | null;
+};
 
 export const Route = createFileRoute("/_authenticated/federations/$id")({
   component: FederationDetailPage,
