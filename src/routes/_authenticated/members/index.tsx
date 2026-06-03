@@ -440,6 +440,27 @@ function MembersPage() {
               <DialogTitle>Ajouter un membre</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-4">
+              <div className="space-y-1.5 rounded-md border border-dashed border-border bg-muted/40 p-3">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Personne existante (optionnel)
+                </Label>
+                <PersonCombobox
+                  value={selectedPersonId}
+                  onChange={applyPerson}
+                  options={personOptions}
+                  placeholder="Lier à une personne déjà enregistrée…"
+                  searchPlaceholder="Rechercher une personne…"
+                />
+                {selectedPersonId && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPersonId("")}
+                    className="text-xs text-muted-foreground hover:text-foreground underline"
+                  >
+                    Détacher
+                  </button>
+                )}
+              </div>
               <div className="space-y-1.5">
                 <Label>Organisation *</Label>
                 <div className="flex gap-3">
