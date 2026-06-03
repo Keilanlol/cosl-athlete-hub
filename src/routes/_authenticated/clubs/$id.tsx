@@ -492,19 +492,64 @@ function ClubDetailPage() {
       role: coachForm.role,
       is_active: coachForm.is_active,
     };
-    const { error } = pickedCoachId
-      ? await supabase.from("coaches").update(payload).eq("id", pickedCoachId)
-      : await supabase.from("coaches").insert(payload);
-    setCoachSaving(false);
-    if (error) {
+
+    if (pickedCoachId) {
+      const { error } = await supabase
+        .from("coaches")
+        .update(payload)
+        .eq("id", pickedCoachId);
+      setCoachSaving(false);
+      if (error) {
+        toast.error("Échec de l'enregistrement", { description: friendlyError(error) });
+        return;
+      }
+      toast.success("Encadrant rattaché");
+      setCoachOpen(false);
+      setPickedCoachId("");
+      load();
+      return;
+    }
+
+    // New coach (optionally linked to a person)
+    const payloadWithPerson = selectedCoachPersonId
+      ? { ...payload, person_id: selectedCoachPersonId }
+      : payload;
+    const { data: legCoach, error } = await supabase
+      .from("coaches")
+      .insert(payloadWithPerson)
+      .select("id")
+      .single();
+    if (error || !legCoach) {
+      setCoachSaving(false);
       toast.error("Échec de l'enregistrement", { description: friendlyError(error) });
       return;
     }
-    toast.success(pickedCoachId ? "Encadrant rattaché" : "Encadrant ajouté");
+
+    if (selectedCoachPersonId) {
+      await supabase.from("coach_profiles").insert({
+        person_id: selectedCoachPersonId,
+        legacy_coach_id: legCoach.id,
+        role: coachForm.role,
+        federation_id: club?.federation_id ?? null,
+        club_id: id,
+        is_active: coachForm.is_active,
+      });
+      await supabase
+        .from("person_roles")
+        .upsert(
+          { person_id: selectedCoachPersonId, role_type: "coach" },
+          { onConflict: "person_id,role_type", ignoreDuplicates: true },
+        );
+    }
+
+    setCoachSaving(false);
+    toast.success("Encadrant ajouté");
     setCoachOpen(false);
     setPickedCoachId("");
+    setSelectedCoachPersonId("");
     load();
   };
+
 
 
   if (loading) return <div className="p-6 text-muted-foreground">Chargement…</div>;
