@@ -1,89 +1,71 @@
-# Plan consolidé — PERSONNE_PHYSIQUE (superclasse + rôles multiples)
+# Plan — Création multi-étapes & dual-write Person ↔ legacy
 
-## Objectif
-Introduire une entité unique `persons` dont héritent athlètes, encadrants, membres de fédération et membres de club. Une personne peut cumuler plusieurs rôles. Migration **100 % additive** : aucune table existante n'est cassée, aucun FK existant n'est invalidé. Les pages actuelles continuent de fonctionner pendant toute la transition.
+## Décisions retenues (suite aux clarifications)
 
-## Stratégie en 3 phases
+- Types restent dans `src/lib/persons.ts` (pas de migration vers `src/types/`).
+- Pas de couche service/hooks React Query : appels Supabase directs dans les composants (cohérent avec athletes/coaches/clubs).
+- On **enrichit** l'existant au lieu de tout réécrire : filtre Actif/Inactif et photo conservés, 7 rôles préservés, mais Dialog passe en 3 étapes.
 
-### Phase 1 — Migration SQL (non destructive)
-Fichier : `supabase/sql/30_persons_superclass.sql`
+## Périmètre
 
-Ce que la migration crée :
-- **Enum** `person_role_type` : athlete, coach, federation_member, club_member, official, volunteer, staff
-- **Table mère** `persons` : identité, contact, adresse, photo, contact d'urgence
-- **Junction** `person_roles` (person_id, role_type, is_active) — UNIQUE(person_id, role_type)
-- **Profils 1:1 ou 1:N** :
-  - `athlete_profiles` (1:1, contient cosl_id, sport/féd/club primaires, status, tailles, licences, passeport…)
-  - `coach_profiles` (1:N — un encadrant peut intervenir pour plusieurs féd/clubs)
-  - `federation_member_profiles` (1:N — UNIQUE person_id+federation_id+role)
-  - `club_member_profiles` (1:N — UNIQUE person_id+club_id+role)
-- **Colonne `person_id`** ajoutée (nullable, ON DELETE SET NULL) sur `athletes`, `coaches`, `federation_members`, `club_members` → backward compat totale
-- **Backfill** des données existantes :
-  - Chaque athlète → 1 person + 1 athlete_profile + role 'athlete'
-  - Coaches / fed_members / club_members → déduplication par email (réutilise la person si email déjà connu) → ajoute le bon role + profil
-- **Vue de confort** `v_persons_with_roles` (snapshot plat pour les listes : agrège roles[] + champs athlète clés)
-- **RLS + GRANTS** pour `authenticated` (policy `FOR ALL USING (true)` cohérente avec les autres tables du projet)
-- **Triggers** `updated_at` sur `persons` et `athlete_profiles`
-- **NOTIFY pgrst** en fin pour recharger le schéma PostgREST
+3 fichiers touchés. Aucun changement sur `athletes/`, `coaches/`, `clubs/`, `lib/supabase.ts`, `AuthContext`, ni sur la migration SQL 30.
 
-Vérification finale embarquée :
-```text
-athletes_not_linked = 0
-coaches_not_linked = 0
-total_persons ≤ somme(rôles)  (égal si aucun cumul détecté par email)
-```
+## 1. `src/lib/persons.ts` — ajouts mineurs
 
-### Phase 2 — Couche TypeScript (types + service + hooks)
-Fichiers à créer (zéro modification des types existants) :
-- `src/types/persons.ts` — `Person`, `PersonRole`, `PersonRoleType`, profils, `PersonWithRoles`, `PersonListItem`, `ROLE_LABELS`, `ROLE_COLORS`
-- `src/services/personsService.ts` — `fetchPersons`, `fetchPerson`, `createPerson`, `updatePerson`, `addPersonRole`, `removePersonRole`
-- `src/hooks/usePersons.ts` — `usePersonsList`, `usePerson`, `useCreatePerson`, `useUpdatePerson`, `useTogglePersonRole` (React Query, clés `PERSONS_KEYS`)
+Ajouter un alias `ROLE_COLORS = ROLE_BADGE_CLASSES` pour cohérence sémantique, sans casser les imports existants.
 
-Lecture liste via la vue `v_persons_with_roles`. Lecture détail via select imbriqué `persons + person_roles + *_profiles`.
+## 2. `src/components/persons/PersonCreateDialog.tsx` — refonte en 3 étapes
 
-### Phase 3 — UI Personnes
-Fichiers à créer :
-- `src/routes/_authenticated/persons/index.tsx` — Liste avec filtres (rôle, actif, recherche) + badges colorés par rôle
-- `src/routes/_authenticated/persons/$personId.tsx` — Fiche détail avec **onglets dynamiques** : un onglet par rôle actif (Athlète, Encadrant, Fédération, Club, …). L'onglet Athlète réutilise les composants KYC/documents existants via `legacy_athlete_id`.
-- `src/components/persons/PersonRoleBadge.tsx` — Badge réutilisable
-- `src/components/persons/PersonCreateDialog.tsx` — Wizard 3 étapes : (1) infos générales, (2) sélection des rôles, (3) détails par rôle sélectionné
+Remplacer le Dialog actuel (1 écran) par un wizard :
 
-Navigation :
-- Ajout d'un item « Personnes » dans `src/components/AppSidebar.tsx` (icône `Users`), placé au-dessus d'Athlètes
-- Les pages Athlètes / Encadrants / Membres existantes **restent inchangées** dans cette phase
+- **Step 1 — Général** : prénom*, nom*, date de naissance, genre, nationalité (défaut LUX), email, téléphone.
+- **Step 2 — Rôles** : checkboxes pour les **7 rôles** (`athlete`, `coach`, `federation_member`, `club_member`, `official`, `volunteer`, `staff`) avec description courte. Au moins 1 requis.
+- **Step 3 — Profils spécifiques** : sections conditionnelles uniquement pour athlete / coach / fed_member / club_member (les 3 autres rôles n'ont pas de profil dédié, juste l'entrée `person_roles`).
+  - Athlète : sport, fédération, club (filtré par fédération), statut, niveau, n° licence, passeport.
+  - Coach : fonction, fédération, club.
+  - Membre fédération : fédération*, rôle, date début.
+  - Membre club : club*, rôle, date début.
 
-## Coexistence et migration progressive
-- Les tables `athletes`, `coaches`, etc. continuent d'être la source de vérité pour les FKs métier (`selections.athlete_id`, `accreditations.athlete_id`, `flight_passengers.coach_id`…)
-- Toute création future passera idéalement par `persons` puis dérivera dans la table legacy via `legacy_*_id` (à traiter dans une phase 4 ultérieure, hors scope)
-- Aucune suppression de colonne ni de table dans ce plan
+Indicateur d'étapes en haut, boutons Précédent/Suivant/Créer en bas. Chargement de sports/federations/clubs au `open=true`.
+
+### Dual-write (logique métier)
+
+Lors de la création (Step 3 → Créer) :
+
+1. `INSERT INTO persons` → récupérer `personId`.
+2. `INSERT INTO person_roles` pour chaque rôle coché.
+3. Si `athlete` coché :
+   - Générer `cosl_id` (`COSL-{year}-{seq:0000}`) en lisant le max existant.
+   - `INSERT INTO athletes` (legacy, avec `person_id` pour traçabilité) → récupérer `legacyAthleteId`.
+   - `INSERT INTO athlete_profiles` (source de vérité future, avec `legacy_athlete_id`).
+   - `INSERT INTO athlete_kyc` (global_status = 'red').
+4. Si `coach` coché :
+   - `INSERT INTO coaches` (legacy, avec `person_id`) → récupérer `legacyCoachId`.
+   - `INSERT INTO coach_profiles` (avec `legacy_coach_id`).
+5. Si `federation_member` coché → `INSERT INTO federation_member_profiles` (pas de legacy dual-write demandé).
+6. Si `club_member` coché → `INSERT INTO club_member_profiles`.
+7. Toasts succès/erreur, fermeture, callback `onCreated(personId)`.
+
+Les rôles `official` / `volunteer` / `staff` créent uniquement la ligne `person_roles` (pas de profil dédié dans le schéma).
+
+## 3. `src/routes/_authenticated/persons/index.tsx` — conservation + petits ajustements
+
+Garder la version actuelle (Select rôle + Select Actif/Inactif + recherche + pagination shadcn maison + photo dans la 1re colonne). Aucune migration vers tabs/compteurs.
+
+Seul changement : passer le `onCreated` au nouveau Dialog (déjà fait), aucune autre modification.
 
 ## Détails techniques
 
-### Compatibilité avec le schéma existant
-- `persons.gender` réutilise l'enum `public.gender` déjà présent
-- `athlete_profiles.status` réutilise `public.athlete_status`
-- Trigger `set_updated_at` supposé déjà défini (utilisé ailleurs dans `supabase/sql/`). Si absent, l'ajouter dans la même migration avant les triggers.
+- Pas de React Query : `useState` + `await supabase…`, `toast` de `sonner`, `friendlyError` pour les messages.
+- Génération `cosl_id` : `SELECT cosl_id FROM athletes WHERE cosl_id ILIKE 'COSL-{year}-%' ORDER BY cosl_id DESC LIMIT 1`, puis `+1` padded sur 4 digits. Tolère collision (très improbable) — affichera l'erreur PG si conflit.
+- Tous les profils utilisent `person_id` comme lien vers `persons` (créé par la migration 30).
+- Filtrage clubs par fédération dans le Step Athlète (UX).
+- Genre stocké via enum PG existante (`'male' | 'female' | 'mixed'`).
+- Validation minimale : prénom/nom non vides (Step 1), ≥1 rôle (Step 2). Step 3 sans validation forte — les profils incomplets sont insérés tels quels.
 
-### Déploiement (self-hosted)
-```text
-psql -h <host> -U postgres -d postgres -f supabase/sql/30_persons_superclass.sql
-```
-Puis recharger le PostgREST (le `NOTIFY pgrst, 'reload schema'` final suffit normalement).
+## Hors périmètre
 
-### Risques et mitigations
-| Risque | Mitigation |
-|---|---|
-| Doublons à la déduplication par email | Email NULL → toujours nouvelle person ; pas de fusion forcée |
-| `set_updated_at` inexistant | Vérifier dans les migrations 01–29 avant exécution, créer si manquant |
-| Conflit unique sur `person_roles` lors de re-runs | `ON CONFLICT DO NOTHING` partout dans les blocs DO |
-| Vue `v_persons_with_roles` non rechargée par PostgREST | `NOTIFY pgrst` final + redémarrage PostgREST si besoin |
-
-### Hors scope (phases futures)
-- Migration des écritures legacy vers `persons` côté UI Athlètes/Encadrants/Membres
-- Suppression à terme des tables legacy une fois toutes les UI bascules
-- Rôles « sponsor », rôles famille, liens personne ↔ user_account
-
-## Livrables Phase 1 uniquement (ce que je code en premier après ton OK)
-- `supabase/sql/30_persons_superclass.sql` (contenu exact que tu as fourni, après vérification de l'existence de `set_updated_at`)
-
-Phases 2 et 3 enchaînées juste après validation que la migration tourne proprement sur ta base.
+- Édition ultérieure des profils (déjà partiellement gérée dans `$personId.tsx`).
+- Sync inverse legacy → persons (les écritures dans `athletes/coaches` faites depuis les anciens écrans ne créent toujours pas de `person`).
+- Suppression/archivage cascade.
+- Upload photo dans le Dialog (la photo s'ajoute depuis la fiche détail, comme aujourd'hui).

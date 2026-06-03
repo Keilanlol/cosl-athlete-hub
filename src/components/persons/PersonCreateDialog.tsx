@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { ChevronLeft, ChevronRight, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { friendlyError } from "@/lib/error-messages";
@@ -14,11 +15,17 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type Props = {
   open: boolean;
@@ -26,90 +33,362 @@ type Props = {
   onCreated?: (personId: string) => void;
 };
 
-const empty = {
-  first_name: "",
-  last_name: "",
-  email: "",
-  phone: "",
-  birth_date: "",
+type Step = "general" | "roles" | "details";
+const STEPS: Step[] = ["general", "roles", "details"];
+const STEP_LABELS: Record<Step, string> = {
+  general: "Informations générales",
+  roles: "Rôles",
+  details: "Profils spécifiques",
 };
 
+const COACH_ROLES = [
+  "coach",
+  "medical",
+  "chief_of_mission",
+  "press",
+  "manager",
+  "official",
+];
+const FED_ROLES = [
+  "president",
+  "vice_president",
+  "secretary_general",
+  "treasurer",
+  "board_member",
+  "delegate",
+];
+const CLUB_ROLES = [
+  "president",
+  "vice_president",
+  "secretary",
+  "treasurer",
+  "board_member",
+  "head_coach",
+];
+const ATHLETE_STATUSES = ["active", "injured", "suspended", "retired", "ambassador"];
+const ATHLETE_LEVELS = ["elite", "promotion", "espoir", "olympic_contract"];
+
+const ROLE_DESCRIPTIONS: Record<PersonRoleType, string> = {
+  athlete: "Compétitions, sélections, accréditations",
+  coach: "Encadrement technique, médical, logistique",
+  federation_member: "Bureau fédéral, gouvernance",
+  club_member: "Dirigeant de club",
+  official: "Officiel fédéral / international",
+  volunteer: "Bénévole sur événements",
+  staff: "Personnel COSL",
+};
+
+const defaultForm = {
+  first_name: "",
+  last_name: "",
+  birth_date: "",
+  gender: "",
+  nationality: "LUX",
+  email: "",
+  phone: "",
+  selectedRoles: [] as PersonRoleType[],
+  athlete: {
+    primary_sport_id: "",
+    primary_federation_id: "",
+    current_club_id: "",
+    status: "active",
+    level: "promotion",
+    license_number: "",
+    passport_number: "",
+    passport_expiry: "",
+  },
+  coach: { role: "coach", federation_id: "", club_id: "" },
+  fedMember: { federation_id: "", role: "president", start_date: "" },
+  clubMember: { club_id: "", role: "president", start_date: "" },
+};
+
+async function nextCoslId(): Promise<string> {
+  const year = new Date().getFullYear();
+  const { data } = await supabase
+    .from("athletes")
+    .select("cosl_id")
+    .ilike("cosl_id", `COSL-${year}-%`)
+    .order("cosl_id", { ascending: false })
+    .limit(1);
+  const last = data?.[0]?.cosl_id as string | undefined;
+  const seq = last ? parseInt(last.split("-")[2] ?? "0", 10) + 1 : 1;
+  return `COSL-${year}-${String(seq).padStart(4, "0")}`;
+}
+
 export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
-  const [form, setForm] = useState(empty);
-  const [roles, setRoles] = useState<PersonRoleType[]>([]);
+  const [step, setStep] = useState<Step>("general");
+  const [form, setForm] = useState({ ...defaultForm });
+  const [sports, setSports] = useState<{ id: string; name: string }[]>([]);
+  const [federations, setFederations] = useState<
+    { id: string; name: string; acronym: string | null }[]
+  >([]);
+  const [clubs, setClubs] = useState<
+    { id: string; name: string; federation_id: string | null }[]
+  >([]);
   const [saving, setSaving] = useState(false);
 
-  const reset = () => {
-    setForm(empty);
-    setRoles([]);
-  };
+  useEffect(() => {
+    if (!open) {
+      setStep("general");
+      setForm({ ...defaultForm });
+      return;
+    }
+    supabase
+      .from("sports")
+      .select("id, name")
+      .order("name")
+      .then(({ data }) => setSports((data ?? []) as typeof sports));
+    supabase
+      .from("federations")
+      .select("id, name, acronym")
+      .order("acronym")
+      .then(({ data }) => setFederations((data ?? []) as typeof federations));
+    supabase
+      .from("clubs")
+      .select("id, name, federation_id")
+      .order("name")
+      .then(({ data }) => setClubs((data ?? []) as typeof clubs));
+  }, [open]);
+
+  const setProfile = (
+    profile: "athlete" | "coach" | "fedMember" | "clubMember",
+    key: string,
+    value: string,
+  ) => setForm((f) => ({ ...f, [profile]: { ...f[profile], [key]: value } }));
 
   const toggleRole = (r: PersonRoleType) =>
-    setRoles((cur) => (cur.includes(r) ? cur.filter((x) => x !== r) : [...cur, r]));
+    setForm((f) => ({
+      ...f,
+      selectedRoles: f.selectedRoles.includes(r)
+        ? f.selectedRoles.filter((x) => x !== r)
+        : [...f.selectedRoles, r],
+    }));
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.first_name.trim() || !form.last_name.trim()) {
-      toast.error("Prénom et nom requis");
-      return;
+  const stepIndex = STEPS.indexOf(step);
+
+  const canNext = (): boolean => {
+    if (step === "general") return !!(form.first_name.trim() && form.last_name.trim());
+    if (step === "roles") {
+      if (form.selectedRoles.length === 0) return false;
+      // Athlète a besoin de birth_date + gender (NOT NULL en BDD)
+      if (form.selectedRoles.includes("athlete")) {
+        return !!(form.birth_date && form.gender);
+      }
+      return true;
     }
-    setSaving(true);
+    return true;
+  };
 
-    const { data: person, error } = await supabase
-      .from("persons")
-      .insert({
-        first_name: form.first_name.trim(),
-        last_name: form.last_name.trim(),
-        email: form.email.trim() || null,
-        phone: form.phone.trim() || null,
-        birth_date: form.birth_date || null,
-        is_active: true,
-      })
-      .select("id")
-      .single();
-
-    if (error || !person) {
-      setSaving(false);
-      toast.error("Échec de la création", { description: friendlyError(error) });
-      return;
-    }
-
-    if (roles.length > 0) {
-      const { error: rErr } = await supabase
-        .from("person_roles")
-        .insert(roles.map((r) => ({ person_id: person.id, role_type: r })));
-      if (rErr) {
-        toast.error("Personne créée mais erreur sur les rôles", {
-          description: friendlyError(rErr),
-        });
+  const goNext = () => {
+    if (step === "roles" && form.selectedRoles.includes("athlete")) {
+      if (!form.birth_date || !form.gender) {
+        toast.error("Date de naissance et genre requis pour un athlète");
+        setStep("general");
+        return;
       }
     }
+    setStep(STEPS[stepIndex + 1]!);
+  };
 
-    setSaving(false);
-    toast.success("Personne créée");
-    onOpenChange(false);
-    reset();
-    onCreated?.(person.id);
+  const filteredClubsAthlete = form.athlete.primary_federation_id
+    ? clubs.filter((c) => c.federation_id === form.athlete.primary_federation_id)
+    : clubs;
+  const filteredClubsCoach = form.coach.federation_id
+    ? clubs.filter((c) => c.federation_id === form.coach.federation_id)
+    : clubs;
+
+  const handleSubmit = async () => {
+    if (saving) return;
+    setSaving(true);
+
+    try {
+      // 1. persons
+      const { data: p, error: pe } = await supabase
+        .from("persons")
+        .insert({
+          first_name: form.first_name.trim(),
+          last_name: form.last_name.trim(),
+          birth_date: form.birth_date || null,
+          gender: form.gender || null,
+          nationality: form.nationality.trim() || null,
+          email: form.email.trim() || null,
+          phone: form.phone.trim() || null,
+          is_active: true,
+        })
+        .select("id")
+        .single();
+      if (pe || !p) throw pe ?? new Error("Création échouée");
+      const personId = p.id as string;
+
+      // 2. person_roles
+      if (form.selectedRoles.length > 0) {
+        const { error: re } = await supabase
+          .from("person_roles")
+          .insert(
+            form.selectedRoles.map((role_type) => ({
+              person_id: personId,
+              role_type,
+            })),
+          );
+        if (re) throw re;
+      }
+
+      // 3. athlete dual-write
+      if (form.selectedRoles.includes("athlete")) {
+        const cosl_id = await nextCoslId();
+        const { data: legAth, error: lae } = await supabase
+          .from("athletes")
+          .insert({
+            cosl_id,
+            first_name: form.first_name.trim(),
+            last_name: form.last_name.trim(),
+            birth_date: form.birth_date,
+            gender: form.gender,
+            nationality: form.nationality.trim() || "LUX",
+            email: form.email.trim() || null,
+            phone: form.phone.trim() || null,
+            is_active: true,
+            status: form.athlete.status,
+            level: form.athlete.level || null,
+            primary_sport_id: form.athlete.primary_sport_id || null,
+            primary_federation_id: form.athlete.primary_federation_id || null,
+            current_club_id: form.athlete.current_club_id || null,
+            license_number: form.athlete.license_number || null,
+            passport_number: form.athlete.passport_number || null,
+            passport_expiry: form.athlete.passport_expiry || null,
+            person_id: personId,
+          })
+          .select("id")
+          .single();
+        if (lae || !legAth) throw lae ?? new Error("Athlète legacy KO");
+        const legacyAthleteId = legAth.id as string;
+
+        const { error: ape } = await supabase.from("athlete_profiles").insert({
+          person_id: personId,
+          legacy_athlete_id: legacyAthleteId,
+          cosl_id,
+          primary_sport_id: form.athlete.primary_sport_id || null,
+          primary_federation_id: form.athlete.primary_federation_id || null,
+          current_club_id: form.athlete.current_club_id || null,
+          status: form.athlete.status,
+          level: form.athlete.level || null,
+          license_number: form.athlete.license_number || null,
+          passport_number: form.athlete.passport_number || null,
+          passport_expiry: form.athlete.passport_expiry || null,
+        });
+        if (ape) throw ape;
+
+        // KYC initial (best-effort)
+        await supabase
+          .from("athlete_kyc")
+          .insert({ athlete_id: legacyAthleteId, global_status: "red" });
+      }
+
+      // 4. coach dual-write
+      if (form.selectedRoles.includes("coach")) {
+        const { data: legCoach, error: lce } = await supabase
+          .from("coaches")
+          .insert({
+            first_name: form.first_name.trim(),
+            last_name: form.last_name.trim(),
+            email: form.email.trim() || null,
+            phone: form.phone.trim() || null,
+            role: form.coach.role,
+            federation_id: form.coach.federation_id || null,
+            club_id: form.coach.club_id || null,
+            is_active: true,
+            person_id: personId,
+          })
+          .select("id")
+          .single();
+        if (lce || !legCoach) throw lce ?? new Error("Coach legacy KO");
+
+        const { error: cpe } = await supabase.from("coach_profiles").insert({
+          person_id: personId,
+          legacy_coach_id: legCoach.id,
+          role: form.coach.role,
+          federation_id: form.coach.federation_id || null,
+          club_id: form.coach.club_id || null,
+          is_active: true,
+        });
+        if (cpe) throw cpe;
+      }
+
+      // 5. federation_member
+      if (form.selectedRoles.includes("federation_member") && form.fedMember.federation_id) {
+        const { error: fme } = await supabase
+          .from("federation_member_profiles")
+          .insert({
+            person_id: personId,
+            federation_id: form.fedMember.federation_id,
+            role: form.fedMember.role,
+            start_date: form.fedMember.start_date || null,
+            is_active: true,
+          });
+        if (fme) throw fme;
+      }
+
+      // 6. club_member
+      if (form.selectedRoles.includes("club_member") && form.clubMember.club_id) {
+        const { error: cme } = await supabase.from("club_member_profiles").insert({
+          person_id: personId,
+          club_id: form.clubMember.club_id,
+          role: form.clubMember.role,
+          start_date: form.clubMember.start_date || null,
+          is_active: true,
+        });
+        if (cme) throw cme;
+      }
+
+      toast.success("Personne créée avec succès");
+      onOpenChange(false);
+      setForm({ ...defaultForm });
+      setStep("general");
+      onCreated?.(personId);
+    } catch (err) {
+      toast.error("Échec de la création", { description: friendlyError(err as never) });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(o) => {
-        onOpenChange(o);
-        if (!o) reset();
-      }}
-    >
-      <DialogContent className="sm:max-w-lg">
-        <form onSubmit={submit}>
-          <DialogHeader>
-            <DialogTitle>Nouvelle personne</DialogTitle>
-            <DialogDescription>
-              Crée une personne physique puis assigne-lui un ou plusieurs rôles.
-            </DialogDescription>
-          </DialogHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <UserPlus className="h-5 w-5" /> Nouvelle personne
+          </DialogTitle>
+        </DialogHeader>
 
-          <div className="grid gap-4 py-4">
+        {/* Progress */}
+        <div className="my-4 flex items-center gap-2">
+          {STEPS.map((s, i) => (
+            <div key={s} className="flex flex-1 items-center gap-2">
+              <div
+                className={`flex h-7 w-7 items-center justify-center rounded-full border text-xs font-semibold ${
+                  i === stepIndex
+                    ? "border-primary bg-primary text-white"
+                    : i < stepIndex
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-muted text-muted-foreground"
+                }`}
+              >
+                {i + 1}
+              </div>
+              <span
+                className={`text-xs ${i === stepIndex ? "font-medium text-foreground" : "text-muted-foreground"}`}
+              >
+                {STEP_LABELS[s]}
+              </span>
+              {i < STEPS.length - 1 && <div className="h-px flex-1 bg-border" />}
+            </div>
+          ))}
+        </div>
+
+        {/* Step 1 — Général */}
+        {step === "general" && (
+          <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="fn">Prénom *</Label>
@@ -117,7 +396,6 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
                   id="fn"
                   value={form.first_name}
                   onChange={(e) => setForm({ ...form, first_name: e.target.value })}
-                  required
                 />
               </div>
               <div className="space-y-1.5">
@@ -126,11 +404,51 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
                   id="ln"
                   value={form.last_name}
                   onChange={(e) => setForm({ ...form, last_name: e.target.value })}
-                  required
                 />
               </div>
             </div>
-
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="bd">
+                  Date de naissance{" "}
+                  <span className="text-xs text-muted-foreground">(requis si athlète)</span>
+                </Label>
+                <Input
+                  id="bd"
+                  type="date"
+                  value={form.birth_date}
+                  onChange={(e) => setForm({ ...form, birth_date: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>
+                  Genre{" "}
+                  <span className="text-xs text-muted-foreground">(requis si athlète)</span>
+                </Label>
+                <Select
+                  value={form.gender}
+                  onValueChange={(v) => setForm({ ...form, gender: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Homme</SelectItem>
+                    <SelectItem value="female">Femme</SelectItem>
+                    <SelectItem value="mixed">Mixte</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="nat">Nationalité</Label>
+              <Input
+                id="nat"
+                value={form.nationality}
+                onChange={(e) => setForm({ ...form, nationality: e.target.value })}
+                placeholder="LUX"
+              />
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="em">Email</Label>
@@ -150,46 +468,393 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
                 />
               </div>
             </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="bd">Date de naissance</Label>
-              <Input
-                id="bd"
-                type="date"
-                value={form.birth_date}
-                onChange={(e) => setForm({ ...form, birth_date: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Rôles</Label>
-              <div className="grid grid-cols-2 gap-2 rounded-md border border-border p-3">
-                {PERSON_ROLE_TYPES.map((r) => (
-                  <label key={r} className="flex items-center gap-2 text-sm">
-                    <Checkbox
-                      checked={roles.includes(r)}
-                      onCheckedChange={() => toggleRole(r)}
-                    />
-                    {ROLE_LABELS[r]}
-                  </label>
-                ))}
-              </div>
-            </div>
           </div>
+        )}
 
-          <DialogFooter>
+        {/* Step 2 — Rôles */}
+        {step === "roles" && (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Sélectionne un ou plusieurs rôles. Les profils spécifiques seront demandés à
+              l'étape suivante.
+            </p>
+            {PERSON_ROLE_TYPES.map((role) => (
+              <label
+                key={role}
+                className="flex cursor-pointer items-start gap-3 rounded-md border border-border p-3 hover:bg-muted/50"
+              >
+                <Checkbox
+                  checked={form.selectedRoles.includes(role)}
+                  onCheckedChange={() => toggleRole(role)}
+                  className="mt-0.5"
+                />
+                <div className="flex-1">
+                  <div className="text-sm font-medium">{ROLE_LABELS[role]}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {ROLE_DESCRIPTIONS[role]}
+                  </div>
+                </div>
+              </label>
+            ))}
+            {form.selectedRoles.includes("athlete") &&
+              (!form.birth_date || !form.gender) && (
+                <p className="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">
+                  Pour le rôle Athlète, renseigne la date de naissance et le genre à l'étape 1.
+                </p>
+              )}
+          </div>
+        )}
+
+        {/* Step 3 — Profils */}
+        {step === "details" && (
+          <div className="space-y-5">
+            {form.selectedRoles.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                Aucun rôle sélectionné — la personne sera créée sans profil spécifique.
+              </p>
+            )}
+
+            {form.selectedRoles.includes("athlete") && (
+              <section className="space-y-3 rounded-md border border-border p-3">
+                <h3 className="text-sm font-semibold">🏃 Profil Athlète</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Sport principal</Label>
+                    <Select
+                      value={form.athlete.primary_sport_id}
+                      onValueChange={(v) => setProfile("athlete", "primary_sport_id", v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="—" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sports.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Fédération</Label>
+                    <Select
+                      value={form.athlete.primary_federation_id}
+                      onValueChange={(v) => {
+                        setProfile("athlete", "primary_federation_id", v);
+                        setProfile("athlete", "current_club_id", "");
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="—" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {federations.map((f) => (
+                          <SelectItem key={f.id} value={f.id}>
+                            {f.acronym ?? ""} — {f.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Club actuel</Label>
+                  <Select
+                    value={form.athlete.current_club_id}
+                    onValueChange={(v) => setProfile("athlete", "current_club_id", v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="—" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredClubsAthlete.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Statut</Label>
+                    <Select
+                      value={form.athlete.status}
+                      onValueChange={(v) => setProfile("athlete", "status", v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ATHLETE_STATUSES.map((s) => (
+                          <SelectItem key={s} value={s}>
+                            {s}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Niveau</Label>
+                    <Select
+                      value={form.athlete.level}
+                      onValueChange={(v) => setProfile("athlete", "level", v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ATHLETE_LEVELS.map((l) => (
+                          <SelectItem key={l} value={l}>
+                            {l}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>N° licence</Label>
+                    <Input
+                      value={form.athlete.license_number}
+                      onChange={(e) =>
+                        setProfile("athlete", "license_number", e.target.value)
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Passeport n°</Label>
+                    <Input
+                      value={form.athlete.passport_number}
+                      onChange={(e) =>
+                        setProfile("athlete", "passport_number", e.target.value)
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Expiration passeport</Label>
+                  <Input
+                    type="date"
+                    value={form.athlete.passport_expiry}
+                    onChange={(e) =>
+                      setProfile("athlete", "passport_expiry", e.target.value)
+                    }
+                  />
+                </div>
+              </section>
+            )}
+
+            {form.selectedRoles.includes("coach") && (
+              <section className="space-y-3 rounded-md border border-border p-3">
+                <h3 className="text-sm font-semibold">🎯 Profil Encadrant</h3>
+                <div className="space-y-1.5">
+                  <Label>Fonction</Label>
+                  <Select
+                    value={form.coach.role}
+                    onValueChange={(v) => setProfile("coach", "role", v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COACH_ROLES.map((r) => (
+                        <SelectItem key={r} value={r}>
+                          {r}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Fédération</Label>
+                    <Select
+                      value={form.coach.federation_id}
+                      onValueChange={(v) => {
+                        setProfile("coach", "federation_id", v);
+                        setProfile("coach", "club_id", "");
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="—" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {federations.map((f) => (
+                          <SelectItem key={f.id} value={f.id}>
+                            {f.acronym ?? ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Club</Label>
+                    <Select
+                      value={form.coach.club_id}
+                      onValueChange={(v) => setProfile("coach", "club_id", v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="—" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {filteredClubsCoach.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {form.selectedRoles.includes("federation_member") && (
+              <section className="space-y-3 rounded-md border border-border p-3">
+                <h3 className="text-sm font-semibold">🏛️ Membre de fédération</h3>
+                <div className="space-y-1.5">
+                  <Label>Fédération *</Label>
+                  <Select
+                    value={form.fedMember.federation_id}
+                    onValueChange={(v) => setProfile("fedMember", "federation_id", v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="—" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {federations.map((f) => (
+                        <SelectItem key={f.id} value={f.id}>
+                          {f.acronym ?? ""} — {f.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Rôle</Label>
+                    <Select
+                      value={form.fedMember.role}
+                      onValueChange={(v) => setProfile("fedMember", "role", v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {FED_ROLES.map((r) => (
+                          <SelectItem key={r} value={r}>
+                            {r}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Depuis</Label>
+                    <Input
+                      type="date"
+                      value={form.fedMember.start_date}
+                      onChange={(e) =>
+                        setProfile("fedMember", "start_date", e.target.value)
+                      }
+                    />
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {form.selectedRoles.includes("club_member") && (
+              <section className="space-y-3 rounded-md border border-border p-3">
+                <h3 className="text-sm font-semibold">🏟️ Membre de club</h3>
+                <div className="space-y-1.5">
+                  <Label>Club *</Label>
+                  <Select
+                    value={form.clubMember.club_id}
+                    onValueChange={(v) => setProfile("clubMember", "club_id", v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="—" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clubs.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Rôle</Label>
+                    <Select
+                      value={form.clubMember.role}
+                      onValueChange={(v) => setProfile("clubMember", "role", v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CLUB_ROLES.map((r) => (
+                          <SelectItem key={r} value={r}>
+                            {r}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Depuis</Label>
+                    <Input
+                      type="date"
+                      value={form.clubMember.start_date}
+                      onChange={(e) =>
+                        setProfile("clubMember", "start_date", e.target.value)
+                      }
+                    />
+                  </div>
+                </div>
+              </section>
+            )}
+          </div>
+        )}
+
+        <DialogFooter className="mt-2 flex justify-between sm:justify-between">
+          <div>
+            {stepIndex > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setStep(STEPS[stepIndex - 1]!)}
+                disabled={saving}
+              >
+                <ChevronLeft className="mr-1 h-4 w-4" /> Précédent
+              </Button>
+            )}
+          </div>
+          <div className="flex gap-2">
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               onClick={() => onOpenChange(false)}
+              disabled={saving}
             >
               Annuler
             </Button>
-            <Button type="submit" disabled={saving}>
-              {saving ? "Création…" : "Créer"}
-            </Button>
-          </DialogFooter>
-        </form>
+            {step !== "details" ? (
+              <Button type="button" onClick={goNext} disabled={!canNext()}>
+                Suivant <ChevronRight className="ml-1 h-4 w-4" />
+              </Button>
+            ) : (
+              <Button type="button" onClick={handleSubmit} disabled={saving}>
+                {saving ? "Création…" : "Créer la personne"}
+              </Button>
+            )}
+          </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
