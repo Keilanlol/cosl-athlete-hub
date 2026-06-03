@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, Search, GraduationCap } from "lucide-react";
+import { Pencil, Trash2, Search, GraduationCap } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { COACH_ROLES, type Club, type Coach, type Federation } from "@/lib/types";
