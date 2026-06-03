@@ -1,150 +1,80 @@
-# Liaison "personne existante" sur les dialogs Fédération & Membres
+# Refonte de la gestion des rôles d'une personne
 
 ## Objectif
-
-Sur les trois dialogs ci-dessous, ajouter en tête un `PersonCombobox` qui :
-- préremplit le formulaire existant (nom, prénom, email, téléphone) à la sélection ;
-- au submit, déclenche un dual-write : profil correspondant + `person_roles`
-  (les deux en `ON CONFLICT DO NOTHING`).
-Si aucune personne n'est sélectionnée, le comportement actuel est conservé à l'identique.
+Sur la fiche personne (`/persons/$personId`), transformer le dialog "Gérer les rôles" (actuellement de simples checkboxes sur `person_roles`) en un vrai workflow dual-write : ajouter un rôle ouvre un formulaire spécifique qui crée le profil + l'entrée legacy ; supprimer un rôle demande confirmation et nettoie profile + legacy + `person_roles`.
 
 ## Fichiers
 
 | Fichier | Action |
 |---|---|
-| `src/routes/_authenticated/federations/$id.tsx` | Modifier (2 dialogs) |
-| `src/routes/_authenticated/members/index.tsx` | Modifier (1 dialog) |
+| `src/components/persons/AddRoleDialog.tsx` | **Créer** |
+| `src/routes/_authenticated/persons/$personId.tsx` | **Modifier** (dialog rôles + remplace `toggleRole`) |
 
-Aucun autre fichier touché. `PersonCombobox.tsx`, `PersonCreateDialog.tsx`,
-`federations/index.tsx`, `FedMemberDetailPage`, `ClubMemberDetailPage` :
-inchangés.
+Pas de changement à `PersonCreateDialog.tsx`, ni aux pages de liste, ni à la BDD.
 
-## 1. `federations/$id.tsx` — Dialog "Ajouter un membre"
+## 1. `AddRoleDialog.tsx` (nouveau)
 
-- Nouveau state local : `selectedMemberPersonId: string | null`.
-- En tête du `DialogContent` (juste sous `DialogHeader`), insérer :
-  ```tsx
-  <div className="space-y-1.5">
-    <Label>Personne existante (optionnel)</Label>
-    <PersonCombobox
-      value={selectedMemberPersonId}
-      onChange={(personId, person) => {
-        setSelectedMemberPersonId(personId);
-        if (person) setMemberForm(f => ({
-          ...f,
-          first_name: person.first_name,
-          last_name: person.last_name,
-          email: person.email ?? "",
-          phone: person.phone ?? "",
-        }));
-      }}
-    />
-  </div>
-  ```
-- Reset de `selectedMemberPersonId` à `null` quand le dialog se ferme ou
-  passe en mode édition (`editingMember` non nul) — la liaison ne s'applique
-  qu'en création.
-- Au submit (création uniquement, pas d'édition), juste après le `INSERT
-  federation_members` réussi : récupérer l'`id` créé via `.select("id").single()`
-  puis :
-  ```ts
-  if (!editingMember && selectedMemberPersonId) {
-    await supabase.from("federation_member_profiles")
-      .upsert({
-        person_id: selectedMemberPersonId,
-        legacy_federation_member_id: newId,
-        federation_id, role: memberForm.role,
-        start_date: memberForm.start_date || null,
-        is_active: memberForm.is_active,
-      }, { onConflict: "person_id,federation_id,role", ignoreDuplicates: true });
-    await supabase.from("person_roles")
-      .upsert({ person_id: selectedMemberPersonId, role_type: "federation_member" },
-        { onConflict: "person_id,role_type", ignoreDuplicates: true });
-  }
-  ```
-  Note : la stratégie `upsert + ignoreDuplicates` est l'équivalent supabase de
-  `ON CONFLICT DO NOTHING`. Les colonnes `onConflict` sont les contraintes UNIQUE
-  existantes (à vérifier au moment du code ; à défaut, fallback : SELECT + INSERT
-  conditionnel).
+Props : `{ open, onOpenChange, personId, person: { first_name, last_name, birth_date, gender, nationality, email, phone }, role: PersonRoleType, onAdded: () => void }`.
 
-## 2. `federations/$id.tsx` — Dialog "Ajouter un encadrant"
+- Titre : `Ajouter le rôle « {ROLE_LABELS[role]} » — {first_name} {last_name}`
+- Au montage (quand `open`), charge `sports`, `federations`, `clubs`, et `athlete_levels_ref` depuis Supabase.
+- Affiche les champs conditionnels selon `role` (mêmes intitulés que `PersonCreateDialog`) :
+  - **athlete** : sport principal, fédération, club (filtré par fédération), statut (`active|injured|suspended|retired|ambassador`), niveau (depuis `athlete_levels_ref`), n° licence, n° passeport, expiry passeport. **Garde-fou** : si `person.birth_date` ou `person.gender` manquent, bloquer avec message "Renseigner d'abord la date de naissance et le genre" (NOT NULL côté `athletes`).
+  - **coach** : fonction (`coach|medical|chief_of_mission|press|manager|official`), fédération (opt), club (opt, filtré).
+  - **federation_member** : fédération *, rôle *, start_date (opt).
+  - **club_member** : club *, rôle *, start_date (opt).
+  - **official / volunteer / staff** : aucun champ ; juste un message "Aucune information supplémentaire requise".
 
-Même schéma :
-- State `selectedCoachPersonId`.
-- `PersonCombobox` en tête, préremplit `coachForm.first_name/last_name/email/phone`.
-- Au submit création (pas d'édition), après `INSERT coaches` (modifié pour
-  `.select("id").single()`) :
-  ```ts
-  if (!pickedCoachId && selectedCoachPersonId) {
-    await supabase.from("coaches").update({ person_id: selectedCoachPersonId })
-      .eq("id", newCoachId);
-    await supabase.from("coach_profiles").upsert({
-      person_id: selectedCoachPersonId,
-      legacy_coach_id: newCoachId,
-      role: coachForm.role,
-      federation_id, club_id: coachForm.club_id || null,
-      is_active: coachForm.is_active,
-    }, { onConflict: "person_id,legacy_coach_id", ignoreDuplicates: true });
-    await supabase.from("person_roles").upsert(
-      { person_id: selectedCoachPersonId, role_type: "coach" },
-      { onConflict: "person_id,role_type", ignoreDuplicates: true });
-  }
-  ```
+### Dual-write au submit (transaction logique, try/catch + `friendlyError`)
 
-## 3. `members/index.tsx` — Dialog global "Ajouter un membre"
+- **athlete** : `nextCoslId()` (dupliquer la fonction depuis `PersonCreateDialog`) → INSERT `athletes` (avec `person_id`, `is_active=true`) → récupérer `legacy_athlete_id` → INSERT `athlete_profiles` → INSERT `athlete_kyc` (`global_status='red'`, best-effort) → INSERT `person_roles`.
+- **coach** : INSERT `coaches` → `legacy_coach_id` → INSERT `coach_profiles` → INSERT `person_roles`.
+- **federation_member** : INSERT `federation_members` → `legacy_federation_member_id` → INSERT `federation_member_profiles` → INSERT `person_roles`.
+- **club_member** : INSERT `club_members` → `legacy_club_member_id` → INSERT `club_member_profiles` → INSERT `person_roles`.
+- **official / volunteer / staff** : INSERT `person_roles` seul.
 
-- State `selectedPersonId`.
-- `PersonCombobox` en tête, préremplit `createForm.first_name/last_name/email/phone`.
-- Au submit, après le `INSERT` (la table dépend de `orgType` :
-  `federation_members` ou `club_members`) qu'on modifie pour renvoyer `.select("id").single()` :
-  ```ts
-  if (selectedPersonId) {
-    if (orgType === "fed") {
-      await supabase.from("federation_member_profiles").upsert({
-        person_id: selectedPersonId,
-        legacy_federation_member_id: newId,
-        federation_id: createForm.federation_id,
-        role: createForm.role,
-        start_date: createForm.start_date || null,
-        is_active: true,
-      }, { onConflict: "person_id,federation_id,role", ignoreDuplicates: true });
-      await supabase.from("person_roles").upsert(
-        { person_id: selectedPersonId, role_type: "federation_member" },
-        { onConflict: "person_id,role_type", ignoreDuplicates: true });
-    } else {
-      await supabase.from("club_member_profiles").upsert({
-        person_id: selectedPersonId,
-        legacy_club_member_id: newId,
-        club_id: createForm.club_id,
-        role: createForm.role,
-        start_date: createForm.start_date || null,
-        is_active: true,
-      }, { onConflict: "person_id,club_id,role", ignoreDuplicates: true });
-      await supabase.from("person_roles").upsert(
-        { person_id: selectedPersonId, role_type: "club_member" },
-        { onConflict: "person_id,role_type", ignoreDuplicates: true });
-    }
-  }
-  ```
-- Reset de `selectedPersonId` à la fermeture du dialog.
+Sur succès → `toast.success("Rôle ajouté")` → `onAdded()` → `onOpenChange(false)`.
 
-## Détails d'implémentation
+## 2. `$personId.tsx` (modifier)
 
-- `PersonCombobox` existe déjà (`src/components/PersonCombobox.tsx`, 88 lignes) ;
-  je vérifie sa signature exacte avant le câblage et adapte le contrat
-  `onChange(personId, person?)` si nécessaire (fallback : fetch `persons` par id
-  juste après sélection pour récupérer email/phone).
-- Modifier les `INSERT` existants pour récupérer l'`id` (`.select("id").single()`)
-  est requis pour pouvoir écrire `legacy_*_id` dans le profil.
-- Si la contrainte UNIQUE utilisée pour `onConflict` n'existe pas en BDD,
-  fallback : `SELECT … WHERE …` puis `INSERT` conditionnel — pas de migration.
-- Aucun champ ajouté au form ; aucune restructuration ; aucun changement de
-  layout en dehors d'un bloc unique inséré en tête.
+### Supprimer
+- La fonction `toggleRole` actuelle (lignes ~175-198).
+
+### Ajouter
+- État : `const [addRoleTarget, setAddRoleTarget] = useState<PersonRoleType | null>(null)`.
+- `addRole(r)` : ferme le dialog "Gérer les rôles" (`setRolesOpen(false)`) et `setAddRoleTarget(r)`.
+- `removeRole(r)` :
+  1. `confirmAction({ destructive: true, title: 'Supprimer le rôle « ' + ROLE_LABELS[r] + ' » ?', description: 'Les données de profil liées seront supprimées définitivement.', confirmLabel: 'Supprimer' })`.
+  2. Selon `r` :
+     - **athlete** : lire `athlete_profiles.legacy_athlete_id` → `UPDATE athletes SET is_active=false WHERE id=…` (soft-delete pour préserver sélections/documents/KYC) → `DELETE athlete_profiles` → `DELETE person_roles`.
+     - **coach** : `legacy_coach_id` → `DELETE coaches` → `DELETE coach_profiles` (tous pour ce `person_id`) → `DELETE person_roles`.
+     - **federation_member** : `legacy_federation_member_id` → `DELETE federation_members` → `DELETE federation_member_profiles` → `DELETE person_roles`.
+     - **club_member** : `legacy_club_member_id` → `DELETE club_members` → `DELETE club_member_profiles` → `DELETE person_roles`.
+     - **official / volunteer / staff** : `DELETE person_roles` seul.
+  3. `toast.success("Rôle supprimé")` → `load()`.
+
+### Dialog "Gérer les rôles" — nouvelle UI
+Remplace les checkboxes par une liste de `PERSON_ROLE_TYPES` :
+- Rôle **assigné** → ligne avec `<PersonRoleBadge role={r} />` + libellé + bouton rouge `✕` (icône `X`) à droite → `removeRole(r)`.
+- Rôle **non assigné** → ligne grisée avec libellé + bouton `+` (icône `Plus`) à droite → `addRole(r)`.
+
+### Monter `AddRoleDialog`
+En bas du JSX :
+```
+{addRoleTarget && bundle && (
+  <AddRoleDialog
+    open={!!addRoleTarget}
+    onOpenChange={(o) => !o && setAddRoleTarget(null)}
+    personId={personId}
+    person={bundle.person}
+    role={addRoleTarget}
+    onAdded={() => { setAddRoleTarget(null); load(); }}
+  />
+)}
+```
 
 ## Hors scope
-
-- `federations/index.tsx` (logique `pendingPresident`).
-- `FedMemberDetailPage`, `ClubMemberDetailPage`.
-- `PersonCreateDialog.tsx`.
-- Structure des formulaires existants.
-- Toute migration BDD.
+- `PersonCreateDialog.tsx` (création initiale OK).
+- Pages de listes (athletes, coaches, federations, clubs, members).
+- Migration BDD, refonte de `confirmAction` ou `EntityImageUpload`.
+- Composants Documents / KYC / Palmarès de la fiche athlète.
