@@ -130,6 +130,11 @@ function AthleteDetailPage() {
   const { items: sportsRef, add: addSport, remove: removeSport } = useSports();
   const { items: docTypes, add: addDocType, remove: removeDocType } = useDocumentTypes();
   const [athlete, setAthlete] = useState<Athlete | null>(null);
+  const [personId, setPersonId] = useState<string | null>(null);
+  useEffect(() => {
+    supabase.from("athletes").select("person_id").eq("id", id).maybeSingle()
+      .then(({ data }) => setPersonId(((data as { person_id?: string | null } | null)?.person_id) ?? null));
+  }, [id]);
   const [loading, setLoading] = useState(true);
   const [sport, setSport] = useState<Sport | null>(null);
   const [federation, setFederation] = useState<Federation | null>(null);
