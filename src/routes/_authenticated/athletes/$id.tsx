@@ -770,6 +770,13 @@ function AthleteDetailPage() {
           </div>
         </div>
         <div className="flex gap-2">
+          {personId && (
+            <Button asChild variant="outline">
+              <Link to="/persons/$personId" params={{ personId }}>
+                <Users className="mr-2 h-4 w-4" /> Fiche personne
+              </Link>
+            </Button>
+          )}
           <Button onClick={openEdit} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
             <Pencil className="mr-2 h-4 w-4" /> Modifier
           </Button>
