@@ -346,7 +346,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated }: Props) {
       setStep("general");
       onCreated?.(personId);
     } catch (err) {
-      toast.error("Échec de la création", { description: friendlyError(err) });
+      toast.error("Échec de la création", { description: friendlyError(err as never) });
     } finally {
       setSaving(false);
     }
