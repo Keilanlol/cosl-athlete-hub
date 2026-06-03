@@ -1519,6 +1519,15 @@ function ClubDetailPage() {
           </form>
         </DialogContent>
       </Dialog>
+      <PersonCreateDialog
+        open={personCreateOpen}
+        onOpenChange={setPersonCreateOpen}
+        initialRoles={personCreateRoles}
+        onCreated={() => {
+          load();
+        }}
+      />
     </div>
   );
 }
+
