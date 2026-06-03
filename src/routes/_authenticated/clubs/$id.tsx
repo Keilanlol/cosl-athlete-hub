@@ -396,18 +396,62 @@ function ClubDetailPage() {
       notes: memberForm.notes.trim() || null,
       is_active: memberForm.is_active,
     };
-    const { error } = editingMember
-      ? await supabase.from("club_members").update(payload).eq("id", editingMember.id)
-      : await supabase.from("club_members").insert(payload);
-    setMemberSaving(false);
-    if (error) {
+
+    if (editingMember) {
+      const { error } = await supabase
+        .from("club_members")
+        .update(payload)
+        .eq("id", editingMember.id);
+      setMemberSaving(false);
+      if (error) {
+        toast.error("Échec de l'enregistrement", { description: friendlyError(error) });
+        return;
+      }
+      toast.success("Membre modifié");
+      setMemberOpen(false);
+      load();
+      return;
+    }
+
+    // Create branch: optional person dual-write
+    const payloadWithPerson = selectedMemberPersonId
+      ? { ...payload, person_id: selectedMemberPersonId }
+      : payload;
+    const { data: legCm, error } = await supabase
+      .from("club_members")
+      .insert(payloadWithPerson)
+      .select("id")
+      .single();
+    if (error || !legCm) {
+      setMemberSaving(false);
       toast.error("Échec de l'enregistrement", { description: friendlyError(error) });
       return;
     }
-    toast.success(editingMember ? "Membre modifié" : "Membre ajouté");
+
+    if (selectedMemberPersonId) {
+      await supabase.from("club_member_profiles").insert({
+        person_id: selectedMemberPersonId,
+        club_id: id,
+        role: memberForm.role,
+        start_date: memberForm.start_date || null,
+        is_active: memberForm.is_active,
+        legacy_club_member_id: legCm.id,
+      });
+      await supabase
+        .from("person_roles")
+        .upsert(
+          { person_id: selectedMemberPersonId, role_type: "club_member" },
+          { onConflict: "person_id,role_type", ignoreDuplicates: true },
+        );
+    }
+
+    setMemberSaving(false);
+    toast.success("Membre ajouté");
     setMemberOpen(false);
+    setSelectedMemberPersonId("");
     load();
   };
+
 
   const removeMember = async (m: ClubMember) => {
     const ok = await confirmAction({
