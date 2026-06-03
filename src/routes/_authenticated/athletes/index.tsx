@@ -431,10 +431,20 @@ function AthletesPage() {
             </p>
           </div>
         </div>
-        <Button onClick={openCreate} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
+        <Button onClick={() => setPersonDialogOpen(true)} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
           <Plus className="mr-2 h-4 w-4" /> Ajouter un athlète
         </Button>
       </div>
+
+      <PersonCreateDialog
+        open={personDialogOpen}
+        onOpenChange={setPersonDialogOpen}
+        initialRoles={["athlete"]}
+        onCreated={(personId) => {
+          load();
+          navigate({ to: "/persons/$personId", params: { personId } });
+        }}
+      />
 
       {(kycRedCount > 0 || kycOrangeCount > 0) && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 flex items-center gap-3">
