@@ -1,48 +1,89 @@
-# Plan — Photos club_members + seed des images entités
+# Plan consolidé — PERSONNE_PHYSIQUE (superclasse + rôles multiples)
 
-## 1. Migration SQL — `supabase/sql/22_club_members_photo.sql`
+## Objectif
+Introduire une entité unique `persons` dont héritent athlètes, encadrants, membres de fédération et membres de club. Une personne peut cumuler plusieurs rôles. Migration **100 % additive** : aucune table existante n'est cassée, aucun FK existant n'est invalidé. Les pages actuelles continuent de fonctionner pendant toute la transition.
 
-Ajouter les colonnes photo sur `club_members` (mêmes noms que `federation_members`) :
+## Stratégie en 3 phases
 
-```sql
-ALTER TABLE public.club_members
-  ADD COLUMN IF NOT EXISTS photo_url          TEXT,
-  ADD COLUMN IF NOT EXISTS photo_storage_path TEXT;
+### Phase 1 — Migration SQL (non destructive)
+Fichier : `supabase/sql/30_persons_superclass.sql`
 
-NOTIFY pgrst, 'reload schema';
+Ce que la migration crée :
+- **Enum** `person_role_type` : athlete, coach, federation_member, club_member, official, volunteer, staff
+- **Table mère** `persons` : identité, contact, adresse, photo, contact d'urgence
+- **Junction** `person_roles` (person_id, role_type, is_active) — UNIQUE(person_id, role_type)
+- **Profils 1:1 ou 1:N** :
+  - `athlete_profiles` (1:1, contient cosl_id, sport/féd/club primaires, status, tailles, licences, passeport…)
+  - `coach_profiles` (1:N — un encadrant peut intervenir pour plusieurs féd/clubs)
+  - `federation_member_profiles` (1:N — UNIQUE person_id+federation_id+role)
+  - `club_member_profiles` (1:N — UNIQUE person_id+club_id+role)
+- **Colonne `person_id`** ajoutée (nullable, ON DELETE SET NULL) sur `athletes`, `coaches`, `federation_members`, `club_members` → backward compat totale
+- **Backfill** des données existantes :
+  - Chaque athlète → 1 person + 1 athlete_profile + role 'athlete'
+  - Coaches / fed_members / club_members → déduplication par email (réutilise la person si email déjà connu) → ajoute le bon role + profil
+- **Vue de confort** `v_persons_with_roles` (snapshot plat pour les listes : agrège roles[] + champs athlète clés)
+- **RLS + GRANTS** pour `authenticated` (policy `FOR ALL USING (true)` cohérente avec les autres tables du projet)
+- **Triggers** `updated_at` sur `persons` et `athlete_profiles`
+- **NOTIFY pgrst** en fin pour recharger le schéma PostgREST
+
+Vérification finale embarquée :
+```text
+athletes_not_linked = 0
+coaches_not_linked = 0
+total_persons ≤ somme(rôles)  (égal si aucun cumul détecté par email)
 ```
 
-## 2. Types — `src/lib/types.ts`
+### Phase 2 — Couche TypeScript (types + service + hooks)
+Fichiers à créer (zéro modification des types existants) :
+- `src/types/persons.ts` — `Person`, `PersonRole`, `PersonRoleType`, profils, `PersonWithRoles`, `PersonListItem`, `ROLE_LABELS`, `ROLE_COLORS`
+- `src/services/personsService.ts` — `fetchPersons`, `fetchPerson`, `createPerson`, `updatePerson`, `addPersonRole`, `removePersonRole`
+- `src/hooks/usePersons.ts` — `usePersonsList`, `usePerson`, `useCreatePerson`, `useUpdatePerson`, `useTogglePersonRole` (React Query, clés `PERSONS_KEYS`)
 
-Étendre `ClubMember` avec `photo_url?: string | null` et `photo_storage_path?: string | null`.
+Lecture liste via la vue `v_persons_with_roles`. Lecture détail via select imbriqué `persons + person_roles + *_profiles`.
 
-## 3. UI — `src/routes/_authenticated/clubs/$id.tsx`
+### Phase 3 — UI Personnes
+Fichiers à créer :
+- `src/routes/_authenticated/persons/index.tsx` — Liste avec filtres (rôle, actif, recherche) + badges colorés par rôle
+- `src/routes/_authenticated/persons/$personId.tsx` — Fiche détail avec **onglets dynamiques** : un onglet par rôle actif (Athlète, Encadrant, Fédération, Club, …). L'onglet Athlète réutilise les composants KYC/documents existants via `legacy_athlete_id`.
+- `src/components/persons/PersonRoleBadge.tsx` — Badge réutilisable
+- `src/components/persons/PersonCreateDialog.tsx` — Wizard 3 étapes : (1) infos générales, (2) sélection des rôles, (3) détails par rôle sélectionné
 
-- Sélectionner les nouvelles colonnes dans les requêtes `club_members`.
-- Onglet Membres : remplacer l'avatar « initiales » par `<EntityImageUpload shape="circle" size="sm" entityType="club_member" />` en lecture (ou simple `<img>` si pas d'édition inline) — calqué sur l'onglet Membres de la fiche fédération.
-- Dialog d'édition d'un membre : ajouter `<EntityImageUpload shape="circle" size="lg" entityType="club_member" label="Photo" />` (visible uniquement quand `editingMember.id` existe), avec `onUploaded`/`onDeleted` qui font le `update` sur `club_members`.
+Navigation :
+- Ajout d'un item « Personnes » dans `src/components/AppSidebar.tsx` (icône `Users`), placé au-dessus d'Athlètes
+- Les pages Athlètes / Encadrants / Membres existantes **restent inchangées** dans cette phase
 
-## 4. Composant `EntityImageUpload`
+## Coexistence et migration progressive
+- Les tables `athletes`, `coaches`, etc. continuent d'être la source de vérité pour les FKs métier (`selections.athlete_id`, `accreditations.athlete_id`, `flight_passengers.coach_id`…)
+- Toute création future passera idéalement par `persons` puis dérivera dans la table legacy via `legacy_*_id` (à traiter dans une phase 4 ultérieure, hors scope)
+- Aucune suppression de colonne ni de table dans ce plan
 
-Ajouter `club_member` à l'union `entityType` et au mapping de chemin de stockage : `club-members/{id}/photo/photo.{ext}`.
+## Détails techniques
 
-## 5. Seed des images — `supabase/sql/23_seed_entity_images.sql`
+### Compatibilité avec le schéma existant
+- `persons.gender` réutilise l'enum `public.gender` déjà présent
+- `athlete_profiles.status` réutilise `public.athlete_status`
+- Trigger `set_updated_at` supposé déjà défini (utilisé ailleurs dans `supabase/sql/`). Si absent, l'ajouter dans la même migration avant les triggers.
 
-Remplir `logo_url` / `photo_url` pour les lignes existantes qui n'en ont pas, via des URLs publiques déterministes (pas de fichiers réels dans le bucket, donc `*_storage_path` reste `NULL` — l'upload via UI le remplira plus tard) :
+### Déploiement (self-hosted)
+```text
+psql -h <host> -U postgres -d postgres -f supabase/sql/30_persons_superclass.sql
+```
+Puis recharger le PostgREST (le `NOTIFY pgrst, 'reload schema'` final suffit normalement).
 
-- **federations.logo_url** : `https://api.dicebear.com/9.x/initials/svg?seed={short_name}&backgroundType=gradientLinear&radius=20`
-- **clubs.logo_url** : même générateur, seed = `acronym` ou `name`
-- **federation_members.photo_url** : `https://api.dicebear.com/9.x/avataaars/svg?seed={id}`
-- **coaches.photo_url** : `https://api.dicebear.com/9.x/avataaars/svg?seed={id}`
-- **club_members.photo_url** : idem
+### Risques et mitigations
+| Risque | Mitigation |
+|---|---|
+| Doublons à la déduplication par email | Email NULL → toujours nouvelle person ; pas de fusion forcée |
+| `set_updated_at` inexistant | Vérifier dans les migrations 01–29 avant exécution, créer si manquant |
+| Conflit unique sur `person_roles` lors de re-runs | `ON CONFLICT DO NOTHING` partout dans les blocs DO |
+| Vue `v_persons_with_roles` non rechargée par PostgREST | `NOTIFY pgrst` final + redémarrage PostgREST si besoin |
 
-Toutes les requêtes utilisent `UPDATE ... WHERE photo_url IS NULL` (idempotent, ne casse pas les vraies images uploadées). Pas de `INSERT` de lignes — on enrichit seulement les données existantes.
+### Hors scope (phases futures)
+- Migration des écritures legacy vers `persons` côté UI Athlètes/Encadrants/Membres
+- Suppression à terme des tables legacy une fois toutes les UI bascules
+- Rôles « sponsor », rôles famille, liens personne ↔ user_account
 
-## Fichiers
+## Livrables Phase 1 uniquement (ce que je code en premier après ton OK)
+- `supabase/sql/30_persons_superclass.sql` (contenu exact que tu as fourni, après vérification de l'existence de `set_updated_at`)
 
-- Créés : `supabase/sql/22_club_members_photo.sql`, `supabase/sql/23_seed_entity_images.sql`
-- Modifiés : `src/lib/types.ts`, `src/components/EntityImageUpload.tsx`, `src/routes/_authenticated/clubs/$id.tsx`
-
-## Hors scope
-
-`AthletePhotoUpload`, auth, autres routes (logistique/games/accréditations), aucune modification des photos déjà uploadées par l'utilisateur.
+Phases 2 et 3 enchaînées juste après validation que la migration tourne proprement sur ta base.
