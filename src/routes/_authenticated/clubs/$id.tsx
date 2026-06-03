@@ -579,6 +579,7 @@ function ClubDetailPage() {
 
   const personPickOptions = [
     { id: "__none__", label: "Aucune (créer sans personne liée)" },
+    { id: "__new__", label: "+ Créer une nouvelle personne" },
     ...personsPool.map((p) => ({
       id: p.id,
       label: `${p.first_name} ${p.last_name}${p.email ? ` — ${p.email}` : ""}`,
