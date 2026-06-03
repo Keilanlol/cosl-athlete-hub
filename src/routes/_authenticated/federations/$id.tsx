@@ -1465,6 +1465,30 @@ function FederationDetailPage() {
                   Seuls les encadrants sans fédération ni club sont listés.
                 </p>
               </div>
+
+              {!pickedCoachId && (
+                <div className="space-y-1.5 rounded-md border border-dashed border-border bg-muted/40 p-3">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Personne existante (optionnel)
+                  </Label>
+                  <PersonCombobox
+                    value={selectedCoachPersonId}
+                    onChange={applyPersonToCoach}
+                    options={personOptions}
+                    placeholder="Lier à une personne déjà enregistrée…"
+                    searchPlaceholder="Rechercher une personne…"
+                  />
+                  {selectedCoachPersonId && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCoachPersonId("")}
+                      className="text-xs text-muted-foreground hover:text-foreground underline"
+                    >
+                      Détacher
+                    </button>
+                  )}
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="cfn">Prénom *</Label>
