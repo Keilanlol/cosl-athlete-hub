@@ -43,6 +43,7 @@ import {
 import { AddressSearch } from "@/components/AddressSearch";
 import { EmptyState } from "@/components/DataTableShell";
 import { PersonCombobox } from "@/components/PersonCombobox";
+import { AddPersonButton } from "@/components/persons/AddPersonButton";
 
 type PersonLite = {
   id: string;
