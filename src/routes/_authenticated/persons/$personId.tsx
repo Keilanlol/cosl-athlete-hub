@@ -202,7 +202,7 @@ function PersonDetailPage() {
       title: "Supprimer cette personne ?",
       description:
         "Cette action supprime la personne et ses profils liés (les enregistrements legacy ne sont pas supprimés).",
-      confirmText: "Supprimer",
+      confirmLabel: "Supprimer",
       destructive: true,
     });
     if (!ok) return;
