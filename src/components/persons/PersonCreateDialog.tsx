@@ -483,7 +483,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="nat">Nationalité</Label>
+              <Label htmlFor="nat">Nationalité *</Label>
               <Input
                 id="nat"
                 value={form.nationality}
@@ -493,7 +493,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="em">Email</Label>
+                <Label htmlFor="em">Email *</Label>
                 <Input
                   id="em"
                   type="email"
@@ -502,7 +502,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="ph">Téléphone</Label>
+                <Label htmlFor="ph">Téléphone *</Label>
                 <Input
                   id="ph"
                   value={form.phone}
