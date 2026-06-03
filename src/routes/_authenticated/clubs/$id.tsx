@@ -237,6 +237,12 @@ function ClubDetailPage() {
       .order("last_name");
     setFreeCoaches((freeC ?? []) as Coach[]);
 
+    const { data: personsData } = await supabase
+      .from("persons")
+      .select("id, first_name, last_name, email, photo_url")
+      .eq("is_active", true)
+      .order("last_name");
+    setPersonsPool((personsData ?? []) as PersonLite[]);
 
     setLoading(false);
   };
