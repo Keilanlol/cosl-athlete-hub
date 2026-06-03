@@ -249,7 +249,7 @@ function FederationDetailPage() {
       coachesQuery.eq("federation_id", id);
     }
 
-    const [a, co, fc] = await Promise.all([
+    const [a, co, fc, pe] = await Promise.all([
       athletesQuery,
       coachesQuery,
       supabase
@@ -258,10 +258,15 @@ function FederationDetailPage() {
         .is("federation_id", null)
         .is("club_id", null)
         .order("last_name"),
+      supabase
+        .from("persons")
+        .select("id, first_name, last_name, email, phone")
+        .order("last_name"),
     ]);
     setAthletes((a.data ?? []) as AthleteRow[]);
     setCoaches((co.data ?? []) as Coach[]);
     setFreeCoaches((fc.data ?? []) as Coach[]);
+    setPersons((pe.data ?? []) as PersonLite[]);
     setLoading(false);
   };
 
