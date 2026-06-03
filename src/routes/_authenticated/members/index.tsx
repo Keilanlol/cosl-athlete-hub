@@ -95,16 +95,21 @@ function MembersPage() {
   const [selectedPersonId, setSelectedPersonId] = useState("");
 
   const load = async () => {
-    const [f, c, fm, cm] = await Promise.all([
+    const [f, c, fm, cm, pe] = await Promise.all([
       supabase.from("federations").select("*"),
       supabase.from("clubs").select("*"),
       supabase.from("federation_members").select("*").order("last_name"),
       supabase.from("club_members").select("*").order("last_name"),
+      supabase
+        .from("persons")
+        .select("id, first_name, last_name, email, phone")
+        .order("last_name"),
     ]);
     setFeds((f.data ?? []) as Federation[]);
     setClubs((c.data ?? []) as Club[]);
     setFedMembers((fm.data ?? []) as FederationMember[]);
     setClubMembers((cm.data ?? []) as ClubMember[]);
+    setPersons((pe.data ?? []) as PersonLite[]);
     setLoading(false);
   };
 
