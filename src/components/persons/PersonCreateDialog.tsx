@@ -169,26 +169,25 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
   const stepIndex = STEPS.indexOf(step);
 
   const canNext = (): boolean => {
-    if (step === "general") return !!(form.first_name.trim() && form.last_name.trim());
+    if (step === "general") {
+      return !!(
+        form.first_name.trim() &&
+        form.last_name.trim() &&
+        form.birth_date &&
+        form.gender &&
+        form.nationality.trim() &&
+        form.email.trim() &&
+        form.phone.trim()
+      );
+    }
     if (step === "roles") {
       if (form.selectedRoles.length === 0) return false;
-      // Athlète a besoin de birth_date + gender (NOT NULL en BDD)
-      if (form.selectedRoles.includes("athlete")) {
-        return !!(form.birth_date && form.gender);
-      }
       return true;
     }
     return true;
   };
 
   const goNext = () => {
-    if (step === "roles" && form.selectedRoles.includes("athlete")) {
-      if (!form.birth_date || !form.gender) {
-        toast.error("Date de naissance et genre requis pour un athlète");
-        setStep("general");
-        return;
-      }
-    }
     setStep(STEPS[stepIndex + 1]!);
   };
 
