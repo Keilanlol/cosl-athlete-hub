@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Mail, Phone, MapPin, Pencil, Trash2, Plus, X } from "lucide-react";
+import { ArrowLeft, Mail, Phone, MapPin, Pencil, Trash2, Plus, X, ArrowRight, Building2, Trophy, Users, Shield } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { friendlyError } from "@/lib/error-messages";
@@ -31,8 +31,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import { EntityImageUpload } from "@/components/EntityImageUpload";
+import { syncPhotoFromPerson } from "@/lib/person-photo-sync";
+
 
 export const Route = createFileRoute("/_authenticated/persons/$personId")({
   component: PersonDetailPage,
@@ -45,7 +47,10 @@ type PersonBundle = {
   coach_profiles: CoachProfile[];
   federation_member_profiles: FederationMemberProfile[];
   club_member_profiles: ClubMemberProfile[];
+  clubs: Record<string, string>;
+  federations: Record<string, string>;
 };
+
 
 function initials(p: Pick<Person, "first_name" | "last_name">) {
   return `${p.first_name?.[0] ?? ""}${p.last_name?.[0] ?? ""}`.toUpperCase();
@@ -99,14 +104,56 @@ function PersonDetailPage() {
       navigate({ to: "/persons" });
       return;
     }
+    const athleteProfile = (apRes.data as AthleteProfile | null) ?? null;
+    const coachProfiles = (cpRes.data ?? []) as CoachProfile[];
+    const fmProfiles = (fmRes.data ?? []) as FederationMemberProfile[];
+    const cmProfiles = (cmRes.data ?? []) as ClubMemberProfile[];
+
+    const clubIds = Array.from(
+      new Set(
+        [
+          athleteProfile?.current_club_id,
+          ...coachProfiles.map((c) => c.club_id),
+          ...cmProfiles.map((c) => c.club_id),
+        ].filter((x): x is string => !!x),
+      ),
+    );
+    const fedIds = Array.from(
+      new Set(
+        [
+          athleteProfile?.primary_federation_id,
+          ...coachProfiles.map((c) => c.federation_id),
+          ...fmProfiles.map((f) => f.federation_id),
+        ].filter((x): x is string => !!x),
+      ),
+    );
+
+    const [clubsRes, fedsRes] = await Promise.all([
+      clubIds.length
+        ? supabase.from("clubs").select("id,name").in("id", clubIds)
+        : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+      fedIds.length
+        ? supabase.from("federations").select("id,name").in("id", fedIds)
+        : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+    ]);
+    const clubsMap = Object.fromEntries(
+      ((clubsRes.data ?? []) as { id: string; name: string }[]).map((c) => [c.id, c.name]),
+    );
+    const fedsMap = Object.fromEntries(
+      ((fedsRes.data ?? []) as { id: string; name: string }[]).map((f) => [f.id, f.name]),
+    );
+
     setBundle({
       person: pRes.data as Person,
       roles: (rRes.data ?? []) as PersonRole[],
-      athlete_profile: (apRes.data as AthleteProfile | null) ?? null,
-      coach_profiles: (cpRes.data ?? []) as CoachProfile[],
-      federation_member_profiles: (fmRes.data ?? []) as FederationMemberProfile[],
-      club_member_profiles: (cmRes.data ?? []) as ClubMemberProfile[],
+      athlete_profile: athleteProfile,
+      coach_profiles: coachProfiles,
+      federation_member_profiles: fmProfiles,
+      club_member_profiles: cmProfiles,
+      clubs: clubsMap,
+      federations: fedsMap,
     });
+
   };
 
   useEffect(() => {
@@ -311,8 +358,7 @@ function PersonDetailPage() {
   }
 
   const { person } = bundle;
-  const tabRoles = activeRoles.length > 0 ? activeRoles : ([] as PersonRoleType[]);
-  const defaultTab = tabRoles[0] ?? "overview";
+
 
   return (
     <div className="space-y-6">
@@ -355,6 +401,10 @@ function PersonDetailPage() {
                 .from("persons")
                 .update({ photo_url: url, photo_storage_path: path })
                 .eq("id", person.id);
+              await syncPhotoFromPerson(person.id, {
+                photo_url: url,
+                photo_storage_path: path,
+              });
               load();
             }}
             onDeleted={async () => {
@@ -362,8 +412,13 @@ function PersonDetailPage() {
                 .from("persons")
                 .update({ photo_url: null, photo_storage_path: null })
                 .eq("id", person.id);
+              await syncPhotoFromPerson(person.id, {
+                photo_url: null,
+                photo_storage_path: null,
+              });
               load();
             }}
+
           />
           <div className="flex-1 min-w-[240px] space-y-3">
             <div>
@@ -419,57 +474,145 @@ function PersonDetailPage() {
         </div>
       </div>
 
-      <Tabs defaultValue={defaultTab} className="space-y-4">
-        <TabsList className="flex-wrap h-auto">
-          {tabRoles.map((r) => (
-            <TabsTrigger key={r} value={r}>
-              {ROLE_LABELS[r]}
-            </TabsTrigger>
-          ))}
-          {tabRoles.length === 0 && (
-            <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
-          )}
-        </TabsList>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-foreground">Rôles</h2>
+          <Button size="sm" variant="outline" onClick={() => setRolesOpen(true)}>
+            <Plus className="mr-1 h-4 w-4" /> Ajouter un rôle
+          </Button>
+        </div>
 
-        {tabRoles.includes("athlete") && (
-          <TabsContent value="athlete">
-            <AthleteTab profile={bundle.athlete_profile} />
-          </TabsContent>
-        )}
-        {tabRoles.includes("coach") && (
-          <TabsContent value="coach">
-            <CoachTab profiles={bundle.coach_profiles} />
-          </TabsContent>
-        )}
-        {tabRoles.includes("federation_member") && (
-          <TabsContent value="federation_member">
-            <FederationMemberTab profiles={bundle.federation_member_profiles} />
-          </TabsContent>
-        )}
-        {tabRoles.includes("club_member") && (
-          <TabsContent value="club_member">
-            <ClubMemberTab profiles={bundle.club_member_profiles} />
-          </TabsContent>
-        )}
-        {(["official", "volunteer", "staff"] as PersonRoleType[]).map(
-          (r) =>
-            tabRoles.includes(r) && (
-              <TabsContent key={r} value={r}>
-                <div className="rounded-lg border border-dashed border-border bg-card p-6 text-sm text-muted-foreground">
-                  Pas encore de profil détaillé pour le rôle « {ROLE_LABELS[r]} ».
-                </div>
-              </TabsContent>
-            ),
-        )}
+        {activeRoles.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border bg-card p-6 text-sm text-muted-foreground">
+            Aucun rôle assigné. Clique sur « Ajouter un rôle » pour en attribuer un.
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {activeRoles.includes("athlete") && bundle.athlete_profile && (
+              <RoleListItem
+                icon={<Trophy className="h-4 w-4" />}
+                role="athlete"
+                title={
+                  bundle.athlete_profile.current_club_id
+                    ? bundle.clubs[bundle.athlete_profile.current_club_id] ?? "Club inconnu"
+                    : "Athlète indépendant"
+                }
+                subtitle={[
+                  bundle.athlete_profile.status,
+                  bundle.athlete_profile.level && `Niveau ${bundle.athlete_profile.level}`,
+                  bundle.athlete_profile.license_number &&
+                    `Licence ${bundle.athlete_profile.license_number}`,
+                  bundle.athlete_profile.primary_federation_id &&
+                    bundle.federations[bundle.athlete_profile.primary_federation_id],
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+                to={
+                  bundle.athlete_profile.legacy_athlete_id
+                    ? { to: "/athletes/$id", params: { id: bundle.athlete_profile.legacy_athlete_id } }
+                    : null
+                }
+              />
+            )}
 
-        {tabRoles.length === 0 && (
-          <TabsContent value="overview">
-            <div className="rounded-lg border border-dashed border-border bg-card p-6 text-sm text-muted-foreground">
-              Aucun rôle assigné. Clique sur « Gérer les rôles » pour en ajouter.
-            </div>
-          </TabsContent>
+            {bundle.coach_profiles.map((p) => (
+              <RoleListItem
+                key={p.id}
+                icon={<Shield className="h-4 w-4" />}
+                role="coach"
+                title={
+                  (p.club_id && bundle.clubs[p.club_id]) ||
+                  (p.federation_id && bundle.federations[p.federation_id]) ||
+                  "Encadrant"
+                }
+                subtitle={[
+                  p.role,
+                  p.club_id && bundle.clubs[p.club_id] ? `Club : ${bundle.clubs[p.club_id]}` : null,
+                  p.federation_id && bundle.federations[p.federation_id]
+                    ? `Fédération : ${bundle.federations[p.federation_id]}`
+                    : null,
+                  p.is_active ? "Actif" : "Inactif",
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+                to={
+                  p.legacy_coach_id
+                    ? { to: "/coaches/$id", params: { id: p.legacy_coach_id } }
+                    : null
+                }
+              />
+            ))}
+
+            {bundle.federation_member_profiles.map((p) => (
+              <RoleListItem
+                key={p.id}
+                icon={<Building2 className="h-4 w-4" />}
+                role="federation_member"
+                title={bundle.federations[p.federation_id] ?? "Fédération"}
+                subtitle={[
+                  p.role,
+                  p.start_date &&
+                    `Depuis ${new Date(p.start_date).toLocaleDateString("fr-FR")}`,
+                  p.end_date &&
+                    `Jusqu'au ${new Date(p.end_date).toLocaleDateString("fr-FR")}`,
+                  p.is_active ? "Actif" : "Inactif",
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+                to={
+                  p.legacy_federation_member_id
+                    ? {
+                        to: "/federations/members/$memberId",
+                        params: { memberId: p.legacy_federation_member_id },
+                      }
+                    : null
+                }
+              />
+            ))}
+
+            {bundle.club_member_profiles.map((p) => (
+              <RoleListItem
+                key={p.id}
+                icon={<Users className="h-4 w-4" />}
+                role="club_member"
+                title={bundle.clubs[p.club_id] ?? "Club"}
+                subtitle={[
+                  p.role,
+                  p.start_date &&
+                    `Depuis ${new Date(p.start_date).toLocaleDateString("fr-FR")}`,
+                  p.end_date &&
+                    `Jusqu'au ${new Date(p.end_date).toLocaleDateString("fr-FR")}`,
+                  p.is_active ? "Actif" : "Inactif",
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+                to={
+                  p.legacy_club_member_id
+                    ? {
+                        to: "/clubs/members/$memberId",
+                        params: { memberId: p.legacy_club_member_id },
+                      }
+                    : null
+                }
+              />
+            ))}
+
+            {(["official", "volunteer", "staff"] as PersonRoleType[])
+              .filter((r) => activeRoles.includes(r))
+              .map((r) => (
+                <RoleListItem
+                  key={r}
+                  icon={<Users className="h-4 w-4" />}
+                  role={r}
+                  title={ROLE_LABELS[r]}
+                  subtitle="Pas de profil détaillé"
+                  to={null}
+                />
+              ))}
+          </ul>
         )}
-      </Tabs>
+      </div>
+
 
       {/* Edit dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
@@ -658,151 +801,55 @@ function PersonDetailPage() {
 }
 
 // ============================================================
-// Role-specific tabs
+// Role list item
 // ============================================================
 
-function Field({ label, value }: { label: string; value: React.ReactNode }) {
+function RoleListItem({
+  icon,
+  role,
+  title,
+  subtitle,
+  to,
+}: {
+  icon: React.ReactNode;
+  role: PersonRoleType;
+  title: string;
+  subtitle?: string;
+  to: { to: string; params?: Record<string, string> } | null;
+}) {
   return (
-    <div className="space-y-1">
-      <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        {label}
+    <li className="flex items-center justify-between gap-4 rounded-lg border border-border bg-card p-4">
+      <div className="flex min-w-0 items-start gap-3">
+        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+          {icon}
+        </div>
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <PersonRoleBadge role={role} />
+            <span className="truncate text-sm font-medium text-foreground">
+              {title}
+            </span>
+          </div>
+          {subtitle && (
+            <p className="mt-1 truncate text-xs text-muted-foreground">
+              {subtitle}
+            </p>
+          )}
+        </div>
       </div>
-      <div className="text-sm text-foreground">{value || "—"}</div>
-    </div>
-  );
-}
-
-function AthleteTab({ profile }: { profile: AthleteProfile | null }) {
-  if (!profile) {
-    return (
-      <div className="rounded-lg border border-dashed border-border bg-card p-6 text-sm text-muted-foreground">
-        Aucun profil athlète détaillé.
-      </div>
-    );
-  }
-  return (
-    <div className="space-y-4 rounded-lg border border-border bg-card p-6">
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <Field label="COSL ID" value={profile.cosl_id} />
-        <Field label="Statut" value={profile.status} />
-        <Field label="Niveau" value={profile.level} />
-        <Field label="Licence" value={profile.license_number} />
-        <Field label="ADA" value={profile.ada_number} />
-        <Field label="Passeport" value={profile.passport_number} />
-        <Field
-          label="Expiration passeport"
-          value={
-            profile.passport_expiry
-              ? new Date(profile.passport_expiry).toLocaleDateString("fr-FR")
-              : null
-          }
-        />
-        <Field label="Lieu de naissance" value={profile.birth_place} />
-        <Field label="Vêtements" value={profile.size_clothing} />
-        <Field label="Chaussures" value={profile.size_shoes} />
-        <Field label="Gants" value={profile.size_gloves} />
-      </div>
-      {profile.legacy_athlete_id && (
-        <div className="border-t border-border pt-3">
+      {to ? (
+        <Button asChild size="sm" variant="outline" className="shrink-0">
+          {/* TanStack Link typing requires literal paths — cast is fine here. */}
           <Link
-            to="/athletes/$id"
-            params={{ id: profile.legacy_athlete_id }}
-            className="text-sm text-primary hover:underline"
+            to={to.to as never}
+            params={(to.params ?? {}) as never}
           >
-            Voir la fiche athlète complète →
+            Voir la fiche
+            <ArrowRight className="ml-1 h-3 w-3" />
           </Link>
-        </div>
-      )}
-    </div>
+        </Button>
+      ) : null}
+    </li>
   );
 }
 
-function CoachTab({ profiles }: { profiles: CoachProfile[] }) {
-  if (profiles.length === 0) {
-    return (
-      <div className="rounded-lg border border-dashed border-border bg-card p-6 text-sm text-muted-foreground">
-        Aucune mission d'encadrement enregistrée.
-      </div>
-    );
-  }
-  return (
-    <div className="space-y-3">
-      {profiles.map((p) => (
-        <div
-          key={p.id}
-          className="flex items-center justify-between rounded-lg border border-border bg-card p-4"
-        >
-          <div className="space-y-1">
-            <div className="text-sm font-medium">{p.role}</div>
-            <div className="text-xs text-muted-foreground">
-              {p.is_active ? "Actif" : "Inactif"}
-            </div>
-          </div>
-          {p.legacy_coach_id && (
-            <Link
-              to="/coaches/$id"
-              params={{ id: p.legacy_coach_id }}
-              className="text-sm text-primary hover:underline"
-            >
-              Fiche encadrant →
-            </Link>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function FederationMemberTab({ profiles }: { profiles: FederationMemberProfile[] }) {
-  if (profiles.length === 0) {
-    return (
-      <div className="rounded-lg border border-dashed border-border bg-card p-6 text-sm text-muted-foreground">
-        Aucune affiliation fédération.
-      </div>
-    );
-  }
-  return (
-    <div className="space-y-3">
-      {profiles.map((p) => (
-        <div key={p.id} className="rounded-lg border border-border bg-card p-4">
-          <div className="flex items-center justify-between">
-            <div className="text-sm font-medium">{p.role}</div>
-            <Badge variant={p.is_active ? "default" : "outline"}>
-              {p.is_active ? "Actif" : "Inactif"}
-            </Badge>
-          </div>
-          {p.notes && (
-            <p className="mt-2 text-sm text-muted-foreground">{p.notes}</p>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function ClubMemberTab({ profiles }: { profiles: ClubMemberProfile[] }) {
-  if (profiles.length === 0) {
-    return (
-      <div className="rounded-lg border border-dashed border-border bg-card p-6 text-sm text-muted-foreground">
-        Aucune affiliation club.
-      </div>
-    );
-  }
-  return (
-    <div className="space-y-3">
-      {profiles.map((p) => (
-        <div key={p.id} className="rounded-lg border border-border bg-card p-4">
-          <div className="flex items-center justify-between">
-            <div className="text-sm font-medium">{p.role}</div>
-            <Badge variant={p.is_active ? "default" : "outline"}>
-              {p.is_active ? "Actif" : "Inactif"}
-            </Badge>
-          </div>
-          {p.notes && (
-            <p className="mt-2 text-sm text-muted-foreground">{p.notes}</p>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}

@@ -34,6 +34,8 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState } from "@/components/DataTableShell";
 import { EntityImageUpload } from "@/components/EntityImageUpload";
+import { findPersonIdForLegacy, syncPhotoFromLegacy } from "@/lib/person-photo-sync";
+
 
 export const Route = createFileRoute("/_authenticated/coaches/$id")({
   component: CoachDetailPage,
@@ -215,6 +217,12 @@ function CoachDetailPage() {
                 .update({ photo_url: url, photo_storage_path: path })
                 .eq("id", coach.id);
               setCoach((c) => (c ? { ...c, photo_url: url, photo_storage_path: path } : c));
+              const personId = await findPersonIdForLegacy(
+                "coach_profiles",
+                "legacy_coach_id",
+                coach.id,
+              );
+              await syncPhotoFromLegacy(personId, { photo_url: url, photo_storage_path: path });
             }}
             onDeleted={async () => {
               await supabase
@@ -222,7 +230,14 @@ function CoachDetailPage() {
                 .update({ photo_url: null, photo_storage_path: null })
                 .eq("id", coach.id);
               setCoach((c) => (c ? { ...c, photo_url: null, photo_storage_path: null } : c));
+              const personId = await findPersonIdForLegacy(
+                "coach_profiles",
+                "legacy_coach_id",
+                coach.id,
+              );
+              await syncPhotoFromLegacy(personId, { photo_url: null, photo_storage_path: null });
             }}
+
           />
           <div className="flex-1">
             <h1 className="text-2xl font-semibold text-foreground">

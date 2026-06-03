@@ -36,6 +36,8 @@ import {
 } from "@/lib/types";
 import { EditableSelect } from "@/components/EditableSelect";
 import { AthletePhotoUpload } from "@/components/AthletePhotoUpload";
+import { findPersonIdForLegacy, syncPhotoFromLegacy } from "@/lib/person-photo-sync";
+
 import {
   useAthleteLevels,
   useDocumentTypes,
@@ -724,9 +726,26 @@ function AthleteDetailPage() {
             onDeleted={() => {
               setAthlete((a) => (a ? { ...a, photo_url: null } : a));
               setDocs((prev) => (prev ?? []).filter((d) => d.doc_type !== "photo_identite"));
+              (async () => {
+                const personId = await findPersonIdForLegacy(
+                  "athlete_profiles",
+                  "legacy_athlete_id",
+                  id,
+                );
+                await syncPhotoFromLegacy(personId, { photo_url: null, photo_storage_path: null });
+              })();
             }}
             onUploaded={(url, docId) => {
               setAthlete((a) => (a ? { ...a, photo_url: url } : a));
+              (async () => {
+                const personId = await findPersonIdForLegacy(
+                  "athlete_profiles",
+                  "legacy_athlete_id",
+                  id,
+                );
+                await syncPhotoFromLegacy(personId, { photo_url: url, photo_storage_path: null });
+              })();
+
               setDocs((prev) => {
                 const list = prev ?? [];
                 const existing = list.find((d) => d.doc_type === "photo_identite");
@@ -865,9 +884,26 @@ function AthleteDetailPage() {
                   onDeleted={() => {
                     setAthlete((a) => (a ? { ...a, photo_url: null } : a));
                     setDocs((prev) => (prev ?? []).filter((d) => d.doc_type !== "photo_identite"));
+                    (async () => {
+                      const personId = await findPersonIdForLegacy(
+                        "athlete_profiles",
+                        "legacy_athlete_id",
+                        id,
+                      );
+                      await syncPhotoFromLegacy(personId, { photo_url: null, photo_storage_path: null });
+                    })();
                   }}
                   onUploaded={(url, docId) => {
                     setAthlete((a) => (a ? { ...a, photo_url: url } : a));
+                    (async () => {
+                      const personId = await findPersonIdForLegacy(
+                        "athlete_profiles",
+                        "legacy_athlete_id",
+                        id,
+                      );
+                      await syncPhotoFromLegacy(personId, { photo_url: url, photo_storage_path: null });
+                    })();
+
                     setDocs((prev) => {
                       const list = prev ?? [];
                       const existing = list.find((d) => d.doc_type === "photo_identite");
