@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Search, UserRound, Building2, Shield } from "lucide-react";
+import { Search, UserRound, Building2, Shield } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { friendlyError } from "@/lib/error-messages";
@@ -43,6 +43,7 @@ import {
 import { AddressSearch } from "@/components/AddressSearch";
 import { EmptyState } from "@/components/DataTableShell";
 import { PersonCombobox } from "@/components/PersonCombobox";
+import { AddPersonButton } from "@/components/persons/AddPersonButton";
 
 type PersonLite = {
   id: string;
@@ -307,12 +308,12 @@ function MembersPage() {
             </p>
           </div>
         </div>
-        <Button
-          onClick={() => setCreateOpen(true)}
-          className="bg-primary hover:bg-[var(--cosl-red-dark)]"
-        >
-          <Plus className="mr-2 h-4 w-4" /> Ajouter un membre
-        </Button>
+        <AddPersonButton
+          role="club_member"
+          label="Ajouter un membre"
+          onChanged={() => load()}
+        />
+
       </div>
 
       <div className="flex flex-wrap items-center gap-3">

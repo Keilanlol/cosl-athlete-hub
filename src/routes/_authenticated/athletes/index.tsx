@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Search, AlertTriangle, Users } from "lucide-react";
+import { Pencil, Search, AlertTriangle, Users } from "lucide-react";
 import { KycStatusBadge } from "@/components/KycStatusBadge";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -18,7 +18,7 @@ import {
 } from "@/lib/types";
 import { EditableSelect } from "@/components/EditableSelect";
 import { AthletePhotoUpload } from "@/components/AthletePhotoUpload";
-import { PersonCreateDialog } from "@/components/persons/PersonCreateDialog";
+import { AddPersonButton } from "@/components/persons/AddPersonButton";
 import { useAthleteLevels, useSports } from "@/hooks/useReferenceData";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -149,7 +149,7 @@ function AthletesPage() {
 
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState(false);
-  const [personDialogOpen, setPersonDialogOpen] = useState(false);
+  
   const [editing, setEditing] = useState<Athlete | null>(null);
   const [form, setForm] = useState<AthleteForm>(emptyForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -431,20 +431,16 @@ function AthletesPage() {
             </p>
           </div>
         </div>
-        <Button onClick={() => setPersonDialogOpen(true)} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
-          <Plus className="mr-2 h-4 w-4" /> Ajouter un athlète
-        </Button>
+        <AddPersonButton
+          role="athlete"
+          label="Ajouter un athlète"
+          onChanged={(personId) => {
+            load();
+            navigate({ to: "/persons/$personId", params: { personId } });
+          }}
+        />
       </div>
 
-      <PersonCreateDialog
-        open={personDialogOpen}
-        onOpenChange={setPersonDialogOpen}
-        initialRoles={["athlete"]}
-        onCreated={(personId) => {
-          load();
-          navigate({ to: "/persons/$personId", params: { personId } });
-        }}
-      />
 
       {(kycRedCount > 0 || kycOrangeCount > 0) && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 flex items-center gap-3">

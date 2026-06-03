@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, Search, GraduationCap } from "lucide-react";
+import { Pencil, Trash2, Search, GraduationCap } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { COACH_ROLES, type Club, type Coach, type Federation } from "@/lib/types";
@@ -51,7 +51,7 @@ import {
   SortBtn,
   TableSkeleton,
 } from "@/components/DataTableShell";
-import { PersonCreateDialog } from "@/components/persons/PersonCreateDialog";
+import { AddPersonButton } from "@/components/persons/AddPersonButton";
 
 export const Route = createFileRoute("/_authenticated/coaches/")({
   component: CoachesPage,
@@ -90,7 +90,7 @@ function CoachesPage() {
   });
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState(false);
-  const [personDialogOpen, setPersonDialogOpen] = useState(false);
+  
   const [editing, setEditing] = useState<Coach | null>(null);
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
@@ -248,21 +248,16 @@ function CoachesPage() {
             </p>
           </div>
         </div>
-        <Button onClick={() => setPersonDialogOpen(true)} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
-          <Plus className="mr-2 h-4 w-4" />
-          Ajouter un encadrant
-        </Button>
+        <AddPersonButton
+          role="coach"
+          label="Ajouter un encadrant"
+          onChanged={(personId) => {
+            load();
+            navigate({ to: "/persons/$personId", params: { personId } });
+          }}
+        />
       </div>
 
-      <PersonCreateDialog
-        open={personDialogOpen}
-        onOpenChange={setPersonDialogOpen}
-        initialRoles={["coach"]}
-        onCreated={(personId) => {
-          load();
-          navigate({ to: "/persons/$personId", params: { personId } });
-        }}
-      />
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative max-w-sm flex-1">
