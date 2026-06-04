@@ -18,6 +18,8 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { EmptyState, TableSkeleton } from "@/components/DataTableShell";
+import { PartnerQuickCreateDialog } from "@/components/partners/PartnerQuickCreateDialog";
+
 
 export const Route = createFileRoute("/_authenticated/games/$id/partners")({
   component: GamePartnersPage,
@@ -40,6 +42,8 @@ function GamePartnersPage() {
   const [partnerId, setPartnerId] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false);
+
 
   const load = async () => {
     setRows(null);
