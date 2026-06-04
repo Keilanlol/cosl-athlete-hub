@@ -19,6 +19,8 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { EmptyState, TableSkeleton } from "@/components/DataTableShell";
+import { SponsorQuickCreateDialog } from "@/components/sponsors/SponsorQuickCreateDialog";
+
 
 export const Route = createFileRoute("/_authenticated/games/$id/sponsors")({
   component: GameSponsorsPage,
