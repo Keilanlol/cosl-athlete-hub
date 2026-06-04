@@ -145,7 +145,8 @@ function GameSponsorsPage() {
                     <div>{r.sponsor?.phone ?? ""}</div>
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm">
-                    {[r.sponsor?.contact_first_name, r.sponsor?.contact_last_name].filter(Boolean).join(" ") || "—"}
+                    <div>{[r.sponsor?.contact_first_name, r.sponsor?.contact_last_name].filter(Boolean).join(" ") || "—"}</div>
+                    <div>{r.sponsor?.contact_email ?? ""} {r.sponsor?.contact_phone ? `· ${r.sponsor.contact_phone}` : ""}</div>
                   </TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="icon" onClick={() => remove(r)}><Trash2 className="h-4 w-4 text-red-600" /></Button>
