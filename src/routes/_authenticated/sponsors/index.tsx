@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { EntityImageUpload } from "@/components/EntityImageUpload";
+import { LogoFilePicker, persistLogo } from "@/components/LogoFilePicker";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -58,9 +58,12 @@ function SponsorsPage() {
   const [editing, setEditing] = useState<Sponsor | null>(null);
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoCleared, setLogoCleared] = useState(false);
 
   const [ranksOpen, setRanksOpen] = useState(false);
   const [newRank, setNewRank] = useState("");
+
 
   const load = async () => {
     setRows(null);
@@ -86,7 +89,7 @@ function SponsorsPage() {
     );
   }, [rows, search, ranks]);
 
-  const openCreate = () => { setEditing(null); setForm(empty); setOpen(true); };
+  const openCreate = () => { setEditing(null); setForm(empty); setLogoFile(null); setLogoCleared(false); setOpen(true); };
   const openEdit = (s: Sponsor) => {
     setEditing(s);
     setForm({
@@ -98,6 +101,7 @@ function SponsorsPage() {
       contact_phone: s.contact_phone ?? "",
       notes: s.notes ?? "",
     });
+    setLogoFile(null); setLogoCleared(false);
     setOpen(true);
   };
 
@@ -116,14 +120,30 @@ function SponsorsPage() {
       contact_phone: form.contact_phone.trim() || null,
       notes: form.notes.trim() || null,
     };
-    const { error } = editing
-      ? await supabase.from("sponsors").update(payload).eq("id", editing.id)
-      : await supabase.from("sponsors").insert(payload);
-    setSaving(false);
-    if (error) { toast.error("Échec", { description: friendlyError(error) }); return; }
-    toast.success(editing ? "Sponsor modifié" : "Sponsor créé");
-    setOpen(false); load();
+    try {
+      let id: string;
+      let previousPath: string | null = null;
+      if (editing) {
+        const { error } = await supabase.from("sponsors").update(payload).eq("id", editing.id);
+        if (error) throw error;
+        id = editing.id;
+        previousPath = editing.logo_storage_path;
+      } else {
+        const { data, error } = await supabase.from("sponsors").insert(payload).select("id").single();
+        if (error) throw error;
+        id = data.id as string;
+      }
+      await persistLogo("sponsor", id, { file: logoFile, clearedExisting: logoCleared, previousPath });
+      toast.success(editing ? "Sponsor modifié" : "Sponsor créé");
+      setOpen(false); load();
+    } catch (err) {
+      const e = err as { message?: string };
+      toast.error("Échec", { description: friendlyError(e) });
+    } finally {
+      setSaving(false);
+    }
   };
+
 
   const remove = async (s: Sponsor) => {
     if (!(await confirmAction({ title: "Supprimer ce sponsor ?", confirmLabel: "Supprimer", destructive: true }))) return;
