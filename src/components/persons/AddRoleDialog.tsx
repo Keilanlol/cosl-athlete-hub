@@ -45,30 +45,9 @@ type Props = {
   onAdded: () => void;
 };
 
-const COACH_ROLES = [
-  "coach",
-  "medical",
-  "chief_of_mission",
-  "press",
-  "manager",
-  "official",
-];
-const FED_ROLES = [
-  "president",
-  "vice_president",
-  "secretary_general",
-  "treasurer",
-  "board_member",
-  "delegate",
-];
-const CLUB_ROLES = [
-  "president",
-  "vice_president",
-  "secretary",
-  "treasurer",
-  "board_member",
-  "head_coach",
-];
+const COACH_ROLES = COACH_ROLE_OPTIONS;
+const FED_ROLES = FED_ROLE_OPTIONS;
+const CLUB_ROLES = CLUB_ROLE_OPTIONS;
 const ATHLETE_STATUSES = ["active", "injured", "suspended", "retired", "ambassador"];
 const ATHLETE_LEVELS_FALLBACK = ["elite", "promotion", "espoir", "olympic_contract"];
 
