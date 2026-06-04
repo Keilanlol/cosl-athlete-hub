@@ -947,13 +947,22 @@ function FederationDetailPage() {
 
         {/* ============ MEMBERS ============ */}
         <TabsContent value="members" className="mt-4 space-y-3">
-          <div className="flex justify-end">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="relative min-w-[220px] flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Nom, prénom, email, téléphone, fonction…"
+                value={memberSearch}
+                onChange={(e) => setMemberSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
             <Button onClick={openCreateMember} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
               <Plus className="mr-2 h-4 w-4" /> Ajouter un membre
             </Button>
           </div>
           <div className="rounded-lg border border-border bg-card">
-            {members.length === 0 ? (
+            {visibleMembers.length === 0 ? (
               <div className="p-6">
                 <EmptyState message="Aucun membre enregistré (président, trésorier…)." />
               </div>
@@ -972,7 +981,7 @@ function FederationDetailPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {members.map((m) => (
+                  {visibleMembers.map((m) => (
                   <TableRow
                     key={m.id}
                     onClick={() => navigate({ to: "/federations/members/$memberId", params: { memberId: m.id } })}
@@ -1049,13 +1058,22 @@ function FederationDetailPage() {
 
         {/* ============ COACHES ============ */}
         <TabsContent value="coaches" className="mt-4 space-y-3">
-          <div className="flex justify-end">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="relative min-w-[220px] flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Nom, prénom, email, téléphone, rôle, club…"
+                value={coachSearch}
+                onChange={(e) => setCoachSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
             <Button onClick={openCreateCoach} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
               <Plus className="mr-2 h-4 w-4" /> Ajouter un encadrant
             </Button>
           </div>
           <div className="rounded-lg border border-border bg-card">
-            {coaches.length === 0 ? (
+            {visibleCoaches.length === 0 ? (
               <div className="p-6">
                 <EmptyState message="Aucun encadrant rattaché." />
               </div>
@@ -1072,7 +1090,7 @@ function FederationDetailPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {coaches.map((c) => {
+                  {visibleCoaches.map((c) => {
                     const role = COACH_ROLES.find((r) => r.value === c.role)?.label ?? c.role;
                     const club = c.club_id ? clubMap.get(c.club_id) : null;
                     return (
