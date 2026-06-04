@@ -6,9 +6,9 @@ import {
   CLUB_MEMBER_ROLES,
 } from "./types";
 
-const coachMap = new Map(COACH_ROLES.map((r) => [r.value, r.label]));
-const fedMap = new Map(FEDERATION_MEMBER_ROLES.map((r) => [r.value, r.label]));
-const clubMap = new Map(CLUB_MEMBER_ROLES.map((r) => [r.value, r.label]));
+const coachMap = new Map<string, string>(COACH_ROLES.map((r) => [r.value, r.label]));
+const fedMap = new Map<string, string>(FEDERATION_MEMBER_ROLES.map((r) => [r.value, r.label]));
+const clubMap = new Map<string, string>(CLUB_MEMBER_ROLES.map((r) => [r.value, r.label]));
 
 export function coachRoleLabel(value: string | null | undefined): string {
   if (!value) return "—";
