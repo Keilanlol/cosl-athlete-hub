@@ -409,20 +409,30 @@ function DelegationPage() {
 
       {/* Chief dialog */}
       <Dialog open={chiefOpen} onOpenChange={setChiefOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg overflow-hidden">
           <DialogHeader>
             <DialogTitle>Chef de Mission</DialogTitle>
-            <DialogDescription>Sélectionner un encadrant comme Chef de Mission.</DialogDescription>
+            <DialogDescription>Sélectionner n'importe quelle personne comme Chef de Mission.</DialogDescription>
           </DialogHeader>
-          <Select value={chiefId || "none"} onValueChange={(v) => setChiefId(v === "none" ? "" : v)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">— Aucun —</SelectItem>
-              {coaches.map((c) => (
-                <SelectItem key={c.id} value={c.id}>{c.first_name} {c.last_name} ({c.role})</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="py-2">
+            <PersonCombobox
+              value={chiefId}
+              onChange={setChiefId}
+              options={personOptions}
+              placeholder="— Aucun —"
+              searchPlaceholder="Rechercher une personne…"
+              emptyMessage="Aucune personne."
+            />
+            {chiefId && (
+              <button
+                type="button"
+                onClick={() => setChiefId("")}
+                className="mt-2 text-xs text-muted-foreground hover:underline"
+              >
+                Retirer la sélection
+              </button>
+            )}
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setChiefOpen(false)}>Annuler</Button>
             <Button onClick={saveChief} className="bg-primary hover:bg-[var(--cosl-red-dark)]">Enregistrer</Button>
