@@ -228,8 +228,7 @@ function PartnersPage() {
                 />
               </div>
 
-                <p className="text-xs text-muted-foreground text-center">Le logo pourra être ajouté après la création.</p>
-              )}
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5 col-span-2">
                   <Label>Nom *</Label>
