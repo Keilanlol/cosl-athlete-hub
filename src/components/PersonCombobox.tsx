@@ -53,13 +53,17 @@ export function PersonCombobox({
           role="combobox"
           aria-expanded={open}
           disabled={disabled}
-          className={cn("w-full justify-between font-normal", className)}
+          className={cn(
+            "w-full justify-between font-normal overflow-hidden",
+            className,
+          )}
         >
           <span
             className={cn(
-              "truncate text-left min-w-0 flex-1",
+              "truncate text-left min-w-0 flex-1 block",
               !selected && "text-muted-foreground",
             )}
+            title={selected ? selected.label : placeholder}
           >
             {selected ? selected.label : placeholder}
           </span>
