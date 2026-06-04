@@ -18,6 +18,8 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { EmptyState, TableSkeleton } from "@/components/DataTableShell";
+import { PartnerQuickCreateDialog } from "@/components/partners/PartnerQuickCreateDialog";
+
 
 export const Route = createFileRoute("/_authenticated/games/$id/partners")({
   component: GamePartnersPage,
@@ -40,6 +42,8 @@ function GamePartnersPage() {
   const [partnerId, setPartnerId] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false);
+
 
   const load = async () => {
     setRows(null);
@@ -155,17 +159,29 @@ function GamePartnersPage() {
             <div className="grid gap-4 py-4">
               <div className="space-y-1.5">
                 <Label>Partenaire *</Label>
-                <Select value={partnerId} onValueChange={setPartnerId}>
+                <Select
+                  value={partnerId}
+                  onValueChange={(v) => {
+                    if (v === "__new__") {
+                      setOpen(false);
+                      setQuickOpen(true);
+                      return;
+                    }
+                    setPartnerId(v);
+                  }}
+                >
                   <SelectTrigger><SelectValue placeholder="Choisir un partenaire…" /></SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="__new__" className="font-medium text-primary">+ Créer un nouveau partenaire</SelectItem>
                     {available.length === 0 && <div className="p-2 text-sm text-muted-foreground">Aucun partenaire disponible.</div>}
                     {available.map((p) => (
                       <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">Les partenaires se créent depuis la page Partenaires.</p>
+                <p className="text-xs text-muted-foreground">Ou créez-en un nouveau directement ici.</p>
               </div>
+
               <div className="space-y-1.5">
                 <Label>Notes</Label>
                 <Input value={notes} onChange={(e) => setNotes(e.target.value)} />
@@ -180,6 +196,17 @@ function GamePartnersPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <PartnerQuickCreateDialog
+        open={quickOpen}
+        onOpenChange={setQuickOpen}
+        onCreated={async (id) => {
+          const { error } = await supabase.from("game_partners").insert({ game_id: gameId, partner_id: id });
+          if (error) toast.error("Échec du lien", { description: friendlyError(error) });
+          load();
+        }}
+      />
     </div>
   );
 }
+
