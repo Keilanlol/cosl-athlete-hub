@@ -814,13 +814,22 @@ function FederationDetailPage() {
 
         {/* ============ CLUBS ============ */}
         <TabsContent value="clubs" className="mt-4 space-y-3">
-          <div className="flex justify-end">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="relative min-w-[220px] flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Nom, ville, email, téléphone…"
+                value={clubSearch}
+                onChange={(e) => setClubSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
             <Button onClick={openCreateClub} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
               <Plus className="mr-2 h-4 w-4" /> Ajouter un club
             </Button>
           </div>
           <div className="rounded-lg border border-border bg-card">
-            {clubs.length === 0 ? (
+            {visibleClubs.length === 0 ? (
               <div className="p-6">
                 <EmptyState message="Aucun club affilié." />
               </div>
@@ -837,7 +846,7 @@ function FederationDetailPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {clubs.map((c) => {
+                  {visibleClubs.map((c) => {
                     const n = athletes.filter((a) => a.current_club?.id === c.id).length;
                     return (
                       <TableRow
@@ -882,9 +891,18 @@ function FederationDetailPage() {
         </TabsContent>
 
         {/* ============ ATHLETES (Adhérents) ============ */}
-        <TabsContent value="athletes" className="mt-4">
+        <TabsContent value="athletes" className="mt-4 space-y-3">
+          <div className="relative min-w-[220px] flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Nom, prénom, COSL ID, sport, club…"
+              value={athleteSearch}
+              onChange={(e) => setAthleteSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
           <div className="rounded-lg border border-border bg-card">
-            {athletes.length === 0 ? (
+            {visibleAthletes.length === 0 ? (
               <div className="p-6">
                 <EmptyState message="Aucun adhérent dans les clubs de cette fédération." />
               </div>
@@ -900,7 +918,7 @@ function FederationDetailPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {athletes.map((a) => (
+                  {visibleAthletes.map((a) => (
                     <TableRow
                       key={a.id}
                       onClick={() => navigate({ to: "/athletes/$id", params: { id: a.id } })}
