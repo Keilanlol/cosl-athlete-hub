@@ -14,6 +14,7 @@ import {
   Pencil,
   Trash2,
   UserRound,
+  Search,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -174,6 +175,11 @@ function FederationDetailPage() {
   const [, setSports] = useState<Sport[]>([]);
 
   const [loading, setLoading] = useState(true);
+
+  const [clubSearch, setClubSearch] = useState("");
+  const [athleteSearch, setAthleteSearch] = useState("");
+  const [memberSearch, setMemberSearch] = useState("");
+  const [coachSearch, setCoachSearch] = useState("");
 
   // Club dialog
   const [clubOpen, setClubOpen] = useState(false);
