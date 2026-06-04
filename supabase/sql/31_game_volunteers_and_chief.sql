@@ -25,6 +25,10 @@ CREATE POLICY game_volunteers_all ON public.game_volunteers
   FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 -- 2. delegations.chief_of_mission_id : pointer vers persons plutôt que coaches
+-- Drop l'ancienne FK AVANT le backfill, sinon les UPDATE échouent contre coaches.
+ALTER TABLE public.delegations
+  DROP CONSTRAINT IF EXISTS delegations_chief_of_mission_id_fkey;
+
 DO $$
 DECLARE
   d record;
@@ -41,13 +45,11 @@ BEGIN
   END LOOP;
 END $$;
 
+-- Nettoyer toute valeur qui ne pointe pas vers une person valide
 UPDATE public.delegations d
    SET chief_of_mission_id = NULL
  WHERE chief_of_mission_id IS NOT NULL
    AND NOT EXISTS (SELECT 1 FROM public.persons p WHERE p.id = d.chief_of_mission_id);
-
-ALTER TABLE public.delegations
-  DROP CONSTRAINT IF EXISTS delegations_chief_of_mission_id_fkey;
 
 ALTER TABLE public.delegations
   ADD CONSTRAINT delegations_chief_of_mission_id_fkey
