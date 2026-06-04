@@ -264,7 +264,7 @@ function DelegationPage() {
     });
     if (chief) {
       lines.unshift([
-        "Chef de Mission", "", chief.last_name, chief.first_name, "", "", "", "Chief of Mission", chief.role,
+        "Chef de Mission", "", chief.last_name, chief.first_name, "", "", "", "Chef de Mission", chief.email ?? "",
       ]);
     }
     const csv = [header, ...lines]
