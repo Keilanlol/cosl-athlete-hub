@@ -53,10 +53,7 @@ export function PersonCombobox({
           role="combobox"
           aria-expanded={open}
           disabled={disabled}
-          className={cn(
-            "w-full justify-between font-normal overflow-hidden",
-            className,
-          )}
+          className={cn("w-full justify-between font-normal overflow-hidden", className)}
         >
           <span
             className={cn(
@@ -71,7 +68,7 @@ export function PersonCombobox({
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="p-0 w-[--radix-popover-trigger-width] min-w-[320px] max-w-[min(560px,calc(100vw-2rem))]"
+        className="w-[--radix-popover-trigger-width] min-w-[min(320px,calc(100vw-2rem))] max-w-[min(640px,calc(100vw-2rem))] overflow-x-hidden p-0"
         align="start"
         sideOffset={4}
       >
@@ -113,7 +110,7 @@ export function PersonCombobox({
                       value === o.id ? "opacity-100" : "opacity-0",
                     )}
                   />
-                  <span className="truncate">{o.label}</span>
+                  <span className="min-w-0 truncate">{o.label}</span>
                 </CommandItem>
               ))}
             </CommandGroup>

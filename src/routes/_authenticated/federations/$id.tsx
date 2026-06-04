@@ -14,22 +14,12 @@ import {
   Pencil,
   Trash2,
   UserRound,
+  Search,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import type {
-  Athlete,
-  Club,
-  Coach,
-  Federation,
-  FederationMember,
-  Sport,
-} from "@/lib/types";
-import {
-  ATHLETE_STATUSES,
-  COACH_ROLES,
-  FEDERATION_MEMBER_ROLES,
-} from "@/lib/types";
+import type { Athlete, Club, Coach, Federation, FederationMember, Sport } from "@/lib/types";
+import { ATHLETE_STATUSES, COACH_ROLES, FEDERATION_MEMBER_ROLES } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -134,7 +124,6 @@ const emptyClub = {
   phone: "",
 };
 
-
 // ---------- Member form ----------
 const emptyMember = {
   first_name: "",
@@ -174,6 +163,11 @@ function FederationDetailPage() {
   const [, setSports] = useState<Sport[]>([]);
 
   const [loading, setLoading] = useState(true);
+
+  const [clubSearch, setClubSearch] = useState("");
+  const [athleteSearch, setAthleteSearch] = useState("");
+  const [memberSearch, setMemberSearch] = useState("");
+  const [coachSearch, setCoachSearch] = useState("");
 
   // Club dialog
   const [clubOpen, setClubOpen] = useState(false);
@@ -219,9 +213,6 @@ function FederationDetailPage() {
     setSports((sp.data ?? []) as Sport[]);
     setMembers((m.data ?? []) as FederationMember[]);
 
-
-
-
     const clubIds = clubsData.map((cl) => cl.id);
     // Athletes: those rattached to fed OR member of one of its clubs
     const athletesQuery = supabase
@@ -232,9 +223,7 @@ function FederationDetailPage() {
       .eq("is_active", true)
       .order("last_name");
     if (clubIds.length > 0) {
-      athletesQuery.or(
-        `primary_federation_id.eq.${id},current_club_id.in.(${clubIds.join(",")})`,
-      );
+      athletesQuery.or(`primary_federation_id.eq.${id},current_club_id.in.(${clubIds.join(",")})`);
     } else {
       athletesQuery.eq("primary_federation_id", id);
     }
@@ -242,9 +231,7 @@ function FederationDetailPage() {
     // Coaches: those of the fed OR of one of its clubs
     const coachesQuery = supabase.from("coaches").select("*").order("last_name");
     if (clubIds.length > 0) {
-      coachesQuery.or(
-        `federation_id.eq.${id},club_id.in.(${clubIds.join(",")})`,
-      );
+      coachesQuery.or(`federation_id.eq.${id},club_id.in.(${clubIds.join(",")})`);
     } else {
       coachesQuery.eq("federation_id", id);
     }
@@ -258,10 +245,7 @@ function FederationDetailPage() {
         .is("federation_id", null)
         .is("club_id", null)
         .order("last_name"),
-      supabase
-        .from("persons")
-        .select("id, first_name, last_name, email, phone")
-        .order("last_name"),
+      supabase.from("persons").select("id, first_name, last_name, email, phone").order("last_name"),
     ]);
     setAthletes((a.data ?? []) as AthleteRow[]);
     setCoaches((co.data ?? []) as Coach[]);
@@ -298,6 +282,46 @@ function FederationDetailPage() {
     };
   }, [clubs, coaches, athletes, members]);
 
+  const visibleClubs = useMemo(() => {
+    const q = clubSearch.trim().toLowerCase();
+    if (!q) return clubs;
+    return clubs.filter((c) =>
+      `${c.name} ${c.city ?? ""} ${c.email ?? ""} ${c.phone ?? ""}`.toLowerCase().includes(q),
+    );
+  }, [clubs, clubSearch]);
+
+  const visibleAthletes = useMemo(() => {
+    const q = athleteSearch.trim().toLowerCase();
+    if (!q) return athletes;
+    return athletes.filter((a) =>
+      `${a.first_name} ${a.last_name} ${a.cosl_id ?? ""} ${a.primary_sport?.name ?? ""} ${a.current_club?.name ?? ""}`
+        .toLowerCase()
+        .includes(q),
+    );
+  }, [athletes, athleteSearch]);
+
+  const visibleMembers = useMemo(() => {
+    const q = memberSearch.trim().toLowerCase();
+    if (!q) return members;
+    return members.filter((m) =>
+      `${m.first_name} ${m.last_name} ${m.email ?? ""} ${m.phone ?? ""} ${memberRoleLabel(m.role)}`
+        .toLowerCase()
+        .includes(q),
+    );
+  }, [members, memberSearch]);
+
+  const visibleCoaches = useMemo(() => {
+    const q = coachSearch.trim().toLowerCase();
+    if (!q) return coaches;
+    return coaches.filter((c) => {
+      const role = COACH_ROLES.find((r) => r.value === c.role)?.label ?? c.role;
+      const club = c.club_id ? clubMap.get(c.club_id) : null;
+      return `${c.first_name} ${c.last_name} ${c.email ?? ""} ${c.phone ?? ""} ${role} ${club?.name ?? ""}`
+        .toLowerCase()
+        .includes(q);
+    });
+  }, [coaches, coachSearch, clubMap]);
+
   // ---------- Club CRUD ----------
   const openCreateClub = () => {
     setEditingClub(null);
@@ -330,9 +354,8 @@ function FederationDetailPage() {
     const postcode = clubForm.postcode.trim();
     const country = clubForm.country.trim();
     const fullAddress =
-      [street, [postcode, city].filter(Boolean).join(" "), country]
-        .filter(Boolean)
-        .join(", ") || clubForm.address.trim();
+      [street, [postcode, city].filter(Boolean).join(" "), country].filter(Boolean).join(", ") ||
+      clubForm.address.trim();
     const payload = {
       name: clubForm.name.trim(),
       federation_id: id,
@@ -451,25 +474,21 @@ function FederationDetailPage() {
 
     // Dual-write profile + person_roles when linked to an existing person (create only)
     if (!opError && !editingMember && selectedMemberPersonId && newMemberId) {
-      const { error: profErr } = await supabase
-        .from("federation_member_profiles")
-        .insert({
-          person_id: selectedMemberPersonId,
-          legacy_federation_member_id: newMemberId,
-          federation_id: id,
-          role: memberForm.role,
-          start_date: memberForm.start_date || null,
-          is_active: memberForm.is_active,
-        });
+      const { error: profErr } = await supabase.from("federation_member_profiles").insert({
+        person_id: selectedMemberPersonId,
+        legacy_federation_member_id: newMemberId,
+        federation_id: id,
+        role: memberForm.role,
+        start_date: memberForm.start_date || null,
+        is_active: memberForm.is_active,
+      });
       if (profErr && !/duplicate|unique/i.test(profErr.message)) {
         console.warn("federation_member_profiles insert:", profErr.message);
       }
-      const { error: roleErr } = await supabase
-        .from("person_roles")
-        .insert({
-          person_id: selectedMemberPersonId,
-          role_type: "federation_member",
-        });
+      const { error: roleErr } = await supabase.from("person_roles").insert({
+        person_id: selectedMemberPersonId,
+        role_type: "federation_member",
+      });
       if (roleErr && !/duplicate|unique/i.test(roleErr.message)) {
         console.warn("person_roles insert:", roleErr.message);
       }
@@ -494,10 +513,7 @@ function FederationDetailPage() {
       destructive: true,
     });
     if (!ok) return;
-    const { error } = await supabase
-      .from("federation_members")
-      .delete()
-      .eq("id", m.id);
+    const { error } = await supabase.from("federation_members").delete().eq("id", m.id);
     if (error) toast.error("Suppression impossible", { description: friendlyError(error) });
     else {
       toast.success("Membre supprimé");
@@ -533,10 +549,7 @@ function FederationDetailPage() {
     let newCoachId: string | null = null;
     let opError: { message: string } | null = null;
     if (pickedCoachId) {
-      const { error } = await supabase
-        .from("coaches")
-        .update(payload)
-        .eq("id", pickedCoachId);
+      const { error } = await supabase.from("coaches").update(payload).eq("id", pickedCoachId);
       opError = error;
       newCoachId = pickedCoachId;
     } else {
@@ -553,16 +566,14 @@ function FederationDetailPage() {
     }
 
     if (!opError && !pickedCoachId && selectedCoachPersonId && newCoachId) {
-      const { error: profErr } = await supabase
-        .from("coach_profiles")
-        .insert({
-          person_id: selectedCoachPersonId,
-          legacy_coach_id: newCoachId,
-          role: coachForm.role,
-          federation_id: id,
-          club_id: payload.club_id,
-          is_active: coachForm.is_active,
-        });
+      const { error: profErr } = await supabase.from("coach_profiles").insert({
+        person_id: selectedCoachPersonId,
+        legacy_coach_id: newCoachId,
+        role: coachForm.role,
+        federation_id: id,
+        club_id: payload.club_id,
+        is_active: coachForm.is_active,
+      });
       if (profErr && !/duplicate|unique/i.test(profErr.message)) {
         console.warn("coach_profiles insert:", profErr.message);
       }
@@ -621,8 +632,6 @@ function FederationDetailPage() {
     }));
   };
 
-
-
   if (loading) {
     return <div className="p-6 text-muted-foreground">Chargement…</div>;
   }
@@ -640,8 +649,7 @@ function FederationDetailPage() {
   }
 
   // President from members table, fallback to fed.president_name
-  const president =
-    members.find((m) => m.role === "president" && (m.is_active ?? true)) ?? null;
+  const president = members.find((m) => m.role === "president" && (m.is_active ?? true)) ?? null;
 
   return (
     <div className="space-y-6">
@@ -748,15 +756,13 @@ function FederationDetailPage() {
                   key={name}
                   className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-xs text-foreground"
                 >
-                  {name}{" "}
-                  <span className="font-semibold text-foreground">{n}</span>
+                  {name} <span className="font-semibold text-foreground">{n}</span>
                 </span>
               ))}
             </div>
           </div>
         )}
       </div>
-
 
       <Tabs defaultValue="clubs">
         <TabsList>
@@ -768,13 +774,22 @@ function FederationDetailPage() {
 
         {/* ============ CLUBS ============ */}
         <TabsContent value="clubs" className="mt-4 space-y-3">
-          <div className="flex justify-end">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="relative min-w-[220px] flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Nom, ville, email, téléphone…"
+                value={clubSearch}
+                onChange={(e) => setClubSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
             <Button onClick={openCreateClub} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
               <Plus className="mr-2 h-4 w-4" /> Ajouter un club
             </Button>
           </div>
           <div className="rounded-lg border border-border bg-card">
-            {clubs.length === 0 ? (
+            {visibleClubs.length === 0 ? (
               <div className="p-6">
                 <EmptyState message="Aucun club affilié." />
               </div>
@@ -791,7 +806,7 @@ function FederationDetailPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {clubs.map((c) => {
+                  {visibleClubs.map((c) => {
                     const n = athletes.filter((a) => a.current_club?.id === c.id).length;
                     return (
                       <TableRow
@@ -836,9 +851,18 @@ function FederationDetailPage() {
         </TabsContent>
 
         {/* ============ ATHLETES (Adhérents) ============ */}
-        <TabsContent value="athletes" className="mt-4">
+        <TabsContent value="athletes" className="mt-4 space-y-3">
+          <div className="relative min-w-[220px] flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Nom, prénom, COSL ID, sport, club…"
+              value={athleteSearch}
+              onChange={(e) => setAthleteSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
           <div className="rounded-lg border border-border bg-card">
-            {athletes.length === 0 ? (
+            {visibleAthletes.length === 0 ? (
               <div className="p-6">
                 <EmptyState message="Aucun adhérent dans les clubs de cette fédération." />
               </div>
@@ -854,7 +878,7 @@ function FederationDetailPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {athletes.map((a) => (
+                  {visibleAthletes.map((a) => (
                     <TableRow
                       key={a.id}
                       onClick={() => navigate({ to: "/athletes/$id", params: { id: a.id } })}
@@ -883,13 +907,25 @@ function FederationDetailPage() {
 
         {/* ============ MEMBERS ============ */}
         <TabsContent value="members" className="mt-4 space-y-3">
-          <div className="flex justify-end">
-            <Button onClick={openCreateMember} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="relative min-w-[220px] flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Nom, prénom, email, téléphone, fonction…"
+                value={memberSearch}
+                onChange={(e) => setMemberSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <Button
+              onClick={openCreateMember}
+              className="bg-primary hover:bg-[var(--cosl-red-dark)]"
+            >
               <Plus className="mr-2 h-4 w-4" /> Ajouter un membre
             </Button>
           </div>
           <div className="rounded-lg border border-border bg-card">
-            {members.length === 0 ? (
+            {visibleMembers.length === 0 ? (
               <div className="p-6">
                 <EmptyState message="Aucun membre enregistré (président, trésorier…)." />
               </div>
@@ -908,30 +944,38 @@ function FederationDetailPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {members.map((m) => (
-                  <TableRow
-                    key={m.id}
-                    onClick={() => navigate({ to: "/federations/members/$memberId", params: { memberId: m.id } })}
-                    className="cursor-pointer hover:bg-muted"
-                  >
-                    <TableCell>
-                      <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-border bg-muted">
-                        {m.photo_url ? (
-                          <img src={m.photo_url} alt="" className="h-full w-full object-cover" />
-                        ) : (
-                          <span className="text-xs font-semibold text-muted-foreground">
-                            {(m.first_name[0] ?? "") + (m.last_name[0] ?? "")}
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {m.first_name} {m.last_name}
-                    </TableCell>
+                  {visibleMembers.map((m) => (
+                    <TableRow
+                      key={m.id}
+                      onClick={() =>
+                        navigate({
+                          to: "/federations/members/$memberId",
+                          params: { memberId: m.id },
+                        })
+                      }
+                      className="cursor-pointer hover:bg-muted"
+                    >
+                      <TableCell>
+                        <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-border bg-muted">
+                          {m.photo_url ? (
+                            <img src={m.photo_url} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <span className="text-xs font-semibold text-muted-foreground">
+                              {(m.first_name[0] ?? "") + (m.last_name[0] ?? "")}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {m.first_name} {m.last_name}
+                      </TableCell>
                       <TableCell>
                         <Badge variant="outline">{memberRoleLabel(m.role)}</Badge>
                       </TableCell>
-                      <TableCell className="text-muted-foreground" onClick={(e) => e.stopPropagation()}>
+                      <TableCell
+                        className="text-muted-foreground"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         {m.email ? (
                           <a
                             href={`mailto:${m.email}`}
@@ -985,13 +1029,25 @@ function FederationDetailPage() {
 
         {/* ============ COACHES ============ */}
         <TabsContent value="coaches" className="mt-4 space-y-3">
-          <div className="flex justify-end">
-            <Button onClick={openCreateCoach} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="relative min-w-[220px] flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Nom, prénom, email, téléphone, rôle, club…"
+                value={coachSearch}
+                onChange={(e) => setCoachSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <Button
+              onClick={openCreateCoach}
+              className="bg-primary hover:bg-[var(--cosl-red-dark)]"
+            >
               <Plus className="mr-2 h-4 w-4" /> Ajouter un encadrant
             </Button>
           </div>
           <div className="rounded-lg border border-border bg-card">
-            {coaches.length === 0 ? (
+            {visibleCoaches.length === 0 ? (
               <div className="p-6">
                 <EmptyState message="Aucun encadrant rattaché." />
               </div>
@@ -1008,7 +1064,7 @@ function FederationDetailPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {coaches.map((c) => {
+                  {visibleCoaches.map((c) => {
                     const role = COACH_ROLES.find((r) => r.value === c.role)?.label ?? c.role;
                     const club = c.club_id ? clubMap.get(c.club_id) : null;
                     return (
@@ -1021,7 +1077,10 @@ function FederationDetailPage() {
                           {c.first_name} {c.last_name}
                         </TableCell>
                         <TableCell className="text-muted-foreground">{role}</TableCell>
-                        <TableCell className="text-muted-foreground" onClick={(e) => e.stopPropagation()}>
+                        <TableCell
+                          className="text-muted-foreground"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           {club ? (
                             <Link
                               to="/clubs/$id"
@@ -1060,9 +1119,7 @@ function FederationDetailPage() {
         <DialogContent className="sm:max-w-lg">
           <form onSubmit={submitClub}>
             <DialogHeader>
-              <DialogTitle>
-                {editingClub ? "Modifier le club" : "Ajouter un club"}
-              </DialogTitle>
+              <DialogTitle>{editingClub ? "Modifier le club" : "Ajouter un club"}</DialogTitle>
               <DialogDescription>
                 Le club sera rattaché à la fédération {fed.acronym}.
               </DialogDescription>
@@ -1140,7 +1197,6 @@ function FederationDetailPage() {
                   />
                 </div>
               </div>
-
             </div>
             <DialogFooter>
               <Button
@@ -1164,7 +1220,13 @@ function FederationDetailPage() {
       </Dialog>
 
       {/* ============ Member dialog ============ */}
-      <Dialog open={memberOpen} onOpenChange={(o) => { setMemberOpen(o); if (!o) setSelectedMemberPersonId(""); }}>
+      <Dialog
+        open={memberOpen}
+        onOpenChange={(o) => {
+          setMemberOpen(o);
+          if (!o) setSelectedMemberPersonId("");
+        }}
+      >
         <DialogContent className="sm:max-w-lg">
           <form onSubmit={submitMember}>
             <DialogHeader>
@@ -1186,13 +1248,17 @@ function FederationDetailPage() {
                     shape="circle"
                     size="lg"
                     label="Photo"
-                    placeholder={(editingMember.first_name[0] ?? "") + (editingMember.last_name[0] ?? "")}
+                    placeholder={
+                      (editingMember.first_name[0] ?? "") + (editingMember.last_name[0] ?? "")
+                    }
                     onUploaded={async (url, path) => {
                       await supabase
                         .from("federation_members")
                         .update({ photo_url: url, photo_storage_path: path })
                         .eq("id", editingMember.id);
-                      setEditingMember((m) => (m ? { ...m, photo_url: url, photo_storage_path: path } : m));
+                      setEditingMember((m) =>
+                        m ? { ...m, photo_url: url, photo_storage_path: path } : m,
+                      );
                       load();
                     }}
                     onDeleted={async () => {
@@ -1200,7 +1266,9 @@ function FederationDetailPage() {
                         .from("federation_members")
                         .update({ photo_url: null, photo_storage_path: null })
                         .eq("id", editingMember.id);
-                      setEditingMember((m) => (m ? { ...m, photo_url: null, photo_storage_path: null } : m));
+                      setEditingMember((m) =>
+                        m ? { ...m, photo_url: null, photo_storage_path: null } : m,
+                      );
                       load();
                     }}
                   />
@@ -1231,18 +1299,13 @@ function FederationDetailPage() {
                 </div>
               )}
 
-
-
-
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="mfname">Prénom *</Label>
                   <Input
                     id="mfname"
                     value={memberForm.first_name}
-                    onChange={(e) =>
-                      setMemberForm({ ...memberForm, first_name: e.target.value })
-                    }
+                    onChange={(e) => setMemberForm({ ...memberForm, first_name: e.target.value })}
                     required
                   />
                 </div>
@@ -1251,9 +1314,7 @@ function FederationDetailPage() {
                   <Input
                     id="mlname"
                     value={memberForm.last_name}
-                    onChange={(e) =>
-                      setMemberForm({ ...memberForm, last_name: e.target.value })
-                    }
+                    onChange={(e) => setMemberForm({ ...memberForm, last_name: e.target.value })}
                     required
                   />
                 </div>
@@ -1283,9 +1344,7 @@ function FederationDetailPage() {
                     id="memail"
                     type="email"
                     value={memberForm.email}
-                    onChange={(e) =>
-                      setMemberForm({ ...memberForm, email: e.target.value })
-                    }
+                    onChange={(e) => setMemberForm({ ...memberForm, email: e.target.value })}
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -1293,9 +1352,7 @@ function FederationDetailPage() {
                   <Input
                     id="mphone"
                     value={memberForm.phone}
-                    onChange={(e) =>
-                      setMemberForm({ ...memberForm, phone: e.target.value })
-                    }
+                    onChange={(e) => setMemberForm({ ...memberForm, phone: e.target.value })}
                   />
                 </div>
               </div>
@@ -1320,15 +1377,27 @@ function FederationDetailPage() {
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="mpostcode">Code postal</Label>
-                  <Input id="mpostcode" value={memberForm.postcode} onChange={(e) => setMemberForm({ ...memberForm, postcode: e.target.value })} />
+                  <Input
+                    id="mpostcode"
+                    value={memberForm.postcode}
+                    onChange={(e) => setMemberForm({ ...memberForm, postcode: e.target.value })}
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="mcity">Ville</Label>
-                  <Input id="mcity" value={memberForm.city} onChange={(e) => setMemberForm({ ...memberForm, city: e.target.value })} />
+                  <Input
+                    id="mcity"
+                    value={memberForm.city}
+                    onChange={(e) => setMemberForm({ ...memberForm, city: e.target.value })}
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="mcountry">Pays</Label>
-                  <Input id="mcountry" value={memberForm.country} onChange={(e) => setMemberForm({ ...memberForm, country: e.target.value })} />
+                  <Input
+                    id="mcountry"
+                    value={memberForm.country}
+                    onChange={(e) => setMemberForm({ ...memberForm, country: e.target.value })}
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -1338,9 +1407,7 @@ function FederationDetailPage() {
                     id="mstart"
                     type="date"
                     value={memberForm.start_date}
-                    onChange={(e) =>
-                      setMemberForm({ ...memberForm, start_date: e.target.value })
-                    }
+                    onChange={(e) => setMemberForm({ ...memberForm, start_date: e.target.value })}
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -1349,9 +1416,7 @@ function FederationDetailPage() {
                     id="mend"
                     type="date"
                     value={memberForm.end_date}
-                    onChange={(e) =>
-                      setMemberForm({ ...memberForm, end_date: e.target.value })
-                    }
+                    onChange={(e) => setMemberForm({ ...memberForm, end_date: e.target.value })}
                   />
                 </div>
               </div>
@@ -1361,9 +1426,7 @@ function FederationDetailPage() {
                   id="mnotes"
                   rows={3}
                   value={memberForm.notes}
-                  onChange={(e) =>
-                    setMemberForm({ ...memberForm, notes: e.target.value })
-                  }
+                  onChange={(e) => setMemberForm({ ...memberForm, notes: e.target.value })}
                 />
               </div>
               <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
@@ -1373,9 +1436,7 @@ function FederationDetailPage() {
                 <Switch
                   id="mactive"
                   checked={memberForm.is_active}
-                  onCheckedChange={(v) =>
-                    setMemberForm({ ...memberForm, is_active: v })
-                  }
+                  onCheckedChange={(v) => setMemberForm({ ...memberForm, is_active: v })}
                 />
               </div>
             </div>
@@ -1393,11 +1454,7 @@ function FederationDetailPage() {
                 disabled={memberSaving}
                 className="bg-primary hover:bg-[var(--cosl-red-dark)]"
               >
-                {memberSaving
-                  ? "Enregistrement…"
-                  : editingMember
-                  ? "Enregistrer"
-                  : "Ajouter"}
+                {memberSaving ? "Enregistrement…" : editingMember ? "Enregistrer" : "Ajouter"}
               </Button>
             </DialogFooter>
           </form>
@@ -1405,13 +1462,20 @@ function FederationDetailPage() {
       </Dialog>
 
       {/* ============ Coach dialog ============ */}
-      <Dialog open={coachOpen} onOpenChange={(o) => { setCoachOpen(o); if (!o) setSelectedCoachPersonId(""); }}>
+      <Dialog
+        open={coachOpen}
+        onOpenChange={(o) => {
+          setCoachOpen(o);
+          if (!o) setSelectedCoachPersonId("");
+        }}
+      >
         <DialogContent className="sm:max-w-lg">
           <form onSubmit={submitCoach}>
             <DialogHeader>
               <DialogTitle>Ajouter un encadrant</DialogTitle>
               <DialogDescription>
-                Rattacher un encadrant existant ou en créer un nouveau pour la fédération {fed.acronym}.
+                Rattacher un encadrant existant ou en créer un nouveau pour la fédération{" "}
+                {fed.acronym}.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -1467,7 +1531,6 @@ function FederationDetailPage() {
                   </p>
                 </div>
               )}
-
 
               {!pickedCoachId && (
                 <div className="space-y-1.5 rounded-md border border-dashed border-border bg-muted/40 p-3">
@@ -1604,4 +1667,3 @@ function FederationDetailPage() {
     </div>
   );
 }
-
