@@ -304,6 +304,46 @@ function FederationDetailPage() {
     };
   }, [clubs, coaches, athletes, members]);
 
+  const visibleClubs = useMemo(() => {
+    const q = clubSearch.trim().toLowerCase();
+    if (!q) return clubs;
+    return clubs.filter((c) =>
+      `${c.name} ${c.city ?? ""} ${c.email ?? ""} ${c.phone ?? ""}`.toLowerCase().includes(q),
+    );
+  }, [clubs, clubSearch]);
+
+  const visibleAthletes = useMemo(() => {
+    const q = athleteSearch.trim().toLowerCase();
+    if (!q) return athletes;
+    return athletes.filter((a) =>
+      `${a.first_name} ${a.last_name} ${a.cosl_id ?? ""} ${a.primary_sport?.name ?? ""} ${a.current_club?.name ?? ""}`
+        .toLowerCase()
+        .includes(q),
+    );
+  }, [athletes, athleteSearch]);
+
+  const visibleMembers = useMemo(() => {
+    const q = memberSearch.trim().toLowerCase();
+    if (!q) return members;
+    return members.filter((m) =>
+      `${m.first_name} ${m.last_name} ${m.email ?? ""} ${m.phone ?? ""} ${memberRoleLabel(m.role)}`
+        .toLowerCase()
+        .includes(q),
+    );
+  }, [members, memberSearch]);
+
+  const visibleCoaches = useMemo(() => {
+    const q = coachSearch.trim().toLowerCase();
+    if (!q) return coaches;
+    return coaches.filter((c) => {
+      const role = COACH_ROLES.find((r) => r.value === c.role)?.label ?? c.role;
+      const club = c.club_id ? clubMap.get(c.club_id) : null;
+      return `${c.first_name} ${c.last_name} ${c.email ?? ""} ${c.phone ?? ""} ${role} ${club?.name ?? ""}`
+        .toLowerCase()
+        .includes(q);
+    });
+  }, [coaches, coachSearch, clubMap]);
+
   // ---------- Club CRUD ----------
   const openCreateClub = () => {
     setEditingClub(null);
