@@ -242,6 +242,8 @@ function PartnersPage() {
               <div className="border-t pt-4">
                 <p className="text-sm font-semibold mb-2">Adresse</p>
                 <AddressSearch
+                  value={form.street}
+                  onChange={(v) => setForm((f) => ({ ...f, street: v }))}
                   onSelect={(a) => setForm((f) => ({
                     ...f,
                     street: a.street ?? f.street,
@@ -250,6 +252,7 @@ function PartnersPage() {
                     country: a.country ?? f.country,
                   }))}
                 />
+
                 <div className="grid grid-cols-2 gap-3 mt-2">
                   <div className="space-y-1.5 col-span-2">
                     <Label>Rue</Label>
