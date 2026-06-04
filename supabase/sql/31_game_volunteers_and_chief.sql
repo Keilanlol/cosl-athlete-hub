@@ -25,9 +25,28 @@ CREATE POLICY game_volunteers_all ON public.game_volunteers
   FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 -- 2. delegations.chief_of_mission_id : pointer vers persons plutôt que coaches
--- Drop l'ancienne FK AVANT le backfill, sinon les UPDATE échouent contre coaches.
-ALTER TABLE public.delegations
-  DROP CONSTRAINT IF EXISTS delegations_chief_of_mission_id_fkey;
+-- Drop dynamiquement TOUTES les FK sur delegations.chief_of_mission_id
+-- (peu importe leur nom auto-généré), sinon les UPDATE échouent contre coaches.
+DO $$
+DECLARE
+  c record;
+BEGIN
+  FOR c IN
+    SELECT con.conname
+    FROM pg_constraint con
+    JOIN pg_class rel ON rel.oid = con.conrelid
+    JOIN pg_namespace nsp ON nsp.oid = rel.relnamespace
+    WHERE nsp.nspname = 'public'
+      AND rel.relname = 'delegations'
+      AND con.contype = 'f'
+      AND con.conkey = ARRAY[
+        (SELECT attnum FROM pg_attribute
+          WHERE attrelid = rel.oid AND attname = 'chief_of_mission_id')
+      ]::smallint[]
+  LOOP
+    EXECUTE format('ALTER TABLE public.delegations DROP CONSTRAINT %I', c.conname);
+  END LOOP;
+END $$;
 
 DO $$
 DECLARE
