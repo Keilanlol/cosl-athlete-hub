@@ -8,6 +8,7 @@ import { computeKycGlobalStatus, countValidAxes, computeAge } from "@/lib/kyc-ut
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { coachRoleLabel } from "@/lib/role-labels";
 import { confirmAction } from "@/components/ConfirmDialog";
 import {
   ATHLETE_STATUSES,
