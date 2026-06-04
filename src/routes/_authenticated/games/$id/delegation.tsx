@@ -389,8 +389,8 @@ function DelegationPage() {
                     <TableCell className="font-medium">
                       {person ? `${person.first_name} ${person.last_name}` : "—"}
                     </TableCell>
-                    <TableCell>{m.member_role}</TableCell>
-                    <TableCell className="text-muted-foreground">{m.member_function ?? (m.coach?.role ?? "—")}</TableCell>
+                    <TableCell>{coachRoleLabel(m.member_role) === "—" ? m.member_role : coachRoleLabel(m.member_role)}</TableCell>
+                    <TableCell className="text-muted-foreground">{m.member_function ?? coachRoleLabel(m.coach?.role ?? null)}</TableCell>
                     <TableCell className="text-muted-foreground">
                       {isAth ? sportName(m.athlete?.primary_sport_id ?? null) : "—"}
                     </TableCell>
