@@ -30,6 +30,7 @@ type Partner = {
   logo_url: string | null;
   street: string | null; postcode: string | null; city: string | null; country: string | null;
   contact_first_name: string | null; contact_last_name: string | null;
+  contact_email: string | null; contact_phone: string | null;
 };
 type Row = { id: string; partner_id: string; notes: string | null; partner: Partner | null };
 
