@@ -622,8 +622,8 @@ export function AddRoleDialog({
                     </SelectTrigger>
                     <SelectContent>
                       {CLUB_ROLES.map((r) => (
-                        <SelectItem key={r} value={r}>
-                          {r}
+                        <SelectItem key={r.value} value={r.value}>
+                          {r.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
