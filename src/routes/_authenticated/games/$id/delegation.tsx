@@ -26,6 +26,8 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { COACH_ROLES } from "@/lib/types";
+import { coachRoleLabel } from "@/lib/role-labels";
+import { PersonCombobox } from "@/components/PersonCombobox";
 
 export const Route = createFileRoute("/_authenticated/games/$id/delegation")({
   component: DelegationPage,
