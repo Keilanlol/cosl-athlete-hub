@@ -3,6 +3,11 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { friendlyError } from "@/lib/error-messages";
 import { ROLE_LABELS, type PersonRoleType } from "@/lib/persons";
+import {
+  COACH_ROLES as COACH_ROLE_OPTIONS,
+  FEDERATION_MEMBER_ROLES as FED_ROLE_OPTIONS,
+  CLUB_MEMBER_ROLES as CLUB_ROLE_OPTIONS,
+} from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,30 +45,9 @@ type Props = {
   onAdded: () => void;
 };
 
-const COACH_ROLES = [
-  "coach",
-  "medical",
-  "chief_of_mission",
-  "press",
-  "manager",
-  "official",
-];
-const FED_ROLES = [
-  "president",
-  "vice_president",
-  "secretary_general",
-  "treasurer",
-  "board_member",
-  "delegate",
-];
-const CLUB_ROLES = [
-  "president",
-  "vice_president",
-  "secretary",
-  "treasurer",
-  "board_member",
-  "head_coach",
-];
+const COACH_ROLES = COACH_ROLE_OPTIONS;
+const FED_ROLES = FED_ROLE_OPTIONS;
+const CLUB_ROLES = CLUB_ROLE_OPTIONS;
 const ATHLETE_STATUSES = ["active", "injured", "suspended", "retired", "ambassador"];
 const ATHLETE_LEVELS_FALLBACK = ["elite", "promotion", "espoir", "olympic_contract"];
 
@@ -499,8 +483,8 @@ export function AddRoleDialog({
                   </SelectTrigger>
                   <SelectContent>
                     {COACH_ROLES.map((r) => (
-                      <SelectItem key={r} value={r}>
-                        {r}
+                      <SelectItem key={r.value} value={r.value}>
+                        {r.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -583,8 +567,8 @@ export function AddRoleDialog({
                     </SelectTrigger>
                     <SelectContent>
                       {FED_ROLES.map((r) => (
-                        <SelectItem key={r} value={r}>
-                          {r}
+                        <SelectItem key={r.value} value={r.value}>
+                          {r.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -638,8 +622,8 @@ export function AddRoleDialog({
                     </SelectTrigger>
                     <SelectContent>
                       {CLUB_ROLES.map((r) => (
-                        <SelectItem key={r} value={r}>
-                          {r}
+                        <SelectItem key={r.value} value={r.value}>
+                          {r.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
