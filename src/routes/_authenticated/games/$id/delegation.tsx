@@ -26,6 +26,8 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { COACH_ROLES } from "@/lib/types";
+import { coachRoleLabel } from "@/lib/role-labels";
+import { PersonCombobox } from "@/components/PersonCombobox";
 
 export const Route = createFileRoute("/_authenticated/games/$id/delegation")({
   component: DelegationPage,
@@ -55,6 +57,13 @@ type Member = {
   athlete: Athlete | null; coach: Coach | null;
 };
 
+type PersonLite = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+};
+
 function DelegationPage() {
   const { id: gameId } = Route.useParams();
   const [delegation, setDelegation] = useState<Delegation | null>(null);
@@ -63,6 +72,7 @@ function DelegationPage() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [sports, setSports] = useState<Sport[]>([]);
+  const [persons, setPersons] = useState<PersonLite[]>([]);
   const [game, setGame] = useState<{ name: string; short_name: string | null; edition_year: number } | null>(null);
 
   const [typeFilter, setTypeFilter] = useState("all");
@@ -103,7 +113,7 @@ function DelegationPage() {
     const del = await ensureDelegation();
     if (!del) return;
     setDelegation(del);
-    const [mRes, cRes, uRes, aRes, sRes, gRes] = await Promise.all([
+    const [mRes, cRes, uRes, aRes, sRes, gRes, pRes] = await Promise.all([
       supabase.from("delegation_members")
         .select("*, athlete:athletes(id,first_name,last_name,gender,cosl_id,birth_date,primary_sport_id), coach:coaches(id,first_name,last_name,role,federation_id)")
         .eq("delegation_id", del.id),
@@ -112,6 +122,7 @@ function DelegationPage() {
       supabase.from("athletes").select("id,first_name,last_name,gender,cosl_id,birth_date,primary_sport_id").eq("is_active", true).order("last_name"),
       supabase.from("sports").select("id,name").order("name"),
       supabase.from("games").select("name,short_name,edition_year").eq("id", gameId).maybeSingle(),
+      supabase.from("persons").select("id,first_name,last_name,email").eq("is_active", true).order("last_name"),
     ]);
     setMembers(((mRes.data ?? []) as unknown) as Member[]);
     setCoaches((cRes.data ?? []) as Coach[]);
@@ -119,6 +130,7 @@ function DelegationPage() {
     setAthletes((aRes.data ?? []) as Athlete[]);
     setSports((sRes.data ?? []) as Sport[]);
     setGame((gRes.data ?? null) as { name: string; short_name: string | null; edition_year: number } | null);
+    setPersons((pRes.data ?? []) as PersonLite[]);
     setChiefId(del.chief_of_mission_id ?? "");
     setMgrId(del.games_manager_id ?? "");
   };
@@ -126,8 +138,16 @@ function DelegationPage() {
   useEffect(() => { load(); }, [gameId]);
 
   const sportName = (sid: string | null) => sid ? sports.find((s) => s.id === sid)?.name ?? "—" : "—";
-  const chief = coaches.find((c) => c.id === delegation?.chief_of_mission_id);
+  const chief = persons.find((p) => p.id === delegation?.chief_of_mission_id);
   const manager = users.find((u) => u.id === delegation?.games_manager_id);
+
+  const personOptions = useMemo(
+    () => persons.map((p) => ({
+      id: p.id,
+      label: `${p.first_name} ${p.last_name}${p.email ? ` — ${p.email}` : ""}`,
+    })),
+    [persons],
+  );
 
   const filtered = useMemo(() => {
     if (!members) return [];
@@ -244,7 +264,7 @@ function DelegationPage() {
     });
     if (chief) {
       lines.unshift([
-        "Chef de Mission", "", chief.last_name, chief.first_name, "", "", "", "Chief of Mission", chief.role,
+        "Chef de Mission", "", chief.last_name, chief.first_name, "", "", "", "Chef de Mission", chief.email ?? "",
       ]);
     }
     const csv = [header, ...lines]
@@ -278,7 +298,7 @@ function DelegationPage() {
               <p className="text-lg font-semibold text-foreground">
                 {chief ? `${chief.first_name} ${chief.last_name}` : "Non désigné"}
               </p>
-              {chief && <p className="text-sm text-muted-foreground">{chief.role}</p>}
+              {chief?.email && <p className="text-sm text-muted-foreground truncate">{chief.email}</p>}
             </div>
             <Button size="sm" variant="outline" onClick={() => setChiefOpen(true)}>
               <Pencil className="mr-2 h-3.5 w-3.5" /> {chief ? "Modifier" : "Désigner"}
@@ -369,8 +389,8 @@ function DelegationPage() {
                     <TableCell className="font-medium">
                       {person ? `${person.first_name} ${person.last_name}` : "—"}
                     </TableCell>
-                    <TableCell>{m.member_role}</TableCell>
-                    <TableCell className="text-muted-foreground">{m.member_function ?? (m.coach?.role ?? "—")}</TableCell>
+                    <TableCell>{coachRoleLabel(m.member_role) === "—" ? m.member_role : coachRoleLabel(m.member_role)}</TableCell>
+                    <TableCell className="text-muted-foreground">{m.member_function ?? coachRoleLabel(m.coach?.role ?? null)}</TableCell>
                     <TableCell className="text-muted-foreground">
                       {isAth ? sportName(m.athlete?.primary_sport_id ?? null) : "—"}
                     </TableCell>
@@ -389,20 +409,30 @@ function DelegationPage() {
 
       {/* Chief dialog */}
       <Dialog open={chiefOpen} onOpenChange={setChiefOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg overflow-hidden">
           <DialogHeader>
             <DialogTitle>Chef de Mission</DialogTitle>
-            <DialogDescription>Sélectionner un encadrant comme Chef de Mission.</DialogDescription>
+            <DialogDescription>Sélectionner n'importe quelle personne comme Chef de Mission.</DialogDescription>
           </DialogHeader>
-          <Select value={chiefId || "none"} onValueChange={(v) => setChiefId(v === "none" ? "" : v)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">— Aucun —</SelectItem>
-              {coaches.map((c) => (
-                <SelectItem key={c.id} value={c.id}>{c.first_name} {c.last_name} ({c.role})</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="py-2">
+            <PersonCombobox
+              value={chiefId}
+              onChange={setChiefId}
+              options={personOptions}
+              placeholder="— Aucun —"
+              searchPlaceholder="Rechercher une personne…"
+              emptyMessage="Aucune personne."
+            />
+            {chiefId && (
+              <button
+                type="button"
+                onClick={() => setChiefId("")}
+                className="mt-2 text-xs text-muted-foreground hover:underline"
+              >
+                Retirer la sélection
+              </button>
+            )}
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setChiefOpen(false)}>Annuler</Button>
             <Button onClick={saveChief} className="bg-primary hover:bg-[var(--cosl-red-dark)]">Enregistrer</Button>

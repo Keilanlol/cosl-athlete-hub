@@ -8,6 +8,7 @@ import { computeKycGlobalStatus, countValidAxes, computeAge } from "@/lib/kyc-ut
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { coachRoleLabel } from "@/lib/role-labels";
 import { confirmAction } from "@/components/ConfirmDialog";
 import {
   ATHLETE_STATUSES,
@@ -1631,7 +1632,7 @@ function AthleteDetailPage() {
                   <SelectContent>
                     {coaches.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
-                        {c.first_name} {c.last_name} — {c.role}
+                        {c.first_name} {c.last_name} — {coachRoleLabel(c.role)}
                       </SelectItem>
                     ))}
                   </SelectContent>
