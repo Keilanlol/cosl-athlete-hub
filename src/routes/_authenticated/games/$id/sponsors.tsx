@@ -45,6 +45,8 @@ function GameSponsorsPage() {
   const [sponsorId, setSponsorId] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false);
+
 
   const load = async () => {
     setRows(null);
@@ -165,9 +167,20 @@ function GameSponsorsPage() {
             <div className="grid gap-4 py-4">
               <div className="space-y-1.5">
                 <Label>Sponsor *</Label>
-                <Select value={sponsorId} onValueChange={setSponsorId}>
+                <Select
+                  value={sponsorId}
+                  onValueChange={(v) => {
+                    if (v === "__new__") {
+                      setOpen(false);
+                      setQuickOpen(true);
+                      return;
+                    }
+                    setSponsorId(v);
+                  }}
+                >
                   <SelectTrigger><SelectValue placeholder="Choisir un sponsor…" /></SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="__new__" className="font-medium text-primary">+ Créer un nouveau sponsor</SelectItem>
                     {available.length === 0 && <div className="p-2 text-sm text-muted-foreground">Aucun sponsor disponible.</div>}
                     {available.map((s) => (
                       <SelectItem key={s.id} value={s.id}>
@@ -176,8 +189,9 @@ function GameSponsorsPage() {
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">Les sponsors se créent depuis la page Sponsors.</p>
+                <p className="text-xs text-muted-foreground">Ou créez-en un nouveau directement ici.</p>
               </div>
+
               <div className="space-y-1.5">
                 <Label>Notes</Label>
                 <Input value={notes} onChange={(e) => setNotes(e.target.value)} />
@@ -192,6 +206,18 @@ function GameSponsorsPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <SponsorQuickCreateDialog
+        open={quickOpen}
+        onOpenChange={setQuickOpen}
+        ranks={ranks}
+        onCreated={async (id) => {
+          const { error } = await supabase.from("game_sponsors").insert({ game_id: gameId, sponsor_id: id });
+          if (error) toast.error("Échec du lien", { description: friendlyError(error) });
+          load();
+        }}
+      />
     </div>
   );
 }
+
