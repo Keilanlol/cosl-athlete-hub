@@ -658,7 +658,7 @@ function AccredDrawerBody({
           <div><dt className="text-xs text-muted-foreground">Type</dt><dd>{a.athlete_id ? "Athlète" : "Encadrant"}</dd></div>
           <div><dt className="text-xs text-muted-foreground">Fonction</dt><dd>{a.function_label ?? "—"}</dd></div>
           {a.athlete?.cosl_id && <div><dt className="text-xs text-muted-foreground">COSL ID</dt><dd className="font-mono text-xs">{a.athlete.cosl_id}</dd></div>}
-          {a.coach?.role && <div><dt className="text-xs text-muted-foreground">Rôle</dt><dd>{a.coach.role}</dd></div>}
+          {a.coach?.role && <div><dt className="text-xs text-muted-foreground">Rôle</dt><dd>{coachRoleLabel(a.coach.role)}</dd></div>}
           <div><dt className="text-xs text-muted-foreground">Email</dt><dd>{person?.email ?? "—"}</dd></div>
           <div><dt className="text-xs text-muted-foreground">Téléphone</dt><dd>{person?.phone ?? "—"}</dd></div>
         </dl>
