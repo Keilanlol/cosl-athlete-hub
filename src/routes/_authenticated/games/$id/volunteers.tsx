@@ -258,7 +258,7 @@ function VolunteersPage() {
       <PersonCreateDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
-        defaultRoles={["volunteer"]}
+        initialRoles={["volunteer"]}
         onCreated={() => { setCreateOpen(false); load(); }}
       />
     </div>
