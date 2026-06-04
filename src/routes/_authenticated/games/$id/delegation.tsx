@@ -298,7 +298,7 @@ function DelegationPage() {
               <p className="text-lg font-semibold text-foreground">
                 {chief ? `${chief.first_name} ${chief.last_name}` : "Non désigné"}
               </p>
-              {chief && <p className="text-sm text-muted-foreground">{chief.role}</p>}
+              {chief?.email && <p className="text-sm text-muted-foreground truncate">{chief.email}</p>}
             </div>
             <Button size="sm" variant="outline" onClick={() => setChiefOpen(true)}>
               <Pencil className="mr-2 h-3.5 w-3.5" /> {chief ? "Modifier" : "Désigner"}
