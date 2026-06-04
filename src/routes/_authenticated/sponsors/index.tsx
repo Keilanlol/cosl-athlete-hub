@@ -247,32 +247,16 @@ function SponsorsPage() {
               <DialogDescription>Renseignez les informations du sponsor.</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              {editing && (
-                <div className="flex justify-center">
-                  <EntityImageUpload
-                    entityId={editing.id}
-                    entityType="sponsor"
-                    currentImageUrl={editing.logo_url}
-                    currentStoragePath={editing.logo_storage_path}
-                    shape="square"
-                    placeholder={editing.name.slice(0, 2).toUpperCase()}
-                    label="Logo"
-                    onUploaded={async (url, path) => {
-                      await supabase.from("sponsors").update({ logo_url: url, logo_storage_path: path }).eq("id", editing.id);
-                      setEditing({ ...editing, logo_url: url, logo_storage_path: path });
-                      load();
-                    }}
-                    onDeleted={async () => {
-                      await supabase.from("sponsors").update({ logo_url: null, logo_storage_path: null }).eq("id", editing.id);
-                      setEditing({ ...editing, logo_url: null, logo_storage_path: null });
-                      load();
-                    }}
-                  />
-                </div>
-              )}
-              {!editing && (
-                <p className="text-xs text-muted-foreground text-center">Le logo pourra être ajouté après la création.</p>
-              )}
+              <div className="flex justify-center">
+                <LogoFilePicker
+                  currentUrl={editing?.logo_url}
+                  file={logoFile}
+                  onFileChange={setLogoFile}
+                  clearedExisting={logoCleared}
+                  onClearedExistingChange={setLogoCleared}
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5 col-span-2">
                   <Label>Nom *</Label>
