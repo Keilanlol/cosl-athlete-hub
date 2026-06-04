@@ -33,6 +33,7 @@ import { Route as AuthenticatedClubsIdRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedAthletesIdRouteImport } from './routes/_authenticated/athletes/$id'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin/users'
 import { Route as AuthenticatedGamesIdIndexRouteImport } from './routes/_authenticated/games/$id/index'
+import { Route as AuthenticatedGamesIdVolunteersRouteImport } from './routes/_authenticated/games/$id/volunteers'
 import { Route as AuthenticatedGamesIdSelectionsRouteImport } from './routes/_authenticated/games/$id/selections'
 import { Route as AuthenticatedGamesIdDelegationRouteImport } from './routes/_authenticated/games/$id/delegation'
 import { Route as AuthenticatedGamesIdCompetitionsRouteImport } from './routes/_authenticated/games/$id/competitions'
@@ -176,6 +177,12 @@ const AuthenticatedGamesIdIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedGamesIdRoute,
   } as any)
+const AuthenticatedGamesIdVolunteersRoute =
+  AuthenticatedGamesIdVolunteersRouteImport.update({
+    id: '/volunteers',
+    path: '/volunteers',
+    getParentRoute: () => AuthenticatedGamesIdRoute,
+  } as any)
 const AuthenticatedGamesIdSelectionsRoute =
   AuthenticatedGamesIdSelectionsRouteImport.update({
     id: '/selections',
@@ -266,6 +273,7 @@ export interface FileRoutesByFullPath {
   '/games/$id/competitions': typeof AuthenticatedGamesIdCompetitionsRoute
   '/games/$id/delegation': typeof AuthenticatedGamesIdDelegationRoute
   '/games/$id/selections': typeof AuthenticatedGamesIdSelectionsRoute
+  '/games/$id/volunteers': typeof AuthenticatedGamesIdVolunteersRoute
   '/games/$id/': typeof AuthenticatedGamesIdIndexRoute
   '/games/$id/logistics/flights': typeof AuthenticatedGamesIdLogisticsFlightsRoute
   '/games/$id/logistics/lodging': typeof AuthenticatedGamesIdLogisticsLodgingRoute
@@ -300,6 +308,7 @@ export interface FileRoutesByTo {
   '/games/$id/competitions': typeof AuthenticatedGamesIdCompetitionsRoute
   '/games/$id/delegation': typeof AuthenticatedGamesIdDelegationRoute
   '/games/$id/selections': typeof AuthenticatedGamesIdSelectionsRoute
+  '/games/$id/volunteers': typeof AuthenticatedGamesIdVolunteersRoute
   '/games/$id': typeof AuthenticatedGamesIdIndexRoute
   '/games/$id/logistics/flights': typeof AuthenticatedGamesIdLogisticsFlightsRoute
   '/games/$id/logistics/lodging': typeof AuthenticatedGamesIdLogisticsLodgingRoute
@@ -337,6 +346,7 @@ export interface FileRoutesById {
   '/_authenticated/games/$id/competitions': typeof AuthenticatedGamesIdCompetitionsRoute
   '/_authenticated/games/$id/delegation': typeof AuthenticatedGamesIdDelegationRoute
   '/_authenticated/games/$id/selections': typeof AuthenticatedGamesIdSelectionsRoute
+  '/_authenticated/games/$id/volunteers': typeof AuthenticatedGamesIdVolunteersRoute
   '/_authenticated/games/$id/': typeof AuthenticatedGamesIdIndexRoute
   '/_authenticated/games/$id/logistics/flights': typeof AuthenticatedGamesIdLogisticsFlightsRoute
   '/_authenticated/games/$id/logistics/lodging': typeof AuthenticatedGamesIdLogisticsLodgingRoute
@@ -374,6 +384,7 @@ export interface FileRouteTypes {
     | '/games/$id/competitions'
     | '/games/$id/delegation'
     | '/games/$id/selections'
+    | '/games/$id/volunteers'
     | '/games/$id/'
     | '/games/$id/logistics/flights'
     | '/games/$id/logistics/lodging'
@@ -408,6 +419,7 @@ export interface FileRouteTypes {
     | '/games/$id/competitions'
     | '/games/$id/delegation'
     | '/games/$id/selections'
+    | '/games/$id/volunteers'
     | '/games/$id'
     | '/games/$id/logistics/flights'
     | '/games/$id/logistics/lodging'
@@ -444,6 +456,7 @@ export interface FileRouteTypes {
     | '/_authenticated/games/$id/competitions'
     | '/_authenticated/games/$id/delegation'
     | '/_authenticated/games/$id/selections'
+    | '/_authenticated/games/$id/volunteers'
     | '/_authenticated/games/$id/'
     | '/_authenticated/games/$id/logistics/flights'
     | '/_authenticated/games/$id/logistics/lodging'
@@ -627,6 +640,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedGamesIdIndexRouteImport
       parentRoute: typeof AuthenticatedGamesIdRoute
     }
+    '/_authenticated/games/$id/volunteers': {
+      id: '/_authenticated/games/$id/volunteers'
+      path: '/volunteers'
+      fullPath: '/games/$id/volunteers'
+      preLoaderRoute: typeof AuthenticatedGamesIdVolunteersRouteImport
+      parentRoute: typeof AuthenticatedGamesIdRoute
+    }
     '/_authenticated/games/$id/selections': {
       id: '/_authenticated/games/$id/selections'
       path: '/selections'
@@ -705,6 +725,7 @@ interface AuthenticatedGamesIdRouteChildren {
   AuthenticatedGamesIdCompetitionsRoute: typeof AuthenticatedGamesIdCompetitionsRoute
   AuthenticatedGamesIdDelegationRoute: typeof AuthenticatedGamesIdDelegationRoute
   AuthenticatedGamesIdSelectionsRoute: typeof AuthenticatedGamesIdSelectionsRoute
+  AuthenticatedGamesIdVolunteersRoute: typeof AuthenticatedGamesIdVolunteersRoute
   AuthenticatedGamesIdIndexRoute: typeof AuthenticatedGamesIdIndexRoute
   AuthenticatedGamesIdLogisticsFlightsRoute: typeof AuthenticatedGamesIdLogisticsFlightsRoute
   AuthenticatedGamesIdLogisticsLodgingRoute: typeof AuthenticatedGamesIdLogisticsLodgingRoute
@@ -718,6 +739,7 @@ const AuthenticatedGamesIdRouteChildren: AuthenticatedGamesIdRouteChildren = {
   AuthenticatedGamesIdCompetitionsRoute: AuthenticatedGamesIdCompetitionsRoute,
   AuthenticatedGamesIdDelegationRoute: AuthenticatedGamesIdDelegationRoute,
   AuthenticatedGamesIdSelectionsRoute: AuthenticatedGamesIdSelectionsRoute,
+  AuthenticatedGamesIdVolunteersRoute: AuthenticatedGamesIdVolunteersRoute,
   AuthenticatedGamesIdIndexRoute: AuthenticatedGamesIdIndexRoute,
   AuthenticatedGamesIdLogisticsFlightsRoute:
     AuthenticatedGamesIdLogisticsFlightsRoute,
