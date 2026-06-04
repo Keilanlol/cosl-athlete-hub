@@ -11,7 +11,10 @@ import {
   Plane,
   MessageSquare,
   Settings,
+  Star,
+  Handshake,
 } from "lucide-react";
+
 import {
   Sidebar,
   SidebarContent,
@@ -45,8 +48,13 @@ const groups: { label: string; items: Item[] }[] = [
   },
   {
     label: "Games & Competitions",
-    items: [{ title: "Games", url: "/games", icon: Trophy }],
+    items: [
+      { title: "Games", url: "/games", icon: Trophy },
+      { title: "Sponsors", url: "/sponsors", icon: Star },
+      { title: "Partenaires", url: "/partners", icon: Handshake },
+    ],
   },
+
   {
     label: "Accreditation",
     items: [{ title: "Accréditations", url: "/accreditations", icon: BadgeCheck }],
