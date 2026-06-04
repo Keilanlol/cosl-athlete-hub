@@ -138,7 +138,8 @@ function GamePartnersPage() {
                     <div>{r.partner?.phone ?? ""}</div>
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm">
-                    {[r.partner?.contact_first_name, r.partner?.contact_last_name].filter(Boolean).join(" ") || "—"}
+                    <div>{[r.partner?.contact_first_name, r.partner?.contact_last_name].filter(Boolean).join(" ") || "—"}</div>
+                    <div>{r.partner?.contact_email ?? ""} {r.partner?.contact_phone ? `· ${r.partner.contact_phone}` : ""}</div>
                   </TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="icon" onClick={() => remove(r)}><Trash2 className="h-4 w-4 text-red-600" /></Button>
