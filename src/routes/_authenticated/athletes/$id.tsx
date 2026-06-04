@@ -1631,7 +1631,7 @@ function AthleteDetailPage() {
                   <SelectContent>
                     {coaches.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
-                        {c.first_name} {c.last_name} — {c.role}
+                        {c.first_name} {c.last_name} — {coachRoleLabel(c.role)}
                       </SelectItem>
                     ))}
                   </SelectContent>
