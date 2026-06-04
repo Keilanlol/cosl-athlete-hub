@@ -53,10 +53,7 @@ export function PersonCombobox({
           role="combobox"
           aria-expanded={open}
           disabled={disabled}
-          className={cn(
-            "w-full justify-between font-normal overflow-hidden",
-            className,
-          )}
+          className={cn("w-full justify-between font-normal overflow-hidden", className)}
         >
           <span
             className={cn(
