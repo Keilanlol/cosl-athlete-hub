@@ -3,6 +3,11 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { friendlyError } from "@/lib/error-messages";
 import { ROLE_LABELS, type PersonRoleType } from "@/lib/persons";
+import {
+  COACH_ROLES as COACH_ROLE_OPTIONS,
+  FEDERATION_MEMBER_ROLES as FED_ROLE_OPTIONS,
+  CLUB_MEMBER_ROLES as CLUB_ROLE_OPTIONS,
+} from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
