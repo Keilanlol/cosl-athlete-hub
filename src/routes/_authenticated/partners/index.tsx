@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { EntityImageUpload } from "@/components/EntityImageUpload";
+import { LogoFilePicker, persistLogo } from "@/components/LogoFilePicker";
 import { AddressSearch } from "@/components/AddressSearch";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -56,6 +56,9 @@ function PartnersPage() {
   const [editing, setEditing] = useState<Partner | null>(null);
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoCleared, setLogoCleared] = useState(false);
+
 
   const load = async () => {
     setRows(null);
@@ -75,7 +78,7 @@ function PartnersPage() {
     );
   }, [rows, search]);
 
-  const openCreate = () => { setEditing(null); setForm(empty); setOpen(true); };
+  const openCreate = () => { setEditing(null); setForm(empty); setLogoFile(null); setLogoCleared(false); setOpen(true); };
   const openEdit = (p: Partner) => {
     setEditing(p);
     setForm({
@@ -87,6 +90,7 @@ function PartnersPage() {
       contact_phone: p.contact_phone ?? "",
       notes: p.notes ?? "",
     });
+    setLogoFile(null); setLogoCleared(false);
     setOpen(true);
   };
 
@@ -108,14 +112,29 @@ function PartnersPage() {
       contact_phone: form.contact_phone.trim() || null,
       notes: form.notes.trim() || null,
     };
-    const { error } = editing
-      ? await supabase.from("partners").update(payload).eq("id", editing.id)
-      : await supabase.from("partners").insert(payload);
-    setSaving(false);
-    if (error) { toast.error("Échec", { description: friendlyError(error) }); return; }
-    toast.success(editing ? "Partenaire modifié" : "Partenaire créé");
-    setOpen(false); load();
+    try {
+      let id: string;
+      let previousPath: string | null = null;
+      if (editing) {
+        const { error } = await supabase.from("partners").update(payload).eq("id", editing.id);
+        if (error) throw error;
+        id = editing.id;
+        previousPath = editing.logo_storage_path;
+      } else {
+        const { data, error } = await supabase.from("partners").insert(payload).select("id").single();
+        if (error) throw error;
+        id = data.id as string;
+      }
+      await persistLogo("partner", id, { file: logoFile, clearedExisting: logoCleared, previousPath });
+      toast.success(editing ? "Partenaire modifié" : "Partenaire créé");
+      setOpen(false); load();
+    } catch (err) {
+      toast.error("Échec", { description: friendlyError(err as { message?: string }) });
+    } finally {
+      setSaving(false);
+    }
   };
+
 
   const remove = async (p: Partner) => {
     if (!(await confirmAction({ title: "Supprimer ce partenaire ?", confirmLabel: "Supprimer", destructive: true }))) return;
@@ -199,30 +218,16 @@ function PartnersPage() {
               <DialogDescription>Renseignez les informations du partenaire.</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              {editing && (
-                <div className="flex justify-center">
-                  <EntityImageUpload
-                    entityId={editing.id}
-                    entityType="partner"
-                    currentImageUrl={editing.logo_url}
-                    currentStoragePath={editing.logo_storage_path}
-                    shape="square"
-                    placeholder={editing.name.slice(0, 2).toUpperCase()}
-                    label="Logo"
-                    onUploaded={async (url, path) => {
-                      await supabase.from("partners").update({ logo_url: url, logo_storage_path: path }).eq("id", editing.id);
-                      setEditing({ ...editing, logo_url: url, logo_storage_path: path });
-                      load();
-                    }}
-                    onDeleted={async () => {
-                      await supabase.from("partners").update({ logo_url: null, logo_storage_path: null }).eq("id", editing.id);
-                      setEditing({ ...editing, logo_url: null, logo_storage_path: null });
-                      load();
-                    }}
-                  />
-                </div>
-              )}
-              {!editing && (
+              <div className="flex justify-center">
+                <LogoFilePicker
+                  currentUrl={editing?.logo_url}
+                  file={logoFile}
+                  onFileChange={setLogoFile}
+                  clearedExisting={logoCleared}
+                  onClearedExistingChange={setLogoCleared}
+                />
+              </div>
+
                 <p className="text-xs text-muted-foreground text-center">Le logo pourra être ajouté après la création.</p>
               )}
               <div className="grid grid-cols-2 gap-3">
