@@ -460,7 +460,7 @@ CREATE TABLE public.messages_sent (
   body text NOT NULL,
   audience_segment text NOT NULL,
   recipients_count int NOT NULL DEFAULT 0,
-  sent_by uuid REFERENCES public.user_profiles(id),
+  sent_by uuid REFERENCES public.user_profiles(id) ON DELETE SET NULL,
   sent_at timestamptz NOT NULL DEFAULT now()
 );
 
