@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, ShieldAlert, Search, UserCog } from "lucide-react";
+import { Plus, ShieldAlert, Search, UserCog, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
@@ -30,20 +30,27 @@ export const Route = createFileRoute("/_authenticated/admin/users")({
 });
 
 type CreateForm = {
-  username: string;
-  full_name: string;
+  first_name: string;
+  last_name: string;
   email: string;
   role: UserProfile["role"];
   password: string;
 };
 
 const emptyForm: CreateForm = {
-  username: "",
-  full_name: "",
+  first_name: "",
+  last_name: "",
   email: "",
   role: "reader",
   password: "",
 };
+
+const slugify = (s: string) =>
+  s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
 
 function AdminUsersPage() {
   const { user, role, loading: authLoading } = useAuth();
@@ -56,6 +63,7 @@ function AdminUsersPage() {
   const [form, setForm] = useState<CreateForm>(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [confirmDel, setConfirmDel] = useState<UserProfile | null>(null);
+  const [revealed, setRevealed] = useState<Record<string, boolean>>({});
 
   useEffect(() => { setPage(1); }, [search, roleFilter]);
 
@@ -93,17 +101,22 @@ function AdminUsersPage() {
     [filtered, page],
   );
 
+  const usernamePreview = useMemo(() => {
+    const f = slugify(form.first_name);
+    const l = slugify(form.last_name);
+    if (!f || !l) return "";
+    return `${f}.${l}`;
+  }, [form.first_name, form.last_name]);
+
   const submit = async () => {
-    if (!form.username.trim()) return toast.error("Username requis");
-    if (!form.full_name.trim()) return toast.error("Nom complet requis");
+    if (!form.first_name.trim()) return toast.error("Prénom requis");
+    if (!form.last_name.trim()) return toast.error("Nom requis");
     if (form.password.length < 8) return toast.error("Mot de passe ≥ 8 caractères");
-    if (form.username.trim().toLowerCase() === "admin")
-      return toast.error("Username réservé");
 
     setSubmitting(true);
-    const { error } = await supabase.rpc("admin_create_account", {
-      p_username: form.username.trim().toLowerCase(),
-      p_full_name: form.full_name.trim(),
+    const { error } = await supabase.rpc("admin_create_account_v2", {
+      p_first_name: form.first_name.trim(),
+      p_last_name: form.last_name.trim(),
       p_email: form.email.trim(),
       p_password: form.password,
       p_role: form.role,
@@ -194,7 +207,7 @@ function AdminUsersPage() {
 
       <div className="rounded-lg border border-border bg-card">
         {loading ? (
-          <TableSkeleton cols={6} />
+          <TableSkeleton cols={7} />
         ) : filtered.length === 0 ? (
           <div className="p-6"><EmptyState message="Aucun utilisateur." /></div>
         ) : (
@@ -204,6 +217,7 @@ function AdminUsersPage() {
                 <TableHead>Username</TableHead>
                 <TableHead>Nom complet</TableHead>
                 <TableHead>Email</TableHead>
+                <TableHead>Mot de passe</TableHead>
                 <TableHead>Rôle</TableHead>
                 <TableHead>Créé le</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -212,11 +226,33 @@ function AdminUsersPage() {
             <TableBody>
               {paged.map((u) => {
                 const r = USER_ROLES.find((x) => x.value === u.role);
+                const shown = revealed[u.id];
                 return (
                   <TableRow key={u.id}>
                     <TableCell className="font-medium">{u.username}</TableCell>
                     <TableCell>{u.full_name}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{u.email}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-sm">
+                          {u.plain_password
+                            ? shown ? u.plain_password : "••••••••"
+                            : <span className="italic text-muted-foreground">non disponible</span>}
+                        </span>
+                        {u.plain_password && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => setRevealed((s) => ({ ...s, [u.id]: !s[u.id] }))}
+                            title={shown ? "Masquer" : "Afficher"}
+                          >
+                            {shown ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       {r && <Badge className={`${r.cls} hover:${r.cls}`}>{r.label}</Badge>}
                     </TableCell>
@@ -266,19 +302,24 @@ function AdminUsersPage() {
           </DialogHeader>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
-              <Label>Username</Label>
+              <Label>Prénom</Label>
               <Input
-                value={form.username}
-                onChange={(e) => setForm({ ...form, username: e.target.value })}
-                placeholder="jdupont"
+                value={form.first_name}
+                onChange={(e) => setForm({ ...form, first_name: e.target.value })}
+                placeholder="Jean"
               />
             </div>
             <div className="space-y-1">
-              <Label>Nom complet</Label>
+              <Label>Nom</Label>
               <Input
-                value={form.full_name}
-                onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+                value={form.last_name}
+                onChange={(e) => setForm({ ...form, last_name: e.target.value })}
+                placeholder="Dupont"
               />
+            </div>
+            <div className="sm:col-span-2 -mt-1 text-xs text-muted-foreground">
+              Username généré : <span className="font-mono text-foreground">{usernamePreview || "—"}</span>
+              <span className="ml-1">(un suffixe sera ajouté en cas de doublon)</span>
             </div>
             <div className="sm:col-span-2 space-y-1">
               <Label>Email (optionnel)</Label>
