@@ -4,6 +4,8 @@
 -- À exécuter sur une base VIDE.
 -- ============================================================================
 
+CREATE SCHEMA IF NOT EXISTS extensions;
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 
 -- ============================================================================
 -- >>> 01_init.sql
@@ -2067,7 +2069,7 @@ BEGIN
       'authenticated',
       'authenticated',
       r.username || '@coslbloobiz.local',
-      crypt(v_password, gen_salt('bf')),
+      extensions.crypt(v_password, extensions.gen_salt('bf')),
       now(),
       jsonb_build_object('provider','email','providers',ARRAY['email']),
       jsonb_build_object('username', r.username, 'full_name', r.full_name, 'role', r.role),
@@ -2162,7 +2164,7 @@ BEGIN
     'authenticated',
     'authenticated',
     v_email,
-    crypt(p_password, gen_salt('bf')),
+    extensions.crypt(p_password, extensions.gen_salt('bf')),
     now(),
     jsonb_build_object('provider','email','providers',ARRAY['email']),
     jsonb_build_object('username', v_username, 'full_name', trim(p_full_name), 'role', p_role::text),

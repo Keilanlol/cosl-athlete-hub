@@ -1,17 +1,11 @@
--- 33_admin_user_management.sql
--- RPCs sécurisées pour permettre à un admin de créer/supprimer des comptes
--- depuis l'application (sans Edge Function).
--- Le "superadmin" est identifié par username = 'admin' : il ne peut être
--- supprimé depuis l'app et n'apparaît pas dans la liste des comptes.
+-- 35_fix_admin_create_account_pgcrypto_schema.sql
+-- Correctif pour Supabase : pgcrypto est dans le schéma "extensions".
+-- À exécuter dans le SQL Editor si la création de compte échoue avec :
+-- function gen_salt(unknown) does not exist
 
--- pgcrypto requis pour crypt() et gen_salt().
--- Sur Supabase, l'extension est exposée dans le schéma "extensions".
 CREATE SCHEMA IF NOT EXISTS extensions;
 CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 
--- ============================================================================
--- 1. Création d'un compte (admin uniquement)
--- ============================================================================
 CREATE OR REPLACE FUNCTION public.admin_create_account(
   p_username  text,
   p_full_name text,
@@ -30,7 +24,6 @@ DECLARE
   v_email       text;
   v_username    text;
 BEGIN
-  -- Vérifier que l'appelant est admin
   SELECT role INTO v_caller_role
     FROM public.user_profiles WHERE id = auth.uid();
   IF v_caller_role IS DISTINCT FROM 'admin' THEN
@@ -100,43 +93,3 @@ $$;
 
 REVOKE ALL ON FUNCTION public.admin_create_account(text,text,text,text,public.user_role) FROM public;
 GRANT EXECUTE ON FUNCTION public.admin_create_account(text,text,text,text,public.user_role) TO authenticated;
-
--- ============================================================================
--- 2. Suppression d'un compte (admin uniquement, hors self & superadmin)
--- ============================================================================
-CREATE OR REPLACE FUNCTION public.admin_delete_account(p_user_id uuid)
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_caller_role public.user_role;
-  v_target_username text;
-BEGIN
-  SELECT role INTO v_caller_role
-    FROM public.user_profiles WHERE id = auth.uid();
-  IF v_caller_role IS DISTINCT FROM 'admin' THEN
-    RAISE EXCEPTION 'forbidden: admin role required';
-  END IF;
-
-  IF p_user_id = auth.uid() THEN
-    RAISE EXCEPTION 'cannot delete your own account';
-  END IF;
-
-  SELECT username INTO v_target_username
-    FROM public.user_profiles WHERE id = p_user_id;
-  IF v_target_username IS NULL THEN
-    RAISE EXCEPTION 'user not found';
-  END IF;
-  IF v_target_username = 'admin' THEN
-    RAISE EXCEPTION 'cannot delete the superadmin account';
-  END IF;
-
-  -- ON DELETE CASCADE depuis auth.users → user_profiles
-  DELETE FROM auth.users WHERE id = p_user_id;
-END;
-$$;
-
-REVOKE ALL ON FUNCTION public.admin_delete_account(uuid) FROM public;
-GRANT EXECUTE ON FUNCTION public.admin_delete_account(uuid) TO authenticated;
