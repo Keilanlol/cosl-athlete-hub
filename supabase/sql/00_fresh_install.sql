@@ -7,6 +7,42 @@
 -- À exécuter sur une base VIDE.
 -- ============================================================================
 
+-- ============================================================================
+-- RESET COMPLET — droppe tout l'existant pour repartir d'une base propre.
+-- ⚠️  Détruit TOUTES les données applicatives + utilisateurs auth COSL.
+-- ============================================================================
+
+-- 1. Supprimer les utilisateurs auth créés par l'app (cascade sur user_profiles)
+DELETE FROM auth.identities
+ WHERE user_id IN (
+   SELECT id FROM auth.users
+    WHERE email LIKE '%@coslbloobiz.local'
+       OR email = 'admin@cosl.lu'
+ );
+DELETE FROM auth.users
+ WHERE email LIKE '%@coslbloobiz.local'
+    OR email = 'admin@cosl.lu';
+
+-- 2. Droper le schéma public (tables, vues, types, fonctions, triggers…)
+DROP SCHEMA IF EXISTS public CASCADE;
+CREATE SCHEMA public;
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON SCHEMA public TO postgres, service_role;
+
+-- 3. Droper les buckets storage applicatifs (si présents)
+DO $reset_storage$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables
+              WHERE table_schema = 'storage' AND table_name = 'objects') THEN
+    DELETE FROM storage.objects
+     WHERE bucket_id IN ('athlete-photos','entity-images','documents');
+    DELETE FROM storage.buckets
+     WHERE id IN ('athlete-photos','entity-images','documents');
+  END IF;
+END
+$reset_storage$;
+
+-- 4. Extension pgcrypto (schéma extensions sur Supabase)
 CREATE SCHEMA IF NOT EXISTS extensions;
 CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 
