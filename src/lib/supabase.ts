@@ -70,5 +70,14 @@ const createSupabaseClient = (): SupabaseClient => {
 export const supabase: SupabaseClient = createSupabaseClient();
 export const supabaseConfigError = supabaseConfigured ? null : configErrorMessage;
 
-export const usernameToEmail = (username: string) =>
-  `${username.trim().toLowerCase()}@coslbloobiz.local`;
+// Remplace l'ancienne fonction
+export const usernameToEmail = async (username: string): Promise<string> => {
+  const { data, error } = await supabase
+    .from("user_profiles")
+    .select("email")
+    .eq("username", username.trim().toLowerCase())
+    .maybeSingle();
+
+  if (error || !data?.email) throw new Error("Utilisateur introuvable.");
+  return data.email;
+};
