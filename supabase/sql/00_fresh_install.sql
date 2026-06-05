@@ -1,6 +1,9 @@
 -- ============================================================================
 -- COSLxBloobiz — Installation fraîche consolidée (SQL pur, Supabase Studio OK)
--- Schéma + référentiels + 5 comptes admin (mdp: Coslbloobiz2026!)
+-- Schéma + référentiels + compte superadmin unique
+--   username : admin
+--   email    : admin@cosl.lu
+--   password : CoslBloobiz_2026Administrateur
 -- À exécuter sur une base VIDE.
 -- ============================================================================
 
