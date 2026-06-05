@@ -329,15 +329,15 @@ function AdminUsersPage() {
       <AlertDialog open={!!confirmDel} onOpenChange={(o) => !o && setConfirmDel(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Désactiver cet utilisateur ?</AlertDialogTitle>
+            <AlertDialogTitle>Supprimer cet utilisateur ?</AlertDialogTitle>
             <AlertDialogDescription>
-              Le profil applicatif sera supprimé. Le compte d'authentification reste, mais l'accès à l'application est révoqué.
+              Le compte sera définitivement supprimé de la base de données (auth + profil). Cette action est irréversible.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
             <AlertDialogAction onClick={deactivate} className="bg-red-600 hover:bg-red-700">
-              Désactiver
+              Supprimer
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
