@@ -97,30 +97,23 @@ function AdminUsersPage() {
     if (!form.username.trim()) return toast.error("Username requis");
     if (!form.full_name.trim()) return toast.error("Nom complet requis");
     if (form.password.length < 8) return toast.error("Mot de passe ≥ 8 caractères");
+    if (form.username.trim().toLowerCase() === "admin")
+      return toast.error("Username réservé");
 
     setSubmitting(true);
-    // NOTE : pas d'Edge Function disponible dans ce déploiement (SPA + Express).
-    // L'inscription utilise supabase.auth.signUp ; le trigger handle_new_user
-    // crée le user_profile à partir de raw_user_meta_data (username, full_name, role).
-    const email = form.email.trim() || usernameToEmail(form.username);
-    const { error } = await supabase.auth.signUp({
-      email,
-      password: form.password,
-      options: {
-        data: {
-          username: form.username.trim().toLowerCase(),
-          full_name: form.full_name.trim(),
-          role: form.role,
-        },
-      },
+    const { error } = await supabase.rpc("admin_create_account", {
+      p_username: form.username.trim().toLowerCase(),
+      p_full_name: form.full_name.trim(),
+      p_email: form.email.trim(),
+      p_password: form.password,
+      p_role: form.role,
     });
     setSubmitting(false);
     if (error) return toast.error("Échec création", { description: friendlyError(error) });
     toast.success("Utilisateur créé");
     setOpen(false);
     setForm(emptyForm);
-    // Petit délai pour laisser le trigger insérer le profil
-    setTimeout(load, 800);
+    load();
   };
 
   const updateRole = async (u: UserProfile, newRole: UserProfile["role"]) => {
@@ -135,13 +128,14 @@ function AdminUsersPage() {
 
   const deactivate = async () => {
     if (!confirmDel) return;
-    // Suppression du profil — l'utilisateur auth reste mais perd l'accès applicatif.
-    // (La suppression complète de auth.users nécessite la SERVICE_ROLE_KEY côté serveur.)
-    const { error } = await supabase.from("user_profiles").delete().eq("id", confirmDel.id);
+    const { error } = await supabase.rpc("admin_delete_account", {
+      p_user_id: confirmDel.id,
+    });
     if (error) toast.error("Échec", { description: friendlyError(error) });
-    else { toast.success("Utilisateur désactivé"); load(); }
+    else { toast.success("Utilisateur supprimé"); load(); }
     setConfirmDel(null);
   };
+
 
   if (authLoading) {
     return <div className="p-6 text-sm text-muted-foreground">Chargement…</div>;
