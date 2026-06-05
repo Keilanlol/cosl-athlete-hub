@@ -45,6 +45,27 @@ const emptyForm: CreateForm = {
   password: "",
 };
 
+const slug = (s: string) =>
+  s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+
+const buildUsername = (fullName: string, existing: string[]) => {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "";
+  const first = slug(parts[0]);
+  const last = parts.length > 1 ? slug(parts.slice(1).join(" ")) : "";
+  const base = last ? `${first}.${last}` : first;
+  if (!base) return "";
+  const set = new Set(existing.map((u) => u.toLowerCase()));
+  if (!set.has(base)) return base;
+  let i = 2;
+  while (set.has(`${base}${i}`)) i++;
+  return `${base}${i}`;
+};
+
 function AdminUsersPage() {
   const { user, role, loading: authLoading } = useAuth();
   const [users, setUsers] = useState<UserProfile[]>([]);
