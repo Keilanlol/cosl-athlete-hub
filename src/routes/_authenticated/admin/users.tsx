@@ -63,6 +63,7 @@ function AdminUsersPage() {
   const [form, setForm] = useState<CreateForm>(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [confirmDel, setConfirmDel] = useState<UserProfile | null>(null);
+  const [revealed, setRevealed] = useState<Record<string, boolean>>({});
 
   useEffect(() => { setPage(1); }, [search, roleFilter]);
 
