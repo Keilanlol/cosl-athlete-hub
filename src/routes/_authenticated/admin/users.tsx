@@ -3,7 +3,7 @@ import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
 import { Plus, ShieldAlert, Search, UserCog } from "lucide-react";
 import { toast } from "sonner";
-import { supabase, usernameToEmail } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { type UserProfile, USER_ROLES } from "@/lib/types";
 import { Button } from "@/components/ui/button";
