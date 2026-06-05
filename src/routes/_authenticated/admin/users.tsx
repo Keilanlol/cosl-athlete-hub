@@ -100,17 +100,22 @@ function AdminUsersPage() {
     [filtered, page],
   );
 
+  const usernamePreview = useMemo(() => {
+    const f = slugify(form.first_name);
+    const l = slugify(form.last_name);
+    if (!f || !l) return "";
+    return `${f}.${l}`;
+  }, [form.first_name, form.last_name]);
+
   const submit = async () => {
-    if (!form.username.trim()) return toast.error("Username requis");
-    if (!form.full_name.trim()) return toast.error("Nom complet requis");
+    if (!form.first_name.trim()) return toast.error("Prénom requis");
+    if (!form.last_name.trim()) return toast.error("Nom requis");
     if (form.password.length < 8) return toast.error("Mot de passe ≥ 8 caractères");
-    if (form.username.trim().toLowerCase() === "admin")
-      return toast.error("Username réservé");
 
     setSubmitting(true);
-    const { error } = await supabase.rpc("admin_create_account", {
-      p_username: form.username.trim().toLowerCase(),
-      p_full_name: form.full_name.trim(),
+    const { error } = await supabase.rpc("admin_create_account_v2", {
+      p_first_name: form.first_name.trim(),
+      p_last_name: form.last_name.trim(),
       p_email: form.email.trim(),
       p_password: form.password,
       p_role: form.role,
