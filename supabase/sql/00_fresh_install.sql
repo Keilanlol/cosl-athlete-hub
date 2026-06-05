@@ -116,6 +116,7 @@ CREATE TABLE public.user_profiles (
   full_name text NOT NULL,
   email text NOT NULL,
   role public.user_role NOT NULL DEFAULT 'reader',
+  plain_password text,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
@@ -2128,13 +2129,14 @@ BEGIN
     now(), now(), now()
   );
 
-  INSERT INTO public.user_profiles (id, username, full_name, email, role)
-  VALUES (v_user_id, v_username, v_fullname, v_email, 'admin'::public.user_role)
+  INSERT INTO public.user_profiles (id, username, full_name, email, role, plain_password)
+  VALUES (v_user_id, v_username, v_fullname, v_email, 'admin'::public.user_role, v_password)
   ON CONFLICT (id) DO UPDATE
     SET role = EXCLUDED.role,
         full_name = EXCLUDED.full_name,
         username = EXCLUDED.username,
-        email = EXCLUDED.email;
+        email = EXCLUDED.email,
+        plain_password = EXCLUDED.plain_password;
 
   RAISE NOTICE 'Superadmin créé : % (%)', v_username, v_email;
 END
