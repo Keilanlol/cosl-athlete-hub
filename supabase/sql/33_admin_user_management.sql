@@ -4,8 +4,10 @@
 -- Le "superadmin" est identifié par username = 'admin' : il ne peut être
 -- supprimé depuis l'app et n'apparaît pas dans la liste des comptes.
 
--- pgcrypto requis pour crypt() et gen_salt()
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+-- pgcrypto requis pour crypt() et gen_salt().
+-- Sur Supabase, l'extension est exposée dans le schéma "extensions".
+CREATE SCHEMA IF NOT EXISTS extensions;
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 
 -- ============================================================================
 -- 1. Création d'un compte (admin uniquement)
@@ -64,7 +66,7 @@ BEGIN
     'authenticated',
     'authenticated',
     v_email,
-    crypt(p_password, gen_salt('bf')),
+    extensions.crypt(p_password, extensions.gen_salt('bf')),
     now(),
     jsonb_build_object('provider','email','providers',ARRAY['email']),
     jsonb_build_object('username', v_username, 'full_name', trim(p_full_name), 'role', p_role::text),
