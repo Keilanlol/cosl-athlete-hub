@@ -292,18 +292,20 @@ function AdminUsersPage() {
           </DialogHeader>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
-              <Label>Username</Label>
-              <Input
-                value={form.username}
-                onChange={(e) => setForm({ ...form, username: e.target.value })}
-                placeholder="jdupont"
-              />
-            </div>
-            <div className="space-y-1">
               <Label>Nom complet</Label>
               <Input
                 value={form.full_name}
                 onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+                placeholder="Jean Dupont"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Username (auto)</Label>
+              <Input
+                value={form.username}
+                readOnly
+                disabled
+                placeholder="prenom.nom"
               />
             </div>
             <div className="sm:col-span-2 space-y-1">
