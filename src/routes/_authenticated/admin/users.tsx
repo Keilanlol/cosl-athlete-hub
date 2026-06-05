@@ -45,27 +45,6 @@ const emptyForm: CreateForm = {
   password: "",
 };
 
-const slug = (s: string) =>
-  s
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "");
-
-const buildUsername = (fullName: string, existing: string[]) => {
-  const parts = fullName.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "";
-  const first = slug(parts[0]);
-  const last = parts.length > 1 ? slug(parts.slice(1).join(" ")) : "";
-  const base = last ? `${first}.${last}` : first;
-  if (!base) return "";
-  const set = new Set(existing.map((u) => u.toLowerCase()));
-  if (!set.has(base)) return base;
-  let i = 2;
-  while (set.has(`${base}${i}`)) i++;
-  return `${base}${i}`;
-};
-
 function AdminUsersPage() {
   const { user, role, loading: authLoading } = useAuth();
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -97,11 +76,6 @@ function AdminUsersPage() {
   useEffect(() => {
     if (isAdmin) load();
   }, [isAdmin]);
-
-  useEffect(() => {
-    const existing = [...users.map((u) => u.username), "admin"];
-    setForm((f) => ({ ...f, username: buildUsername(f.full_name, existing) }));
-  }, [form.full_name, users]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -292,20 +266,18 @@ function AdminUsersPage() {
           </DialogHeader>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
+              <Label>Username</Label>
+              <Input
+                value={form.username}
+                onChange={(e) => setForm({ ...form, username: e.target.value })}
+                placeholder="jdupont"
+              />
+            </div>
+            <div className="space-y-1">
               <Label>Nom complet</Label>
               <Input
                 value={form.full_name}
                 onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-                placeholder="Jean Dupont"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>Username (auto)</Label>
-              <Input
-                value={form.username}
-                readOnly
-                disabled
-                placeholder="prenom.nom"
               />
             </div>
             <div className="sm:col-span-2 space-y-1">
