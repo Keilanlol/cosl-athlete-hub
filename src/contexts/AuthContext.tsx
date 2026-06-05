@@ -165,14 +165,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const signIn = useCallback(
-    (uname: string, password: string) =>
-      supabase.auth.signInWithPassword({
-        email: usernameToEmail(uname),
-        password,
-      }),
-    [],
-  );
+  const signIn = useCallback(async (uname: string, password: string) => {
+  let email: string;
+  try {
+    email = await usernameToEmail(uname);
+  } catch {
+    return {
+      data: { user: null, session: null },
+      error: { message: "Utilisateur introuvable.", status: 400 } as any,
+    };
+  }
+  return supabase.auth.signInWithPassword({ email, password });
+}, []);
 
   const signOut = useCallback(() => supabase.auth.signOut(), []);
 
