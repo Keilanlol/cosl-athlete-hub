@@ -66,6 +66,7 @@ function AdminUsersPage() {
     const { data, error } = await supabase
       .from("user_profiles")
       .select("*")
+      .neq("username", "admin")
       .order("created_at", { ascending: false });
     setLoading(false);
     if (error) return toast.error("Erreur de chargement", { description: friendlyError(error) });
