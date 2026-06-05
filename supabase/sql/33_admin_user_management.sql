@@ -4,6 +4,9 @@
 -- Le "superadmin" est identifié par username = 'admin' : il ne peut être
 -- supprimé depuis l'app et n'apparaît pas dans la liste des comptes.
 
+-- pgcrypto requis pour crypt() et gen_salt()
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- ============================================================================
 -- 1. Création d'un compte (admin uniquement)
 -- ============================================================================
