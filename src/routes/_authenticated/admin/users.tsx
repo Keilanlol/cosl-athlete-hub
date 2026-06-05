@@ -3,7 +3,7 @@ import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
 import { Plus, ShieldAlert, Search, UserCog } from "lucide-react";
 import { toast } from "sonner";
-import { supabase, usernameToEmail } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { type UserProfile, USER_ROLES } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -46,7 +46,7 @@ const emptyForm: CreateForm = {
 };
 
 function AdminUsersPage() {
-  const { role, loading: authLoading } = useAuth();
+  const { user, role, loading: authLoading } = useAuth();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -66,6 +66,7 @@ function AdminUsersPage() {
     const { data, error } = await supabase
       .from("user_profiles")
       .select("*")
+      .neq("username", "admin")
       .order("created_at", { ascending: false });
     setLoading(false);
     if (error) return toast.error("Erreur de chargement", { description: friendlyError(error) });
@@ -96,30 +97,23 @@ function AdminUsersPage() {
     if (!form.username.trim()) return toast.error("Username requis");
     if (!form.full_name.trim()) return toast.error("Nom complet requis");
     if (form.password.length < 8) return toast.error("Mot de passe ≥ 8 caractères");
+    if (form.username.trim().toLowerCase() === "admin")
+      return toast.error("Username réservé");
 
     setSubmitting(true);
-    // NOTE : pas d'Edge Function disponible dans ce déploiement (SPA + Express).
-    // L'inscription utilise supabase.auth.signUp ; le trigger handle_new_user
-    // crée le user_profile à partir de raw_user_meta_data (username, full_name, role).
-    const email = form.email.trim() || usernameToEmail(form.username);
-    const { error } = await supabase.auth.signUp({
-      email,
-      password: form.password,
-      options: {
-        data: {
-          username: form.username.trim().toLowerCase(),
-          full_name: form.full_name.trim(),
-          role: form.role,
-        },
-      },
+    const { error } = await supabase.rpc("admin_create_account", {
+      p_username: form.username.trim().toLowerCase(),
+      p_full_name: form.full_name.trim(),
+      p_email: form.email.trim(),
+      p_password: form.password,
+      p_role: form.role,
     });
     setSubmitting(false);
     if (error) return toast.error("Échec création", { description: friendlyError(error) });
     toast.success("Utilisateur créé");
     setOpen(false);
     setForm(emptyForm);
-    // Petit délai pour laisser le trigger insérer le profil
-    setTimeout(load, 800);
+    load();
   };
 
   const updateRole = async (u: UserProfile, newRole: UserProfile["role"]) => {
@@ -134,13 +128,14 @@ function AdminUsersPage() {
 
   const deactivate = async () => {
     if (!confirmDel) return;
-    // Suppression du profil — l'utilisateur auth reste mais perd l'accès applicatif.
-    // (La suppression complète de auth.users nécessite la SERVICE_ROLE_KEY côté serveur.)
-    const { error } = await supabase.from("user_profiles").delete().eq("id", confirmDel.id);
+    const { error } = await supabase.rpc("admin_delete_account", {
+      p_user_id: confirmDel.id,
+    });
     if (error) toast.error("Échec", { description: friendlyError(error) });
-    else { toast.success("Utilisateur désactivé"); load(); }
+    else { toast.success("Utilisateur supprimé"); load(); }
     setConfirmDel(null);
   };
+
 
   if (authLoading) {
     return <div className="p-6 text-sm text-muted-foreground">Chargement…</div>;
@@ -244,8 +239,10 @@ function AdminUsersPage() {
                           size="sm"
                           className="text-red-600 hover:text-red-700"
                           onClick={() => setConfirmDel(u)}
+                          disabled={u.id === user?.id}
+                          title={u.id === user?.id ? "Vous ne pouvez pas supprimer votre propre compte" : undefined}
                         >
-                          Désactiver
+                          Supprimer
                         </Button>
                       </div>
                     </TableCell>
@@ -332,15 +329,15 @@ function AdminUsersPage() {
       <AlertDialog open={!!confirmDel} onOpenChange={(o) => !o && setConfirmDel(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Désactiver cet utilisateur ?</AlertDialogTitle>
+            <AlertDialogTitle>Supprimer cet utilisateur ?</AlertDialogTitle>
             <AlertDialogDescription>
-              Le profil applicatif sera supprimé. Le compte d'authentification reste, mais l'accès à l'application est révoqué.
+              Le compte sera définitivement supprimé de la base de données (auth + profil). Cette action est irréversible.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
             <AlertDialogAction onClick={deactivate} className="bg-red-600 hover:bg-red-700">
-              Désactiver
+              Supprimer
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
