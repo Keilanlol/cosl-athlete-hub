@@ -278,19 +278,24 @@ function AdminUsersPage() {
           </DialogHeader>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
-              <Label>Username</Label>
+              <Label>Prénom</Label>
               <Input
-                value={form.username}
-                onChange={(e) => setForm({ ...form, username: e.target.value })}
-                placeholder="jdupont"
+                value={form.first_name}
+                onChange={(e) => setForm({ ...form, first_name: e.target.value })}
+                placeholder="Jean"
               />
             </div>
             <div className="space-y-1">
-              <Label>Nom complet</Label>
+              <Label>Nom</Label>
               <Input
-                value={form.full_name}
-                onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+                value={form.last_name}
+                onChange={(e) => setForm({ ...form, last_name: e.target.value })}
+                placeholder="Dupont"
               />
+            </div>
+            <div className="sm:col-span-2 -mt-1 text-xs text-muted-foreground">
+              Username généré : <span className="font-mono text-foreground">{usernamePreview || "—"}</span>
+              <span className="ml-1">(un suffixe sera ajouté en cas de doublon)</span>
             </div>
             <div className="sm:col-span-2 space-y-1">
               <Label>Email (optionnel)</Label>
