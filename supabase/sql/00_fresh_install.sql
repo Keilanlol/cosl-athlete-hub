@@ -1,6 +1,9 @@
 -- ============================================================================
 -- COSLxBloobiz — Installation fraîche consolidée (SQL pur, Supabase Studio OK)
--- Schéma + référentiels + 5 comptes admin (mdp: Coslbloobiz2026!)
+-- Schéma + référentiels + compte superadmin unique
+--   username : admin
+--   email    : admin@cosl.lu
+--   password : CoslBloobiz_2026Administrateur
 -- À exécuter sur une base VIDE.
 -- ============================================================================
 
@@ -2036,70 +2039,70 @@ INSERT INTO public.sponsor_ranks (name, sort_order) VALUES
 ON CONFLICT (name) DO NOTHING;
 
 -- ============================================================================
--- >>> Comptes admin COSL (mot de passe par défaut : Coslbloobiz2026!)
+-- >>> Compte superadmin COSL
+--   username : admin
+--   email    : admin@cosl.lu
+--   password : CoslBloobiz_2026Administrateur
+-- Le compte "admin" est le superadmin : il ne peut pas être supprimé depuis
+-- l'application et n'apparaît pas dans la liste des comptes (cf. RPC
+-- admin_delete_account et filtre côté UI).
 -- ============================================================================
-DO $seed_admins$
+DO $seed_superadmin$
 DECLARE
-  r record;
-  v_user_id uuid;
-  v_password text := 'Coslbloobiz2026!';
+  v_user_id  uuid;
+  v_email    text := 'admin@cosl.lu';
+  v_username text := 'admin';
+  v_fullname text := 'Administrateur COSLxBloobiz';
+  v_password text := 'CoslBloobiz_2026Administrateur';
 BEGIN
-  FOR r IN SELECT * FROM (VALUES
-    ('felix.retter',   'Felix Retter',   'admin'),
-    ('laurent.carnol', 'Laurent Carnol', 'games_manager'),
-    ('sophie.weber',   'Sophie Weber',   'fed_manager'),
-    ('marc.dupont',    'Marc Dupont',    'logistics'),
-    ('claire.muller',  'Claire Muller',  'communication')
-  ) AS t(username, full_name, role)
-  LOOP
-    IF EXISTS (SELECT 1 FROM auth.users WHERE email = r.username || '@coslbloobiz.local') THEN
-      RAISE NOTICE 'User % déjà existant, skip', r.username;
-      CONTINUE;
-    END IF;
+  IF EXISTS (SELECT 1 FROM auth.users WHERE email = v_email) THEN
+    RAISE NOTICE 'Superadmin déjà existant, skip';
+    RETURN;
+  END IF;
 
-    v_user_id := gen_random_uuid();
+  v_user_id := gen_random_uuid();
 
-    INSERT INTO auth.users (
-      instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
-      raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
-      confirmation_token, email_change, email_change_token_new, recovery_token
-    ) VALUES (
-      '00000000-0000-0000-0000-000000000000',
-      v_user_id,
-      'authenticated',
-      'authenticated',
-      r.username || '@coslbloobiz.local',
-      extensions.crypt(v_password, extensions.gen_salt('bf')),
-      now(),
-      jsonb_build_object('provider','email','providers',ARRAY['email']),
-      jsonb_build_object('username', r.username, 'full_name', r.full_name, 'role', r.role),
-      now(), now(),
-      '', '', '', ''
-    );
+  INSERT INTO auth.users (
+    instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
+    raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+    confirmation_token, email_change, email_change_token_new, recovery_token
+  ) VALUES (
+    '00000000-0000-0000-0000-000000000000',
+    v_user_id,
+    'authenticated',
+    'authenticated',
+    v_email,
+    extensions.crypt(v_password, extensions.gen_salt('bf')),
+    now(),
+    jsonb_build_object('provider','email','providers',ARRAY['email']),
+    jsonb_build_object('username', v_username, 'full_name', v_fullname, 'role', 'admin'),
+    now(), now(),
+    '', '', '', ''
+  );
 
-    INSERT INTO auth.identities (
-      id, user_id, identity_data, provider, provider_id,
-      last_sign_in_at, created_at, updated_at
-    ) VALUES (
-      gen_random_uuid(),
-      v_user_id,
-      jsonb_build_object('sub', v_user_id::text, 'email', r.username || '@coslbloobiz.local', 'email_verified', true),
-      'email',
-      v_user_id::text,
-      now(), now(), now()
-    );
+  INSERT INTO auth.identities (
+    id, user_id, identity_data, provider, provider_id,
+    last_sign_in_at, created_at, updated_at
+  ) VALUES (
+    gen_random_uuid(),
+    v_user_id,
+    jsonb_build_object('sub', v_user_id::text, 'email', v_email, 'email_verified', true),
+    'email',
+    v_user_id::text,
+    now(), now(), now()
+  );
 
-    INSERT INTO public.user_profiles (id, username, full_name, email, role)
-    VALUES (v_user_id, r.username, r.full_name, r.username || '@coslbloobiz.local', r.role::public.user_role)
-    ON CONFLICT (id) DO UPDATE
-      SET role = EXCLUDED.role,
-          full_name = EXCLUDED.full_name,
-          username = EXCLUDED.username;
+  INSERT INTO public.user_profiles (id, username, full_name, email, role)
+  VALUES (v_user_id, v_username, v_fullname, v_email, 'admin'::public.user_role)
+  ON CONFLICT (id) DO UPDATE
+    SET role = EXCLUDED.role,
+        full_name = EXCLUDED.full_name,
+        username = EXCLUDED.username,
+        email = EXCLUDED.email;
 
-    RAISE NOTICE 'Créé : % (%)', r.username, r.role;
-  END LOOP;
+  RAISE NOTICE 'Superadmin créé : % (%)', v_username, v_email;
 END
-$seed_admins$;
+$seed_superadmin$;
 
 -- 33_admin_user_management.sql
 -- RPCs sécurisées pour permettre à un admin de créer/supprimer des comptes
