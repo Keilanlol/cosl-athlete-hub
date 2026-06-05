@@ -206,7 +206,7 @@ function AdminUsersPage() {
 
       <div className="rounded-lg border border-border bg-card">
         {loading ? (
-          <TableSkeleton cols={6} />
+          <TableSkeleton cols={7} />
         ) : filtered.length === 0 ? (
           <div className="p-6"><EmptyState message="Aucun utilisateur." /></div>
         ) : (
@@ -216,6 +216,7 @@ function AdminUsersPage() {
                 <TableHead>Username</TableHead>
                 <TableHead>Nom complet</TableHead>
                 <TableHead>Email</TableHead>
+                <TableHead>Mot de passe</TableHead>
                 <TableHead>Rôle</TableHead>
                 <TableHead>Créé le</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -224,11 +225,33 @@ function AdminUsersPage() {
             <TableBody>
               {paged.map((u) => {
                 const r = USER_ROLES.find((x) => x.value === u.role);
+                const shown = revealed[u.id];
                 return (
                   <TableRow key={u.id}>
                     <TableCell className="font-medium">{u.username}</TableCell>
                     <TableCell>{u.full_name}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{u.email}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-sm">
+                          {u.plain_password
+                            ? shown ? u.plain_password : "••••••••"
+                            : <span className="italic text-muted-foreground">non disponible</span>}
+                        </span>
+                        {u.plain_password && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => setRevealed((s) => ({ ...s, [u.id]: !s[u.id] }))}
+                            title={shown ? "Masquer" : "Afficher"}
+                          >
+                            {shown ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       {r && <Badge className={`${r.cls} hover:${r.cls}`}>{r.label}</Badge>}
                     </TableCell>
