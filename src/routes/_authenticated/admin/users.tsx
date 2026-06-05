@@ -98,6 +98,11 @@ function AdminUsersPage() {
     if (isAdmin) load();
   }, [isAdmin]);
 
+  useEffect(() => {
+    const existing = [...users.map((u) => u.username), "admin"];
+    setForm((f) => ({ ...f, username: buildUsername(f.full_name, existing) }));
+  }, [form.full_name, users]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return users.filter((u) => {
