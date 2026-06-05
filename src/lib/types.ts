@@ -668,6 +668,7 @@ export type UserProfile = {
   full_name: string;
   email: string;
   role: "admin" | "games_manager" | "fed_manager" | "logistics" | "communication" | "reader";
+  plain_password: string | null;
   created_at: string;
 };
 
