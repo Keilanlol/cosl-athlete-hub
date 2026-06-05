@@ -46,7 +46,7 @@ const emptyForm: CreateForm = {
 };
 
 function AdminUsersPage() {
-  const { role, loading: authLoading } = useAuth();
+  const { user, role, loading: authLoading } = useAuth();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
