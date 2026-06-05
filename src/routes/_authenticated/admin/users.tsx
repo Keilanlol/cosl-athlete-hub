@@ -239,8 +239,10 @@ function AdminUsersPage() {
                           size="sm"
                           className="text-red-600 hover:text-red-700"
                           onClick={() => setConfirmDel(u)}
+                          disabled={u.id === user?.id}
+                          title={u.id === user?.id ? "Vous ne pouvez pas supprimer votre propre compte" : undefined}
                         >
-                          Désactiver
+                          Supprimer
                         </Button>
                       </div>
                     </TableCell>
