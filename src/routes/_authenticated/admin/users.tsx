@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, ShieldAlert, Search, UserCog } from "lucide-react";
+import { Plus, ShieldAlert, Search, UserCog, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
@@ -30,20 +30,27 @@ export const Route = createFileRoute("/_authenticated/admin/users")({
 });
 
 type CreateForm = {
-  username: string;
-  full_name: string;
+  first_name: string;
+  last_name: string;
   email: string;
   role: UserProfile["role"];
   password: string;
 };
 
 const emptyForm: CreateForm = {
-  username: "",
-  full_name: "",
+  first_name: "",
+  last_name: "",
   email: "",
   role: "reader",
   password: "",
 };
+
+const slugify = (s: string) =>
+  s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
 
 function AdminUsersPage() {
   const { user, role, loading: authLoading } = useAuth();
