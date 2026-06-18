@@ -30,8 +30,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-<<<<<<< HEAD
+
+# Environnement
 .env
-=======
+
+# Dyad
 .dyad/
->>>>>>> 4073a4c7f1679a7ecc908e7794ca9165f0fab632
