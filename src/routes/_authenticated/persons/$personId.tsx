@@ -31,6 +31,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import { EntityImageUpload } from "@/components/EntityImageUpload";
 import { syncPhotoFromPerson } from "@/lib/person-photo-sync";
@@ -70,6 +77,7 @@ function PersonDetailPage() {
     email: "",
     phone: "",
     birth_date: "",
+    gender: "",
     nationality: "",
     street: "",
     postcode: "",
@@ -178,6 +186,7 @@ function PersonDetailPage() {
       email: p.email ?? "",
       phone: p.phone ?? "",
       birth_date: p.birth_date ?? "",
+      gender: p.gender ?? "",
       nationality: p.nationality ?? "",
       street: p.street ?? "",
       postcode: p.postcode ?? "",
@@ -203,6 +212,7 @@ function PersonDetailPage() {
         email: form.email.trim() || null,
         phone: form.phone.trim() || null,
         birth_date: form.birth_date || null,
+        gender: form.gender || null,
         nationality: form.nationality.trim() || null,
         street: form.street.trim() || null,
         postcode: form.postcode.trim() || null,
@@ -672,13 +682,30 @@ function PersonDetailPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="enat">Nationalité</Label>
-                  <Input
-                    id="enat"
-                    value={form.nationality}
-                    onChange={(e) => setForm({ ...form, nationality: e.target.value })}
-                  />
+                  <Label htmlFor="egender">Genre</Label>
+                  <Select
+                    value={form.gender}
+                    onValueChange={(v) => setForm({ ...form, gender: v })}
+                  >
+                    <SelectTrigger id="egender">
+                      <SelectValue placeholder="—" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">Homme</SelectItem>
+                      <SelectItem value="female">Femme</SelectItem>
+                      <SelectItem value="mixed">Mixte</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="enat">Nationalité</Label>
+                <Input
+                  id="enat"
+                  value={form.nationality}
+                  onChange={(e) => setForm({ ...form, nationality: e.target.value })}
+                  placeholder="LUX"
+                />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="estreet">Rue</Label>
@@ -711,6 +738,7 @@ function PersonDetailPage() {
                     id="ectry"
                     value={form.country}
                     onChange={(e) => setForm({ ...form, country: e.target.value })}
+                    placeholder="LU"
                   />
                 </div>
               </div>

@@ -87,6 +87,10 @@ const defaultForm = {
   nationality: "LUX",
   email: "",
   phone: "",
+  street: "",
+  postcode: "",
+  city: "",
+  country: "LU",
   selectedRoles: [] as PersonRoleType[],
   athlete: {
     primary_sport_id: "",
@@ -167,21 +171,21 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
     }));
 
   const stepIndex = STEPS.indexOf(step);
+  const isAthleteSelected = form.selectedRoles.includes("athlete");
 
   const canNext = (): boolean => {
     if (step === "general") {
-      return !!(
-        form.first_name.trim() &&
-        form.last_name.trim() &&
-        form.birth_date &&
-        form.gender &&
-        form.nationality.trim() &&
-        form.email.trim() &&
-        form.phone.trim()
-      );
+      // Seuls prénom et nom sont requis obligatoirement
+      const baseOk = !!(form.first_name.trim() && form.last_name.trim());
+      if (!baseOk) return false;
+      // Si athlète sélectionné, genre et date de naissance requis
+      if (isAthleteSelected) {
+        return !!(form.birth_date && form.gender);
+      }
+      return true;
     }
     if (step === "roles") {
-      if (form.selectedRoles.length === 0) return false;
+      // Roles optionnels — on peut créer une personne sans rôle
       return true;
     }
     return true;
@@ -214,6 +218,10 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
           nationality: form.nationality.trim() || null,
           email: form.email.trim() || null,
           phone: form.phone.trim() || null,
+          street: form.street.trim() || null,
+          postcode: form.postcode.trim() || null,
+          city: form.city.trim() || null,
+          country: form.country.trim() || null,
           is_active: true,
         })
         .select("id")
@@ -248,6 +256,10 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
             nationality: form.nationality.trim() || "LUX",
             email: form.email.trim() || null,
             phone: form.phone.trim() || null,
+            street: form.street.trim() || null,
+            postcode: form.postcode.trim() || null,
+            city: form.city.trim() || null,
+            country: form.country.trim() || null,
             is_active: true,
             status: form.athlete.status,
             level: form.athlete.level || null,
@@ -457,7 +469,10 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="bd">Date de naissance *</Label>
+                <Label htmlFor="bd">
+                  Date de naissance
+                  {isAthleteSelected && <span className="text-primary ml-0.5">*</span>}
+                </Label>
                 <Input
                   id="bd"
                   type="date"
@@ -466,7 +481,10 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Genre *</Label>
+                <Label>
+                  Genre
+                  {isAthleteSelected && <span className="text-primary ml-0.5">*</span>}
+                </Label>
                 <Select
                   value={form.gender}
                   onValueChange={(v) => setForm({ ...form, gender: v })}
@@ -482,18 +500,9 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
                 </Select>
               </div>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="nat">Nationalité *</Label>
-              <Input
-                id="nat"
-                value={form.nationality}
-                onChange={(e) => setForm({ ...form, nationality: e.target.value })}
-                placeholder="LUX"
-              />
-            </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="em">Email *</Label>
+                <Label htmlFor="em">Email</Label>
                 <Input
                   id="em"
                   type="email"
@@ -502,11 +511,55 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="ph">Téléphone *</Label>
+                <Label htmlFor="ph">Téléphone</Label>
                 <Input
                   id="ph"
                   value={form.phone}
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="nat">Nationalité</Label>
+              <Input
+                id="nat"
+                value={form.nationality}
+                onChange={(e) => setForm({ ...form, nationality: e.target.value })}
+                placeholder="LUX"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="street">Rue</Label>
+              <Input
+                id="street"
+                value={form.street}
+                onChange={(e) => setForm({ ...form, street: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="postcode">Code postal</Label>
+                <Input
+                  id="postcode"
+                  value={form.postcode}
+                  onChange={(e) => setForm({ ...form, postcode: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="city">Ville</Label>
+                <Input
+                  id="city"
+                  value={form.city}
+                  onChange={(e) => setForm({ ...form, city: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="country">Pays</Label>
+                <Input
+                  id="country"
+                  value={form.country}
+                  onChange={(e) => setForm({ ...form, country: e.target.value })}
+                  placeholder="LU"
                 />
               </div>
             </div>
