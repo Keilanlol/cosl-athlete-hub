@@ -26,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { AddressSearch } from "@/components/AddressSearch";
 
 type Props = {
   open: boolean;
@@ -529,40 +530,48 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="street">Rue</Label>
-              <Input
-                id="street"
-                value={form.street}
-                onChange={(e) => setForm({ ...form, street: e.target.value })}
-              />
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="postcode">Code postal</Label>
-                <Input
-                  id="postcode"
-                  value={form.postcode}
-                  onChange={(e) => setForm({ ...form, postcode: e.target.value })}
+                <Label htmlFor="street">Adresse</Label>
+                <AddressSearch
+                  id="street"
+                  value={form.street}
+                  onChange={(v) => setForm({ ...form, street: v })}
+                  onSelect={(result) => setForm({
+                    ...form,
+                    street: result.street || result.display_name,
+                    postcode: result.postcode,
+                    city: result.city,
+                    country: result.country_code || result.country,
+                  })}
+                  placeholder="Rechercher une adresse…"
                 />
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="city">Ville</Label>
-                <Input
-                  id="city"
-                  value={form.city}
-                  onChange={(e) => setForm({ ...form, city: e.target.value })}
-                />
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="postcode">Code postal</Label>
+                  <Input
+                    id="postcode"
+                    value={form.postcode}
+                    onChange={(e) => setForm({ ...form, postcode: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="city">Ville</Label>
+                  <Input
+                    id="city"
+                    value={form.city}
+                    onChange={(e) => setForm({ ...form, city: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="country">Pays</Label>
+                  <Input
+                    id="country"
+                    value={form.country}
+                    onChange={(e) => setForm({ ...form, country: e.target.value })}
+                    placeholder="LU"
+                  />
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="country">Pays</Label>
-                <Input
-                  id="country"
-                  value={form.country}
-                  onChange={(e) => setForm({ ...form, country: e.target.value })}
-                  placeholder="LU"
-                />
-              </div>
-            </div>
           </div>
         )}
 

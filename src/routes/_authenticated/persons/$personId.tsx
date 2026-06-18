@@ -38,7 +38,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
+import { AddressSearch } from "@/components/AddressSearch";
 import { EntityImageUpload } from "@/components/EntityImageUpload";
 import { syncPhotoFromPerson } from "@/lib/person-photo-sync";
 
@@ -708,11 +708,19 @@ function PersonDetailPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="estreet">Rue</Label>
-                <Input
+                <Label htmlFor="estreet">Adresse</Label>
+                <AddressSearch
                   id="estreet"
                   value={form.street}
-                  onChange={(e) => setForm({ ...form, street: e.target.value })}
+                  onChange={(v) => setForm({ ...form, street: v })}
+                  onSelect={(result) => setForm({
+                    ...form,
+                    street: result.street || result.display_name,
+                    postcode: result.postcode,
+                    city: result.city,
+                    country: result.country_code || result.country,
+                  })}
+                  placeholder="Rechercher une adresse…"
                 />
               </div>
               <div className="grid grid-cols-3 gap-3">
