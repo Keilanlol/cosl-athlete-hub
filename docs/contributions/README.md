@@ -22,3 +22,4 @@ _(Cette section sera mise à jour au fil des contributions)_
 |---------|-------------|
 | `_TEMPLATE.md` | Modèle à copier pour documenter une nouvelle fonctionnalité |
 | `audit-incoherences-persons-legacy.md` | Audit des incohérences : architecture hybride persons/legacy, dual-write, sync photos, navigation croisée |
+| `forms-harmonization.md` | Harmonisation des formulaires : RHF + Zod, dual-write centralisé, composants réutilisables, suppression dialog legacy coach |
