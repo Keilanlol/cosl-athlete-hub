@@ -21,3 +21,4 @@ _(Cette section sera mise à jour au fil des contributions)_
 | Fichier | Description |
 |---------|-------------|
 | `_TEMPLATE.md` | Modèle à copier pour documenter une nouvelle fonctionnalité |
+| `audit-incoherences-persons-legacy.md` | Audit des incohérences : architecture hybride persons/legacy, dual-write, sync photos, navigation croisée |
