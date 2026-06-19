@@ -67,6 +67,7 @@ interface AddressSearchProps {
   placeholder?: string;
   className?: string;
   id?: string;
+  disabled?: boolean;
 }
 
 export function AddressSearch({
@@ -76,6 +77,7 @@ export function AddressSearch({
   placeholder,
   className,
   id,
+  disabled,
 }: AddressSearchProps) {
   const [results, setResults] = useState<PhotonFeature[]>([]);
   const [open, setOpen] = useState(false);
@@ -151,6 +153,7 @@ export function AddressSearch({
           }}
           placeholder={placeholder}
           autoComplete="off"
+          disabled={disabled}
         />
         {loading && (
           <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
