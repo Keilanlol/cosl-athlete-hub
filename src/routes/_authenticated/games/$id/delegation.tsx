@@ -504,7 +504,7 @@ function DelegationPage() {
                               onSelect={() => { setPickerOpen(false); setCoachOpen(true); }}
                               className="font-medium text-primary"
                             >
-                              <Plus className="mr-2 h-4 w-4" /> Créer un nouvel encadrant
+                              <Plus className="mr-2 h-4 w-4" /> Créer une nouvelle personne
                             </CommandItem>
                           </CommandGroup>
                         )}

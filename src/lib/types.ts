@@ -43,6 +43,7 @@ export type Coach = {
   is_active: boolean | null;
   photo_url: string | null;
   photo_storage_path: string | null;
+  person_id: string | null;
   created_at: string;
 };
 
@@ -76,6 +77,7 @@ export type FederationMember = {
   is_active: boolean | null;
   photo_url: string | null;
   photo_storage_path: string | null;
+  person_id: string | null;
   created_at: string;
 };
 
@@ -108,6 +110,7 @@ export type ClubMember = {
   is_active: boolean | null;
   photo_url?: string | null;
   photo_storage_path?: string | null;
+  person_id: string | null;
   created_at: string;
 };
 

@@ -82,7 +82,7 @@ function VolunteersPage() {
 
   const options = useMemo(
     () => [
-      { id: "__new__", label: "+ Créer un nouveau bénévole" },
+      { id: "__new__", label: "+ Créer une nouvelle personne" },
       ...pool
         .filter((p) => !alreadyLinked.has(p.id))
         .map((p) => ({

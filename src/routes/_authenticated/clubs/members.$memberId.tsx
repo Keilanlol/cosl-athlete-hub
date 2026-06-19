@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Mail, MapPin, Pencil, Phone, Trash2, UserRound, CalendarDays, FileText } from "lucide-react";
+import { ArrowLeft, Mail, MapPin, Pencil, Phone, Trash2, UserRound, CalendarDays, FileText, Users } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { confirmAction } from "@/components/ConfirmDialog";
@@ -52,6 +52,7 @@ function ClubMemberDetailPage() {
   const [member, setMember] = useState<ClubMember | null>(null);
   const [club, setClub] = useState<Club | null>(null);
   const [open, setOpen] = useState(false);
+  const [personId, setPersonId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     first_name: "",
@@ -85,6 +86,19 @@ function ClubMemberDetailPage() {
       .eq("id", m.club_id)
       .maybeSingle();
     setClub((c ?? null) as Club | null);
+
+    // Load person_id via club_member_profiles
+    const { data: cp } = await supabase
+      .from("club_member_profiles")
+      .select("person_id")
+      .eq("legacy_club_member_id", memberId)
+      .maybeSingle();
+    const pid = (cp as { person_id?: string | null } | null)?.person_id ?? null;
+    if (!pid && m.person_id) {
+      setPersonId(m.person_id);
+    } else {
+      setPersonId(pid);
+    }
   };
 
   useEffect(() => {
@@ -167,6 +181,13 @@ function ClubMemberDetailPage() {
           <ArrowLeft className="h-4 w-4" /> Retour au club
         </Link>
         <div className="flex gap-2">
+          {personId && (
+            <Button asChild variant="outline">
+              <Link to="/persons/$personId" params={{ personId }}>
+                <Users className="mr-2 h-4 w-4" /> Fiche personne
+              </Link>
+            </Button>
+          )}
           <Button variant="outline" onClick={openEdit}>
             <Pencil className="mr-2 h-4 w-4" /> Modifier
           </Button>

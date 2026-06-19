@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Mail, Phone, Pencil, Trash2, UserCog } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Pencil, Trash2, UserCog, Users } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { confirmAction } from "@/components/ConfirmDialog";
@@ -60,6 +60,7 @@ function CoachDetailPage() {
   const [athletes, setAthletes] = useState<(Athlete & { relation_role: string; start_date: string; end_date: string | null })[]>([]);
   const [feds, setFeds] = useState<Federation[]>([]);
   const [clubs, setClubs] = useState<Club[]>([]);
+  const [personId, setPersonId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -108,6 +109,20 @@ function CoachDetailPage() {
     );
     setFeds((fedsAll.data ?? []) as Federation[]);
     setClubs((clubsAll.data ?? []) as Club[]);
+
+    // Load person_id via coach_profiles
+    const { data: cp } = await supabase
+      .from("coach_profiles")
+      .select("person_id")
+      .eq("legacy_coach_id", id)
+      .maybeSingle();
+    const pid = (cp as { person_id?: string | null } | null)?.person_id ?? null;
+    // Fallback: check if coach row itself has person_id
+    if (!pid && c.person_id) {
+      setPersonId(c.person_id);
+    } else {
+      setPersonId(pid);
+    }
   };
 
   useEffect(() => {
@@ -192,6 +207,13 @@ function CoachDetailPage() {
           <ArrowLeft className="h-4 w-4" /> Retour aux encadrants
         </Link>
         <div className="flex gap-2">
+          {personId && (
+            <Button asChild variant="outline">
+              <Link to="/persons/$personId" params={{ personId }}>
+                <Users className="mr-2 h-4 w-4" /> Fiche personne
+              </Link>
+            </Button>
+          )}
           <Button variant="outline" onClick={openEdit}>
             <Pencil className="mr-2 h-4 w-4" /> Modifier
           </Button>

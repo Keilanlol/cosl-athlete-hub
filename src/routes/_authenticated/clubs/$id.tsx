@@ -586,8 +586,6 @@ function ClubDetailPage() {
     })),
   ];
 
-
-
   return (
     <div className="space-y-6">
       <div>
@@ -1442,7 +1440,7 @@ function ClubDetailPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__new__" className="text-primary font-medium">
-                        + Créer un nouvel encadrant
+                        + Créer une nouvelle personne
                       </SelectItem>
                       {freeCoaches.length > 0 && (
                         <>
