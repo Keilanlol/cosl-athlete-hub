@@ -55,7 +55,7 @@ type ClubProps = {
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (values: FederationForm | ClubForm) => Promise<void>;
+  onSubmit: (values: Record<string, unknown>) => Promise<void>;
   loading?: boolean;
 } & (FederationProps | ClubProps);
 
@@ -130,7 +130,7 @@ export function OrganizationFormDialog({
   }, [open, rest.editing, reset, isFed]);
 
   const submit = async (values: FormValues) => {
-    await onSubmit(values as FederationForm | ClubForm);
+    await onSubmit(values as unknown as Record<string, unknown>);
   };
 
   return (

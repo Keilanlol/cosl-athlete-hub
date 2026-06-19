@@ -158,26 +158,27 @@ function ClubsPage() {
     setOpen(true);
   };
 
-  const submit = async (values: ClubForm) => {
+  const submit = async (values: ClubForm | { name: string; federation_id: string }) => {
+    const v = values as ClubForm;
     setSaving(true);
-    const street = values.street?.trim() ?? "";
-    const city = values.city?.trim() ?? "";
-    const postcode = values.postcode?.trim() ?? "";
-    const country = values.country?.trim() ?? "";
+    const street = v.street?.trim() ?? "";
+    const city = v.city?.trim() ?? "";
+    const postcode = v.postcode?.trim() ?? "";
+    const country = v.country?.trim() ?? "";
     const fullAddress =
       [street, [postcode, city].filter(Boolean).join(" "), country]
         .filter(Boolean)
         .join(", ") || null;
     const payload = {
-      name: values.name.trim(),
-      federation_id: values.federation_id,
+      name: v.name.trim(),
+      federation_id: v.federation_id,
       city: city || null,
       address: fullAddress,
       street: street || null,
       postcode: postcode || null,
       country: country || null,
-      email: values.email?.trim() || null,
-      phone: values.phone?.trim() || null,
+      email: v.email?.trim() || null,
+      phone: v.phone?.trim() || null,
     };
     const { error } = editing
       ? await supabase.from("clubs").update(payload).eq("id", editing.id)
