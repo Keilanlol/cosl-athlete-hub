@@ -1,9 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
 import { Search, UserRound, Building2, Shield } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { friendlyError } from "@/lib/error-messages";
 import {
   CLUB_MEMBER_ROLES,
   FEDERATION_MEMBER_ROLES,
@@ -31,18 +31,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/DataTableShell";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { AddPersonButton } from "@/components/persons/AddPersonButton";
-import { MemberFormDialog } from "@/components/forms/MemberFormDialog";
-
-type PersonLite = {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string | null;
-  phone: string | null;
-};
 
 export const Route = createFileRoute("/_authenticated/members/")({
   component: MembersPage,
@@ -62,32 +51,17 @@ function MembersPage() {
   const [q, setQ] = useState("");
   const [scope, setScope] = useState<"all" | "fed" | "club">("all");
 
-  const [createOpen, setCreateOpen] = useState(false);
-  const [orgType, setOrgType] = useState<"fed" | "club">("fed");
-  const [selectedOrgId, setSelectedOrgId] = useState("");
-  const [editingMember, setEditingMember] = useState<
-    | (FederationMember & { _kind: "fed" })
-    | (ClubMember & { _kind: "club" })
-    | null
-  >(null);
-  const [persons, setPersons] = useState<PersonLite[]>([]);
-
   const load = async () => {
-    const [f, c, fm, cm, pe] = await Promise.all([
+    const [f, c, fm, cm] = await Promise.all([
       supabase.from("federations").select("*"),
       supabase.from("clubs").select("*"),
       supabase.from("federation_members").select("*").order("last_name"),
       supabase.from("club_members").select("*").order("last_name"),
-      supabase
-        .from("persons")
-        .select("id, first_name, last_name, email, phone")
-        .order("last_name"),
     ]);
     setFeds((f.data ?? []) as Federation[]);
     setClubs((c.data ?? []) as Club[]);
     setFedMembers((fm.data ?? []) as FederationMember[]);
     setClubMembers((cm.data ?? []) as ClubMember[]);
-    setPersons((pe.data ?? []) as PersonLite[]);
     setLoading(false);
   };
 
@@ -144,20 +118,6 @@ function MembersPage() {
       (r) => r.value === v,
     )?.label ?? v;
 
-  const openCreate = () => {
-    setEditingMember(null);
-    setSelectedOrgId("");
-    setOrgType("fed");
-    setCreateOpen(true);
-  };
-
-  const openEdit = (row: Row) => {
-    setOrgType(row.kind);
-    setSelectedOrgId(row.orgId);
-    setEditingMember({ ...row.data, _kind: row.kind } as never);
-    setCreateOpen(true);
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
@@ -173,15 +133,9 @@ function MembersPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button
-            onClick={openCreate}
-            className="bg-primary hover:bg-[var(--cosl-red-dark)]"
-          >
-            Ajouter un membre
-          </Button>
           <AddPersonButton
-            role="club_member"
-            label="Ajouter via personne"
+            role="federation_member"
+            label="Ajouter un membre"
             onChanged={() => load()}
           />
         </div>
@@ -226,7 +180,6 @@ function MembersPage() {
                 <TableHead>Email</TableHead>
                 <TableHead>Téléphone</TableHead>
                 <TableHead>Statut</TableHead>
-                <TableHead className="w-20 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -296,15 +249,6 @@ function MembersPage() {
                         <Badge variant="outline">Inactif</Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openEdit(r)}
-                      >
-                        Modifier
-                      </Button>
-                    </TableCell>
                   </TableRow>
                 );
               })}
@@ -312,131 +256,6 @@ function MembersPage() {
           </Table>
         )}
       </div>
-
-      {createOpen && selectedOrgId && (
-        <MemberFormDialog
-          kind={orgType}
-          open={createOpen}
-          onOpenChange={setCreateOpen}
-          orgId={selectedOrgId}
-          orgName={
-            orgType === "fed"
-              ? feds.find((f) => f.id === selectedOrgId)?.acronym ?? "Fédération"
-              : clubs.find((c) => c.id === selectedOrgId)?.name ?? "Club"
-          }
-          editing={
-            editingMember
-              ? {
-                  id: editingMember.id,
-                  first_name: editingMember.first_name,
-                  last_name: editingMember.last_name,
-                  role: editingMember.role,
-                  email: editingMember.email,
-                  phone: editingMember.phone,
-                  street: editingMember.street,
-                  postcode: editingMember.postcode,
-                  city: editingMember.city,
-                  country: editingMember.country,
-                  start_date: editingMember.start_date,
-                  end_date: editingMember.end_date,
-                  notes: editingMember.notes,
-                  is_active: editingMember.is_active,
-                }
-              : null
-          }
-          persons={persons}
-          onSaved={() => {
-            setCreateOpen(false);
-            setEditingMember(null);
-            load();
-          }}
-        />
-      )}
-
-      {/* Org selector when no orgId selected yet */}
-      {createOpen && !selectedOrgId && (
-        <OrgPickerDialog
-          open={createOpen}
-          onOpenChange={setCreateOpen}
-          orgType={orgType}
-          setOrgType={setOrgType}
-          feds={feds}
-          clubs={clubs}
-          onPick={(id) => setSelectedOrgId(id)}
-        />
-      )}
     </div>
-  );
-}
-
-function OrgPickerDialog({
-  open,
-  onOpenChange,
-  orgType,
-  setOrgType,
-  feds,
-  clubs,
-  onPick,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  orgType: "fed" | "club";
-  setOrgType: (v: "fed" | "club") => void;
-  feds: Federation[];
-  clubs: Club[];
-  onPick: (id: string) => void;
-}) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Choisir une organisation</DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-3 py-4">
-          <div className="flex gap-3">
-            <Button
-              type="button"
-              variant={orgType === "fed" ? "default" : "outline"}
-              className={orgType === "fed" ? "bg-primary hover:bg-[var(--cosl-red-dark)]" : ""}
-              onClick={() => setOrgType("fed")}
-            >
-              Fédération
-            </Button>
-            <Button
-              type="button"
-              variant={orgType === "club" ? "default" : "outline"}
-              className={orgType === "club" ? "bg-primary hover:bg-[var(--cosl-red-dark)]" : ""}
-              onClick={() => setOrgType("club")}
-            >
-              Club
-            </Button>
-          </div>
-          <div className="max-h-[300px] overflow-y-auto rounded-md border border-border">
-            {orgType === "fed"
-              ? feds.map((f) => (
-                  <button
-                    key={f.id}
-                    type="button"
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-muted border-b border-border last:border-0"
-                    onClick={() => onPick(f.id)}
-                  >
-                    <span className="font-mono text-sm font-medium">{f.acronym}</span>
-                    <span className="text-sm text-muted-foreground">{f.name}</span>
-                  </button>
-                ))
-              : clubs.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-muted border-b border-border last:border-0"
-                    onClick={() => onPick(c.id)}
-                  >
-                    <span className="text-sm font-medium">{c.name}</span>
-                  </button>
-                ))}
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
   );
 }

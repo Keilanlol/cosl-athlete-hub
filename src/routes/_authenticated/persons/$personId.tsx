@@ -68,10 +68,23 @@ function PersonDetailPage() {
   const [addRoleTarget, setAddRoleTarget] = useState<PersonRoleType | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const personEditSchema = z.object({
+    first_name: z.string().trim().min(1, "Prénom requis").max(80),
+    last_name: z.string().trim().min(1, "Nom requis").max(80),
+    birth_date: z.string().optional().or(z.literal("")),
+    gender: z.string().optional().or(z.literal("")),
+    nationality: z.string().optional().or(z.literal("")),
+    email: z.string().trim().email("Email invalide").optional().or(z.literal("")),
+    phone: z.string().optional().or(z.literal("")),
+    street: z.string().optional().or(z.literal("")),
+    postcode: z.string().optional().or(z.literal("")),
+    city: z.string().optional().or(z.literal("")),
+    country: z.string().optional().or(z.literal("")),
+    is_active: z.boolean(),
+  });
+
   const editForm = useForm({
-    resolver: zodResolver(personBaseSchema.merge(
-      z.object({ is_active: z.boolean() })
-    )) as never,
+    resolver: zodResolver(personEditSchema) as never,
     defaultValues: {
       first_name: "",
       last_name: "",
