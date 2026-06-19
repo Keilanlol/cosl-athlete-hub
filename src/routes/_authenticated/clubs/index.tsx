@@ -5,8 +5,10 @@ import { Plus, Pencil, Trash2, Search, Shield } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import type { Club, ClubMember, Federation } from "@/lib/types";
+import { EntityImageUpload } from "@/components/EntityImageUpload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AddressSearch } from "@/components/AddressSearch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -25,6 +27,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -41,15 +51,25 @@ import {
   SortBtn,
   TableSkeleton,
 } from "@/components/DataTableShell";
-import { OrganizationFormDialog } from "@/components/forms/OrganizationFormDialog";
-import type { ClubForm } from "@/lib/form-schemas";
-import { confirmAction } from "@/components/ConfirmDialog";
 
 export const Route = createFileRoute("/_authenticated/clubs/")({
   component: ClubsPage,
 });
 
 type SortKey = "name" | "city";
+
+const empty = {
+  name: "",
+  federation_id: "",
+  city: "",
+  address: "",
+  street: "",
+  postcode: "",
+  country: "",
+  email: "",
+  phone: "",
+};
+
 
 function ClubsPage() {
   const navigate = useNavigate();
@@ -66,6 +86,7 @@ function ClubsPage() {
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Club | null>(null);
+  const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
@@ -133,9 +154,7 @@ function ClubsPage() {
     return r;
   }, [rows, search, fedFilter, cityFilter, sort]);
 
-  useEffect(() => {
-    setPage(1);
-  }, [search, fedFilter, cityFilter]);
+  useEffect(() => { setPage(1); }, [search, fedFilter, cityFilter]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -150,35 +169,51 @@ function ClubsPage() {
 
   const openCreate = () => {
     setEditing(null);
+    setForm(empty);
     setOpen(true);
   };
 
   const openEdit = (c: Club) => {
     setEditing(c);
+    setForm({
+      name: c.name,
+      federation_id: c.federation_id,
+      city: c.city ?? "",
+      address: c.address ?? "",
+      street: c.street ?? c.address ?? "",
+      postcode: c.postcode ?? "",
+      country: c.country ?? "",
+      email: c.email ?? "",
+      phone: c.phone ?? "",
+    });
     setOpen(true);
   };
 
-  const submit = async (values: ClubForm | { name: string; federation_id: string }) => {
-    const v = values as ClubForm;
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim() || !form.federation_id) {
+      toast.error("Nom et fédération requis");
+      return;
+    }
     setSaving(true);
-    const street = v.street?.trim() ?? "";
-    const city = v.city?.trim() ?? "";
-    const postcode = v.postcode?.trim() ?? "";
-    const country = v.country?.trim() ?? "";
+    const street = form.street.trim();
+    const city = form.city.trim();
+    const postcode = form.postcode.trim();
+    const country = form.country.trim();
     const fullAddress =
       [street, [postcode, city].filter(Boolean).join(" "), country]
         .filter(Boolean)
-        .join(", ") || null;
+        .join(", ") || form.address.trim();
     const payload = {
-      name: v.name.trim(),
-      federation_id: v.federation_id,
+      name: form.name.trim(),
+      federation_id: form.federation_id,
       city: city || null,
-      address: fullAddress,
+      address: fullAddress || null,
       street: street || null,
       postcode: postcode || null,
       country: country || null,
-      email: v.email?.trim() || null,
-      phone: v.phone?.trim() || null,
+      email: form.email.trim() || null,
+      phone: form.phone.trim() || null,
     };
     const { error } = editing
       ? await supabase.from("clubs").update(payload).eq("id", editing.id)
@@ -193,18 +228,9 @@ function ClubsPage() {
     load();
   };
 
+
   const confirmDelete = async () => {
     if (!deleteId) return;
-    const ok = await confirmAction({
-      title: "Supprimer ce club ?",
-      description: "Cette action est irréversible.",
-      confirmLabel: "Supprimer",
-      destructive: true,
-    });
-    if (!ok) {
-      setDeleteId(null);
-      return;
-    }
     const { count, error: ce } = await supabase
       .from("athletes")
       .select("id", { count: "exact", head: true })
@@ -245,10 +271,7 @@ function ClubsPage() {
             </p>
           </div>
         </div>
-        <Button
-          onClick={openCreate}
-          className="bg-primary hover:bg-[var(--cosl-red-dark)]"
-        >
+        <Button onClick={openCreate} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
           <Plus className="mr-2 h-4 w-4" />
           Ajouter un club
         </Button>
@@ -340,11 +363,7 @@ function ClubsPage() {
                     <TableCell>
                       <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-md border border-border bg-muted">
                         {c.logo_url ? (
-                          <img
-                            src={c.logo_url}
-                            alt={c.name}
-                            className="h-full w-full object-contain p-0.5"
-                          />
+                          <img src={c.logo_url} alt={c.name} className="h-full w-full object-contain p-0.5" />
                         ) : (
                           <span className="text-[10px] font-semibold text-muted-foreground">
                             {c.name?.slice(0, 2).toUpperCase()}
@@ -368,16 +387,9 @@ function ClubsPage() {
                     <TableCell className="text-muted-foreground">
                       {pres ? `${pres.first_name} ${pres.last_name}` : "—"}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {pres?.email ?? c.email ?? "—"}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {pres?.phone ?? c.phone ?? "—"}
-                    </TableCell>
-                    <TableCell
-                      className="text-right"
-                      onClick={(e) => e.stopPropagation()}
-                    >
+                    <TableCell className="text-muted-foreground">{pres?.email ?? c.email ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{pres?.phone ?? c.phone ?? "—"}</TableCell>
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -405,29 +417,162 @@ function ClubsPage() {
 
       <PagerBar page={page} pageCount={pageCount} onChange={setPage} />
 
-      <OrganizationFormDialog
-        type="club"
-        open={open}
-        onOpenChange={setOpen}
-        editing={
-          editing
-            ? {
-                id: editing.id,
-                name: editing.name,
-                federation_id: editing.federation_id,
-                email: editing.email,
-                phone: editing.phone,
-                street: editing.street,
-                postcode: editing.postcode,
-                city: editing.city,
-                country: editing.country,
-              }
-            : null
-        }
-        federations={feds}
-        onSubmit={submit}
-        loading={saving}
-      />
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <form onSubmit={submit}>
+            <DialogHeader>
+              <DialogTitle>
+                {editing ? "Modifier le club" : "Ajouter un club"}
+              </DialogTitle>
+              <DialogDescription>
+                Nom et fédération sont obligatoires.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              {editing && (
+                <div className="flex justify-center pb-2">
+                  <EntityImageUpload
+                    entityId={editing.id}
+                    entityType="club"
+                    currentImageUrl={editing.logo_url}
+                    currentStoragePath={editing.logo_storage_path}
+                    shape="square"
+                    size="lg"
+                    label="Logo du club"
+                    placeholder={editing.name?.slice(0, 2).toUpperCase()}
+                    onUploaded={async (url, path) => {
+                      await supabase
+                        .from("clubs")
+                        .update({ logo_url: url, logo_storage_path: path })
+                        .eq("id", editing.id);
+                      setEditing((e) => (e ? { ...e, logo_url: url, logo_storage_path: path } : e));
+                      load();
+                    }}
+                    onDeleted={async () => {
+                      await supabase
+                        .from("clubs")
+                        .update({ logo_url: null, logo_storage_path: null })
+                        .eq("id", editing.id);
+                      setEditing((e) => (e ? { ...e, logo_url: null, logo_storage_path: null } : e));
+                      load();
+                    }}
+                  />
+                </div>
+              )}
+              <div className="space-y-1.5">
+                <Label htmlFor="cname">Nom *</Label>
+                <Input
+                  id="cname"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="cfed">Fédération *</Label>
+                <Select
+                  value={form.federation_id}
+                  onValueChange={(v) => setForm({ ...form, federation_id: v })}
+                >
+                  <SelectTrigger id="cfed">
+                    <SelectValue placeholder="Sélectionner…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {feds.map((f) => (
+                      <SelectItem key={f.id} value={f.id}>
+                        {f.acronym} — {f.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="cstreet">Adresse (numéro + rue)</Label>
+                <AddressSearch
+                  id="cstreet"
+                  value={form.street}
+                  onChange={(v) => setForm({ ...form, street: v })}
+                  onSelect={(r) =>
+                    setForm((f) => ({
+                      ...f,
+                      street: r.street || f.street,
+                      city: r.city || f.city,
+                      postcode: r.postcode || f.postcode,
+                      country: r.country || f.country,
+                    }))
+                  }
+                  placeholder="ex: 1 Rue du Stade, Luxembourg…"
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="cpostcode">Code postal</Label>
+                  <Input
+                    id="cpostcode"
+                    value={form.postcode}
+                    onChange={(e) => setForm({ ...form, postcode: e.target.value })}
+                    placeholder="L-1234"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="ccity">Ville</Label>
+                  <Input
+                    id="ccity"
+                    value={form.city}
+                    onChange={(e) => setForm({ ...form, city: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="ccountry">Pays</Label>
+                  <Input
+                    id="ccountry"
+                    value={form.country}
+                    onChange={(e) => setForm({ ...form, country: e.target.value })}
+                    placeholder="Luxembourg"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="cphone">Téléphone</Label>
+                  <Input
+                    id="cphone"
+                    value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="cemail">Email</Label>
+                  <Input
+                    id="cemail"
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  />
+                </div>
+              </div>
+
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpen(false)}
+                disabled={saving}
+              >
+                Annuler
+              </Button>
+              <Button
+                type="submit"
+                disabled={saving}
+                className="bg-primary hover:bg-[var(--cosl-red-dark)]"
+              >
+                {saving ? "Enregistrement…" : editing ? "Enregistrer" : "Ajouter"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>
@@ -438,9 +583,7 @@ function ClubsPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeleteId(null)}>
-              Annuler
-            </AlertDialogCancel>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
               className="bg-red-600 hover:bg-red-700"
