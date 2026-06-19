@@ -393,12 +393,12 @@ function DashboardPage() {
                   />
                 </div>
 
-                <div className="rounded-xl border border-border bg-card divide-y">
+                <div className="max-h-[280px] overflow-y-auto rounded-xl border border-border bg-card divide-y">
                   {filteredChanges.map((c) => {
                     const icon =
-                      c.type === "document" ? <FileText className="h-4 w-4 text-[var(--lux-blue)]" /> :
-                      c.type === "kyc" ? <ShieldCheck className="h-4 w-4 text-primary" /> :
-                      <Clock className="h-4 w-4 text-muted-foreground" />;
+                      c.type === "document" ? <FileText className="h-3.5 w-3.5 text-[var(--lux-blue)]" /> :
+                      c.type === "kyc" ? <ShieldCheck className="h-3.5 w-3.5 text-primary" /> :
+                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />;
                     const toneCls =
                       c.type === "document" ? "bg-[var(--lux-blue-light)]" :
                       c.type === "kyc" ? "bg-[var(--cosl-red-light)]" :
@@ -407,14 +407,14 @@ function DashboardPage() {
                       <Link
                         key={c.id}
                         to={c.link_to as never}
-                        className="flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors"
+                        className="flex items-center gap-2.5 px-3 py-2 hover:bg-muted/50 transition-colors"
                       >
-                        <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${toneCls}`}>
+                        <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${toneCls}`}>
                           {icon}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-foreground truncate">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-medium text-foreground truncate">
                               {c.athlete_name}
                             </span>
                             {c.cosl_id && (
@@ -423,16 +423,16 @@ function DashboardPage() {
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-muted-foreground truncate">{c.description}</p>
+                          <p className="text-[11px] text-muted-foreground truncate">{c.description}</p>
                         </div>
-                        <span className="text-xs text-muted-foreground shrink-0 whitespace-nowrap">
+                        <span className="text-[10px] text-muted-foreground shrink-0 whitespace-nowrap">
                           {timeAgo(c.created_at)}
                         </span>
                       </Link>
                     );
                   })}
                   {filteredChanges.length === 0 && (
-                    <div className="p-6 text-center text-sm text-muted-foreground">
+                    <div className="px-4 py-6 text-center text-xs text-muted-foreground">
                       Aucun résultat pour « {changesSearch} ».
                     </div>
                   )}
