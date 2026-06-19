@@ -11,11 +11,21 @@ import {
   Clock,
   FileText,
   Activity,
+  Search,
+  ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useMemo } from "react";
 
 import { supabase } from "@/lib/supabase";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { useAuth } from "@/hooks/useAuth";
 import { GAME_TYPES, type GameType, type GameStatus } from "@/lib/types";
 
@@ -68,6 +78,8 @@ function DashboardPage() {
   const [upcomingGames, setUpcomingGames] = useState<UpcomingGame[]>([]);
   const [expiringDocs, setExpiringDocs] = useState<number>(0);
   const [recentChanges, setRecentChanges] = useState<RecentChange[]>([]);
+  const [changesOpen, setChangesOpen] = useState(true);
+  const [changesSearch, setChangesSearch] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -225,6 +237,14 @@ function DashboardPage() {
   const firstName = full_name ? full_name.split(" ")[0] : null;
   const hasAlerts = kyc.red > 0 || expiringDocs > 0 || kpis.accredsPending > 0;
 
+  const filteredChanges = useMemo(() => {
+    if (!changesSearch.trim()) return recentChanges;
+    const q = changesSearch.trim().toLowerCase();
+    return recentChanges.filter((c) =>
+      `${c.athlete_name} ${c.cosl_id ?? ""} ${c.description} ${c.type}`.toLowerCase().includes(q),
+    );
+  }, [recentChanges, changesSearch]);
+
   const timeAgo = (iso: string) => {
     const diff = Date.now() - new Date(iso).getTime();
     const hours = Math.floor(diff / (1000 * 60 * 60));
@@ -332,69 +352,95 @@ function DashboardPage() {
 
       {/* Changements récents */}
       <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-            <Activity className="h-5 w-5 text-primary" /> Changements récents
-          </h2>
-          <span className="text-xs text-muted-foreground">7 derniers jours</span>
-        </div>
-        {loading ? (
-          <div className="rounded-xl border border-border bg-card divide-y">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center gap-3 p-4">
-                <div className="h-8 w-8 rounded-lg bg-muted animate-pulse" />
-                <div className="flex-1 space-y-1">
-                  <div className="h-3 w-32 bg-muted animate-pulse rounded" />
-                  <div className="h-3 w-48 bg-muted animate-pulse rounded" />
-                </div>
-              </div>
-            ))}
+        <Collapsible open={changesOpen} onOpenChange={setChangesOpen}>
+          <div className="flex items-center justify-between">
+            <CollapsibleTrigger asChild>
+              <button type="button" className="flex items-center gap-2 text-lg font-semibold text-foreground">
+                <Activity className="h-5 w-5 text-primary" /> Changements récents
+                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${changesOpen ? "" : "-rotate-90"}`} />
+              </button>
+            </CollapsibleTrigger>
+            <span className="text-xs text-muted-foreground">7 derniers jours · {recentChanges.length} activité{recentChanges.length > 1 ? "s" : ""}</span>
           </div>
-        ) : recentChanges.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
-            Aucun changement récent ces 7 derniers jours.
-          </div>
-        ) : (
-          <div className="rounded-xl border border-border bg-card divide-y">
-            {recentChanges.map((c) => {
-              const icon =
-                c.type === "document" ? <FileText className="h-4 w-4 text-[var(--lux-blue)]" /> :
-                c.type === "kyc" ? <ShieldCheck className="h-4 w-4 text-primary" /> :
-                <Clock className="h-4 w-4 text-muted-foreground" />;
-              const toneCls =
-                c.type === "document" ? "bg-[var(--lux-blue-light)]" :
-                c.type === "kyc" ? "bg-[var(--cosl-red-light)]" :
-                "bg-muted";
-              return (
-                <Link
-                  key={c.id}
-                  to={c.link_to as never}
-                  className="flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors"
-                >
-                  <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${toneCls}`}>
-                    {icon}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-foreground truncate">
-                        {c.athlete_name}
-                      </span>
-                      {c.cosl_id && (
-                        <span className="font-mono text-[10px] text-muted-foreground">
-                          {c.cosl_id}
-                        </span>
-                      )}
+
+          <CollapsibleContent className="space-y-3 pt-2">
+            {loading ? (
+              <div className="rounded-xl border border-border bg-card divide-y">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center gap-3 p-4">
+                    <div className="h-8 w-8 rounded-lg bg-muted animate-pulse" />
+                    <div className="flex-1 space-y-1">
+                      <div className="h-3 w-32 bg-muted animate-pulse rounded" />
+                      <div className="h-3 w-48 bg-muted animate-pulse rounded" />
                     </div>
-                    <p className="text-xs text-muted-foreground truncate">{c.description}</p>
                   </div>
-                  <span className="text-xs text-muted-foreground shrink-0 whitespace-nowrap">
-                    {timeAgo(c.created_at)}
-                  </span>
-                </Link>
-              );
-            })}
-          </div>
-        )}
+                ))}
+              </div>
+            ) : recentChanges.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
+                Aucun changement récent ces 7 derniers jours.
+              </div>
+            ) : (
+              <>
+                {/* Barre de recherche */}
+                <div className="relative max-w-md">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Rechercher par nom, COSL ID, type de document, KYC…"
+                    value={changesSearch}
+                    onChange={(e) => setChangesSearch(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+
+                <div className="rounded-xl border border-border bg-card divide-y">
+                  {filteredChanges.map((c) => {
+                    const icon =
+                      c.type === "document" ? <FileText className="h-4 w-4 text-[var(--lux-blue)]" /> :
+                      c.type === "kyc" ? <ShieldCheck className="h-4 w-4 text-primary" /> :
+                      <Clock className="h-4 w-4 text-muted-foreground" />;
+                    const toneCls =
+                      c.type === "document" ? "bg-[var(--lux-blue-light)]" :
+                      c.type === "kyc" ? "bg-[var(--cosl-red-light)]" :
+                      "bg-muted";
+                    return (
+                      <Link
+                        key={c.id}
+                        to={c.link_to as never}
+                        className="flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors"
+                      >
+                        <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${toneCls}`}>
+                          {icon}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-foreground truncate">
+                              {c.athlete_name}
+                            </span>
+                            {c.cosl_id && (
+                              <span className="font-mono text-[10px] text-muted-foreground">
+                                {c.cosl_id}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate">{c.description}</p>
+                        </div>
+                        <span className="text-xs text-muted-foreground shrink-0 whitespace-nowrap">
+                          {timeAgo(c.created_at)}
+                        </span>
+                      </Link>
+                    );
+                  })}
+                  {filteredChanges.length === 0 && (
+                    <div className="p-6 text-center text-sm text-muted-foreground">
+                      Aucun résultat pour « {changesSearch} ».
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </CollapsibleContent>
+        </Collapsible>
       </section>
 
       {/* Prochains Games */}
