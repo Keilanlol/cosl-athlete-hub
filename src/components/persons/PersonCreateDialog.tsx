@@ -8,6 +8,7 @@ import {
   ROLE_LABELS,
   type PersonRoleType,
 } from "@/lib/persons";
+import { COACH_ROLES, ATHLETE_STATUSES } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,33 +44,6 @@ const STEP_LABELS: Record<Step, string> = {
   details: "Profils spécifiques",
 };
 
-const COACH_ROLES = [
-  "coach",
-  "medical",
-  "chief_of_mission",
-  "press",
-  "manager",
-  "official",
-];
-const FED_ROLES = [
-  "president",
-  "vice_president",
-  "secretary_general",
-  "treasurer",
-  "board_member",
-  "delegate",
-];
-const CLUB_ROLES = [
-  "president",
-  "vice_president",
-  "secretary",
-  "treasurer",
-  "board_member",
-  "head_coach",
-];
-const ATHLETE_STATUSES = ["active", "injured", "suspended", "retired", "ambassador"];
-const ATHLETE_LEVELS = ["elite", "promotion", "espoir", "olympic_contract"];
-
 const ROLE_DESCRIPTIONS: Record<PersonRoleType, string> = {
   athlete: "Compétitions, sélections, accréditations",
   coach: "Encadrement technique, médical, logistique",
@@ -79,6 +53,26 @@ const ROLE_DESCRIPTIONS: Record<PersonRoleType, string> = {
   volunteer: "Bénévole sur événements",
   staff: "Personnel COSL",
 };
+
+const FED_ROLES = [
+  { value: "president", label: "Président" },
+  { value: "vice_president", label: "Vice-président" },
+  { value: "secretary_general", label: "Secrétaire général" },
+  { value: "treasurer", label: "Trésorier" },
+  { value: "board_member", label: "Membre du bureau" },
+  { value: "delegate", label: "Délégué" },
+  { value: "other", label: "Autre" },
+];
+
+const CLUB_ROLES = [
+  { value: "president", label: "Président" },
+  { value: "vice_president", label: "Vice-président" },
+  { value: "secretary", label: "Secrétaire" },
+  { value: "treasurer", label: "Trésorier" },
+  { value: "board_member", label: "Membre du bureau" },
+  { value: "head_coach", label: "Entraîneur principal" },
+  { value: "other", label: "Autre" },
+];
 
 const defaultForm = {
   first_name: "",
@@ -98,7 +92,7 @@ const defaultForm = {
     primary_federation_id: "",
     current_club_id: "",
     status: "active",
-    level: "promotion",
+    level: "",
     license_number: "",
     passport_number: "",
     passport_expiry: "",
@@ -125,12 +119,8 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
   const [step, setStep] = useState<Step>("general");
   const [form, setForm] = useState({ ...defaultForm, selectedRoles: initialRoles ?? [] });
   const [sports, setSports] = useState<{ id: string; name: string }[]>([]);
-  const [federations, setFederations] = useState<
-    { id: string; name: string; acronym: string | null }[]
-  >([]);
-  const [clubs, setClubs] = useState<
-    { id: string; name: string; federation_id: string | null }[]
-  >([]);
+  const [federations, setFederations] = useState<{ id: string; name: string; acronym: string | null }[]>([]);
+  const [clubs, setClubs] = useState<{ id: string; name: string; federation_id: string | null }[]>([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -139,29 +129,16 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
       setForm({ ...defaultForm, selectedRoles: initialRoles ?? [] });
       return;
     }
-    setForm((f) => ({ ...f, selectedRoles: initialRoles ?? f.selectedRoles }));
-    supabase
-      .from("sports")
-      .select("id, name")
-      .order("name")
+    supabase.from("sports").select("id, name").order("name")
       .then(({ data }) => setSports((data ?? []) as typeof sports));
-    supabase
-      .from("federations")
-      .select("id, name, acronym")
-      .order("acronym")
+    supabase.from("federations").select("id, name, acronym").order("acronym")
       .then(({ data }) => setFederations((data ?? []) as typeof federations));
-    supabase
-      .from("clubs")
-      .select("id, name, federation_id")
-      .order("name")
+    supabase.from("clubs").select("id, name, federation_id").order("name")
       .then(({ data }) => setClubs((data ?? []) as typeof clubs));
   }, [open]);
 
-  const setProfile = (
-    profile: "athlete" | "coach" | "fedMember" | "clubMember",
-    key: string,
-    value: string,
-  ) => setForm((f) => ({ ...f, [profile]: { ...f[profile], [key]: value } }));
+  const setProfile = (profile: "athlete" | "coach" | "fedMember" | "clubMember", key: string, value: string) =>
+    setForm((f) => ({ ...f, [profile]: { ...f[profile], [key]: value } }));
 
   const toggleRole = (r: PersonRoleType) =>
     setForm((f) => ({
@@ -176,39 +153,20 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
 
   const canNext = (): boolean => {
     if (step === "general") {
-      // Seuls prénom et nom sont requis obligatoirement
-      const baseOk = !!(form.first_name.trim() && form.last_name.trim());
-      if (!baseOk) return false;
-      // Si athlète sélectionné, genre et date de naissance requis
-      if (isAthleteSelected) {
-        return !!(form.birth_date && form.gender);
-      }
-      return true;
-    }
-    if (step === "roles") {
-      // Roles optionnels — on peut créer une personne sans rôle
+      if (!form.first_name.trim() || !form.last_name.trim()) return false;
+      if (isAthleteSelected) return !!(form.birth_date && form.gender);
       return true;
     }
     return true;
   };
 
-  const goNext = () => {
-    setStep(STEPS[stepIndex + 1]!);
-  };
-
-  const filteredClubsAthlete = form.athlete.primary_federation_id
-    ? clubs.filter((c) => c.federation_id === form.athlete.primary_federation_id)
-    : clubs;
-  const filteredClubsCoach = form.coach.federation_id
-    ? clubs.filter((c) => c.federation_id === form.coach.federation_id)
-    : clubs;
+  const goNext = () => setStep(STEPS[stepIndex + 1]!);
 
   const handleSubmit = async () => {
     if (saving) return;
     setSaving(true);
-
     try {
-      // 1. persons
+      // 1. Create person
       const { data: p, error: pe } = await supabase
         .from("persons")
         .insert({
@@ -234,16 +192,11 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
       if (form.selectedRoles.length > 0) {
         const { error: re } = await supabase
           .from("person_roles")
-          .insert(
-            form.selectedRoles.map((role_type) => ({
-              person_id: personId,
-              role_type,
-            })),
-          );
+          .insert(form.selectedRoles.map((role_type) => ({ person_id: personId, role_type })));
         if (re) throw re;
       }
 
-      // 3. athlete dual-write
+      // 3. Athlete dual-write
       if (form.selectedRoles.includes("athlete")) {
         const cosl_id = await nextCoslId();
         const { data: legAth, error: lae } = await supabase
@@ -257,10 +210,6 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
             nationality: form.nationality.trim() || "LUX",
             email: form.email.trim() || null,
             phone: form.phone.trim() || null,
-            street: form.street.trim() || null,
-            postcode: form.postcode.trim() || null,
-            city: form.city.trim() || null,
-            country: form.country.trim() || null,
             is_active: true,
             status: form.athlete.status,
             level: form.athlete.level || null,
@@ -275,11 +224,10 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
           .select("id")
           .single();
         if (lae || !legAth) throw lae ?? new Error("Athlète legacy KO");
-        const legacyAthleteId = legAth.id as string;
 
-        const { error: ape } = await supabase.from("athlete_profiles").insert({
+        await supabase.from("athlete_profiles").insert({
           person_id: personId,
-          legacy_athlete_id: legacyAthleteId,
+          legacy_athlete_id: legAth.id,
           cosl_id,
           primary_sport_id: form.athlete.primary_sport_id || null,
           primary_federation_id: form.athlete.primary_federation_id || null,
@@ -290,15 +238,11 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
           passport_number: form.athlete.passport_number || null,
           passport_expiry: form.athlete.passport_expiry || null,
         });
-        if (ape) throw ape;
 
-        // KYC initial (best-effort)
-        await supabase
-          .from("athlete_kyc")
-          .insert({ athlete_id: legacyAthleteId, global_status: "red" });
+        await supabase.from("athlete_kyc").insert({ athlete_id: legAth.id, global_status: "red" });
       }
 
-      // 4. coach dual-write
+      // 4. Coach dual-write — creates person + coach + coach_profile
       if (form.selectedRoles.includes("coach")) {
         const { data: legCoach, error: lce } = await supabase
           .from("coaches")
@@ -317,7 +261,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
           .single();
         if (lce || !legCoach) throw lce ?? new Error("Coach legacy KO");
 
-        const { error: cpe } = await supabase.from("coach_profiles").insert({
+        await supabase.from("coach_profiles").insert({
           person_id: personId,
           legacy_coach_id: legCoach.id,
           role: form.coach.role,
@@ -325,22 +269,10 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
           club_id: form.coach.club_id || null,
           is_active: true,
         });
-        if (cpe) throw cpe;
       }
 
-      // 5. federation_member
+      // 5. Federation member dual-write
       if (form.selectedRoles.includes("federation_member") && form.fedMember.federation_id) {
-        const { error: fme } = await supabase
-          .from("federation_member_profiles")
-          .insert({
-            person_id: personId,
-            federation_id: form.fedMember.federation_id,
-            role: form.fedMember.role,
-            start_date: form.fedMember.start_date || null,
-            is_active: true,
-          });
-        if (fme) throw fme;
-
         const { data: legFm, error: lfme } = await supabase
           .from("federation_members")
           .insert({
@@ -356,26 +288,20 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
           })
           .select("id")
           .single();
-        if (lfme) throw lfme;
+        if (lfme || !legFm) throw lfme ?? new Error("Membre fédération legacy KO");
 
-        await supabase
-          .from("federation_member_profiles")
-          .update({ legacy_federation_member_id: legFm.id })
-          .eq("person_id", personId)
-          .eq("federation_id", form.fedMember.federation_id);
-      }
-
-      // 6. club_member
-      if (form.selectedRoles.includes("club_member") && form.clubMember.club_id) {
-        const { error: cme } = await supabase.from("club_member_profiles").insert({
+        await supabase.from("federation_member_profiles").insert({
           person_id: personId,
-          club_id: form.clubMember.club_id,
-          role: form.clubMember.role,
-          start_date: form.clubMember.start_date || null,
+          legacy_federation_member_id: legFm.id,
+          federation_id: form.fedMember.federation_id,
+          role: form.fedMember.role,
+          start_date: form.fedMember.start_date || null,
           is_active: true,
         });
-        if (cme) throw cme;
+      }
 
+      // 6. Club member dual-write
+      if (form.selectedRoles.includes("club_member") && form.clubMember.club_id) {
         const { data: legCm, error: lcme } = await supabase
           .from("club_members")
           .insert({
@@ -391,15 +317,17 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
           })
           .select("id")
           .single();
-        if (lcme) throw lcme;
+        if (lcme || !legCm) throw lcme ?? new Error("Membre club legacy KO");
 
-        await supabase
-          .from("club_member_profiles")
-          .update({ legacy_club_member_id: legCm.id })
-          .eq("person_id", personId)
-          .eq("club_id", form.clubMember.club_id);
+        await supabase.from("club_member_profiles").insert({
+          person_id: personId,
+          legacy_club_member_id: legCm.id,
+          club_id: form.clubMember.club_id,
+          role: form.clubMember.role,
+          start_date: form.clubMember.start_date || null,
+          is_active: true,
+        });
       }
-
 
       toast.success("Personne créée avec succès");
       onOpenChange(false);
@@ -413,6 +341,13 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
     }
   };
 
+  const filteredClubsAthlete = form.athlete.primary_federation_id
+    ? clubs.filter((c) => c.federation_id === form.athlete.primary_federation_id)
+    : clubs;
+  const filteredClubsCoach = form.coach.federation_id
+    ? clubs.filter((c) => c.federation_id === form.coach.federation_id)
+    : clubs;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
@@ -422,24 +357,16 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
           </DialogTitle>
         </DialogHeader>
 
-        {/* Progress */}
         <div className="my-4 flex items-center gap-2">
           {STEPS.map((s, i) => (
             <div key={s} className="flex flex-1 items-center gap-2">
-              <div
-                className={`flex h-7 w-7 items-center justify-center rounded-full border text-xs font-semibold ${
-                  i === stepIndex
-                    ? "border-primary bg-primary text-white"
-                    : i < stepIndex
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-muted text-muted-foreground"
-                }`}
-              >
+              <div className={`flex h-7 w-7 items-center justify-center rounded-full border text-xs font-semibold ${
+                i === stepIndex ? "border-primary bg-primary text-white"
+                : i < stepIndex ? "border-primary bg-primary/10 text-primary"
+                : "border-muted text-muted-foreground"}`}>
                 {i + 1}
               </div>
-              <span
-                className={`text-xs ${i === stepIndex ? "font-medium text-foreground" : "text-muted-foreground"}`}
-              >
+              <span className={`text-xs ${i === stepIndex ? "font-medium text-foreground" : "text-muted-foreground"}`}>
                 {STEP_LABELS[s]}
               </span>
               {i < STEPS.length - 1 && <div className="h-px flex-1 bg-border" />}
@@ -447,52 +374,27 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
           ))}
         </div>
 
-        {/* Step 1 — Général */}
         {step === "general" && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="fn">Prénom *</Label>
-                <Input
-                  id="fn"
-                  value={form.first_name}
-                  onChange={(e) => setForm({ ...form, first_name: e.target.value })}
-                />
+                <Input id="fn" value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="ln">Nom *</Label>
-                <Input
-                  id="ln"
-                  value={form.last_name}
-                  onChange={(e) => setForm({ ...form, last_name: e.target.value })}
-                />
+                <Input id="ln" value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="bd">
-                  Date de naissance
-                  {isAthleteSelected && <span className="text-primary ml-0.5">*</span>}
-                </Label>
-                <Input
-                  id="bd"
-                  type="date"
-                  value={form.birth_date}
-                  onChange={(e) => setForm({ ...form, birth_date: e.target.value })}
-                />
+                <Label htmlFor="bd">Date de naissance {isAthleteSelected && "*"}</Label>
+                <Input id="bd" type="date" value={form.birth_date} onChange={(e) => setForm({ ...form, birth_date: e.target.value })} />
               </div>
               <div className="space-y-1.5">
-                <Label>
-                  Genre
-                  {isAthleteSelected && <span className="text-primary ml-0.5">*</span>}
-                </Label>
-                <Select
-                  value={form.gender}
-                  onValueChange={(v) => setForm({ ...form, gender: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="—" />
-                  </SelectTrigger>
+                <Label>Genre {isAthleteSelected && "*"}</Label>
+                <Select value={form.gender} onValueChange={(v) => setForm({ ...form, gender: v })}>
+                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="male">Homme</SelectItem>
                     <SelectItem value="female">Femme</SelectItem>
@@ -504,112 +406,71 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="em">Email</Label>
-                <Input
-                  id="em"
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                />
+                <Input id="em" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="ph">Téléphone</Label>
-                <Input
-                  id="ph"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                />
+                <Input id="ph" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
               </div>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="nat">Nationalité</Label>
-              <Input
-                id="nat"
-                value={form.nationality}
-                onChange={(e) => setForm({ ...form, nationality: e.target.value })}
-                placeholder="LUX"
-              />
+              <Input id="nat" value={form.nationality} onChange={(e) => setForm({ ...form, nationality: e.target.value })} placeholder="LUX" />
             </div>
             <div className="space-y-1.5">
-                <Label htmlFor="street">Adresse</Label>
-                <AddressSearch
-                  id="street"
-                  value={form.street}
-                  onChange={(v) => setForm({ ...form, street: v })}
-                  onSelect={(result) => setForm({
-                    ...form,
-                    street: result.street || result.display_name,
-                    postcode: result.postcode,
-                    city: result.city,
-                    country: result.country_code || result.country,
-                  })}
-                  placeholder="Rechercher une adresse…"
-                />
+              <Label htmlFor="street">Adresse</Label>
+              <AddressSearch
+                id="street"
+                value={form.street}
+                onChange={(v) => setForm({ ...form, street: v })}
+                onSelect={(r) => setForm({
+                  ...form,
+                  street: r.street || r.display_name,
+                  postcode: r.postcode,
+                  city: r.city,
+                  country: r.country_code || r.country,
+                })}
+                placeholder="Rechercher une adresse…"
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="postcode">Code postal</Label>
+                <Input id="postcode" value={form.postcode} onChange={(e) => setForm({ ...form, postcode: e.target.value })} />
               </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="postcode">Code postal</Label>
-                  <Input
-                    id="postcode"
-                    value={form.postcode}
-                    onChange={(e) => setForm({ ...form, postcode: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="city">Ville</Label>
-                  <Input
-                    id="city"
-                    value={form.city}
-                    onChange={(e) => setForm({ ...form, city: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="country">Pays</Label>
-                  <Input
-                    id="country"
-                    value={form.country}
-                    onChange={(e) => setForm({ ...form, country: e.target.value })}
-                    placeholder="LU"
-                  />
-                </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="city">Ville</Label>
+                <Input id="city" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
               </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="country">Pays</Label>
+                <Input id="country" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} placeholder="LU" />
+              </div>
+            </div>
           </div>
         )}
 
-        {/* Step 2 — Rôles */}
         {step === "roles" && (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Sélectionne un ou plusieurs rôles. Les profils spécifiques seront demandés à
-              l'étape suivante.
+              Sélectionnez un ou plusieurs rôles. Les profils spécifiques seront demandés à l'étape suivante.
             </p>
             {PERSON_ROLE_TYPES.map((role) => (
-              <label
-                key={role}
-                className="flex cursor-pointer items-start gap-3 rounded-md border border-border p-3 hover:bg-muted/50"
-              >
-                <Checkbox
-                  checked={form.selectedRoles.includes(role)}
-                  onCheckedChange={() => toggleRole(role)}
-                  className="mt-0.5"
-                />
+              <label key={role} className="flex cursor-pointer items-start gap-3 rounded-md border border-border p-3 hover:bg-muted/50">
+                <Checkbox checked={form.selectedRoles.includes(role)} onCheckedChange={() => toggleRole(role)} className="mt-0.5" />
                 <div className="flex-1">
                   <div className="text-sm font-medium">{ROLE_LABELS[role]}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {ROLE_DESCRIPTIONS[role]}
-                  </div>
+                  <div className="text-xs text-muted-foreground">{ROLE_DESCRIPTIONS[role]}</div>
                 </div>
               </label>
             ))}
           </div>
         )}
 
-        {/* Step 3 — Profils */}
         {step === "details" && (
           <div className="space-y-5">
             {form.selectedRoles.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                Aucun rôle sélectionné — la personne sera créée sans profil spécifique.
-              </p>
+              <p className="text-sm text-muted-foreground">Aucun rôle sélectionné — la personne sera créée sans profil spécifique.</p>
             )}
 
             {form.selectedRoles.includes("athlete") && (
@@ -618,130 +479,44 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label>Sport principal</Label>
-                    <Select
-                      value={form.athlete.primary_sport_id}
-                      onValueChange={(v) => setProfile("athlete", "primary_sport_id", v)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="—" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {sports.map((s) => (
-                          <SelectItem key={s.id} value={s.id}>
-                            {s.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
+                    <Select value={form.athlete.primary_sport_id} onValueChange={(v) => setProfile("athlete", "primary_sport_id", v)}>
+                      <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                      <SelectContent>{sports.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-1.5">
                     <Label>Fédération</Label>
-                    <Select
-                      value={form.athlete.primary_federation_id}
-                      onValueChange={(v) => {
-                        setProfile("athlete", "primary_federation_id", v);
-                        setProfile("athlete", "current_club_id", "");
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="—" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {federations.map((f) => (
-                          <SelectItem key={f.id} value={f.id}>
-                            {f.acronym ?? ""} — {f.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
+                    <Select value={form.athlete.primary_federation_id} onValueChange={(v) => { setProfile("athlete", "primary_federation_id", v); setProfile("athlete", "current_club_id", ""); }}>
+                      <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                      <SelectContent>{federations.map((f) => <SelectItem key={f.id} value={f.id}>{f.acronym ?? ""} — {f.name}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                 </div>
                 <div className="space-y-1.5">
                   <Label>Club actuel</Label>
-                  <Select
-                    value={form.athlete.current_club_id}
-                    onValueChange={(v) => setProfile("athlete", "current_club_id", v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="—" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filteredClubsAthlete.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
+                  <Select value={form.athlete.current_club_id} onValueChange={(v) => setProfile("athlete", "current_club_id", v)}>
+                    <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                    <SelectContent>{filteredClubsAthlete.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label>Statut</Label>
-                    <Select
-                      value={form.athlete.status}
-                      onValueChange={(v) => setProfile("athlete", "status", v)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ATHLETE_STATUSES.map((s) => (
-                          <SelectItem key={s} value={s}>
-                            {s}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
+                    <Select value={form.athlete.status} onValueChange={(v) => setProfile("athlete", "status", v)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{ATHLETE_STATUSES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-1.5">
                     <Label>Niveau</Label>
-                    <Select
-                      value={form.athlete.level}
-                      onValueChange={(v) => setProfile("athlete", "level", v)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ATHLETE_LEVELS.map((l) => (
-                          <SelectItem key={l} value={l}>
-                            {l}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Input value={form.athlete.level} onChange={(e) => setProfile("athlete", "level", e.target.value)} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label>N° licence</Label>
-                    <Input
-                      value={form.athlete.license_number}
-                      onChange={(e) =>
-                        setProfile("athlete", "license_number", e.target.value)
-                      }
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Passeport n°</Label>
-                    <Input
-                      value={form.athlete.passport_number}
-                      onChange={(e) =>
-                        setProfile("athlete", "passport_number", e.target.value)
-                      }
-                    />
-                  </div>
+                  <div className="space-y-1.5"><Label>N° licence</Label><Input value={form.athlete.license_number} onChange={(e) => setProfile("athlete", "license_number", e.target.value)} /></div>
+                  <div className="space-y-1.5"><Label>Passeport n°</Label><Input value={form.athlete.passport_number} onChange={(e) => setProfile("athlete", "passport_number", e.target.value)} /></div>
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Expiration passeport</Label>
-                  <Input
-                    type="date"
-                    value={form.athlete.passport_expiry}
-                    onChange={(e) =>
-                      setProfile("athlete", "passport_expiry", e.target.value)
-                    }
-                  />
-                </div>
+                <div className="space-y-1.5"><Label>Expiration passeport</Label><Input type="date" value={form.athlete.passport_expiry} onChange={(e) => setProfile("athlete", "passport_expiry", e.target.value)} /></div>
               </section>
             )}
 
@@ -750,60 +525,24 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
                 <h3 className="text-sm font-semibold">🎯 Profil Encadrant</h3>
                 <div className="space-y-1.5">
                   <Label>Fonction</Label>
-                  <Select
-                    value={form.coach.role}
-                    onValueChange={(v) => setProfile("coach", "role", v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {COACH_ROLES.map((r) => (
-                        <SelectItem key={r} value={r}>
-                          {r}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
+                  <Select value={form.coach.role} onValueChange={(v) => setProfile("coach", "role", v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{COACH_ROLES.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label>Fédération</Label>
-                    <Select
-                      value={form.coach.federation_id}
-                      onValueChange={(v) => {
-                        setProfile("coach", "federation_id", v);
-                        setProfile("coach", "club_id", "");
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="—" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {federations.map((f) => (
-                          <SelectItem key={f.id} value={f.id}>
-                            {f.acronym ?? ""}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
+                    <Select value={form.coach.federation_id} onValueChange={(v) => { setProfile("coach", "federation_id", v); setProfile("coach", "club_id", ""); }}>
+                      <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                      <SelectContent>{federations.map((f) => <SelectItem key={f.id} value={f.id}>{f.acronym ?? ""}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-1.5">
                     <Label>Club</Label>
-                    <Select
-                      value={form.coach.club_id}
-                      onValueChange={(v) => setProfile("coach", "club_id", v)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="—" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {filteredClubsCoach.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
+                    <Select value={form.coach.club_id} onValueChange={(v) => setProfile("coach", "club_id", v)}>
+                      <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                      <SelectContent>{filteredClubsCoach.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                 </div>
@@ -815,51 +554,20 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
                 <h3 className="text-sm font-semibold">🏛️ Membre de fédération</h3>
                 <div className="space-y-1.5">
                   <Label>Fédération *</Label>
-                  <Select
-                    value={form.fedMember.federation_id}
-                    onValueChange={(v) => setProfile("fedMember", "federation_id", v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="—" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {federations.map((f) => (
-                        <SelectItem key={f.id} value={f.id}>
-                          {f.acronym ?? ""} — {f.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
+                  <Select value={form.fedMember.federation_id} onValueChange={(v) => setProfile("fedMember", "federation_id", v)}>
+                    <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                    <SelectContent>{federations.map((f) => <SelectItem key={f.id} value={f.id}>{f.acronym ?? ""} — {f.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label>Rôle</Label>
-                    <Select
-                      value={form.fedMember.role}
-                      onValueChange={(v) => setProfile("fedMember", "role", v)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {FED_ROLES.map((r) => (
-                          <SelectItem key={r} value={r}>
-                            {r}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
+                    <Select value={form.fedMember.role} onValueChange={(v) => setProfile("fedMember", "role", v)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{FED_ROLES.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label>Depuis</Label>
-                    <Input
-                      type="date"
-                      value={form.fedMember.start_date}
-                      onChange={(e) =>
-                        setProfile("fedMember", "start_date", e.target.value)
-                      }
-                    />
-                  </div>
+                  <div className="space-y-1.5"><Label>Depuis</Label><Input type="date" value={form.fedMember.start_date} onChange={(e) => setProfile("fedMember", "start_date", e.target.value)} /></div>
                 </div>
               </section>
             )}
@@ -869,51 +577,20 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
                 <h3 className="text-sm font-semibold">🏟️ Membre de club</h3>
                 <div className="space-y-1.5">
                   <Label>Club *</Label>
-                  <Select
-                    value={form.clubMember.club_id}
-                    onValueChange={(v) => setProfile("clubMember", "club_id", v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="—" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clubs.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
+                  <Select value={form.clubMember.club_id} onValueChange={(v) => setProfile("clubMember", "club_id", v)}>
+                    <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                    <SelectContent>{clubs.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label>Rôle</Label>
-                    <Select
-                      value={form.clubMember.role}
-                      onValueChange={(v) => setProfile("clubMember", "role", v)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {CLUB_ROLES.map((r) => (
-                          <SelectItem key={r} value={r}>
-                            {r}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
+                    <Select value={form.clubMember.role} onValueChange={(v) => setProfile("clubMember", "role", v)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{CLUB_ROLES.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label>Depuis</Label>
-                    <Input
-                      type="date"
-                      value={form.clubMember.start_date}
-                      onChange={(e) =>
-                        setProfile("clubMember", "start_date", e.target.value)
-                      }
-                    />
-                  </div>
+                  <div className="space-y-1.5"><Label>Depuis</Label><Input type="date" value={form.clubMember.start_date} onChange={(e) => setProfile("clubMember", "start_date", e.target.value)} /></div>
                 </div>
               </section>
             )}
@@ -923,25 +600,13 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
         <DialogFooter className="mt-2 flex justify-between sm:justify-between">
           <div>
             {stepIndex > 0 && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setStep(STEPS[stepIndex - 1]!)}
-                disabled={saving}
-              >
+              <Button type="button" variant="outline" onClick={() => setStep(STEPS[stepIndex - 1]!)} disabled={saving}>
                 <ChevronLeft className="mr-1 h-4 w-4" /> Précédent
               </Button>
             )}
           </div>
           <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => onOpenChange(false)}
-              disabled={saving}
-            >
-              Annuler
-            </Button>
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>Annuler</Button>
             {step !== "details" ? (
               <Button type="button" onClick={goNext} disabled={!canNext()}>
                 Suivant <ChevronRight className="ml-1 h-4 w-4" />

@@ -5,9 +5,12 @@ import { Plus, Pencil, Trash2, Search, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import type { Federation } from "@/lib/types";
+import { EntityImageUpload } from "@/components/EntityImageUpload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -23,6 +26,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,15 +50,23 @@ import {
   SortBtn,
   TableSkeleton,
 } from "@/components/DataTableShell";
-import { OrganizationFormDialog } from "@/components/forms/OrganizationFormDialog";
 import { confirmAction } from "@/components/ConfirmDialog";
-import type { FederationForm } from "@/lib/form-schemas";
 
 export const Route = createFileRoute("/_authenticated/federations/")({
   component: FederationsPage,
 });
 
 type SortKey = "acronym" | "name" | "president_name";
+
+const empty = {
+  acronym: "",
+  name: "",
+  president_name: "",
+  contact_email: "",
+  contact_phone: "",
+  international_federation: "",
+  is_olympic: true,
+};
 
 function FederationsPage() {
   const navigate = useNavigate();
@@ -62,6 +80,7 @@ function FederationsPage() {
   const [olympicFilter, setOlympicFilter] = useState<string>("all");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Federation | null>(null);
+  const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
@@ -123,25 +142,39 @@ function FederationsPage() {
 
   const openCreate = () => {
     setEditing(null);
+    setForm(empty);
     setOpen(true);
   };
 
   const openEdit = (f: Federation) => {
     setEditing(f);
+    setForm({
+      acronym: f.acronym,
+      name: f.name,
+      president_name: f.president_name ?? "",
+      contact_email: f.contact_email ?? "",
+      contact_phone: f.contact_phone ?? "",
+      international_federation: f.international_federation ?? "",
+      is_olympic: f.is_olympic ?? true,
+    });
     setOpen(true);
   };
 
-  const submitFed = async (values: Record<string, unknown>) => {
-    const v = values as FederationForm;
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.acronym.trim() || !form.name.trim()) {
+      toast.error("Acronyme et nom requis");
+      return;
+    }
     setSaving(true);
     const payload = {
-      acronym: v.acronym.trim(),
-      name: v.name.trim(),
-      president_name: v.president_name?.trim() || null,
-      contact_email: v.contact_email?.trim() || null,
-      contact_phone: v.contact_phone?.trim() || null,
-      international_federation: v.international_federation?.trim() || null,
-      is_olympic: v.is_olympic,
+      acronym: form.acronym.trim(),
+      name: form.name.trim(),
+      president_name: form.president_name.trim() || null,
+      contact_email: form.contact_email.trim() || null,
+      contact_phone: form.contact_phone.trim() || null,
+      international_federation: form.international_federation.trim() || null,
+      is_olympic: form.is_olympic,
     };
     if (editing) {
       const { error } = await supabase
@@ -170,8 +203,7 @@ function FederationsPage() {
     if (!deleteId) return;
     const ok = await confirmAction({
       title: "Supprimer cette fédération ?",
-      description:
-        "Cette action est irréversible. Les clubs liés empêcheront la suppression.",
+      description: "Cette action est irréversible. Les clubs liés empêcheront la suppression.",
       confirmLabel: "Supprimer",
       destructive: true,
     });
@@ -190,15 +222,14 @@ function FederationsPage() {
     }
     if ((count ?? 0) > 0) {
       toast.error("Suppression impossible", {
-        description: `Cette fédération a encore ${count} club(s) rattaché(s). Supprimez-les d'abord.`,
+        description: `Cette fédération a encore ${count} club(s) rattaché(s).`,
       });
       setDeleteId(null);
       return;
     }
     const { error } = await supabase.from("federations").delete().eq("id", deleteId);
-    if (error) {
-      toast.error("Suppression impossible", { description: friendlyError(error) });
-    } else {
+    if (error) toast.error("Suppression impossible", { description: friendlyError(error) });
+    else {
       toast.success("Fédération supprimée");
       load();
     }
@@ -214,14 +245,11 @@ function FederationsPage() {
           </span>
           <div>
             <h1 className="text-2xl font-semibold text-foreground">Fédérations</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Fédérations sportives nationales du COSL.
-            </p>
+            <p className="mt-1 text-sm text-muted-foreground">Fédérations sportives nationales du COSL.</p>
           </div>
         </div>
         <Button onClick={openCreate} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
-          <Plus className="mr-2 h-4 w-4" />
-          Ajouter une fédération
+          <Plus className="mr-2 h-4 w-4" /> Ajouter une fédération
         </Button>
       </div>
 
@@ -250,41 +278,15 @@ function FederationsPage() {
         {rows === null ? (
           <TableSkeleton cols={7} />
         ) : filtered.length === 0 ? (
-          <div className="p-6">
-            <EmptyState message="Aucune fédération enregistrée." />
-          </div>
+          <div className="p-6"><EmptyState message="Aucune fédération enregistrée." /></div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead className="w-14"></TableHead>
-                <TableHead>
-                  <SortBtn
-                    active={sort.key === "acronym"}
-                    dir={sort.dir}
-                    onClick={() => toggleSort("acronym")}
-                  >
-                    Acronyme
-                  </SortBtn>
-                </TableHead>
-                <TableHead>
-                  <SortBtn
-                    active={sort.key === "name"}
-                    dir={sort.dir}
-                    onClick={() => toggleSort("name")}
-                  >
-                    Nom
-                  </SortBtn>
-                </TableHead>
-                <TableHead>
-                  <SortBtn
-                    active={sort.key === "president_name"}
-                    dir={sort.dir}
-                    onClick={() => toggleSort("president_name")}
-                  >
-                    Président
-                  </SortBtn>
-                </TableHead>
+                <TableHead><SortBtn active={sort.key === "acronym"} dir={sort.dir} onClick={() => toggleSort("acronym")}>Acronyme</SortBtn></TableHead>
+                <TableHead><SortBtn active={sort.key === "name"} dir={sort.dir} onClick={() => toggleSort("name")}>Nom</SortBtn></TableHead>
+                <TableHead><SortBtn active={sort.key === "president_name"} dir={sort.dir} onClick={() => toggleSort("president_name")}>Président</SortBtn></TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Téléphone</TableHead>
                 <TableHead>Olympique</TableHead>
@@ -314,20 +316,14 @@ function FederationsPage() {
                   <TableCell className="text-muted-foreground">{f.contact_phone ?? "—"}</TableCell>
                   <TableCell>
                     {f.is_olympic ? (
-                      <Badge className="bg-[var(--cosl-red-light)] text-primary hover:bg-[var(--cosl-red-light)]">
-                        Olympique
-                      </Badge>
+                      <Badge className="bg-[var(--cosl-red-light)] text-primary hover:bg-[var(--cosl-red-light)]">Olympique</Badge>
                     ) : (
                       <Badge variant="outline">Non</Badge>
                     )}
                   </TableCell>
                   <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                    <Button variant="ghost" size="icon" onClick={() => openEdit(f)} aria-label="Modifier">
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => setDeleteId(f.id)} aria-label="Supprimer">
-                      <Trash2 className="h-4 w-4 text-red-600" />
-                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => openEdit(f)} aria-label="Modifier"><Pencil className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => setDeleteId(f.id)} aria-label="Supprimer"><Trash2 className="h-4 w-4 text-red-600" /></Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -338,41 +334,89 @@ function FederationsPage() {
 
       <PagerBar page={page} pageCount={pageCount} onChange={setPage} />
 
-      <OrganizationFormDialog
-        type="federation"
-        open={open}
-        onOpenChange={setOpen}
-        editing={
-          editing
-            ? {
-                id: editing.id,
-                acronym: editing.acronym,
-                name: editing.name,
-                president_name: editing.president_name,
-                contact_email: editing.contact_email,
-                contact_phone: editing.contact_phone,
-                international_federation: editing.international_federation,
-                is_olympic: editing.is_olympic,
-              }
-            : null
-        }
-        onSubmit={submitFed}
-        loading={saving}
-      />
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+          <form onSubmit={submit}>
+            <DialogHeader>
+              <DialogTitle>{editing ? "Modifier la fédération" : "Ajouter une fédération"}</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              {editing && (
+                <div className="flex justify-center pb-2">
+                  <EntityImageUpload
+                    entityId={editing.id}
+                    entityType="federation"
+                    currentImageUrl={editing.logo_url}
+                    currentStoragePath={editing.logo_storage_path}
+                    shape="square"
+                    size="lg"
+                    label="Logo de la fédération"
+                    placeholder={editing.acronym?.slice(0, 3)}
+                    onUploaded={async (url, path) => {
+                      await supabase.from("federations").update({ logo_url: url, logo_storage_path: path }).eq("id", editing.id);
+                      setEditing((e) => (e ? { ...e, logo_url: url, logo_storage_path: path } : e));
+                      load();
+                    }}
+                    onDeleted={async () => {
+                      await supabase.from("federations").update({ logo_url: null, logo_storage_path: null }).eq("id", editing.id);
+                      setEditing((e) => (e ? { ...e, logo_url: null, logo_storage_path: null } : e));
+                      load();
+                    }}
+                  />
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="acronym">Acronyme *</Label>
+                  <Input id="acronym" value={form.acronym} onChange={(e) => setForm({ ...form, acronym: e.target.value })} required />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="name">Nom *</Label>
+                  <Input id="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="president_name">Président</Label>
+                <Input id="president_name" value={form.president_name} onChange={(e) => setForm({ ...form, president_name: e.target.value })} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="contact_email">Email</Label>
+                  <Input id="contact_email" type="email" value={form.contact_email} onChange={(e) => setForm({ ...form, contact_email: e.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="contact_phone">Téléphone</Label>
+                  <Input id="contact_phone" value={form.contact_phone} onChange={(e) => setForm({ ...form, contact_phone: e.target.value })} />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="if">Fédération internationale</Label>
+                <Input id="if" value={form.international_federation} onChange={(e) => setForm({ ...form, international_federation: e.target.value })} />
+              </div>
+              <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
+                <Label htmlFor="is_olympic" className="cursor-pointer">Fédération olympique</Label>
+                <Switch id="is_olympic" checked={form.is_olympic} onCheckedChange={(v) => setForm({ ...form, is_olympic: v })} />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={saving}>Annuler</Button>
+              <Button type="submit" disabled={saving} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
+                {saving ? "Enregistrement…" : editing ? "Enregistrer" : "Ajouter"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Supprimer cette fédération ?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Cette action est irréversible. Les clubs liés empêcheront la suppression.
-            </AlertDialogDescription>
+            <AlertDialogDescription>Cette action est irréversible. Les clubs liés empêcheront la suppression.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
-              Supprimer
-            </AlertDialogAction>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">Supprimer</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

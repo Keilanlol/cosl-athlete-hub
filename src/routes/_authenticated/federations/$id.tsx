@@ -56,7 +56,6 @@ import { AddressSearch } from "@/components/AddressSearch";
 import { confirmAction } from "@/components/ConfirmDialog";
 import { EntityImageUpload } from "@/components/EntityImageUpload";
 import { PersonCombobox } from "@/components/PersonCombobox";
-import { MemberFormDialog } from "@/components/forms/MemberFormDialog";
 
 type PersonLite = {
   id: string;
