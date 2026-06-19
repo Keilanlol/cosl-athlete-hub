@@ -7,8 +7,6 @@
     "dev": "vite dev",
     "build": "vite build",
     "build:dev": "vite build --mode development",
-    "build:prod": "vite build --config vite.config.prod.ts",
-    "start:prod": "node server/node-server.mjs",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write ."
