@@ -8,6 +8,9 @@ import {
   ShieldAlert,
   ShieldX,
   AlertTriangle,
+  Clock,
+  FileText,
+  Activity,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -40,8 +43,19 @@ type NotificationRow = {
   created_at: string;
 };
 
+type RecentChange = {
+  id: string;
+  type: "document" | "kyc" | "status" | "notification";
+  athlete_id: string | null;
+  athlete_name: string;
+  cosl_id: string | null;
+  description: string;
+  created_at: string;
+  link_to: string;
+};
+
 function DashboardPage() {
-  const { full_name } = useAuth();
+  const { full_name, role } = useAuth();
   const [loading, setLoading] = useState(true);
   const [kpis, setKpis] = useState({
     athletes: 0,
@@ -53,6 +67,7 @@ function DashboardPage() {
   const [notifs, setNotifs] = useState<NotificationRow[]>([]);
   const [upcomingGames, setUpcomingGames] = useState<UpcomingGame[]>([]);
   const [expiringDocs, setExpiringDocs] = useState<number>(0);
+  const [recentChanges, setRecentChanges] = useState<RecentChange[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -62,6 +77,9 @@ function DashboardPage() {
         const in30 = new Date();
         in30.setDate(in30.getDate() + 30);
         const in30s = in30.toISOString().slice(0, 10);
+        const since7d = new Date();
+        since7d.setDate(since7d.getDate() - 7);
+        const since7dIso = since7d.toISOString();
 
         const [
           athletesRes,
@@ -74,6 +92,8 @@ function DashboardPage() {
           notifsListRes,
           upcomingRes,
           expiringRes,
+          recentDocsRes,
+          recentKycRes,
         ] = await Promise.all([
           supabase.from("athletes").select("id", { count: "exact", head: true }).eq("is_active", true),
           supabase.from("games").select("id", { count: "exact", head: true }).in("status", ["preparation", "in_progress"]),
@@ -100,6 +120,20 @@ function DashboardPage() {
             .lte("expiry_date", in30s)
             .gte("expiry_date", today)
             .neq("status", "expired"),
+          // Recent document uploads (last 7 days)
+          supabase
+            .from("athlete_documents")
+            .select("id, athlete_id, doc_type, file_name, status, created_at, athletes!athlete_documents_athlete_id_fkey(first_name, last_name, cosl_id)")
+            .gte("created_at", since7dIso)
+            .order("created_at", { ascending: false })
+            .limit(10),
+          // Recent KYC changes
+          supabase
+            .from("kyc_history")
+            .select("id, athlete_id, previous_status, new_status, axis, comment, changed_at, athletes!kyc_history_athlete_id_fkey(first_name, last_name, cosl_id)")
+            .gte("changed_at", since7dIso)
+            .order("changed_at", { ascending: false })
+            .limit(10),
         ]);
 
         if (cancelled) return;
@@ -118,6 +152,63 @@ function DashboardPage() {
         setNotifs((notifsListRes.data as NotificationRow[]) ?? []);
         setUpcomingGames((upcomingRes.data as UpcomingGame[]) ?? []);
         setExpiringDocs(expiringRes.count ?? 0);
+
+        // Build recent changes list
+        const changes: RecentChange[] = [];
+
+        // Document uploads
+        const docRows = (recentDocsRes.data ?? []) as Array<{
+          id: string;
+          athlete_id: string;
+          doc_type: string;
+          file_name: string;
+          status: string;
+          created_at: string;
+          athletes: { first_name: string; last_name: string; cosl_id: string }[] | { first_name: string; last_name: string; cosl_id: string } | null;
+        }>;
+        for (const d of docRows) {
+          const a = Array.isArray(d.athletes) ? d.athletes[0] : d.athletes;
+          changes.push({
+            id: `doc-${d.id}`,
+            type: "document",
+            athlete_id: d.athlete_id,
+            athlete_name: a ? `${a.first_name} ${a.last_name}` : "—",
+            cosl_id: a?.cosl_id ?? null,
+            description: `Document « ${d.doc_type} » ajouté (${d.file_name})`,
+            created_at: d.created_at,
+            link_to: a ? `/athletes/${d.athlete_id}#documents` : "/athletes",
+          });
+        }
+
+        // KYC changes
+        const kycRows = (recentKycRes.data ?? []) as Array<{
+          id: string;
+          athlete_id: string;
+          previous_status: string | null;
+          new_status: string;
+          axis: string | null;
+          comment: string | null;
+          changed_at: string;
+          athletes: { first_name: string; last_name: string; cosl_id: string }[] | { first_name: string; last_name: string; cosl_id: string } | null;
+        }>;
+        for (const k of kycRows) {
+          const a = Array.isArray(k.athletes) ? k.athletes[0] : k.athletes;
+          const axisLabel = k.axis ? ` (${k.axis})` : "";
+          changes.push({
+            id: `kyc-${k.id}`,
+            type: "kyc",
+            athlete_id: k.athlete_id,
+            athlete_name: a ? `${a.first_name} ${a.last_name}` : "—",
+            cosl_id: a?.cosl_id ?? null,
+            description: `KYC ${k.previous_status ?? "—"} → ${k.new_status}${axisLabel}`,
+            created_at: k.changed_at,
+            link_to: a ? `/athletes/${k.athlete_id}#kyc` : "/athletes",
+          });
+        }
+
+        // Sort by date descending
+        changes.sort((a, b) => b.created_at.localeCompare(a.created_at));
+        setRecentChanges(changes.slice(0, 15));
       } catch (e) {
         console.error(e);
         toast.error("Erreur lors du chargement du dashboard");
@@ -132,8 +223,16 @@ function DashboardPage() {
   }, []);
 
   const firstName = full_name ? full_name.split(" ")[0] : null;
-  const hasAlerts =
-    kyc.red > 0 || expiringDocs > 0 || kpis.accredsPending > 0;
+  const hasAlerts = kyc.red > 0 || expiringDocs > 0 || kpis.accredsPending > 0;
+
+  const timeAgo = (iso: string) => {
+    const diff = Date.now() - new Date(iso).getTime();
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    if (hours < 1) return "à l'instant";
+    if (hours < 24) return `il y a ${hours}h`;
+    const days = Math.floor(hours / 24);
+    return `il y a ${days}j`;
+  };
 
   return (
     <div className="space-y-8">
@@ -230,6 +329,73 @@ function DashboardPage() {
           </div>
         </section>
       )}
+
+      {/* Changements récents */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+            <Activity className="h-5 w-5 text-primary" /> Changements récents
+          </h2>
+          <span className="text-xs text-muted-foreground">7 derniers jours</span>
+        </div>
+        {loading ? (
+          <div className="rounded-xl border border-border bg-card divide-y">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center gap-3 p-4">
+                <div className="h-8 w-8 rounded-lg bg-muted animate-pulse" />
+                <div className="flex-1 space-y-1">
+                  <div className="h-3 w-32 bg-muted animate-pulse rounded" />
+                  <div className="h-3 w-48 bg-muted animate-pulse rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : recentChanges.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
+            Aucun changement récent ces 7 derniers jours.
+          </div>
+        ) : (
+          <div className="rounded-xl border border-border bg-card divide-y">
+            {recentChanges.map((c) => {
+              const icon =
+                c.type === "document" ? <FileText className="h-4 w-4 text-[var(--lux-blue)]" /> :
+                c.type === "kyc" ? <ShieldCheck className="h-4 w-4 text-primary" /> :
+                <Clock className="h-4 w-4 text-muted-foreground" />;
+              const toneCls =
+                c.type === "document" ? "bg-[var(--lux-blue-light)]" :
+                c.type === "kyc" ? "bg-[var(--cosl-red-light)]" :
+                "bg-muted";
+              return (
+                <Link
+                  key={c.id}
+                  to={c.link_to as never}
+                  className="flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors"
+                >
+                  <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${toneCls}`}>
+                    {icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-foreground truncate">
+                        {c.athlete_name}
+                      </span>
+                      {c.cosl_id && (
+                        <span className="font-mono text-[10px] text-muted-foreground">
+                          {c.cosl_id}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">{c.description}</p>
+                  </div>
+                  <span className="text-xs text-muted-foreground shrink-0 whitespace-nowrap">
+                    {timeAgo(c.created_at)}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
       {/* Prochains Games */}
       <section className="space-y-3">
