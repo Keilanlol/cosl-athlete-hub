@@ -4,13 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Plus, Pencil, Trash2, Search, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import { FEDERATION_MEMBER_ROLES, type Federation, type FederationMember } from "@/lib/types";
-import { EntityImageUpload } from "@/components/EntityImageUpload";
+import type { Federation } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -26,14 +23,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -51,8 +40,9 @@ import {
   SortBtn,
   TableSkeleton,
 } from "@/components/DataTableShell";
-import { AddressSearch } from "@/components/AddressSearch";
-import { Textarea } from "@/components/ui/textarea";
+import { OrganizationFormDialog } from "@/components/forms/OrganizationFormDialog";
+import { confirmAction } from "@/components/ConfirmDialog";
+import type { FederationForm } from "@/lib/form-schemas";
 
 export const Route = createFileRoute("/_authenticated/federations/")({
   component: FederationsPage,
@@ -60,36 +50,9 @@ export const Route = createFileRoute("/_authenticated/federations/")({
 
 type SortKey = "acronym" | "name" | "president_name";
 
-const empty = {
-  acronym: "",
-  name: "",
-  president_name: "",
-  contact_email: "",
-  contact_phone: "",
-  international_federation: "",
-  is_olympic: true,
-};
-
-const emptyMember = {
-  first_name: "",
-  last_name: "",
-  role: "president",
-  email: "",
-  phone: "",
-  street: "",
-  postcode: "",
-  city: "",
-  country: "",
-  start_date: "",
-  end_date: "",
-  notes: "",
-  is_active: true,
-};
-
 function FederationsPage() {
   const navigate = useNavigate();
   const [rows, setRows] = useState<Federation[] | null>(null);
-  const [members, setMembers] = useState<FederationMember[]>([]);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
     key: "acronym",
@@ -99,30 +62,21 @@ function FederationsPage() {
   const [olympicFilter, setOlympicFilter] = useState<string>("all");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Federation | null>(null);
-  const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  // Sub-dialog: ajouter un membre depuis le dropdown Président
-  const [memberOpen, setMemberOpen] = useState(false);
-  const [memberForm, setMemberForm] = useState(emptyMember);
-  const [memberSaving, setMemberSaving] = useState(false);
-  // En mode création de fédération, on stocke le membre à créer après l'insert
-  const [pendingPresident, setPendingPresident] = useState<typeof emptyMember | null>(null);
-
   const load = async () => {
     setRows(null);
-    const [{ data, error }, { data: md }] = await Promise.all([
-      supabase.from("federations").select("*").order("acronym"),
-      supabase.from("federation_members").select("*").order("last_name"),
-    ]);
+    const { data, error } = await supabase
+      .from("federations")
+      .select("*")
+      .order("acronym");
     if (error) {
       toast.error("Erreur de chargement", { description: friendlyError(error) });
       setRows([]);
       return;
     }
     setRows((data ?? []) as Federation[]);
-    setMembers((md ?? []) as FederationMember[]);
   };
 
   useEffect(() => {
@@ -151,7 +105,9 @@ function FederationsPage() {
     return r;
   }, [rows, search, olympicFilter, sort]);
 
-  useEffect(() => { setPage(1); }, [search, olympicFilter]);
+  useEffect(() => {
+    setPage(1);
+  }, [search, olympicFilter]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -167,193 +123,62 @@ function FederationsPage() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm(empty);
-    setPendingPresident(null);
     setOpen(true);
   };
 
   const openEdit = (f: Federation) => {
     setEditing(f);
-    setPendingPresident(null);
-    setForm({
-      acronym: f.acronym,
-      name: f.name,
-      president_name: f.president_name ?? "",
-      contact_email: f.contact_email ?? "",
-      contact_phone: f.contact_phone ?? "",
-      international_federation: f.international_federation ?? "",
-      is_olympic: f.is_olympic ?? true,
-    });
     setOpen(true);
   };
 
-  // Membres rattachés à la fédération courante (en édition) — sinon liste vide
-  const fedMembers = useMemo(
-    () => (editing ? members.filter((m) => m.federation_id === editing.id) : []),
-    [members, editing],
-  );
-
-  const presidentValue = (() => {
-    if (pendingPresident) return "__pending__";
-    const name = form.president_name.trim();
-    if (!name) return "";
-    const found = fedMembers.find(
-      (m) => `${m.first_name} ${m.last_name}`.trim() === name,
-    );
-    return found ? found.id : "__custom__";
-  })();
-
-  const onPresidentSelect = (v: string) => {
-    if (v === "__new__") {
-      setMemberForm(emptyMember);
-      setMemberOpen(true);
-      return;
-    }
-    if (v === "__none__") {
-      setForm({ ...form, president_name: "" });
-      setPendingPresident(null);
-      return;
-    }
-    const m = fedMembers.find((x) => x.id === v);
-    if (m) {
-      setForm({ ...form, president_name: `${m.first_name} ${m.last_name}`.trim() });
-      setPendingPresident(null);
-    }
-  };
-
-  const submitMember = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const fn = memberForm.first_name.trim();
-    const ln = memberForm.last_name.trim();
-    if (!fn || !ln) {
-      toast.error("Prénom et nom requis");
-      return;
-    }
-    const fullName = `${fn} ${ln}`.trim();
-    // Pas encore de fédération créée → on stocke pour insertion post-create
-    if (!editing) {
-      setPendingPresident({ ...memberForm, first_name: fn, last_name: ln });
-      setForm((f) => ({ ...f, president_name: fullName }));
-      setMemberOpen(false);
-      toast.success("Membre prêt — sera créé avec la fédération");
-      return;
-    }
-    setMemberSaving(true);
-    const street = memberForm.street.trim();
-    const postcode = memberForm.postcode.trim();
-    const city = memberForm.city.trim();
-    const country = memberForm.country.trim();
-    const address = [street, postcode, city, country].filter(Boolean).join(", ") || null;
-    const { data, error } = await supabase
-      .from("federation_members")
-      .insert({
-        federation_id: editing.id,
-        first_name: fn,
-        last_name: ln,
-        role: memberForm.role,
-        email: memberForm.email.trim() || null,
-        phone: memberForm.phone.trim() || null,
-        street: street || null,
-        postcode: postcode || null,
-        city: city || null,
-        country: country || null,
-        address,
-        start_date: memberForm.start_date || null,
-        end_date: memberForm.end_date || null,
-        notes: memberForm.notes.trim() || null,
-        is_active: memberForm.is_active,
-      })
-      .select()
-      .single();
-    setMemberSaving(false);
-    if (error) {
-      toast.error("Échec de l'ajout du membre", { description: friendlyError(error) });
-      return;
-    }
-    setMembers((ms) => [...ms, data as FederationMember]);
-    setForm((f) => ({ ...f, president_name: fullName }));
-    setMemberOpen(false);
-    toast.success("Membre ajouté");
-  };
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.acronym.trim() || !form.name.trim()) {
-      toast.error("Acronyme et nom requis");
-      return;
-    }
+  const submitFed = async (values: Record<string, unknown>) => {
+    const v = values as FederationForm;
     setSaving(true);
     const payload = {
-      acronym: form.acronym.trim(),
-      name: form.name.trim(),
-      president_name: form.president_name.trim() || null,
-      contact_email: form.contact_email.trim() || null,
-      contact_phone: form.contact_phone.trim() || null,
-      international_federation: form.international_federation.trim() || null,
-      is_olympic: form.is_olympic,
+      acronym: v.acronym.trim(),
+      name: v.name.trim(),
+      president_name: v.president_name?.trim() || null,
+      contact_email: v.contact_email?.trim() || null,
+      contact_phone: v.contact_phone?.trim() || null,
+      international_federation: v.international_federation?.trim() || null,
+      is_olympic: v.is_olympic,
     };
-    let newFedId: string | null = editing?.id ?? null;
     if (editing) {
       const { error } = await supabase
         .from("federations")
         .update(payload)
         .eq("id", editing.id);
+      setSaving(false);
       if (error) {
-        setSaving(false);
         toast.error("Échec de l'enregistrement", { description: friendlyError(error) });
         return;
       }
     } else {
-      const { data, error } = await supabase
-        .from("federations")
-        .insert(payload)
-        .select()
-        .single();
-      if (error || !data) {
-        setSaving(false);
+      const { error } = await supabase.from("federations").insert(payload);
+      setSaving(false);
+      if (error) {
         toast.error("Échec de l'enregistrement", { description: friendlyError(error) });
         return;
       }
-      newFedId = (data as Federation).id;
     }
-    // Création du président en attente
-    if (!editing && pendingPresident && newFedId) {
-      const p = pendingPresident;
-      const pStreet = p.street.trim();
-      const pPostcode = p.postcode.trim();
-      const pCity = p.city.trim();
-      const pCountry = p.country.trim();
-      const pAddress = [pStreet, pPostcode, pCity, pCountry].filter(Boolean).join(", ") || null;
-      const { error: me } = await supabase.from("federation_members").insert({
-        federation_id: newFedId,
-        first_name: p.first_name,
-        last_name: p.last_name,
-        role: p.role,
-        email: p.email.trim() || null,
-        phone: p.phone.trim() || null,
-        street: pStreet || null,
-        postcode: pPostcode || null,
-        city: pCity || null,
-        country: pCountry || null,
-        address: pAddress,
-        start_date: p.start_date || null,
-        end_date: p.end_date || null,
-        notes: p.notes.trim() || null,
-        is_active: p.is_active,
-      });
-      if (me) {
-        toast.error("Membre président non créé", { description: friendlyError(me) });
-      }
-    }
-    setSaving(false);
     toast.success(editing ? "Fédération modifiée" : "Fédération ajoutée");
     setOpen(false);
-    setPendingPresident(null);
     load();
   };
 
   const confirmDelete = async () => {
     if (!deleteId) return;
+    const ok = await confirmAction({
+      title: "Supprimer cette fédération ?",
+      description:
+        "Cette action est irréversible. Les clubs liés empêcheront la suppression.",
+      confirmLabel: "Supprimer",
+      destructive: true,
+    });
+    if (!ok) {
+      setDeleteId(null);
+      return;
+    }
     const { count, error: ce } = await supabase
       .from("clubs")
       .select("id", { count: "exact", head: true })
@@ -484,15 +309,9 @@ function FederationsPage() {
                   </TableCell>
                   <TableCell className="font-mono text-sm font-medium">{f.acronym}</TableCell>
                   <TableCell>{f.name}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {f.president_name ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {f.contact_email ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {f.contact_phone ?? "—"}
-                  </TableCell>
+                  <TableCell className="text-muted-foreground">{f.president_name ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{f.contact_email ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{f.contact_phone ?? "—"}</TableCell>
                   <TableCell>
                     {f.is_olympic ? (
                       <Badge className="bg-[var(--cosl-red-light)] text-primary hover:bg-[var(--cosl-red-light)]">
@@ -503,20 +322,10 @@ function FederationsPage() {
                     )}
                   </TableCell>
                   <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => openEdit(f)}
-                      aria-label="Modifier"
-                    >
+                    <Button variant="ghost" size="icon" onClick={() => openEdit(f)} aria-label="Modifier">
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setDeleteId(f.id)}
-                      aria-label="Supprimer"
-                    >
+                    <Button variant="ghost" size="icon" onClick={() => setDeleteId(f.id)} aria-label="Supprimer">
                       <Trash2 className="h-4 w-4 text-red-600" />
                     </Button>
                   </TableCell>
@@ -529,330 +338,39 @@ function FederationsPage() {
 
       <PagerBar page={page} pageCount={pageCount} onChange={setPage} />
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <form onSubmit={submit}>
-            <DialogHeader>
-              <DialogTitle>
-                {editing ? "Modifier la fédération" : "Ajouter une fédération"}
-              </DialogTitle>
-              <DialogDescription>
-                Les champs acronyme et nom sont obligatoires.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              {editing && (
-                <div className="flex justify-center pb-2">
-                  <EntityImageUpload
-                    entityId={editing.id}
-                    entityType="federation"
-                    currentImageUrl={editing.logo_url}
-                    currentStoragePath={editing.logo_storage_path}
-                    shape="square"
-                    size="lg"
-                    label="Logo de la fédération"
-                    placeholder={editing.acronym?.slice(0, 3)}
-                    onUploaded={async (url, path) => {
-                      await supabase
-                        .from("federations")
-                        .update({ logo_url: url, logo_storage_path: path })
-                        .eq("id", editing.id);
-                      setEditing((e) => (e ? { ...e, logo_url: url, logo_storage_path: path } : e));
-                      load();
-                    }}
-                    onDeleted={async () => {
-                      await supabase
-                        .from("federations")
-                        .update({ logo_url: null, logo_storage_path: null })
-                        .eq("id", editing.id);
-                      setEditing((e) => (e ? { ...e, logo_url: null, logo_storage_path: null } : e));
-                      load();
-                    }}
-                  />
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="acronym">Acronyme *</Label>
-                  <Input
-                    id="acronym"
-                    value={form.acronym}
-                    onChange={(e) => setForm({ ...form, acronym: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="name">Nom *</Label>
-                  <Input
-                    id="name"
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="president_name">Président</Label>
-                <Select value={presidentValue} onValueChange={onPresidentSelect}>
-                  <SelectTrigger id="president_name">
-                    <SelectValue placeholder="Sélectionner un membre…">
-                      {form.president_name || "Sélectionner un membre…"}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {form.president_name && (
-                      <SelectItem value="__none__">— Aucun —</SelectItem>
-                    )}
-                    {fedMembers.length === 0 && !pendingPresident && (
-                      <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                        {editing ? "Aucun membre pour cette fédération" : "Aucun membre — créez-en un"}
-                      </div>
-                    )}
-                    {fedMembers.map((m) => (
-                      <SelectItem key={m.id} value={m.id}>
-                        {m.first_name} {m.last_name}
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          {FEDERATION_MEMBER_ROLES.find((r) => r.value === m.role)?.label ?? m.role}
-                        </span>
-                      </SelectItem>
-                    ))}
-                    {pendingPresident && (
-                      <SelectItem value="__pending__">
-                        {pendingPresident.first_name} {pendingPresident.last_name}
-                        <span className="ml-2 text-xs text-muted-foreground">(à créer)</span>
-                      </SelectItem>
-                    )}
-                    <SelectItem value="__new__" className="font-medium text-primary">
-                      + Ajouter un nouveau membre
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="contact_email">Email</Label>
-                  <Input
-                    id="contact_email"
-                    type="email"
-                    value={form.contact_email}
-                    onChange={(e) =>
-                      setForm({ ...form, contact_email: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="contact_phone">Téléphone</Label>
-                  <Input
-                    id="contact_phone"
-                    value={form.contact_phone}
-                    onChange={(e) =>
-                      setForm({ ...form, contact_phone: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="if">Fédération internationale</Label>
-                <Input
-                  id="if"
-                  value={form.international_federation}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      international_federation: e.target.value,
-                    })
-                  }
-                />
-              </div>
-              <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
-                <Label htmlFor="is_olympic" className="cursor-pointer">
-                  Fédération olympique
-                </Label>
-                <Switch
-                  id="is_olympic"
-                  checked={form.is_olympic}
-                  onCheckedChange={(v) => setForm({ ...form, is_olympic: v })}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setOpen(false)}
-                disabled={saving}
-              >
-                Annuler
-              </Button>
-              <Button
-                type="submit"
-                disabled={saving}
-                className="bg-primary hover:bg-[var(--cosl-red-dark)]"
-              >
-                {saving ? "Enregistrement…" : editing ? "Enregistrer" : "Ajouter"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={memberOpen} onOpenChange={setMemberOpen}>
-        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-          <form onSubmit={submitMember}>
-            <DialogHeader>
-              <DialogTitle>Ajouter un membre</DialogTitle>
-              <DialogDescription>
-                Rattaché à la fédération et sélectionné comme président.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-1.5">
-                <Label>Fonction</Label>
-                <Input value="Président" disabled />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Prénom *</Label>
-                  <Input
-                    value={memberForm.first_name}
-                    onChange={(e) => setMemberForm({ ...memberForm, first_name: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Nom *</Label>
-                  <Input
-                    value={memberForm.last_name}
-                    onChange={(e) => setMemberForm({ ...memberForm, last_name: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Email</Label>
-                  <Input
-                    type="email"
-                    value={memberForm.email}
-                    onChange={(e) => setMemberForm({ ...memberForm, email: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Téléphone</Label>
-                  <Input
-                    value={memberForm.phone}
-                    onChange={(e) => setMemberForm({ ...memberForm, phone: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Adresse (numéro + rue)</Label>
-                <AddressSearch
-                  value={memberForm.street}
-                  onChange={(v) => setMemberForm({ ...memberForm, street: v })}
-                  onSelect={(r) =>
-                    setMemberForm((f) => ({
-                      ...f,
-                      street: r.street || f.street,
-                      postcode: r.postcode || f.postcode,
-                      city: r.city || f.city,
-                      country: r.country || f.country,
-                    }))
-                  }
-                  placeholder="Rue, ville, pays…"
-                />
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Code postal</Label>
-                  <Input
-                    value={memberForm.postcode}
-                    onChange={(e) => setMemberForm({ ...memberForm, postcode: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Ville</Label>
-                  <Input
-                    value={memberForm.city}
-                    onChange={(e) => setMemberForm({ ...memberForm, city: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Pays</Label>
-                  <Input
-                    value={memberForm.country}
-                    onChange={(e) => setMemberForm({ ...memberForm, country: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Début de mandat</Label>
-                  <Input
-                    type="date"
-                    value={memberForm.start_date}
-                    onChange={(e) => setMemberForm({ ...memberForm, start_date: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Fin de mandat</Label>
-                  <Input
-                    type="date"
-                    value={memberForm.end_date}
-                    onChange={(e) => setMemberForm({ ...memberForm, end_date: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Notes</Label>
-                <Textarea
-                  rows={2}
-                  value={memberForm.notes}
-                  onChange={(e) => setMemberForm({ ...memberForm, notes: e.target.value })}
-                />
-              </div>
-
-              <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
-                <Label className="cursor-pointer">Membre actif</Label>
-                <Switch
-                  checked={memberForm.is_active}
-                  onCheckedChange={(v) => setMemberForm({ ...memberForm, is_active: v })}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setMemberOpen(false)} disabled={memberSaving}>
-                Annuler
-              </Button>
-              <Button type="submit" disabled={memberSaving} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
-                {memberSaving ? "Enregistrement…" : "Ajouter"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
+      <OrganizationFormDialog
+        type="federation"
+        open={open}
+        onOpenChange={setOpen}
+        editing={
+          editing
+            ? {
+                id: editing.id,
+                acronym: editing.acronym,
+                name: editing.name,
+                president_name: editing.president_name,
+                contact_email: editing.contact_email,
+                contact_phone: editing.contact_phone,
+                international_federation: editing.international_federation,
+                is_olympic: editing.is_olympic,
+              }
+            : null
+        }
+        onSubmit={submitFed}
+        loading={saving}
+      />
 
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Supprimer cette fédération ?</AlertDialogTitle>
             <AlertDialogDescription>
-              Cette action est irréversible. Les clubs liés empêcheront la
-              suppression.
+              Cette action est irréversible. Les clubs liés empêcheront la suppression.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              className="bg-red-600 hover:bg-red-700"
-            >
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
               Supprimer
             </AlertDialogAction>
           </AlertDialogFooter>

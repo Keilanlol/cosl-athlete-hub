@@ -1,9 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
 import { Search, UserRound, Building2, Shield } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import { friendlyError } from "@/lib/error-messages";
 import {
   CLUB_MEMBER_ROLES,
   FEDERATION_MEMBER_ROLES,
@@ -15,9 +15,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -33,17 +30,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { AddressSearch } from "@/components/AddressSearch";
 import { EmptyState } from "@/components/DataTableShell";
-import { PersonCombobox } from "@/components/PersonCombobox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { AddPersonButton } from "@/components/persons/AddPersonButton";
+import { MemberFormDialog } from "@/components/forms/MemberFormDialog";
 
 type PersonLite = {
   id: string;
@@ -61,23 +52,6 @@ type Row =
   | { kind: "fed"; data: FederationMember; orgId: string; orgLabel: string }
   | { kind: "club"; data: ClubMember; orgId: string; orgLabel: string };
 
-const emptyForm = {
-  org_id: "",
-  role: "president",
-  first_name: "",
-  last_name: "",
-  email: "",
-  phone: "",
-  street: "",
-  postcode: "",
-  city: "",
-  country: "",
-  start_date: "",
-  end_date: "",
-  notes: "",
-  is_active: true,
-};
-
 function MembersPage() {
   const navigate = useNavigate();
   const [feds, setFeds] = useState<Federation[]>([]);
@@ -89,11 +63,14 @@ function MembersPage() {
   const [scope, setScope] = useState<"all" | "fed" | "club">("all");
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [createSaving, setCreateSaving] = useState(false);
   const [orgType, setOrgType] = useState<"fed" | "club">("fed");
-  const [createForm, setCreateForm] = useState(emptyForm);
+  const [selectedOrgId, setSelectedOrgId] = useState("");
+  const [editingMember, setEditingMember] = useState<
+    | (FederationMember & { _kind: "fed" })
+    | (ClubMember & { _kind: "club" })
+    | null
+  >(null);
   const [persons, setPersons] = useState<PersonLite[]>([]);
-  const [selectedPersonId, setSelectedPersonId] = useState("");
 
   const load = async () => {
     const [f, c, fm, cm, pe] = await Promise.all([
@@ -167,131 +144,18 @@ function MembersPage() {
       (r) => r.value === v,
     )?.label ?? v;
 
-  const submitCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!createForm.first_name.trim() || !createForm.last_name.trim()) {
-      toast.error("Prénom et nom requis");
-      return;
-    }
-    if (!createForm.org_id) {
-      toast.error(orgType === "fed" ? "Fédération requise" : "Club requis");
-      return;
-    }
-    setCreateSaving(true);
-    const base = {
-      first_name: createForm.first_name.trim(),
-      last_name: createForm.last_name.trim(),
-      role: createForm.role,
-      email: createForm.email.trim() || null,
-      phone: createForm.phone.trim() || null,
-      street: createForm.street.trim() || null,
-      postcode: createForm.postcode.trim() || null,
-      city: createForm.city.trim() || null,
-      country: createForm.country.trim() || null,
-      address:
-        [createForm.street, createForm.postcode, createForm.city, createForm.country]
-          .filter(Boolean)
-          .join(", ") || null,
-      start_date: createForm.start_date || null,
-      end_date: createForm.end_date || null,
-      notes: createForm.notes.trim() || null,
-      is_active: createForm.is_active,
-    };
-    const insertPayload = selectedPersonId
-      ? { ...base, person_id: selectedPersonId }
-      : base;
-    const { data: inserted, error } =
-      orgType === "fed"
-        ? await supabase
-            .from("federation_members")
-            .insert({ ...insertPayload, federation_id: createForm.org_id })
-            .select("id")
-            .single()
-        : await supabase
-            .from("club_members")
-            .insert({ ...insertPayload, club_id: createForm.org_id })
-            .select("id")
-            .single();
-
-    const newId = (inserted?.id as string | undefined) ?? null;
-
-    if (!error && selectedPersonId && newId) {
-      if (orgType === "fed") {
-        const { error: profErr } = await supabase
-          .from("federation_member_profiles")
-          .insert({
-            person_id: selectedPersonId,
-            legacy_federation_member_id: newId,
-            federation_id: createForm.org_id,
-            role: createForm.role,
-            start_date: createForm.start_date || null,
-            is_active: createForm.is_active,
-          });
-        if (profErr && !/duplicate|unique/i.test(profErr.message)) {
-          console.warn("federation_member_profiles insert:", profErr.message);
-        }
-        const { error: roleErr } = await supabase
-          .from("person_roles")
-          .insert({ person_id: selectedPersonId, role_type: "federation_member" });
-        if (roleErr && !/duplicate|unique/i.test(roleErr.message)) {
-          console.warn("person_roles insert:", roleErr.message);
-        }
-      } else {
-        const { error: profErr } = await supabase
-          .from("club_member_profiles")
-          .insert({
-            person_id: selectedPersonId,
-            legacy_club_member_id: newId,
-            club_id: createForm.org_id,
-            role: createForm.role,
-            start_date: createForm.start_date || null,
-            is_active: createForm.is_active,
-          });
-        if (profErr && !/duplicate|unique/i.test(profErr.message)) {
-          console.warn("club_member_profiles insert:", profErr.message);
-        }
-        const { error: roleErr } = await supabase
-          .from("person_roles")
-          .insert({ person_id: selectedPersonId, role_type: "club_member" });
-        if (roleErr && !/duplicate|unique/i.test(roleErr.message)) {
-          console.warn("person_roles insert:", roleErr.message);
-        }
-      }
-    }
-
-    setCreateSaving(false);
-    if (error) {
-      toast.error("Échec", { description: friendlyError(error) });
-      return;
-    }
-    toast.success("Membre ajouté");
-    setCreateOpen(false);
-    setCreateForm(emptyForm);
+  const openCreate = () => {
+    setEditingMember(null);
+    setSelectedOrgId("");
     setOrgType("fed");
-    setSelectedPersonId("");
-    load();
+    setCreateOpen(true);
   };
 
-  const personOptions = useMemo(
-    () =>
-      persons.map((p) => ({
-        id: p.id,
-        label: `${p.first_name} ${p.last_name}${p.email ? ` — ${p.email}` : ""}`,
-      })),
-    [persons],
-  );
-
-  const applyPerson = (personId: string) => {
-    setSelectedPersonId(personId);
-    const p = persons.find((x) => x.id === personId);
-    if (!p) return;
-    setCreateForm((f) => ({
-      ...f,
-      first_name: p.first_name,
-      last_name: p.last_name,
-      email: p.email ?? f.email,
-      phone: p.phone ?? f.phone,
-    }));
+  const openEdit = (row: Row) => {
+    setOrgType(row.kind);
+    setSelectedOrgId(row.orgId);
+    setEditingMember({ ...row.data, _kind: row.kind } as never);
+    setCreateOpen(true);
   };
 
   return (
@@ -308,12 +172,19 @@ function MembersPage() {
             </p>
           </div>
         </div>
-        <AddPersonButton
-          role="club_member"
-          label="Ajouter un membre"
-          onChanged={() => load()}
-        />
-
+        <div className="flex gap-2">
+          <Button
+            onClick={openCreate}
+            className="bg-primary hover:bg-[var(--cosl-red-dark)]"
+          >
+            Ajouter un membre
+          </Button>
+          <AddPersonButton
+            role="club_member"
+            label="Ajouter via personne"
+            onChanged={() => load()}
+          />
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -355,6 +226,7 @@ function MembersPage() {
                 <TableHead>Email</TableHead>
                 <TableHead>Téléphone</TableHead>
                 <TableHead>Statut</TableHead>
+                <TableHead className="w-20 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -364,12 +236,10 @@ function MembersPage() {
                   r.kind === "fed"
                     ? "/federations/members/$memberId"
                     : "/clubs/members/$memberId";
-                const onRowClick = () =>
-                  navigate({ to, params: { memberId: m.id } });
                 return (
                   <TableRow
                     key={`${r.kind}:${m.id}`}
-                    onClick={onRowClick}
+                    onClick={() => navigate({ to, params: { memberId: m.id } })}
                     className="cursor-pointer hover:bg-muted"
                   >
                     <TableCell className="font-medium">
@@ -426,6 +296,15 @@ function MembersPage() {
                         <Badge variant="outline">Inactif</Badge>
                       )}
                     </TableCell>
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openEdit(r)}
+                      >
+                        Modifier
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 );
               })}
@@ -434,304 +313,130 @@ function MembersPage() {
         )}
       </div>
 
-      <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) setSelectedPersonId(""); }}>
-        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-          <form onSubmit={submitCreate}>
-            <DialogHeader>
-              <DialogTitle>Ajouter un membre</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-1.5 rounded-md border border-dashed border-border bg-muted/40 p-3">
-                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Personne existante (optionnel)
-                </Label>
-                <PersonCombobox
-                  value={selectedPersonId}
-                  onChange={applyPerson}
-                  options={personOptions}
-                  placeholder="Lier à une personne déjà enregistrée…"
-                  searchPlaceholder="Rechercher une personne…"
-                />
-                {selectedPersonId && (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedPersonId("")}
-                    className="text-xs text-muted-foreground hover:text-foreground underline"
-                  >
-                    Détacher
-                  </button>
-                )}
-              </div>
-              <div className="space-y-1.5">
-                <Label>Organisation *</Label>
-                <div className="flex gap-3">
-                  <Button
-                    type="button"
-                    variant={orgType === "fed" ? "default" : "outline"}
-                    className={
-                      orgType === "fed"
-                        ? "bg-primary hover:bg-[var(--cosl-red-dark)]"
-                        : ""
-                    }
-                    onClick={() => {
-                      setOrgType("fed");
-                      setCreateForm((f) => ({
-                        ...f,
-                        org_id: "",
-                        role: "president",
-                      }));
-                    }}
-                  >
-                    Fédération
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={orgType === "club" ? "default" : "outline"}
-                    className={
-                      orgType === "club"
-                        ? "bg-primary hover:bg-[var(--cosl-red-dark)]"
-                        : ""
-                    }
-                    onClick={() => {
-                      setOrgType("club");
-                      setCreateForm((f) => ({
-                        ...f,
-                        org_id: "",
-                        role: "president",
-                      }));
-                    }}
-                  >
-                    Club
-                  </Button>
-                </div>
-              </div>
+      {createOpen && selectedOrgId && (
+        <MemberFormDialog
+          kind={orgType}
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          orgId={selectedOrgId}
+          orgName={
+            orgType === "fed"
+              ? feds.find((f) => f.id === selectedOrgId)?.acronym ?? "Fédération"
+              : clubs.find((c) => c.id === selectedOrgId)?.name ?? "Club"
+          }
+          editing={
+            editingMember
+              ? {
+                  id: editingMember.id,
+                  first_name: editingMember.first_name,
+                  last_name: editingMember.last_name,
+                  role: editingMember.role,
+                  email: editingMember.email,
+                  phone: editingMember.phone,
+                  street: editingMember.street,
+                  postcode: editingMember.postcode,
+                  city: editingMember.city,
+                  country: editingMember.country,
+                  start_date: editingMember.start_date,
+                  end_date: editingMember.end_date,
+                  notes: editingMember.notes,
+                  is_active: editingMember.is_active,
+                }
+              : null
+          }
+          persons={persons}
+          onSaved={() => {
+            setCreateOpen(false);
+            setEditingMember(null);
+            load();
+          }}
+        />
+      )}
 
-              <div className="space-y-1.5">
-                <Label>{orgType === "fed" ? "Fédération *" : "Club *"}</Label>
-                <Select
-                  value={createForm.org_id}
-                  onValueChange={(v) =>
-                    setCreateForm((f) => ({ ...f, org_id: v }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choisir..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {orgType === "fed"
-                      ? feds.map((f) => (
-                          <SelectItem key={f.id} value={f.id}>
-                            {f.acronym} — {f.name}
-                          </SelectItem>
-                        ))
-                      : clubs.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.name}
-                          </SelectItem>
-                        ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Fonction *</Label>
-                <Select
-                  value={createForm.role}
-                  onValueChange={(v) =>
-                    setCreateForm((f) => ({ ...f, role: v }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(orgType === "fed"
-                      ? FEDERATION_MEMBER_ROLES
-                      : CLUB_MEMBER_ROLES
-                    ).map((r) => (
-                      <SelectItem key={r.value} value={r.value}>
-                        {r.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Prénom *</Label>
-                  <Input
-                    value={createForm.first_name}
-                    onChange={(e) =>
-                      setCreateForm((f) => ({
-                        ...f,
-                        first_name: e.target.value,
-                      }))
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Nom *</Label>
-                  <Input
-                    value={createForm.last_name}
-                    onChange={(e) =>
-                      setCreateForm((f) => ({
-                        ...f,
-                        last_name: e.target.value,
-                      }))
-                    }
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Email</Label>
-                  <Input
-                    type="email"
-                    value={createForm.email}
-                    onChange={(e) =>
-                      setCreateForm((f) => ({ ...f, email: e.target.value }))
-                    }
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Téléphone</Label>
-                  <Input
-                    value={createForm.phone}
-                    onChange={(e) =>
-                      setCreateForm((f) => ({ ...f, phone: e.target.value }))
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Adresse (numéro + rue)</Label>
-                <AddressSearch
-                  value={createForm.street}
-                  onChange={(v) =>
-                    setCreateForm((f) => ({ ...f, street: v }))
-                  }
-                  onSelect={(r) =>
-                    setCreateForm((f) => ({
-                      ...f,
-                      street: r.street || f.street,
-                      postcode: r.postcode || f.postcode,
-                      city: r.city || f.city,
-                      country: r.country || f.country,
-                    }))
-                  }
-                  placeholder="Rue, ville, pays…"
-                />
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Code postal</Label>
-                  <Input
-                    value={createForm.postcode}
-                    onChange={(e) =>
-                      setCreateForm((f) => ({
-                        ...f,
-                        postcode: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Ville</Label>
-                  <Input
-                    value={createForm.city}
-                    onChange={(e) =>
-                      setCreateForm((f) => ({ ...f, city: e.target.value }))
-                    }
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Pays</Label>
-                  <Input
-                    value={createForm.country}
-                    onChange={(e) =>
-                      setCreateForm((f) => ({
-                        ...f,
-                        country: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Début de mandat</Label>
-                  <Input
-                    type="date"
-                    value={createForm.start_date}
-                    onChange={(e) =>
-                      setCreateForm((f) => ({
-                        ...f,
-                        start_date: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Fin de mandat</Label>
-                  <Input
-                    type="date"
-                    value={createForm.end_date}
-                    onChange={(e) =>
-                      setCreateForm((f) => ({
-                        ...f,
-                        end_date: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Notes</Label>
-                <Textarea
-                  rows={2}
-                  value={createForm.notes}
-                  onChange={(e) =>
-                    setCreateForm((f) => ({ ...f, notes: e.target.value }))
-                  }
-                />
-              </div>
-
-              <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
-                <Label className="cursor-pointer">Membre actif</Label>
-                <Switch
-                  checked={createForm.is_active}
-                  onCheckedChange={(v) =>
-                    setCreateForm((f) => ({ ...f, is_active: v }))
-                  }
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setCreateOpen(false)}
-              >
-                Annuler
-              </Button>
-              <Button
-                type="submit"
-                disabled={createSaving}
-                className="bg-primary hover:bg-[var(--cosl-red-dark)]"
-              >
-                {createSaving ? "Enregistrement…" : "Ajouter"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {/* Org selector when no orgId selected yet */}
+      {createOpen && !selectedOrgId && (
+        <OrgPickerDialog
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          orgType={orgType}
+          setOrgType={setOrgType}
+          feds={feds}
+          clubs={clubs}
+          onPick={(id) => setSelectedOrgId(id)}
+        />
+      )}
     </div>
+  );
+}
+
+function OrgPickerDialog({
+  open,
+  onOpenChange,
+  orgType,
+  setOrgType,
+  feds,
+  clubs,
+  onPick,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  orgType: "fed" | "club";
+  setOrgType: (v: "fed" | "club") => void;
+  feds: Federation[];
+  clubs: Club[];
+  onPick: (id: string) => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Choisir une organisation</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-3 py-4">
+          <div className="flex gap-3">
+            <Button
+              type="button"
+              variant={orgType === "fed" ? "default" : "outline"}
+              className={orgType === "fed" ? "bg-primary hover:bg-[var(--cosl-red-dark)]" : ""}
+              onClick={() => setOrgType("fed")}
+            >
+              Fédération
+            </Button>
+            <Button
+              type="button"
+              variant={orgType === "club" ? "default" : "outline"}
+              className={orgType === "club" ? "bg-primary hover:bg-[var(--cosl-red-dark)]" : ""}
+              onClick={() => setOrgType("club")}
+            >
+              Club
+            </Button>
+          </div>
+          <div className="max-h-[300px] overflow-y-auto rounded-md border border-border">
+            {orgType === "fed"
+              ? feds.map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-muted border-b border-border last:border-0"
+                    onClick={() => onPick(f.id)}
+                  >
+                    <span className="font-mono text-sm font-medium">{f.acronym}</span>
+                    <span className="text-sm text-muted-foreground">{f.name}</span>
+                  </button>
+                ))
+              : clubs.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-muted border-b border-border last:border-0"
+                    onClick={() => onPick(c.id)}
+                  >
+                    <span className="text-sm font-medium">{c.name}</span>
+                  </button>
+                ))}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

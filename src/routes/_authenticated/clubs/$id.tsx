@@ -71,6 +71,7 @@ import { PersonCreateDialog } from "@/components/persons/PersonCreateDialog";
 import type { PersonRoleType } from "@/lib/persons";
 import { confirmAction } from "@/components/ConfirmDialog";
 import { EntityImageUpload } from "@/components/EntityImageUpload";
+import { MemberFormDialog } from "@/components/forms/MemberFormDialog";
 
 export const Route = createFileRoute("/_authenticated/clubs/$id")({
   component: ClubDetailPage,

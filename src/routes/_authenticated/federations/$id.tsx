@@ -3,7 +3,6 @@ import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
-  // Building2 removed: replaced by EntityImageUpload in header
   Users,
   Shield,
   UserCog,
@@ -22,7 +21,6 @@ import type { Athlete, Club, Coach, Federation, FederationMember, Sport } from "
 import { ATHLETE_STATUSES, COACH_ROLES, FEDERATION_MEMBER_ROLES } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -58,6 +56,7 @@ import { AddressSearch } from "@/components/AddressSearch";
 import { confirmAction } from "@/components/ConfirmDialog";
 import { EntityImageUpload } from "@/components/EntityImageUpload";
 import { PersonCombobox } from "@/components/PersonCombobox";
+import { MemberFormDialog } from "@/components/forms/MemberFormDialog";
 
 type PersonLite = {
   id: string;

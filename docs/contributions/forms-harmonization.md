@@ -27,6 +27,11 @@ Refactor majeur des formulaires de création/édition pour résoudre les incohé
 | `src/components/persons/AddRoleDialog.tsx` | Modification | Migration RHF + Zod, réutilisation des mêmes composants que PersonCreateDialog |
 | `src/routes/_authenticated/coaches/index.tsx` | Modification | Suppression du dialog legacy, utilisation exclusive du flow AddPersonButton |
 | `src/routes/_authenticated/clubs/index.tsx` | Modification | Migration vers `OrganizationFormDialog` avec RHF + Zod |
+| `src/routes/_authenticated/federations/index.tsx` | Modification | Migration vers `OrganizationFormDialog`, suppression du sub-dialog président legacy |
+| `src/routes/_authenticated/members/index.tsx` | Modification | Migration vers `MemberFormDialog` + `OrgPickerDialog`, suppression du state manuel |
+| `src/routes/_authenticated/persons/$personId.tsx` | Modification | Dialog d'édition personne migré vers RHF + Zod avec `PersonBaseFields` |
+| `src/routes/_authenticated/federations/$id.tsx` | Modification | Import de `MemberFormDialog` pour remplacer le dialog inline |
+| `src/routes/_authenticated/clubs/$id.tsx` | Modification | Import de `MemberFormDialog` pour remplacer le dialog inline |
 | `src/components/AddressSearch.tsx` | Modification | Ajout prop `disabled` pour cohérence |
 
 ## Logique et fonctionnement
@@ -75,11 +80,13 @@ MemberFormDialog
 
 ## Points d'attention
 
-- **Routes non migrées** : `/federations/index.tsx`, `/federations/$id.tsx`, `/clubs/$id.tsx`, `/members/index.tsx`, `/persons/$personId.tsx` utilisent encore l'ancien pattern `useState`. Elles fonctionnent mais ne profitent pas encore de RHF + Zod. Migration future recommandée.
+- **Routes non migrées** : les dialogs coach inline de `/federations/$id.tsx` et `/clubs/$id.tsx` utilisent encore du state manuel. Ils fonctionnent mais ne profitent pas encore de RHF + Zod. Migration future recommandée pour ces dialogs spécifiques.
 - **`OrganizationFormDialog`** utilise un cast `as never` sur le resolver Zod car le schéma est dynamique (fédération vs club). C'est un compromis acceptable.
 - **`PersonCreateDialog`** utilise `zodResolver(schema) as never` à cause de l'inférence de types entre `personBaseSchema.merge(detailsSchema)` et les `defaultValues`. Fonctionnel mais à nettoyer si Zod évolue.
 - **Suppression du dialog legacy coach** : la page `/coaches` n'a plus de dialog d'édition inline. L'édition passe par `/coaches/$id` (qui existe déjà avec son propre dialog).
 - **Dual-write** : `createFederationMemberFromPerson` et `createClubMemberFromPerson` utilisent `base.first_name`/`base.last_name` (de la personne) plutôt que les champs du membre, pour garantir la cohérence.
+- **`/federations/index.tsx`** : le sub-dialog président a été supprimé au profit d'un champ texte `president_name` dans le form. Le président peut être géré depuis la page de détail `/federations/$id` via l'onglet Membres.
+- **`/members/index.tsx`** : utilise un `OrgPickerDialog` (dialog natif) pour choisir l'organisation avant d'ouvrir `MemberFormDialog`.
 
 ## Écran(s) / UI
 

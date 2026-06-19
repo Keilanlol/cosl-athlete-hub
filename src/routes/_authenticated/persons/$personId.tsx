@@ -5,6 +5,9 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { friendlyError } from "@/lib/error-messages";
 import { confirmAction } from "@/components/ConfirmDialog";
+import { useForm, FormProvider } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import {
   PERSON_ROLE_TYPES,
   ROLE_LABELS,
@@ -17,11 +20,12 @@ import {
   type PersonRole,
   type PersonRoleType,
 } from "@/lib/persons";
+import { personBaseSchema } from "@/lib/form-schemas";
+import { PersonBaseFields } from "@/components/forms/PersonBaseFields";
+import { DialogFooterButtons } from "@/components/forms/DialogFooterButtons";
 import { PersonRoleBadge } from "@/components/persons/PersonRoleBadge";
 import { AddRoleDialog } from "@/components/persons/AddRoleDialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -31,14 +35,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { AddressSearch } from "@/components/AddressSearch";
 import { EntityImageUpload } from "@/components/EntityImageUpload";
 import { syncPhotoFromPerson } from "@/lib/person-photo-sync";
 
@@ -71,19 +67,25 @@ function PersonDetailPage() {
   const [rolesOpen, setRolesOpen] = useState(false);
   const [addRoleTarget, setAddRoleTarget] = useState<PersonRoleType | null>(null);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    first_name: "",
-    last_name: "",
-    email: "",
-    phone: "",
-    birth_date: "",
-    gender: "",
-    nationality: "",
-    street: "",
-    postcode: "",
-    city: "",
-    country: "",
-    is_active: true,
+
+  const editForm = useForm({
+    resolver: zodResolver(personBaseSchema.merge(
+      z.object({ is_active: z.boolean() })
+    )) as never,
+    defaultValues: {
+      first_name: "",
+      last_name: "",
+      email: "",
+      phone: "",
+      birth_date: "",
+      gender: "",
+      nationality: "",
+      street: "",
+      postcode: "",
+      city: "",
+      country: "",
+      is_active: true,
+    } as Record<string, unknown>,
   });
 
   const load = async () => {
@@ -180,7 +182,7 @@ function PersonDetailPage() {
   const openEdit = () => {
     if (!bundle) return;
     const p = bundle.person;
-    setForm({
+    editForm.reset({
       first_name: p.first_name,
       last_name: p.last_name,
       email: p.email ?? "",
@@ -197,28 +199,37 @@ function PersonDetailPage() {
     setEditOpen(true);
   };
 
-  const saveEdit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.first_name.trim() || !form.last_name.trim()) {
-      toast.error("Prénom et nom requis");
-      return;
-    }
+  const saveEdit = async (values: Record<string, unknown>) => {
+    const v = values as {
+      first_name: string;
+      last_name: string;
+      email?: string;
+      phone?: string;
+      birth_date?: string;
+      gender?: string;
+      nationality?: string;
+      street?: string;
+      postcode?: string;
+      city?: string;
+      country?: string;
+      is_active: boolean;
+    };
     setSaving(true);
     const { error } = await supabase
       .from("persons")
       .update({
-        first_name: form.first_name.trim(),
-        last_name: form.last_name.trim(),
-        email: form.email.trim() || null,
-        phone: form.phone.trim() || null,
-        birth_date: form.birth_date || null,
-        gender: form.gender || null,
-        nationality: form.nationality.trim() || null,
-        street: form.street.trim() || null,
-        postcode: form.postcode.trim() || null,
-        city: form.city.trim() || null,
-        country: form.country.trim() || null,
-        is_active: form.is_active,
+        first_name: v.first_name.trim(),
+        last_name: v.last_name.trim(),
+        email: v.email?.trim() || null,
+        phone: v.phone?.trim() || null,
+        birth_date: v.birth_date || null,
+        gender: v.gender || null,
+        nationality: v.nationality?.trim() || null,
+        street: v.street?.trim() || null,
+        postcode: v.postcode?.trim() || null,
+        city: v.city?.trim() || null,
+        country: v.country?.trim() || null,
+        is_active: v.is_active,
       })
       .eq("id", personId);
     setSaving(false);
@@ -626,147 +637,29 @@ function PersonDetailPage() {
 
       {/* Edit dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <form onSubmit={saveEdit}>
-            <DialogHeader>
-              <DialogTitle>Modifier la personne</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="efn">Prénom *</Label>
-                  <Input
-                    id="efn"
-                    value={form.first_name}
-                    onChange={(e) => setForm({ ...form, first_name: e.target.value })}
-                    required
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+          <FormProvider {...editForm}>
+            <form onSubmit={editForm.handleSubmit(saveEdit)}>
+              <DialogHeader>
+                <DialogTitle>Modifier la personne</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <PersonBaseFields />
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={!!editForm.watch("is_active")}
+                    onCheckedChange={(v) => editForm.setValue("is_active", !!v)}
                   />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="eln">Nom *</Label>
-                  <Input
-                    id="eln"
-                    value={form.last_name}
-                    onChange={(e) => setForm({ ...form, last_name: e.target.value })}
-                    required
-                  />
-                </div>
+                  Actif
+                </label>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="eem">Email</Label>
-                  <Input
-                    id="eem"
-                    type="email"
-                    value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="eph">Téléphone</Label>
-                  <Input
-                    id="eph"
-                    value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="ebd">Date de naissance</Label>
-                  <Input
-                    id="ebd"
-                    type="date"
-                    value={form.birth_date}
-                    onChange={(e) => setForm({ ...form, birth_date: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="egender">Genre</Label>
-                  <Select
-                    value={form.gender}
-                    onValueChange={(v) => setForm({ ...form, gender: v })}
-                  >
-                    <SelectTrigger id="egender">
-                      <SelectValue placeholder="—" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="male">Homme</SelectItem>
-                      <SelectItem value="female">Femme</SelectItem>
-                      <SelectItem value="mixed">Mixte</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="enat">Nationalité</Label>
-                <Input
-                  id="enat"
-                  value={form.nationality}
-                  onChange={(e) => setForm({ ...form, nationality: e.target.value })}
-                  placeholder="LUX"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="estreet">Adresse</Label>
-                <AddressSearch
-                  id="estreet"
-                  value={form.street}
-                  onChange={(v) => setForm({ ...form, street: v })}
-                  onSelect={(result) => setForm({
-                    ...form,
-                    street: result.street || result.display_name,
-                    postcode: result.postcode,
-                    city: result.city,
-                    country: result.country_code || result.country,
-                  })}
-                  placeholder="Rechercher une adresse…"
-                />
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="epc">Code postal</Label>
-                  <Input
-                    id="epc"
-                    value={form.postcode}
-                    onChange={(e) => setForm({ ...form, postcode: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="ecity">Ville</Label>
-                  <Input
-                    id="ecity"
-                    value={form.city}
-                    onChange={(e) => setForm({ ...form, city: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="ectry">Pays</Label>
-                  <Input
-                    id="ectry"
-                    value={form.country}
-                    onChange={(e) => setForm({ ...form, country: e.target.value })}
-                    placeholder="LU"
-                  />
-                </div>
-              </div>
-              <label className="flex items-center gap-2 text-sm">
-                <Checkbox
-                  checked={form.is_active}
-                  onCheckedChange={(v) => setForm({ ...form, is_active: !!v })}
-                />
-                Actif
-              </label>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>
-                Annuler
-              </Button>
-              <Button type="submit" disabled={saving}>
-                {saving ? "Enregistrement…" : "Enregistrer"}
-              </Button>
-            </DialogFooter>
-          </form>
+              <DialogFooterButtons
+                onCancel={() => setEditOpen(false)}
+                submitLabel="Enregistrer"
+                loading={saving}
+              />
+            </form>
+          </FormProvider>
         </DialogContent>
       </Dialog>
 
