@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { friendlyError } from "@/lib/error-messages";
 import { confirmAction } from "@/components/ConfirmDialog";
-import { useForm, FormProvider } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
@@ -20,12 +20,11 @@ import {
   type PersonRole,
   type PersonRoleType,
 } from "@/lib/persons";
-import { personBaseSchema } from "@/lib/form-schemas";
-import { PersonBaseFields } from "@/components/forms/PersonBaseFields";
-import { DialogFooterButtons } from "@/components/forms/DialogFooterButtons";
 import { PersonRoleBadge } from "@/components/persons/PersonRoleBadge";
 import { AddRoleDialog } from "@/components/persons/AddRoleDialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -35,6 +34,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { AddressSearch } from "@/components/AddressSearch";
 import { EntityImageUpload } from "@/components/EntityImageUpload";
 import { syncPhotoFromPerson } from "@/lib/person-photo-sync";
 
@@ -83,8 +90,10 @@ function PersonDetailPage() {
     is_active: z.boolean(),
   });
 
-  const editForm = useForm({
-    resolver: zodResolver(personEditSchema) as never,
+  type EditValues = z.infer<typeof personEditSchema>;
+
+  const { register, handleSubmit, reset, watch, setValue, control, formState: { errors } } = useForm<EditValues>({
+    resolver: zodResolver(personEditSchema),
     defaultValues: {
       first_name: "",
       last_name: "",
@@ -98,7 +107,7 @@ function PersonDetailPage() {
       city: "",
       country: "",
       is_active: true,
-    } as Record<string, unknown>,
+    },
   });
 
   const load = async () => {
@@ -195,7 +204,7 @@ function PersonDetailPage() {
   const openEdit = () => {
     if (!bundle) return;
     const p = bundle.person;
-    editForm.reset({
+    reset({
       first_name: p.first_name,
       last_name: p.last_name,
       email: p.email ?? "",
@@ -212,37 +221,23 @@ function PersonDetailPage() {
     setEditOpen(true);
   };
 
-  const saveEdit = async (values: Record<string, unknown>) => {
-    const v = values as {
-      first_name: string;
-      last_name: string;
-      email?: string;
-      phone?: string;
-      birth_date?: string;
-      gender?: string;
-      nationality?: string;
-      street?: string;
-      postcode?: string;
-      city?: string;
-      country?: string;
-      is_active: boolean;
-    };
+  const saveEdit = async (values: EditValues) => {
     setSaving(true);
     const { error } = await supabase
       .from("persons")
       .update({
-        first_name: v.first_name.trim(),
-        last_name: v.last_name.trim(),
-        email: v.email?.trim() || null,
-        phone: v.phone?.trim() || null,
-        birth_date: v.birth_date || null,
-        gender: v.gender || null,
-        nationality: v.nationality?.trim() || null,
-        street: v.street?.trim() || null,
-        postcode: v.postcode?.trim() || null,
-        city: v.city?.trim() || null,
-        country: v.country?.trim() || null,
-        is_active: v.is_active,
+        first_name: values.first_name.trim(),
+        last_name: values.last_name.trim(),
+        email: values.email?.trim() || null,
+        phone: values.phone?.trim() || null,
+        birth_date: values.birth_date || null,
+        gender: values.gender || null,
+        nationality: values.nationality?.trim() || null,
+        street: values.street?.trim() || null,
+        postcode: values.postcode?.trim() || null,
+        city: values.city?.trim() || null,
+        country: values.country?.trim() || null,
+        is_active: values.is_active,
       })
       .eq("id", personId);
     setSaving(false);
@@ -651,28 +646,112 @@ function PersonDetailPage() {
       {/* Edit dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-          <FormProvider {...editForm}>
-            <form onSubmit={editForm.handleSubmit(saveEdit)}>
-              <DialogHeader>
-                <DialogTitle>Modifier la personne</DialogTitle>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <PersonBaseFields />
-                <label className="flex items-center gap-2 text-sm">
-                  <Checkbox
-                    checked={!!editForm.watch("is_active")}
-                    onCheckedChange={(v) => editForm.setValue("is_active", !!v)}
-                  />
-                  Actif
-                </label>
+          <form onSubmit={handleSubmit(saveEdit)}>
+            <DialogHeader>
+              <DialogTitle>Modifier la personne</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="efn">Prénom *</Label>
+                  <Input id="efn" {...register("first_name")} />
+                  {errors.first_name && (
+                    <p className="text-xs text-red-600">{errors.first_name.message}</p>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="eln">Nom *</Label>
+                  <Input id="eln" {...register("last_name")} />
+                  {errors.last_name && (
+                    <p className="text-xs text-red-600">{errors.last_name.message}</p>
+                  )}
+                </div>
               </div>
-              <DialogFooterButtons
-                onCancel={() => setEditOpen(false)}
-                submitLabel="Enregistrer"
-                loading={saving}
-              />
-            </form>
-          </FormProvider>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="ebd">Date de naissance</Label>
+                  <Input id="ebd" type="date" {...register("birth_date")} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="egender">Genre</Label>
+                  <Select
+                    value={watch("gender") ?? ""}
+                    onValueChange={(v) => setValue("gender", v)}
+                  >
+                    <SelectTrigger id="egender">
+                      <SelectValue placeholder="—" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">Homme</SelectItem>
+                      <SelectItem value="female">Femme</SelectItem>
+                      <SelectItem value="mixed">Mixte</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="eem">Email</Label>
+                  <Input id="eem" type="email" {...register("email")} />
+                  {errors.email && (
+                    <p className="text-xs text-red-600">{errors.email.message}</p>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="eph">Téléphone</Label>
+                  <Input id="eph" {...register("phone")} />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="enat">Nationalité</Label>
+                <Input id="enat" {...register("nationality")} placeholder="LUX" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="estreet">Adresse (numéro + rue)</Label>
+                <AddressSearch
+                  id="estreet"
+                  value={watch("street") ?? ""}
+                  onChange={(v) => setValue("street", v)}
+                  onSelect={(r) => {
+                    setValue("street", r.street || r.display_name);
+                    setValue("postcode", r.postcode ?? "");
+                    setValue("city", r.city ?? "");
+                    setValue("country", r.country_code || r.country || "");
+                  }}
+                  placeholder="Rechercher une adresse…"
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="epc">Code postal</Label>
+                  <Input id="epc" {...register("postcode")} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="ecity">Ville</Label>
+                  <Input id="ecity" {...register("city")} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="ectry">Pays</Label>
+                  <Input id="ectry" {...register("country")} placeholder="LU" />
+                </div>
+              </div>
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={!!watch("is_active")}
+                  onCheckedChange={(v) => setValue("is_active", !!v)}
+                />
+                Actif
+              </label>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setEditOpen(false)} disabled={saving}>
+                Annuler
+              </Button>
+              <Button type="submit" disabled={saving} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
+                {saving ? "Enregistrement…" : "Enregistrer"}
+              </Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
 
