@@ -276,9 +276,7 @@ export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAd
               <div className="grid grid-cols-2 gap-3">
                 {missingBirthDate && (
                   <div className="space-y-1.5">
-                    <Label className="text-red-700">
-                      Date de naissance obligatoire pour les athlètes
-                    </Label>
+                    <Label className="text-red-700">Date de naissance</Label>
                     <Input
                       type="date"
                       value={birthDate}
@@ -289,9 +287,7 @@ export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAd
                 )}
                 {missingGender && (
                   <div className="space-y-1.5">
-                    <Label className="text-red-700">
-                      Genre obligatoire pour les athlètes
-                    </Label>
+                    <Label className="text-red-700">Genre</Label>
                     <Select value={gender} onValueChange={setGender}>
                       <SelectTrigger className="border-red-400 focus-visible:outline-red-500">
                         <SelectValue placeholder="—" />
