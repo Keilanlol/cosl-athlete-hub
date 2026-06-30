@@ -67,6 +67,7 @@ import { EmptyState } from "@/components/DataTableShell";
 import { AddressSearch } from "@/components/AddressSearch";
 import { PersonCombobox } from "@/components/PersonCombobox";
 import { PersonCreateDialog } from "@/components/persons/PersonCreateDialog";
+import { AddPersonButton } from "@/components/persons/AddPersonButton";
 import type { PersonRoleType } from "@/lib/persons";
 import { confirmAction } from "@/components/ConfirmDialog";
 import { EntityImageUpload } from "@/components/EntityImageUpload";
@@ -148,15 +149,6 @@ const emptyMember = {
   is_active: true,
 };
 
-const emptyCoach = {
-  first_name: "",
-  last_name: "",
-  email: "",
-  phone: "",
-  role: "coach",
-  is_active: true,
-};
-
 function ClubDetailPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
@@ -184,18 +176,11 @@ function ClubDetailPage() {
   const [personCreateOpen, setPersonCreateOpen] = useState(false);
   const [personCreateRoles, setPersonCreateRoles] = useState<PersonRoleType[]>([]);
 
-  // Member dialog
+  // Member dialog (edit only)
   const [memberOpen, setMemberOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<ClubMember | null>(null);
   const [memberForm, setMemberForm] = useState(emptyMember);
   const [memberSaving, setMemberSaving] = useState(false);
-  const [selectedMemberPersonId, setSelectedMemberPersonId] = useState("");
-
-  // Coach dialog
-  const [coachOpen, setCoachOpen] = useState(false);
-  const [coachForm, setCoachForm] = useState(emptyCoach);
-  const [coachSaving, setCoachSaving] = useState(false);
-  const [selectedCoachPersonId, setSelectedCoachPersonId] = useState("");
 
 
   const load = async () => {
@@ -336,12 +321,7 @@ function ClubDetailPage() {
     }
   };
 
-  // ---------- Member CRUD ----------
-  const openCreateMember = () => {
-    setEditingMember(null);
-    setMemberForm(emptyMember);
-    setMemberOpen(true);
-  };
+  // ---------- Member CRUD (edit only) ----------
   const openEditMember = (m: ClubMember) => {
     setEditingMember(m);
     setMemberForm({
@@ -387,58 +367,18 @@ function ClubDetailPage() {
       is_active: memberForm.is_active,
     };
 
-    if (editingMember) {
-      const { error } = await supabase
-        .from("club_members")
-        .update(payload)
-        .eq("id", editingMember.id);
-      setMemberSaving(false);
-      if (error) {
-        toast.error("Échec de l'enregistrement", { description: friendlyError(error) });
-        return;
-      }
-      toast.success("Membre modifié");
-      setMemberOpen(false);
-      load();
-      return;
-    }
-
-    // Create branch: optional person dual-write
-    const payloadWithPerson = selectedMemberPersonId
-      ? { ...payload, person_id: selectedMemberPersonId }
-      : payload;
-    const { data: legCm, error } = await supabase
+    if (!editingMember) return;
+    const { error } = await supabase
       .from("club_members")
-      .insert(payloadWithPerson)
-      .select("id")
-      .single();
-    if (error || !legCm) {
-      setMemberSaving(false);
+      .update(payload)
+      .eq("id", editingMember.id);
+    setMemberSaving(false);
+    if (error) {
       toast.error("Échec de l'enregistrement", { description: friendlyError(error) });
       return;
     }
-
-    if (selectedMemberPersonId) {
-      await supabase.from("club_member_profiles").insert({
-        person_id: selectedMemberPersonId,
-        club_id: id,
-        role: memberForm.role,
-        start_date: memberForm.start_date || null,
-        is_active: memberForm.is_active,
-        legacy_club_member_id: legCm.id,
-      });
-      await supabase
-        .from("person_roles")
-        .upsert(
-          { person_id: selectedMemberPersonId, role_type: "club_member" },
-          { onConflict: "person_id,role_type", ignoreDuplicates: true },
-        );
-    }
-
-    setMemberSaving(false);
-    toast.success("Membre ajouté");
+    toast.success("Membre modifié");
     setMemberOpen(false);
-    setSelectedMemberPersonId("");
     load();
   };
 
@@ -457,68 +397,6 @@ function ClubDetailPage() {
       toast.success("Membre supprimé");
       load();
     }
-  };
-
-  // ---------- Coach CRUD ----------
-  const openCreateCoach = () => {
-    setCoachForm(emptyCoach);
-    setCoachOpen(true);
-  };
-  const submitCoach = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!coachForm.first_name.trim() || !coachForm.last_name.trim()) {
-      toast.error("Prénom et nom requis");
-      return;
-    }
-    setCoachSaving(true);
-    const payload = {
-      club_id: id,
-      federation_id: club?.federation_id ?? null,
-      first_name: coachForm.first_name.trim(),
-      last_name: coachForm.last_name.trim(),
-      email: coachForm.email.trim() || null,
-      phone: coachForm.phone.trim() || null,
-      role: coachForm.role,
-      is_active: coachForm.is_active,
-    };
-
-    // New coach (optionally linked to a person)
-    const payloadWithPerson = selectedCoachPersonId
-      ? { ...payload, person_id: selectedCoachPersonId }
-      : payload;
-    const { data: legCoach, error } = await supabase
-      .from("coaches")
-      .insert(payloadWithPerson)
-      .select("id")
-      .single();
-    if (error || !legCoach) {
-      setCoachSaving(false);
-      toast.error("Échec de l'enregistrement", { description: friendlyError(error) });
-      return;
-    }
-
-    if (selectedCoachPersonId) {
-      await supabase.from("coach_profiles").insert({
-        person_id: selectedCoachPersonId,
-        legacy_coach_id: legCoach.id,
-        role: coachForm.role,
-        federation_id: club?.federation_id ?? null,
-        club_id: id,
-        is_active: coachForm.is_active,
-      });
-      await supabase
-        .from("person_roles")
-        .upsert(
-          { person_id: selectedCoachPersonId, role_type: "coach" },
-          { onConflict: "person_id,role_type", ignoreDuplicates: true },
-        );
-    }
-
-    setCoachSaving(false);
-    toast.success("Encadrant ajouté");
-    setCoachOpen(false);
-    setSelectedCoachPersonId("");
-    load();
   };
 
 
@@ -541,15 +419,6 @@ function ClubDetailPage() {
     members.find((m) => m.role === "president" && (m.is_active ?? true)) ?? null;
 
   const athletePoolOptions = [
-    { id: "__new__", label: "+ Créer une nouvelle personne" },
-    ...personsPool.map((p) => ({
-      id: p.id,
-      label: `${p.first_name} ${p.last_name}${p.email ? ` — ${p.email}` : ""}`,
-    })),
-  ];
-
-  const personPickOptions = [
-    { id: "__none__", label: "Aucune (créer sans personne liée)" },
     { id: "__new__", label: "+ Créer une nouvelle personne" },
     ...personsPool.map((p) => ({
       id: p.id,
@@ -805,9 +674,12 @@ function ClubDetailPage() {
                 className="pl-9"
               />
             </div>
-            <Button onClick={openCreateMember} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
-              <Plus className="mr-2 h-4 w-4" /> Ajouter un membre
-            </Button>
+            <AddPersonButton
+              role="club_member"
+              label="Ajouter un membre"
+              presetClubId={id}
+              onChanged={() => load()}
+            />
           </div>
           {(() => {
             const q = memberSearch.trim().toLowerCase();
@@ -926,9 +798,12 @@ function ClubDetailPage() {
                 className="pl-9"
               />
             </div>
-            <Button onClick={openCreateCoach} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
-              <Plus className="mr-2 h-4 w-4" /> Ajouter un encadrant
-            </Button>
+            <AddPersonButton
+              role="coach"
+              label="Ajouter un encadrant"
+              presetClubId={id}
+              onChanged={() => load()}
+            />
           </div>
           {(() => {
             const q = coachSearch.trim().toLowerCase();
@@ -1057,61 +932,17 @@ function ClubDetailPage() {
       </Dialog>
 
 
-      {/* ============ Member dialog ============ */}
-      <Dialog
-        open={memberOpen}
-        onOpenChange={(v) => {
-          setMemberOpen(v);
-          if (!v) setSelectedMemberPersonId("");
-        }}
-      >
+      {/* ============ Member dialog (edit only) ============ */}
+      <Dialog open={memberOpen} onOpenChange={setMemberOpen}>
         <DialogContent className="sm:max-w-lg">
           <form onSubmit={submitMember}>
             <DialogHeader>
-              <DialogTitle>
-                {editingMember ? "Modifier le membre" : "Ajouter un membre"}
-              </DialogTitle>
+              <DialogTitle>Modifier le membre</DialogTitle>
               <DialogDescription>
                 Membre du bureau du club {club.name}.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              {!editingMember && (
-                <div className="space-y-1.5 rounded-md border border-dashed border-border bg-muted p-3">
-                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Lier à une personne existante (optionnel)
-                  </Label>
-                  <PersonCombobox
-                    value={selectedMemberPersonId || "__none__"}
-                    onChange={(v) => {
-                      if (v === "__none__") {
-                        setSelectedMemberPersonId("");
-                        return;
-                      }
-                      if (v === "__new__") {
-                        setMemberOpen(false);
-                        setSelectedMemberPersonId("");
-                        setPersonCreateRoles(["club_member"]);
-                        setPersonCreateOpen(true);
-                        return;
-                      }
-                      setSelectedMemberPersonId(v);
-                      const p = personsPool.find((x) => x.id === v);
-                      if (!p) return;
-                      setMemberForm((f) => ({
-                        ...f,
-                        first_name: p.first_name,
-                        last_name: p.last_name,
-                        email: p.email ?? f.email,
-                      }));
-                    }}
-                    options={personPickOptions}
-                    placeholder="Aucune (créer sans personne liée)"
-                    searchPlaceholder="Rechercher une personne…"
-                  />
-                </div>
-              )}
-
               {editingMember && (
                 <div className="flex justify-center pb-2">
                   <EntityImageUpload
@@ -1314,157 +1145,6 @@ function ClubDetailPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ============ Coach dialog ============ */}
-      <Dialog
-        open={coachOpen}
-        onOpenChange={(v) => {
-          setCoachOpen(v);
-          if (!v) setSelectedCoachPersonId("");
-        }}
-      >
-        <DialogContent className="sm:max-w-lg">
-          <form onSubmit={submitCoach}>
-            <DialogHeader>
-              <DialogTitle>Ajouter un encadrant</DialogTitle>
-              <DialogDescription>
-                Rattacher un encadrant existant ou en créer un nouveau pour le club {club.name}.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-1.5 rounded-md border border-dashed border-border bg-muted p-3">
-                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Lier à une personne existante (optionnel)
-                </Label>
-                <PersonCombobox
-                  value={selectedCoachPersonId || "__none__"}
-                  onChange={(v) => {
-                    if (v === "__none__") {
-                      setSelectedCoachPersonId("");
-                      return;
-                    }
-                    if (v === "__new__") {
-                      setCoachOpen(false);
-                      setSelectedCoachPersonId("");
-                      setPersonCreateRoles(["coach"]);
-                      setPersonCreateOpen(true);
-                      return;
-                    }
-                    setSelectedCoachPersonId(v);
-                    const p = personsPool.find((x) => x.id === v);
-                    if (!p) return;
-                    setCoachForm((f) => ({
-                      ...f,
-                      first_name: p.first_name,
-                      last_name: p.last_name,
-                      email: p.email ?? f.email,
-                    }));
-                  }}
-                  options={personPickOptions}
-                  placeholder="Aucune (créer sans personne liée)"
-                  searchPlaceholder="Rechercher une personne…"
-                />
-                {selectedCoachPersonId && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedCoachPersonId("");
-                      setCoachForm(emptyCoach);
-                    }}
-                    className="text-xs text-muted-foreground hover:text-foreground underline"
-                  >
-                    Détacher
-                  </button>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="ccfn">Prénom *</Label>
-                  <Input
-                    id="ccfn"
-                    value={coachForm.first_name}
-                    onChange={(e) => setCoachForm({ ...coachForm, first_name: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="ccln">Nom *</Label>
-                  <Input
-                    id="ccln"
-                    value={coachForm.last_name}
-                    onChange={(e) => setCoachForm({ ...coachForm, last_name: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="ccem">Email</Label>
-                  <Input
-                    id="ccem"
-                    type="email"
-                    value={coachForm.email}
-                    onChange={(e) => setCoachForm({ ...coachForm, email: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="ccph">Téléphone</Label>
-                  <Input
-                    id="ccph"
-                    value={coachForm.phone}
-                    onChange={(e) => setCoachForm({ ...coachForm, phone: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="ccrl">Rôle *</Label>
-                <Select
-                  value={coachForm.role}
-                  onValueChange={(v) => setCoachForm({ ...coachForm, role: v })}
-                >
-                  <SelectTrigger id="ccrl">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {COACH_ROLES.map((r) => (
-                      <SelectItem key={r.value} value={r.value}>
-                        {r.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
-                <Label htmlFor="ccact" className="cursor-pointer">
-                  Encadrant actif
-                </Label>
-                <Switch
-                  id="ccact"
-                  checked={coachForm.is_active}
-                  onCheckedChange={(v) => setCoachForm({ ...coachForm, is_active: v })}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setCoachOpen(false)}
-                disabled={coachSaving}
-              >
-                Annuler
-              </Button>
-              <Button
-                type="submit"
-                disabled={coachSaving}
-                className="bg-primary hover:bg-[var(--cosl-red-dark)]"
-              >
-                {coachSaving ? "Enregistrement…" : "Ajouter"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
       <PersonCreateDialog
         open={personCreateOpen}
         onOpenChange={setPersonCreateOpen}

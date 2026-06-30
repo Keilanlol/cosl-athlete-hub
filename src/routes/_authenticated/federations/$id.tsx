@@ -54,17 +54,7 @@ import { AddressSearch } from "@/components/AddressSearch";
 
 import { confirmAction } from "@/components/ConfirmDialog";
 import { EntityImageUpload } from "@/components/EntityImageUpload";
-import { PersonCombobox } from "@/components/PersonCombobox";
-import { PersonCreateDialog } from "@/components/persons/PersonCreateDialog";
-import type { PersonRoleType } from "@/lib/persons";
-
-type PersonLite = {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string | null;
-  phone: string | null;
-};
+import { AddPersonButton } from "@/components/persons/AddPersonButton";
 
 export const Route = createFileRoute("/_authenticated/federations/$id")({
   component: FederationDetailPage,
@@ -141,16 +131,6 @@ const emptyMember = {
   is_active: true,
 };
 
-const emptyCoach = {
-  first_name: "",
-  last_name: "",
-  email: "",
-  phone: "",
-  role: "coach",
-  club_id: "__none__",
-  is_active: true,
-};
-
 function FederationDetailPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
@@ -174,25 +154,15 @@ function FederationDetailPage() {
   const [clubForm, setClubForm] = useState(emptyClub);
   const [clubSaving, setClubSaving] = useState(false);
 
-  // Member dialog
+  // Member dialog (edit only)
   const [memberOpen, setMemberOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<FederationMember | null>(null);
   const [memberForm, setMemberForm] = useState(emptyMember);
   const [memberSaving, setMemberSaving] = useState(false);
 
-  // Coach dialog
-  const [coachOpen, setCoachOpen] = useState(false);
-  const [coachForm, setCoachForm] = useState(emptyCoach);
-  const [coachSaving, setCoachSaving] = useState(false);
+  // Coach: ajout via AddPersonButton, pas de dialog d'ajout direct
 
-  // Persons for "use existing person" combobox
-  const [persons, setPersons] = useState<PersonLite[]>([]);
-  const [selectedMemberPersonId, setSelectedMemberPersonId] = useState("");
-  const [selectedCoachPersonId, setSelectedCoachPersonId] = useState("");
-
-  // PersonCreateDialog (new person flow)
-  const [personCreateOpen, setPersonCreateOpen] = useState(false);
-  const [personCreateRoles, setPersonCreateRoles] = useState<PersonRoleType[]>([]);
+  // Persons no longer needed (AddPersonButton handles person selection)
 
   const load = async () => {
     setLoading(true);
@@ -237,14 +207,12 @@ function FederationDetailPage() {
       coachesQuery.eq("federation_id", id);
     }
 
-    const [a, co, pe] = await Promise.all([
+    const [a, co] = await Promise.all([
       athletesQuery,
       coachesQuery,
-      supabase.from("persons").select("id, first_name, last_name, email, phone").order("last_name"),
     ]);
     setAthletes((a.data ?? []) as AthleteRow[]);
     setCoaches((co.data ?? []) as Coach[]);
-    setPersons((pe.data ?? []) as PersonLite[]);
     setLoading(false);
   };
 
@@ -392,16 +360,9 @@ function FederationDetailPage() {
     }
   };
 
-  // ---------- Member CRUD ----------
-  const openCreateMember = () => {
-    setEditingMember(null);
-    setMemberForm(emptyMember);
-    setSelectedMemberPersonId("");
-    setMemberOpen(true);
-  };
+  // ---------- Member CRUD (edit only) ----------
   const openEditMember = (m: FederationMember) => {
     setEditingMember(m);
-    setSelectedMemberPersonId("");
     setMemberForm({
       first_name: m.first_name,
       last_name: m.last_name,
@@ -445,57 +406,19 @@ function FederationDetailPage() {
       is_active: memberForm.is_active,
     };
 
-    let newMemberId: string | null = null;
-    let opError: { message: string } | null = null;
-    if (editingMember) {
-      const { error } = await supabase
-        .from("federation_members")
-        .update(payload)
-        .eq("id", editingMember.id);
-      opError = error;
-    } else {
-      const insertPayload = selectedMemberPersonId
-        ? { ...payload, person_id: selectedMemberPersonId }
-        : payload;
-      const { data, error } = await supabase
-        .from("federation_members")
-        .insert(insertPayload)
-        .select("id")
-        .single();
-      opError = error;
-      newMemberId = (data?.id as string | undefined) ?? null;
-    }
-
-    // Dual-write profile + person_roles when linked to an existing person (create only)
-    if (!opError && !editingMember && selectedMemberPersonId && newMemberId) {
-      const { error: profErr } = await supabase.from("federation_member_profiles").insert({
-        person_id: selectedMemberPersonId,
-        legacy_federation_member_id: newMemberId,
-        federation_id: id,
-        role: memberForm.role,
-        start_date: memberForm.start_date || null,
-        is_active: memberForm.is_active,
-      });
-      if (profErr && !/duplicate|unique/i.test(profErr.message)) {
-        console.warn("federation_member_profiles insert:", profErr.message);
-      }
-      const { error: roleErr } = await supabase.from("person_roles").insert({
-        person_id: selectedMemberPersonId,
-        role_type: "federation_member",
-      });
-      if (roleErr && !/duplicate|unique/i.test(roleErr.message)) {
-        console.warn("person_roles insert:", roleErr.message);
-      }
-    }
+    if (!editingMember) return;
+    const { error } = await supabase
+      .from("federation_members")
+      .update(payload)
+      .eq("id", editingMember.id);
 
     setMemberSaving(false);
-    if (opError) {
-      toast.error("Échec de l'enregistrement", { description: friendlyError(opError) });
+    if (error) {
+      toast.error("Échec de l'enregistrement", { description: friendlyError(error) });
       return;
     }
-    toast.success(editingMember ? "Membre modifié" : "Membre ajouté");
+    toast.success("Membre modifié");
     setMemberOpen(false);
-    setSelectedMemberPersonId("");
     load();
   };
 
@@ -513,142 +436,6 @@ function FederationDetailPage() {
       toast.success("Membre supprimé");
       load();
     }
-  };
-
-  // ---------- Coach CRUD ----------
-  const openCreateCoach = () => {
-    setSelectedCoachPersonId("");
-    setCoachForm(emptyCoach);
-    setCoachOpen(true);
-  };
-  const submitCoach = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!coachForm.first_name.trim() || !coachForm.last_name.trim()) {
-      toast.error("Prénom et nom requis");
-      return;
-    }
-    setCoachSaving(true);
-    const payload = {
-      federation_id: id,
-      club_id: coachForm.club_id === "__none__" ? null : coachForm.club_id,
-      first_name: coachForm.first_name.trim(),
-      last_name: coachForm.last_name.trim(),
-      email: coachForm.email.trim() || null,
-      phone: coachForm.phone.trim() || null,
-      role: coachForm.role,
-      is_active: coachForm.is_active,
-    };
-
-    let newCoachId: string | null = null;
-    let opError: { message: string } | null = null;
-    {
-      const insertPayload = selectedCoachPersonId
-        ? { ...payload, person_id: selectedCoachPersonId }
-        : payload;
-      const { data, error } = await supabase
-        .from("coaches")
-        .insert(insertPayload)
-        .select("id")
-        .single();
-      opError = error;
-      newCoachId = (data?.id as string | undefined) ?? null;
-    }
-
-    if (!opError && selectedCoachPersonId && newCoachId) {
-      const { error: profErr } = await supabase.from("coach_profiles").insert({
-        person_id: selectedCoachPersonId,
-        legacy_coach_id: newCoachId,
-        role: coachForm.role,
-        federation_id: id,
-        club_id: payload.club_id,
-        is_active: coachForm.is_active,
-      });
-      if (profErr && !/duplicate|unique/i.test(profErr.message)) {
-        console.warn("coach_profiles insert:", profErr.message);
-      }
-      const { error: roleErr } = await supabase
-        .from("person_roles")
-        .insert({ person_id: selectedCoachPersonId, role_type: "coach" });
-      if (roleErr && !/duplicate|unique/i.test(roleErr.message)) {
-        console.warn("person_roles insert:", roleErr.message);
-      }
-    }
-
-    setCoachSaving(false);
-    if (opError) {
-      toast.error("Échec de l'enregistrement", { description: friendlyError(opError) });
-      return;
-    }
-    toast.success("Encadrant ajouté");
-    setCoachOpen(false);
-    setSelectedCoachPersonId("");
-    load();
-  };
-
-  const personOptions = useMemo(
-    () =>
-      persons.map((p) => ({
-        id: p.id,
-        label: `${p.first_name} ${p.last_name}${p.email ? ` — ${p.email}` : ""}`,
-      })),
-    [persons],
-  );
-
-  const personPickOptions = useMemo(
-    () => [
-      { id: "__none__", label: "Aucune (créer sans personne liée)" },
-      { id: "__new__", label: "+ Créer une nouvelle personne" },
-      ...personOptions,
-    ],
-    [personOptions],
-  );
-
-  const applyPersonToMember = (value: string) => {
-    if (value === "__none__") {
-      setSelectedMemberPersonId("");
-      return;
-    }
-    if (value === "__new__") {
-      setMemberOpen(false);
-      setSelectedMemberPersonId("");
-      setPersonCreateRoles(["federation_member"]);
-      setPersonCreateOpen(true);
-      return;
-    }
-    setSelectedMemberPersonId(value);
-    const p = persons.find((x) => x.id === value);
-    if (!p) return;
-    setMemberForm((f) => ({
-      ...f,
-      first_name: p.first_name,
-      last_name: p.last_name,
-      email: p.email ?? f.email,
-      phone: p.phone ?? f.phone,
-    }));
-  };
-
-  const applyPersonToCoach = (value: string) => {
-    if (value === "__none__") {
-      setSelectedCoachPersonId("");
-      return;
-    }
-    if (value === "__new__") {
-      setCoachOpen(false);
-      setSelectedCoachPersonId("");
-      setPersonCreateRoles(["coach"]);
-      setPersonCreateOpen(true);
-      return;
-    }
-    setSelectedCoachPersonId(value);
-    const p = persons.find((x) => x.id === value);
-    if (!p) return;
-    setCoachForm((f) => ({
-      ...f,
-      first_name: p.first_name,
-      last_name: p.last_name,
-      email: p.email ?? f.email,
-      phone: p.phone ?? f.phone,
-    }));
   };
 
   if (loading) {
@@ -936,12 +723,12 @@ function FederationDetailPage() {
                 className="pl-9"
               />
             </div>
-            <Button
-              onClick={openCreateMember}
-              className="bg-primary hover:bg-[var(--cosl-red-dark)]"
-            >
-              <Plus className="mr-2 h-4 w-4" /> Ajouter un membre
-            </Button>
+            <AddPersonButton
+              role="federation_member"
+              label="Ajouter un membre"
+              presetFederationId={id}
+              onChanged={() => load()}
+            />
           </div>
           <div className="rounded-lg border border-border bg-card">
             {visibleMembers.length === 0 ? (
@@ -1058,12 +845,12 @@ function FederationDetailPage() {
                 className="pl-9"
               />
             </div>
-            <Button
-              onClick={openCreateCoach}
-              className="bg-primary hover:bg-[var(--cosl-red-dark)]"
-            >
-              <Plus className="mr-2 h-4 w-4" /> Ajouter un encadrant
-            </Button>
+            <AddPersonButton
+              role="coach"
+              label="Ajouter un encadrant"
+              presetFederationId={id}
+              onChanged={() => load()}
+            />
           </div>
           <div className="rounded-lg border border-border bg-card">
             {visibleCoaches.length === 0 ? (
@@ -1238,20 +1025,12 @@ function FederationDetailPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ============ Member dialog ============ */}
-      <Dialog
-        open={memberOpen}
-        onOpenChange={(o) => {
-          setMemberOpen(o);
-          if (!o) setSelectedMemberPersonId("");
-        }}
-      >
+      {/* ============ Member dialog (edit only) ============ */}
+      <Dialog open={memberOpen} onOpenChange={setMemberOpen}>
         <DialogContent className="sm:max-w-lg">
           <form onSubmit={submitMember}>
             <DialogHeader>
-              <DialogTitle>
-                {editingMember ? "Modifier le membre" : "Ajouter un membre"}
-              </DialogTitle>
+              <DialogTitle>Modifier le membre</DialogTitle>
               <DialogDescription>
                 Membre du bureau de la fédération {fed.acronym}.
               </DialogDescription>
@@ -1290,21 +1069,6 @@ function FederationDetailPage() {
                       );
                       load();
                     }}
-                  />
-                </div>
-              )}
-
-              {!editingMember && (
-                <div className="space-y-1.5 rounded-md border border-dashed border-border bg-muted p-3">
-                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Lier à une personne existante (optionnel)
-                  </Label>
-                  <PersonCombobox
-                    value={selectedMemberPersonId || "__none__"}
-                    onChange={applyPersonToMember}
-                    options={personPickOptions}
-                    placeholder="Aucune (créer sans personne liée)"
-                    searchPlaceholder="Rechercher une personne…"
                   />
                 </div>
               )}
@@ -1470,168 +1234,6 @@ function FederationDetailPage() {
           </form>
         </DialogContent>
       </Dialog>
-
-      {/* ============ Coach dialog ============ */}
-      <Dialog
-        open={coachOpen}
-        onOpenChange={(o) => {
-          setCoachOpen(o);
-          if (!o) setSelectedCoachPersonId("");
-        }}
-      >
-        <DialogContent className="sm:max-w-lg">
-          <form onSubmit={submitCoach}>
-            <DialogHeader>
-              <DialogTitle>Ajouter un encadrant</DialogTitle>
-              <DialogDescription>
-                Rattacher un encadrant existant ou en créer un nouveau pour la fédération{" "}
-                {fed.acronym}.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-1.5 rounded-md border border-dashed border-border bg-muted p-3">
-                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Lier à une personne existante (optionnel)
-                </Label>
-                <PersonCombobox
-                  value={selectedCoachPersonId || "__none__"}
-                  onChange={applyPersonToCoach}
-                  options={personPickOptions}
-                  placeholder="Aucune (créer sans personne liée)"
-                  searchPlaceholder="Rechercher une personne…"
-                />
-                {selectedCoachPersonId && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedCoachPersonId("");
-                      setCoachForm(emptyCoach);
-                    }}
-                    className="text-xs text-muted-foreground hover:text-foreground underline"
-                  >
-                    Détacher
-                  </button>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="cfn">Prénom *</Label>
-                  <Input
-                    id="cfn"
-                    value={coachForm.first_name}
-                    onChange={(e) => setCoachForm({ ...coachForm, first_name: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="cln">Nom *</Label>
-                  <Input
-                    id="cln"
-                    value={coachForm.last_name}
-                    onChange={(e) => setCoachForm({ ...coachForm, last_name: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="cem">Email</Label>
-                  <Input
-                    id="cem"
-                    type="email"
-                    value={coachForm.email}
-                    onChange={(e) => setCoachForm({ ...coachForm, email: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="cph">Téléphone</Label>
-                  <Input
-                    id="cph"
-                    value={coachForm.phone}
-                    onChange={(e) => setCoachForm({ ...coachForm, phone: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="crl">Rôle *</Label>
-                  <Select
-                    value={coachForm.role}
-                    onValueChange={(v) => setCoachForm({ ...coachForm, role: v })}
-                  >
-                    <SelectTrigger id="crl">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {COACH_ROLES.map((r) => (
-                        <SelectItem key={r.value} value={r.value}>
-                          {r.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="ccl">Club (optionnel)</Label>
-                  <Select
-                    value={coachForm.club_id}
-                    onValueChange={(v) => setCoachForm({ ...coachForm, club_id: v })}
-                  >
-                    <SelectTrigger id="ccl">
-                      <SelectValue placeholder="—" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">Aucun (fédération seule)</SelectItem>
-                      {clubs.map((cl) => (
-                        <SelectItem key={cl.id} value={cl.id}>
-                          {cl.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
-                <Label htmlFor="cact" className="cursor-pointer">
-                  Encadrant actif
-                </Label>
-                <Switch
-                  id="cact"
-                  checked={coachForm.is_active}
-                  onCheckedChange={(v) => setCoachForm({ ...coachForm, is_active: v })}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setCoachOpen(false)}
-                disabled={coachSaving}
-              >
-                Annuler
-              </Button>
-              <Button
-                type="submit"
-                disabled={coachSaving}
-                className="bg-primary hover:bg-[var(--cosl-red-dark)]"
-              >
-                {coachSaving ? "Enregistrement…" : "Ajouter"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      <PersonCreateDialog
-        open={personCreateOpen}
-        onOpenChange={setPersonCreateOpen}
-        initialRoles={personCreateRoles}
-        onCreated={() => {
-          load();
-        }}
-      />
     </div>
   );
 }

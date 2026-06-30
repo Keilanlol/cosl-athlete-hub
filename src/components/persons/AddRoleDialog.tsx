@@ -42,9 +42,11 @@ type Props = {
   person: PersonLite;
   role: PersonRoleType;
   onAdded: () => void;
+  presetFederationId?: string;
+  presetClubId?: string;
 };
 
-export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAdded }: Props) {
+export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAdded, presetFederationId, presetClubId }: Props) {
   const [sports, setSports] = useState<{ id: string; name: string }[]>([]);
   const [federations, setFederations] = useState<{ id: string; name: string; acronym: string | null }[]>([]);
   const [clubs, setClubs] = useState<{ id: string; name: string; federation_id: string | null }[]>([]);
@@ -58,9 +60,9 @@ export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAd
   useEffect(() => {
     if (!open) return;
     setAthlete({ ...defaultAthleteProfile });
-    setCoach({ ...defaultCoachProfile });
-    setFedMember({ ...defaultFedMemberProfile });
-    setClubMember({ ...defaultClubMemberProfile });
+    setCoach({ ...defaultCoachProfile, federation_id: presetFederationId ?? "" });
+    setFedMember({ ...defaultFedMemberProfile, federation_id: presetFederationId ?? "" });
+    setClubMember({ ...defaultClubMemberProfile, club_id: presetClubId ?? "" });
 
     supabase.from("sports").select("id, name").order("name")
       .then(({ data }) => setSports((data ?? []) as typeof sports));
@@ -227,6 +229,8 @@ export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAd
             onFedMember={patchFedMember}
             onClubMember={patchClubMember}
             athleteBlocked={!!athleteBlocked}
+            presetFederationId={presetFederationId}
+            presetClubId={presetClubId}
           />
         </div>
 

@@ -39,6 +39,10 @@ type Props = {
   onFedMember: (patch: Partial<FedMemberProfileFields>) => void;
   onClubMember: (patch: Partial<ClubMemberProfileFields>) => void;
   athleteBlocked?: boolean;
+  /** If set, the federation selector is hidden for fed member / coach sections. */
+  presetFederationId?: string;
+  /** If set, the club selector is hidden for club member sections. */
+  presetClubId?: string;
 };
 
 /**
@@ -59,6 +63,8 @@ export function RoleProfileForm({
   onFedMember,
   onClubMember,
   athleteBlocked,
+  presetFederationId,
+  presetClubId,
 }: Props) {
   const filteredClubsAthlete = athlete.primary_federation_id
     ? clubs.filter((c) => c.federation_id === athlete.primary_federation_id)
@@ -192,6 +198,9 @@ export function RoleProfileForm({
   }
 
   if (role === "coach") {
+    const presetFed = presetFederationId
+      ? federations.find((f) => f.id === presetFederationId)
+      : null;
     return (
       <section className="space-y-3 rounded-md border border-border p-3">
         <h3 className="text-sm font-semibold">🎯 Profil Encadrant</h3>
@@ -214,26 +223,35 @@ export function RoleProfileForm({
           </Select>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label>Fédération</Label>
-            <Select
-              value={coach.federation_id}
-              onValueChange={(v) =>
-                onCoach({ federation_id: v, club_id: "" })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="—" />
-              </SelectTrigger>
-              <SelectContent>
-                {federations.map((f) => (
-                  <SelectItem key={f.id} value={f.id}>
-                    {f.acronym ?? ""} — {f.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {presetFed ? (
+            <div className="space-y-1.5">
+              <Label>Fédération</Label>
+              <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
+                {presetFed.acronym ?? ""} — {presetFed.name}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <Label>Fédération</Label>
+              <Select
+                value={coach.federation_id}
+                onValueChange={(v) =>
+                  onCoach({ federation_id: v, club_id: "" })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="—" />
+                </SelectTrigger>
+                <SelectContent>
+                  {federations.map((f) => (
+                    <SelectItem key={f.id} value={f.id}>
+                      {f.acronym ?? ""} — {f.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label>Club</Label>
             <Select
@@ -258,27 +276,37 @@ export function RoleProfileForm({
   }
 
   if (role === "federation_member") {
+    const presetFed = presetFederationId
+      ? federations.find((f) => f.id === presetFederationId)
+      : null;
     return (
       <section className="space-y-3 rounded-md border border-border p-3">
         <h3 className="text-sm font-semibold">🏛️ Membre de fédération</h3>
-        <div className="space-y-1.5">
-          <Label>Fédération *</Label>
-          <Select
-            value={fedMember.federation_id}
-            onValueChange={(v) => onFedMember({ federation_id: v })}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="—" />
-            </SelectTrigger>
-            <SelectContent>
-              {federations.map((f) => (
-                <SelectItem key={f.id} value={f.id}>
-                  {f.acronym ?? ""} — {f.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {!presetFed && (
+          <div className="space-y-1.5">
+            <Label>Fédération *</Label>
+            <Select
+              value={fedMember.federation_id}
+              onValueChange={(v) => onFedMember({ federation_id: v })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="—" />
+              </SelectTrigger>
+              <SelectContent>
+                {federations.map((f) => (
+                  <SelectItem key={f.id} value={f.id}>
+                    {f.acronym ?? ""} — {f.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        {presetFed && (
+          <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
+            Fédération : <strong>{presetFed.acronym ?? ""} — {presetFed.name}</strong>
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label>Rôle</Label>
@@ -312,27 +340,37 @@ export function RoleProfileForm({
   }
 
   if (role === "club_member") {
+    const presetClub = presetClubId
+      ? clubs.find((c) => c.id === presetClubId)
+      : null;
     return (
       <section className="space-y-3 rounded-md border border-border p-3">
         <h3 className="text-sm font-semibold">🏟️ Membre de club</h3>
-        <div className="space-y-1.5">
-          <Label>Club *</Label>
-          <Select
-            value={clubMember.club_id}
-            onValueChange={(v) => onClubMember({ club_id: v })}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="—" />
-            </SelectTrigger>
-            <SelectContent>
-              {clubs.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {!presetClub && (
+          <div className="space-y-1.5">
+            <Label>Club *</Label>
+            <Select
+              value={clubMember.club_id}
+              onValueChange={(v) => onClubMember({ club_id: v })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="—" />
+              </SelectTrigger>
+              <SelectContent>
+                {clubs.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        {presetClub && (
+          <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
+            Club : <strong>{presetClub.name}</strong>
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label>Rôle</Label>
