@@ -74,6 +74,9 @@ export function RoleProfileForm({
     : clubs;
 
   if (role === "athlete") {
+    const presetClub = presetClubId
+      ? clubs.find((c) => c.id === presetClubId)
+      : null;
     if (athleteBlocked) {
       return (
         <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
@@ -124,24 +127,30 @@ export function RoleProfileForm({
             </Select>
           </div>
         </div>
-        <div className="space-y-1.5">
-          <Label>Club actuel</Label>
-          <Select
-            value={athlete.current_club_id}
-            onValueChange={(v) => onAthlete({ current_club_id: v })}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="—" />
-            </SelectTrigger>
-            <SelectContent>
-              {filteredClubsAthlete.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.name}
-                </SelectItem>
+        {presetClub ? (
+          <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
+            Club : <strong>{presetClub.name}</strong>
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            <Label>Club actuel</Label>
+            <Select
+              value={athlete.current_club_id}
+              onValueChange={(v) => onAthlete({ current_club_id: v })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="—" />
+              </SelectTrigger>
+              <SelectContent>
+                {filteredClubsAthlete.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
+        )}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label>Statut</Label>

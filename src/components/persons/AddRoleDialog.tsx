@@ -59,7 +59,7 @@ export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAd
 
   useEffect(() => {
     if (!open) return;
-    setAthlete({ ...defaultAthleteProfile });
+    setAthlete({ ...defaultAthleteProfile, current_club_id: presetClubId ?? "" });
     setCoach({ ...defaultCoachProfile, federation_id: presetFederationId ?? "" });
     setFedMember({ ...defaultFedMemberProfile, federation_id: presetFederationId ?? "" });
     setClubMember({ ...defaultClubMemberProfile, club_id: presetClubId ?? "" });
@@ -88,43 +88,64 @@ export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAd
     setSaving(true);
     try {
       if (role === "athlete") {
-        if (!person.birth_date || !person.gender)
-          throw new Error("Renseigner d'abord la date de naissance et le genre sur la fiche personne");
+        // Check if person already has an athlete profile
+        const { data: existingAp } = await supabase
+          .from("athlete_profiles")
+          .select("legacy_athlete_id")
+          .eq("person_id", personId)
+          .maybeSingle();
 
-        const cosl_id = await fetchNextCoslId();
-        const { data: legAth, error: lae } = await supabase
-          .from("athletes")
-          .insert({
-            cosl_id,
-            first_name: person.first_name, last_name: person.last_name,
-            birth_date: person.birth_date, gender: person.gender,
-            nationality: person.nationality ?? "LUX",
-            email: person.email ?? null, phone: person.phone ?? null,
-            is_active: true, status: athlete.status, level: athlete.level || null,
+        if (existingAp?.legacy_athlete_id) {
+          // Already an athlete — just update current_club_id
+          const { error: updErr } = await supabase
+            .from("athletes")
+            .update({ current_club_id: athlete.current_club_id || null })
+            .eq("id", existingAp.legacy_athlete_id);
+          if (updErr) throw updErr;
+          const { error: apErr } = await supabase
+            .from("athlete_profiles")
+            .update({ current_club_id: athlete.current_club_id || null })
+            .eq("person_id", personId);
+          if (apErr) throw apErr;
+        } else {
+          if (!person.birth_date || !person.gender)
+            throw new Error("Renseigner d'abord la date de naissance et le genre sur la fiche personne");
+
+          const cosl_id = await fetchNextCoslId();
+          const { data: legAth, error: lae } = await supabase
+            .from("athletes")
+            .insert({
+              cosl_id,
+              first_name: person.first_name, last_name: person.last_name,
+              birth_date: person.birth_date, gender: person.gender,
+              nationality: person.nationality ?? "LUX",
+              email: person.email ?? null, phone: person.phone ?? null,
+              is_active: true, status: athlete.status, level: athlete.level || null,
+              primary_sport_id: athlete.primary_sport_id || null,
+              primary_federation_id: athlete.primary_federation_id || null,
+              current_club_id: athlete.current_club_id || null,
+              license_number: athlete.license_number || null,
+              passport_number: athlete.passport_number || null,
+              passport_expiry: athlete.passport_expiry || null,
+              person_id: personId,
+            })
+            .select("id").single();
+          if (lae || !legAth) throw lae ?? new Error("Athlète legacy KO");
+
+          const { error: ape } = await supabase.from("athlete_profiles").insert({
+            person_id: personId, legacy_athlete_id: legAth.id, cosl_id,
             primary_sport_id: athlete.primary_sport_id || null,
             primary_federation_id: athlete.primary_federation_id || null,
             current_club_id: athlete.current_club_id || null,
+            status: athlete.status, level: athlete.level || null,
             license_number: athlete.license_number || null,
             passport_number: athlete.passport_number || null,
             passport_expiry: athlete.passport_expiry || null,
-            person_id: personId,
-          })
-          .select("id").single();
-        if (lae || !legAth) throw lae ?? new Error("Athlète legacy KO");
+          });
+          if (ape) throw ape;
 
-        const { error: ape } = await supabase.from("athlete_profiles").insert({
-          person_id: personId, legacy_athlete_id: legAth.id, cosl_id,
-          primary_sport_id: athlete.primary_sport_id || null,
-          primary_federation_id: athlete.primary_federation_id || null,
-          current_club_id: athlete.current_club_id || null,
-          status: athlete.status, level: athlete.level || null,
-          license_number: athlete.license_number || null,
-          passport_number: athlete.passport_number || null,
-          passport_expiry: athlete.passport_expiry || null,
-        });
-        if (ape) throw ape;
-
-        await supabase.from("athlete_kyc").insert({ athlete_id: legAth.id, global_status: "red" });
+          await supabase.from("athlete_kyc").insert({ athlete_id: legAth.id, global_status: "red" });
+        }
       } else if (role === "coach") {
         const { data: legCoach, error: lce } = await supabase
           .from("coaches")

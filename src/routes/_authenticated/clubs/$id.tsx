@@ -11,7 +11,6 @@ import {
   Phone,
   MapPin,
   Building2,
-  Plus,
   Pencil,
   Trash2,
   UserMinus,
@@ -65,10 +64,7 @@ import {
 } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/DataTableShell";
 import { AddressSearch } from "@/components/AddressSearch";
-import { PersonCombobox } from "@/components/PersonCombobox";
-import { PersonCreateDialog } from "@/components/persons/PersonCreateDialog";
 import { AddPersonButton } from "@/components/persons/AddPersonButton";
-import type { PersonRoleType } from "@/lib/persons";
 import { confirmAction } from "@/components/ConfirmDialog";
 import { EntityImageUpload } from "@/components/EntityImageUpload";
 
@@ -78,14 +74,6 @@ export const Route = createFileRoute("/_authenticated/clubs/$id")({
 
 type AthleteRow = Athlete & {
   primary_sport?: { name: string } | null;
-};
-
-type PersonLite = {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string | null;
-  photo_url: string | null;
 };
 
 function statusBadge(s: string) {
@@ -160,21 +148,11 @@ function ClubDetailPage() {
   const [sports, setSports] = useState<Sport[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Persons referential (shared by all 3 add dialogs)
-  const [personsPool, setPersonsPool] = useState<PersonLite[]>([]);
-
-  // Add athlete dialog
-  const [athleteOpen, setAthleteOpen] = useState(false);
+  // Athlete filter
   const [athletesActive, setAthletesActive] = useState<"active" | "inactive" | "all">("active");
   const [athleteSearch, setAthleteSearch] = useState("");
   const [memberSearch, setMemberSearch] = useState("");
   const [coachSearch, setCoachSearch] = useState("");
-  const [selectedAthleteId, setSelectedAthleteId] = useState("");
-  const [athleteSaving, setAthleteSaving] = useState(false);
-
-  // PersonCreateDialog (new person flow)
-  const [personCreateOpen, setPersonCreateOpen] = useState(false);
-  const [personCreateRoles, setPersonCreateRoles] = useState<PersonRoleType[]>([]);
 
   // Member dialog (edit only)
   const [memberOpen, setMemberOpen] = useState(false);
@@ -212,13 +190,6 @@ function ClubDetailPage() {
     setSports((sp.data ?? []) as Sport[]);
     setMembers((m.data ?? []) as ClubMember[]);
 
-    const { data: personsData } = await supabase
-      .from("persons")
-      .select("id, first_name, last_name, email, photo_url")
-      .eq("is_active", true)
-      .order("last_name");
-    setPersonsPool((personsData ?? []) as PersonLite[]);
-
     setLoading(false);
   };
 
@@ -250,56 +221,7 @@ function ClubDetailPage() {
     };
   }, [athletes, coaches, members]);
 
-  // ---------- Athlete CRUD ----------
-  const openAddAthlete = () => {
-    setSelectedAthleteId("");
-    setAthleteOpen(true);
-  };
-
-  const submitAddAthlete = async () => {
-    if (!selectedAthleteId) {
-      toast.error("Sélectionnez une personne");
-      return;
-    }
-    if (selectedAthleteId === "__new__") {
-      setAthleteOpen(false);
-      setPersonCreateRoles(["athlete"]);
-      setPersonCreateOpen(true);
-      return;
-    }
-    setAthleteSaving(true);
-    const { data: ap, error: ape } = await supabase
-      .from("athlete_profiles")
-      .select("legacy_athlete_id")
-      .eq("person_id", selectedAthleteId)
-      .maybeSingle();
-    if (ape) {
-      setAthleteSaving(false);
-      toast.error("Erreur", { description: friendlyError(ape) });
-      return;
-    }
-    if (ap?.legacy_athlete_id) {
-      const { error } = await supabase
-        .from("athletes")
-        .update({ current_club_id: id })
-        .eq("id", ap.legacy_athlete_id);
-      setAthleteSaving(false);
-      if (error) {
-        toast.error("Échec", { description: friendlyError(error) });
-        return;
-      }
-      toast.success("Athlète rattaché à ce club");
-      setAthleteOpen(false);
-      load();
-      return;
-    }
-    setAthleteSaving(false);
-    setAthleteOpen(false);
-    toast.info("Ajoute le rôle Athlète depuis la fiche de la personne");
-    navigate({ to: "/persons/$personId", params: { personId: selectedAthleteId } });
-  };
-
-
+  // ---------- Athlete actions ----------
 
   const removeAthlete = async (a: AthleteRow) => {
     const ok = await confirmAction({
@@ -417,14 +339,6 @@ function ClubDetailPage() {
 
   const president =
     members.find((m) => m.role === "president" && (m.is_active ?? true)) ?? null;
-
-  const athletePoolOptions = [
-    { id: "__new__", label: "+ Créer une nouvelle personne" },
-    ...personsPool.map((p) => ({
-      id: p.id,
-      label: `${p.first_name} ${p.last_name}${p.email ? ` — ${p.email}` : ""}`,
-    })),
-  ];
 
   return (
     <div className="space-y-6">
@@ -582,9 +496,12 @@ function ClubDetailPage() {
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={openAddAthlete} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
-              <Plus className="mr-2 h-4 w-4" /> Ajouter un adhérent
-            </Button>
+            <AddPersonButton
+              role="athlete"
+              label="Ajouter un adhérent"
+              presetClubId={id}
+              onChanged={() => load()}
+            />
           </div>
           {(() => {
             const q = athleteSearch.trim().toLowerCase();
@@ -878,60 +795,6 @@ function ClubDetailPage() {
         </TabsContent>
       </Tabs>
 
-      {/* ============ Add athlete dialog ============ */}
-      <Dialog open={athleteOpen} onOpenChange={setAthleteOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Ajouter un adhérent</DialogTitle>
-            <DialogDescription>
-              Rattacher un athlète existant ou en créer un nouveau pour le club {club.name}.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="space-y-1.5">
-              <Label>Athlète</Label>
-              <PersonCombobox
-                value={selectedAthleteId}
-                onChange={setSelectedAthleteId}
-                options={athletePoolOptions}
-                placeholder="Choisir un athlète ou en créer un…"
-                searchPlaceholder="Rechercher par nom ou COSL ID…"
-                emptyMessage="Aucun athlète disponible."
-              />
-              <p className="text-xs text-muted-foreground">
-                Sélectionnez un athlète existant ou « + Créer un nouvel adhérent ».
-              </p>
-            </div>
-
-            {selectedAthleteId === "__new__" && (
-              <p className="rounded-md border border-dashed border-border bg-muted p-3 text-xs text-muted-foreground">
-                Vous allez ouvrir le formulaire complet de création de personne avec le rôle <strong>Athlète</strong> pré-coché.
-              </p>
-            )}
-
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setAthleteOpen(false)}
-              disabled={athleteSaving}
-            >
-              Annuler
-            </Button>
-            <Button
-              type="button"
-              onClick={submitAddAthlete}
-              disabled={athleteSaving || !selectedAthleteId}
-              className="bg-primary hover:bg-[var(--cosl-red-dark)]"
-            >
-              {athleteSaving ? "Ajout…" : selectedAthleteId === "__new__" ? "Créer et ajouter" : "Ajouter"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-
       {/* ============ Member dialog (edit only) ============ */}
       <Dialog open={memberOpen} onOpenChange={setMemberOpen}>
         <DialogContent className="sm:max-w-lg">
@@ -1145,14 +1008,6 @@ function ClubDetailPage() {
         </DialogContent>
       </Dialog>
 
-      <PersonCreateDialog
-        open={personCreateOpen}
-        onOpenChange={setPersonCreateOpen}
-        initialRoles={personCreateRoles}
-        onCreated={() => {
-          load();
-        }}
-      />
     </div>
   );
 }
