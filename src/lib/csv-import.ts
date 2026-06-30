@@ -17,6 +17,8 @@ export type CsvColumn = {
   default?: unknown;
   /** Transform the raw CSV string value before insertion */
   transform?: (raw: string) => unknown;
+  /** If true, the column is used for link resolution only and NOT inserted into the payload */
+  linkOnly?: boolean;
 };
 
 export type DuplicateCheck = {
@@ -246,7 +248,7 @@ export async function runImport(
             const gen = await config.generateColumn(col.key, generatedValues);
             if (gen) {
               generatedValues.push(gen);
-              payload[col.key] = gen;
+              if (!col.linkOnly) payload[col.key] = gen;
               continue;
             }
           }
@@ -254,14 +256,16 @@ export async function runImport(
           errorReason = `Champ requis manquant : ${col.label}`;
           break;
         }
-        if (col.default !== undefined) {
+        if (col.default !== undefined && !col.linkOnly) {
           payload[col.key] = col.default;
         }
         continue;
       }
 
-      // Transform
-      payload[col.key] = col.transform ? col.transform(raw) : raw;
+      // Transform and add to payload (unless linkOnly)
+      if (!col.linkOnly) {
+        payload[col.key] = col.transform ? col.transform(raw) : raw;
+      }
     }
 
     if (hasError) {

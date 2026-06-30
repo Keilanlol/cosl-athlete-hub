@@ -27,6 +27,9 @@ export const athletesImportConfig: CsvImportConfig = {
     { key: "license_number", label: "LIC-001" },
     { key: "passport_number", label: "AB1234567" },
     { key: "passport_expiry", label: "2030-01-01" },
+    { key: "primary_sport", label: "Athlétisme", linkOnly: true },
+    { key: "primary_federation", label: "FLA", linkOnly: true },
+    { key: "current_club", label: "FC Luxembourg", linkOnly: true },
   ],
   duplicateCheck: {
     keys: ["cosl_id", "email"],
@@ -117,8 +120,8 @@ export const clubsImportConfig: CsvImportConfig = {
   table: "clubs",
   columns: [
     { key: "name", label: "FC Luxembourg", required: true },
-    { key: "federation_acronym", label: "FLA", required: true, aliases: ["federation"] },
-    { key: "federation_name", label: "Fédération Luxembourgeoise d'Athlétisme", required: true },
+    { key: "federation_acronym", label: "FLA", required: true, aliases: ["federation"], linkOnly: true },
+    { key: "federation_name", label: "Fédération Luxembourgeoise d'Athlétisme", required: true, linkOnly: true },
     { key: "city", label: "Luxembourg" },
     { key: "street", label: "12 Rue de la Gare" },
     { key: "postcode", label: "L-1234" },
@@ -180,6 +183,7 @@ export const sponsorsImportConfig: CsvImportConfig = {
     { key: "contact_email", label: "jean@sponsor.lu" },
     { key: "contact_phone", label: "+352 691 000" },
     { key: "notes", label: "Notes diverses" },
+    { key: "rank", label: "Gold", linkOnly: true },
   ],
   duplicateCheck: {
     keys: ["name"],
@@ -264,6 +268,8 @@ export const federationMembersImportConfig: CsvImportConfig = {
   columns: [
     { key: "first_name", label: "Jean", required: true },
     { key: "last_name", label: "Dupont", required: true },
+    { key: "federation_acronym", label: "FLA", required: true, aliases: ["federation"], linkOnly: true },
+    { key: "federation_name", label: "Fédération Luxembourgeoise d'Athlétisme", required: true, linkOnly: true },
     { key: "role", label: "president", required: true, aliases: ["fonction"] },
     { key: "email", label: "jean.dupont@fla.lu" },
     { key: "phone", label: "+352 691 000 000" },
@@ -306,6 +312,7 @@ export const clubMembersImportConfig: CsvImportConfig = {
   columns: [
     { key: "first_name", label: "Jean", required: true },
     { key: "last_name", label: "Dupont", required: true },
+    { key: "club_name", label: "FC Luxembourg", required: true, aliases: ["club"], linkOnly: true },
     { key: "role", label: "president", required: true, aliases: ["fonction"] },
     { key: "email", label: "jean.dupont@club.lu" },
     { key: "phone", label: "+352 691 000 000" },
@@ -340,6 +347,9 @@ export const coachesImportConfig: CsvImportConfig = {
   columns: [
     { key: "first_name", label: "Jean", required: true },
     { key: "last_name", label: "Dupont", required: true },
+    { key: "federation_acronym", label: "FLA", required: true, aliases: ["federation"], linkOnly: true },
+    { key: "federation_name", label: "Fédération Luxembourgeoise d'Athlétisme", required: true, linkOnly: true },
+    { key: "club_name", label: "FC Luxembourg", required: true, aliases: ["club"], linkOnly: true },
     { key: "role", label: "coach", required: true, aliases: ["fonction"] },
     { key: "email", label: "jean.dupont@email.lu" },
     { key: "phone", label: "+352 691 000 000" },
