@@ -16,6 +16,8 @@ import {
   type ClubMemberProfileFields,
 } from "@/lib/persons";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -23,6 +25,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { RoleProfileForm } from "@/components/persons/RoleProfileForm";
 
 type PersonLite = {
@@ -57,12 +66,18 @@ export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAd
   const [fedMember, setFedMember] = useState<FedMemberProfileFields>({ ...defaultFedMemberProfile });
   const [clubMember, setClubMember] = useState<ClubMemberProfileFields>({ ...defaultClubMemberProfile });
 
+  // Local editable copies of person fields needed for athlete creation
+  const [birthDate, setBirthDate] = useState(person.birth_date ?? "");
+  const [gender, setGender] = useState(person.gender ?? "");
+
   useEffect(() => {
     if (!open) return;
     setAthlete({ ...defaultAthleteProfile, current_club_id: presetClubId ?? "" });
     setCoach({ ...defaultCoachProfile, federation_id: presetFederationId ?? "" });
     setFedMember({ ...defaultFedMemberProfile, federation_id: presetFederationId ?? "" });
     setClubMember({ ...defaultClubMemberProfile, club_id: presetClubId ?? "" });
+    setBirthDate(person.birth_date ?? "");
+    setGender(person.gender ?? "");
 
     supabase.from("sports").select("id, name").order("name")
       .then(({ data }) => setSports((data ?? []) as typeof sports));
@@ -81,7 +96,9 @@ export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAd
   const patchClubMember = (patch: Partial<ClubMemberProfileFields>) =>
     setClubMember((c) => ({ ...c, ...patch }));
 
-  const athleteBlocked = role === "athlete" && (!person.birth_date || !person.gender);
+  const missingBirthDate = role === "athlete" && !birthDate;
+  const missingGender = role === "athlete" && !gender;
+  const athleteBlocked = missingBirthDate || missingGender;
 
   const handleSubmit = async () => {
     if (saving) return;
@@ -108,8 +125,22 @@ export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAd
             .eq("person_id", personId);
           if (apErr) throw apErr;
         } else {
-          if (!person.birth_date || !person.gender)
-            throw new Error("Renseigner d'abord la date de naissance et le genre sur la fiche personne");
+          if (!birthDate || !gender)
+            throw new Error("Date de naissance et genre obligatoires pour les athlètes");
+
+          // If person was missing birth_date or gender, update the person record first
+          if (!person.birth_date || !person.gender) {
+            const updatePayload: Record<string, string> = {};
+            if (!person.birth_date && birthDate) updatePayload.birth_date = birthDate;
+            if (!person.gender && gender) updatePayload.gender = gender;
+            if (Object.keys(updatePayload).length > 0) {
+              const { error: pe } = await supabase
+                .from("persons")
+                .update(updatePayload)
+                .eq("id", personId);
+              if (pe) throw pe;
+            }
+          }
 
           const cosl_id = await fetchNextCoslId();
           const { data: legAth, error: lae } = await supabase
@@ -117,7 +148,7 @@ export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAd
             .insert({
               cosl_id,
               first_name: person.first_name, last_name: person.last_name,
-              birth_date: person.birth_date, gender: person.gender,
+              birth_date: birthDate, gender: gender,
               nationality: person.nationality ?? "LUX",
               email: person.email ?? null, phone: person.phone ?? null,
               is_active: true, status: athlete.status, level: athlete.level || null,
@@ -236,6 +267,47 @@ export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAd
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          {/* Inline missing person fields for athlete creation */}
+          {role === "athlete" && (missingBirthDate || missingGender) && (
+            <div className="space-y-3 rounded-md border-2 border-red-300 bg-red-50 p-3">
+              <p className="text-sm font-medium text-red-800">
+                Champs obligatoires pour les athlètes
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                {missingBirthDate && (
+                  <div className="space-y-1.5">
+                    <Label className="text-red-700">
+                      Date de naissance obligatoire pour les athlètes
+                    </Label>
+                    <Input
+                      type="date"
+                      value={birthDate}
+                      onChange={(e) => setBirthDate(e.target.value)}
+                      className="border-red-400 focus-visible:outline-red-500"
+                    />
+                  </div>
+                )}
+                {missingGender && (
+                  <div className="space-y-1.5">
+                    <Label className="text-red-700">
+                      Genre obligatoire pour les athlètes
+                    </Label>
+                    <Select value={gender} onValueChange={setGender}>
+                      <SelectTrigger className="border-red-400 focus-visible:outline-red-500">
+                        <SelectValue placeholder="—" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="male">Homme</SelectItem>
+                        <SelectItem value="female">Femme</SelectItem>
+                        <SelectItem value="mixed">Mixte</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           <RoleProfileForm
             role={role}
             sports={sports}
@@ -249,7 +321,6 @@ export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAd
             onCoach={patchCoach}
             onFedMember={patchFedMember}
             onClubMember={patchClubMember}
-            athleteBlocked={!!athleteBlocked}
             presetFederationId={presetFederationId}
             presetClubId={presetClubId}
           />
@@ -257,7 +328,12 @@ export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAd
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Annuler</Button>
-          <Button type="button" onClick={handleSubmit} disabled={saving || athleteBlocked} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
+          <Button
+            type="button"
+            onClick={handleSubmit}
+            disabled={saving || (role === "athlete" && athleteBlocked)}
+            className="bg-primary hover:bg-[var(--cosl-red-dark)]"
+          >
             {saving ? "Ajout…" : "Ajouter le rôle"}
           </Button>
         </DialogFooter>

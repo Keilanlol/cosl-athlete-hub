@@ -38,7 +38,6 @@ type Props = {
   onCoach: (patch: Partial<CoachProfileFields>) => void;
   onFedMember: (patch: Partial<FedMemberProfileFields>) => void;
   onClubMember: (patch: Partial<ClubMemberProfileFields>) => void;
-  athleteBlocked?: boolean;
   /** If set, the federation selector is hidden for fed member / coach sections. */
   presetFederationId?: string;
   /** If set, the club selector is hidden for club member sections. */
@@ -62,7 +61,6 @@ export function RoleProfileForm({
   onCoach,
   onFedMember,
   onClubMember,
-  athleteBlocked,
   presetFederationId,
   presetClubId,
 }: Props) {
@@ -77,13 +75,6 @@ export function RoleProfileForm({
     const presetClub = presetClubId
       ? clubs.find((c) => c.id === presetClubId)
       : null;
-    if (athleteBlocked) {
-      return (
-        <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-          Renseignez d'abord la date de naissance et le genre sur la fiche personne.
-        </p>
-      );
-    }
     return (
       <section className="space-y-3 rounded-md border border-border p-3">
         <h3 className="text-sm font-semibold">🏃 Profil Athlète</h3>
