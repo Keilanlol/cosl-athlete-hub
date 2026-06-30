@@ -1,5 +1,7 @@
 // Types and helpers for the PERSONNE_PHYSIQUE superclass.
 
+import { supabase } from "@/lib/supabase";
+
 export const PERSON_ROLE_TYPES = [
   "athlete",
   "coach",
@@ -130,3 +132,110 @@ export type PersonListItem = Person & {
 
 export const personFullName = (p: Pick<Person, "first_name" | "last_name">) =>
   `${p.first_name} ${p.last_name}`.trim();
+
+// ============================================================
+// Shared form types & defaults (used by Create, Edit, AddRole)
+// ============================================================
+
+export type PersonGeneralFields = {
+  first_name: string;
+  last_name: string;
+  birth_date: string;
+  gender: string;
+  nationality: string;
+  email: string;
+  phone: string;
+  street: string;
+  postcode: string;
+  city: string;
+  country: string;
+};
+
+export type AthleteProfileFields = {
+  primary_sport_id: string;
+  primary_federation_id: string;
+  current_club_id: string;
+  status: string;
+  level: string;
+  license_number: string;
+  passport_number: string;
+  passport_expiry: string;
+};
+
+export type CoachProfileFields = {
+  role: string;
+  federation_id: string;
+  club_id: string;
+};
+
+export type FedMemberProfileFields = {
+  federation_id: string;
+  role: string;
+  start_date: string;
+};
+
+export type ClubMemberProfileFields = {
+  club_id: string;
+  role: string;
+  start_date: string;
+};
+
+export const defaultPersonGeneral: PersonGeneralFields = {
+  first_name: "",
+  last_name: "",
+  birth_date: "",
+  gender: "",
+  nationality: "LUX",
+  email: "",
+  phone: "",
+  street: "",
+  postcode: "",
+  city: "",
+  country: "LU",
+};
+
+export const defaultAthleteProfile: AthleteProfileFields = {
+  primary_sport_id: "",
+  primary_federation_id: "",
+  current_club_id: "",
+  status: "active",
+  level: "",
+  license_number: "",
+  passport_number: "",
+  passport_expiry: "",
+};
+
+export const defaultCoachProfile: CoachProfileFields = {
+  role: "coach",
+  federation_id: "",
+  club_id: "",
+};
+
+export const defaultFedMemberProfile: FedMemberProfileFields = {
+  federation_id: "",
+  role: "president",
+  start_date: "",
+};
+
+export const defaultClubMemberProfile: ClubMemberProfileFields = {
+  club_id: "",
+  role: "president",
+  start_date: "",
+};
+
+/**
+ * Fetches the next sequential COSL ID from the database.
+ * Shared by PersonCreateDialog and AddRoleDialog.
+ */
+export async function fetchNextCoslId(): Promise<string> {
+  const year = new Date().getFullYear();
+  const { data } = await supabase
+    .from("athletes")
+    .select("cosl_id")
+    .ilike("cosl_id", `COSL-${year}-%`)
+    .order("cosl_id", { ascending: false })
+    .limit(1);
+  const last = data?.[0]?.cosl_id as string | undefined;
+  const seq = last ? parseInt(last.split("-")[2] ?? "0", 10) + 1 : 1;
+  return `COSL-${year}-${String(seq).padStart(4, "0")}`;
+}

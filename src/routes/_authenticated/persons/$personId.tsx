@@ -5,13 +5,11 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { friendlyError } from "@/lib/error-messages";
 import { confirmAction } from "@/components/ConfirmDialog";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import {
   PERSON_ROLE_TYPES,
   ROLE_LABELS,
   personFullName,
+  defaultPersonGeneral,
   type AthleteProfile,
   type ClubMemberProfile,
   type CoachProfile,
@@ -19,12 +17,12 @@ import {
   type Person,
   type PersonRole,
   type PersonRoleType,
+  type PersonGeneralFields,
 } from "@/lib/persons";
 import { PersonRoleBadge } from "@/components/persons/PersonRoleBadge";
 import { AddRoleDialog } from "@/components/persons/AddRoleDialog";
+import { PersonGeneralForm } from "@/components/persons/PersonGeneralForm";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -34,14 +32,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { AddressSearch } from "@/components/AddressSearch";
 import { EntityImageUpload } from "@/components/EntityImageUpload";
 import { syncPhotoFromPerson } from "@/lib/person-photo-sync";
 
@@ -74,41 +64,8 @@ function PersonDetailPage() {
   const [rolesOpen, setRolesOpen] = useState(false);
   const [addRoleTarget, setAddRoleTarget] = useState<PersonRoleType | null>(null);
   const [saving, setSaving] = useState(false);
-
-  const personEditSchema = z.object({
-    first_name: z.string().trim().min(1, "Prénom requis").max(80),
-    last_name: z.string().trim().min(1, "Nom requis").max(80),
-    birth_date: z.string().optional().or(z.literal("")),
-    gender: z.string().optional().or(z.literal("")),
-    nationality: z.string().optional().or(z.literal("")),
-    email: z.string().trim().email("Email invalide").optional().or(z.literal("")),
-    phone: z.string().optional().or(z.literal("")),
-    street: z.string().optional().or(z.literal("")),
-    postcode: z.string().optional().or(z.literal("")),
-    city: z.string().optional().or(z.literal("")),
-    country: z.string().optional().or(z.literal("")),
-    is_active: z.boolean(),
-  });
-
-  type EditValues = z.infer<typeof personEditSchema>;
-
-  const { register, handleSubmit, reset, watch, setValue, control, formState: { errors } } = useForm<EditValues>({
-    resolver: zodResolver(personEditSchema),
-    defaultValues: {
-      first_name: "",
-      last_name: "",
-      email: "",
-      phone: "",
-      birth_date: "",
-      gender: "",
-      nationality: "",
-      street: "",
-      postcode: "",
-      city: "",
-      country: "",
-      is_active: true,
-    },
-  });
+  const [editForm, setEditForm] = useState<PersonGeneralFields>({ ...defaultPersonGeneral });
+  const [editIsActive, setEditIsActive] = useState(true);
 
   const load = async () => {
     const [pRes, rRes, apRes, cpRes, fmRes, cmRes] = await Promise.all([
@@ -185,7 +142,6 @@ function PersonDetailPage() {
       clubs: clubsMap,
       federations: fedsMap,
     });
-
   };
 
   useEffect(() => {
@@ -204,7 +160,7 @@ function PersonDetailPage() {
   const openEdit = () => {
     if (!bundle) return;
     const p = bundle.person;
-    reset({
+    setEditForm({
       first_name: p.first_name,
       last_name: p.last_name,
       email: p.email ?? "",
@@ -216,28 +172,32 @@ function PersonDetailPage() {
       postcode: p.postcode ?? "",
       city: p.city ?? "",
       country: p.country ?? "",
-      is_active: p.is_active,
     });
+    setEditIsActive(p.is_active);
     setEditOpen(true);
   };
 
-  const saveEdit = async (values: EditValues) => {
+  const patchEdit = (patch: Partial<PersonGeneralFields>) =>
+    setEditForm((f) => ({ ...f, ...patch }));
+
+  const saveEdit = async () => {
+    if (saving) return;
     setSaving(true);
     const { error } = await supabase
       .from("persons")
       .update({
-        first_name: values.first_name.trim(),
-        last_name: values.last_name.trim(),
-        email: values.email?.trim() || null,
-        phone: values.phone?.trim() || null,
-        birth_date: values.birth_date || null,
-        gender: values.gender || null,
-        nationality: values.nationality?.trim() || null,
-        street: values.street?.trim() || null,
-        postcode: values.postcode?.trim() || null,
-        city: values.city?.trim() || null,
-        country: values.country?.trim() || null,
-        is_active: values.is_active,
+        first_name: editForm.first_name.trim(),
+        last_name: editForm.last_name.trim(),
+        email: editForm.email?.trim() || null,
+        phone: editForm.phone?.trim() || null,
+        birth_date: editForm.birth_date || null,
+        gender: editForm.gender || null,
+        nationality: editForm.nationality?.trim() || null,
+        street: editForm.street?.trim() || null,
+        postcode: editForm.postcode?.trim() || null,
+        city: editForm.city?.trim() || null,
+        country: editForm.country?.trim() || null,
+        is_active: editIsActive,
       })
       .eq("id", personId);
     setSaving(false);
@@ -646,112 +606,30 @@ function PersonDetailPage() {
       {/* Edit dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-          <form onSubmit={handleSubmit(saveEdit)}>
-            <DialogHeader>
-              <DialogTitle>Modifier la personne</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="efn">Prénom *</Label>
-                  <Input id="efn" {...register("first_name")} />
-                  {errors.first_name && (
-                    <p className="text-xs text-red-600">{errors.first_name.message}</p>
-                  )}
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="eln">Nom *</Label>
-                  <Input id="eln" {...register("last_name")} />
-                  {errors.last_name && (
-                    <p className="text-xs text-red-600">{errors.last_name.message}</p>
-                  )}
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="ebd">Date de naissance</Label>
-                  <Input id="ebd" type="date" {...register("birth_date")} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="egender">Genre</Label>
-                  <Select
-                    value={watch("gender") ?? ""}
-                    onValueChange={(v) => setValue("gender", v)}
-                  >
-                    <SelectTrigger id="egender">
-                      <SelectValue placeholder="—" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="male">Homme</SelectItem>
-                      <SelectItem value="female">Femme</SelectItem>
-                      <SelectItem value="mixed">Mixte</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="eem">Email</Label>
-                  <Input id="eem" type="email" {...register("email")} />
-                  {errors.email && (
-                    <p className="text-xs text-red-600">{errors.email.message}</p>
-                  )}
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="eph">Téléphone</Label>
-                  <Input id="eph" {...register("phone")} />
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="enat">Nationalité</Label>
-                <Input id="enat" {...register("nationality")} placeholder="LUX" />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="estreet">Adresse (numéro + rue)</Label>
-                <AddressSearch
-                  id="estreet"
-                  value={watch("street") ?? ""}
-                  onChange={(v) => setValue("street", v)}
-                  onSelect={(r) => {
-                    setValue("street", r.street || r.display_name);
-                    setValue("postcode", r.postcode ?? "");
-                    setValue("city", r.city ?? "");
-                    setValue("country", r.country_code || r.country || "");
-                  }}
-                  placeholder="Rechercher une adresse…"
-                />
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="epc">Code postal</Label>
-                  <Input id="epc" {...register("postcode")} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="ecity">Ville</Label>
-                  <Input id="ecity" {...register("city")} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="ectry">Pays</Label>
-                  <Input id="ectry" {...register("country")} placeholder="LU" />
-                </div>
-              </div>
-              <label className="flex items-center gap-2 text-sm">
-                <Checkbox
-                  checked={!!watch("is_active")}
-                  onCheckedChange={(v) => setValue("is_active", !!v)}
-                />
-                Actif
-              </label>
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setEditOpen(false)} disabled={saving}>
-                Annuler
-              </Button>
-              <Button type="submit" disabled={saving} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
-                {saving ? "Enregistrement…" : "Enregistrer"}
-              </Button>
-            </div>
-          </form>
+          <DialogHeader>
+            <DialogTitle>Modifier la personne</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <PersonGeneralForm
+              values={editForm}
+              onChange={patchEdit}
+            />
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={editIsActive}
+                onCheckedChange={(v) => setEditIsActive(!!v)}
+              />
+              Actif
+            </label>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => setEditOpen(false)} disabled={saving}>
+              Annuler
+            </Button>
+            <Button type="button" onClick={saveEdit} disabled={saving} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
+              {saving ? "Enregistrement…" : "Enregistrer"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -873,4 +751,3 @@ function RoleListItem({
     </li>
   );
 }
-

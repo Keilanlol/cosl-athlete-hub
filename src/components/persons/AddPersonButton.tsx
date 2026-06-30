@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { friendlyError } from "@/lib/error-messages";
@@ -7,12 +7,10 @@ import type { PersonRoleType } from "@/lib/persons";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { PersonCombobox } from "@/components/PersonCombobox";
 import { PersonCreateDialog } from "@/components/persons/PersonCreateDialog";
 import { AddRoleDialog } from "@/components/persons/AddRoleDialog";
@@ -36,7 +34,7 @@ type Props = {
 };
 
 export function AddPersonButton({ role, label, title, onChanged }: Props) {
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const [open, setOpen] = useState(false);
   const [persons, setPersons] = useState<PersonLite[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
@@ -57,8 +55,8 @@ export function AddPersonButton({ role, label, title, onChanged }: Props) {
   };
 
   useEffect(() => {
-    if (pickerOpen) loadPersons();
-  }, [pickerOpen]);
+    if (open) loadPersons();
+  }, [open]);
 
   const options = useMemo(
     () =>
@@ -74,36 +72,36 @@ export function AddPersonButton({ role, label, title, onChanged }: Props) {
     const p = persons.find((x) => x.id === id);
     if (!p) return;
     setActivePerson(p);
-    setPickerOpen(false);
+    setOpen(false);
     setAddRoleOpen(true);
   };
 
   const handleCreateNew = () => {
-    setPickerOpen(false);
+    setOpen(false);
     setCreateOpen(true);
   };
 
   return (
     <>
-      <Button
-        onClick={() => setPickerOpen(true)}
-        className="bg-primary hover:bg-[var(--cosl-red-dark)]"
-      >
-        <Plus className="mr-2 h-4 w-4" /> {label}
-      </Button>
-
-      <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{title ?? label}</DialogTitle>
-            <DialogDescription>
-              Sélectionnez une personne existante ou créez-en une nouvelle.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2 py-2">
-            <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-              Personne
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button className="bg-primary hover:bg-[var(--cosl-red-dark)]">
+            <Plus className="mr-2 h-4 w-4" /> {label}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          className="w-[--radix-popover-trigger-width] min-w-[min(360px,calc(100vw-2rem))] p-3"
+          align="start"
+          sideOffset={4}
+        >
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground">
+              <UserPlus className="h-3.5 w-3.5" />
+              {title ?? label}
             </Label>
+            <p className="text-xs text-muted-foreground">
+              Sélectionnez une personne existante ou créez-en une nouvelle.
+            </p>
             <PersonCombobox
               value={selectedId}
               onChange={handlePick}
@@ -114,8 +112,8 @@ export function AddPersonButton({ role, label, title, onChanged }: Props) {
               createNewLabel="Créer une nouvelle personne"
             />
           </div>
-        </DialogContent>
-      </Dialog>
+        </PopoverContent>
+      </Popover>
 
       <PersonCreateDialog
         open={createOpen}

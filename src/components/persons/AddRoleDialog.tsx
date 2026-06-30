@@ -2,11 +2,20 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { friendlyError } from "@/lib/error-messages";
-import { ROLE_LABELS, type PersonRoleType } from "@/lib/persons";
-import { COACH_ROLES, ATHLETE_STATUSES } from "@/lib/types";
+import {
+  ROLE_LABELS,
+  fetchNextCoslId,
+  defaultAthleteProfile,
+  defaultCoachProfile,
+  defaultFedMemberProfile,
+  defaultClubMemberProfile,
+  type PersonRoleType,
+  type AthleteProfileFields,
+  type CoachProfileFields,
+  type FedMemberProfileFields,
+  type ClubMemberProfileFields,
+} from "@/lib/persons";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -14,13 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { RoleProfileForm } from "@/components/persons/RoleProfileForm";
 
 type PersonLite = {
   first_name: string;
@@ -41,59 +44,23 @@ type Props = {
   onAdded: () => void;
 };
 
-const FED_ROLES = [
-  { value: "president", label: "Président" },
-  { value: "vice_president", label: "Vice-président" },
-  { value: "secretary_general", label: "Secrétaire général" },
-  { value: "treasurer", label: "Trésorier" },
-  { value: "board_member", label: "Membre du bureau" },
-  { value: "delegate", label: "Délégué" },
-  { value: "other", label: "Autre" },
-];
-
-const CLUB_ROLES = [
-  { value: "president", label: "Président" },
-  { value: "vice_president", label: "Vice-président" },
-  { value: "secretary", label: "Secrétaire" },
-  { value: "treasurer", label: "Trésorier" },
-  { value: "board_member", label: "Membre du bureau" },
-  { value: "head_coach", label: "Entraîneur principal" },
-  { value: "other", label: "Autre" },
-];
-
-async function nextCoslId(): Promise<string> {
-  const year = new Date().getFullYear();
-  const { data } = await supabase
-    .from("athletes")
-    .select("cosl_id")
-    .ilike("cosl_id", `COSL-${year}-%`)
-    .order("cosl_id", { ascending: false })
-    .limit(1);
-  const last = data?.[0]?.cosl_id as string | undefined;
-  const seq = last ? parseInt(last.split("-")[2] ?? "0", 10) + 1 : 1;
-  return `COSL-${year}-${String(seq).padStart(4, "0")}`;
-}
-
 export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAdded }: Props) {
   const [sports, setSports] = useState<{ id: string; name: string }[]>([]);
   const [federations, setFederations] = useState<{ id: string; name: string; acronym: string | null }[]>([]);
   const [clubs, setClubs] = useState<{ id: string; name: string; federation_id: string | null }[]>([]);
   const [saving, setSaving] = useState(false);
 
-  const [athlete, setAthlete] = useState({
-    primary_sport_id: "", primary_federation_id: "", current_club_id: "",
-    status: "active", level: "", license_number: "", passport_number: "", passport_expiry: "",
-  });
-  const [coach, setCoach] = useState({ role: "coach", federation_id: "", club_id: "" });
-  const [fedMember, setFedMember] = useState({ federation_id: "", role: "president", start_date: "" });
-  const [clubMember, setClubMember] = useState({ club_id: "", role: "president", start_date: "" });
+  const [athlete, setAthlete] = useState<AthleteProfileFields>({ ...defaultAthleteProfile });
+  const [coach, setCoach] = useState<CoachProfileFields>({ ...defaultCoachProfile });
+  const [fedMember, setFedMember] = useState<FedMemberProfileFields>({ ...defaultFedMemberProfile });
+  const [clubMember, setClubMember] = useState<ClubMemberProfileFields>({ ...defaultClubMemberProfile });
 
   useEffect(() => {
     if (!open) return;
-    setAthlete({ primary_sport_id: "", primary_federation_id: "", current_club_id: "", status: "active", level: "", license_number: "", passport_number: "", passport_expiry: "" });
-    setCoach({ role: "coach", federation_id: "", club_id: "" });
-    setFedMember({ federation_id: "", role: "president", start_date: "" });
-    setClubMember({ club_id: "", role: "president", start_date: "" });
+    setAthlete({ ...defaultAthleteProfile });
+    setCoach({ ...defaultCoachProfile });
+    setFedMember({ ...defaultFedMemberProfile });
+    setClubMember({ ...defaultClubMemberProfile });
 
     supabase.from("sports").select("id, name").order("name")
       .then(({ data }) => setSports((data ?? []) as typeof sports));
@@ -103,10 +70,14 @@ export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAd
       .then(({ data }) => setClubs((data ?? []) as typeof clubs));
   }, [open]);
 
-  const filteredClubsAthlete = athlete.primary_federation_id
-    ? clubs.filter((c) => c.federation_id === athlete.primary_federation_id) : clubs;
-  const filteredClubsCoach = coach.federation_id
-    ? clubs.filter((c) => c.federation_id === coach.federation_id) : clubs;
+  const patchAthlete = (patch: Partial<AthleteProfileFields>) =>
+    setAthlete((a) => ({ ...a, ...patch }));
+  const patchCoach = (patch: Partial<CoachProfileFields>) =>
+    setCoach((c) => ({ ...c, ...patch }));
+  const patchFedMember = (patch: Partial<FedMemberProfileFields>) =>
+    setFedMember((f) => ({ ...f, ...patch }));
+  const patchClubMember = (patch: Partial<ClubMemberProfileFields>) =>
+    setClubMember((c) => ({ ...c, ...patch }));
 
   const athleteBlocked = role === "athlete" && (!person.birth_date || !person.gender);
 
@@ -118,7 +89,7 @@ export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAd
         if (!person.birth_date || !person.gender)
           throw new Error("Renseigner d'abord la date de naissance et le genre sur la fiche personne");
 
-        const cosl_id = await nextCoslId();
+        const cosl_id = await fetchNextCoslId();
         const { data: legAth, error: lae } = await supabase
           .from("athletes")
           .insert({
@@ -242,133 +213,21 @@ export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAd
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          {role === "athlete" && athleteBlocked && (
-            <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-              Renseignez d'abord la date de naissance et le genre sur la fiche personne.
-            </p>
-          )}
-
-          {role === "athlete" && !athleteBlocked && (
-            <section className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Sport principal</Label>
-                  <Select value={athlete.primary_sport_id} onValueChange={(v) => setAthlete({ ...athlete, primary_sport_id: v })}>
-                    <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                    <SelectContent>{sports.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Fédération</Label>
-                  <Select value={athlete.primary_federation_id} onValueChange={(v) => setAthlete({ ...athlete, primary_federation_id: v, current_club_id: "" })}>
-                    <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                    <SelectContent>{federations.map((f) => <SelectItem key={f.id} value={f.id}>{f.acronym ?? ""} — {f.name}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Club actuel</Label>
-                <Select value={athlete.current_club_id} onValueChange={(v) => setAthlete({ ...athlete, current_club_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                  <SelectContent>{filteredClubsAthlete.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Statut</Label>
-                  <Select value={athlete.status} onValueChange={(v) => setAthlete({ ...athlete, status: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{ATHLETE_STATUSES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Niveau</Label>
-                  <Input value={athlete.level} onChange={(e) => setAthlete({ ...athlete, level: e.target.value })} />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5"><Label>N° licence</Label><Input value={athlete.license_number} onChange={(e) => setAthlete({ ...athlete, license_number: e.target.value })} /></div>
-                <div className="space-y-1.5"><Label>Passeport n°</Label><Input value={athlete.passport_number} onChange={(e) => setAthlete({ ...athlete, passport_number: e.target.value })} /></div>
-              </div>
-              <div className="space-y-1.5"><Label>Expiration passeport</Label><Input type="date" value={athlete.passport_expiry} onChange={(e) => setAthlete({ ...athlete, passport_expiry: e.target.value })} /></div>
-            </section>
-          )}
-
-          {role === "coach" && (
-            <section className="space-y-3">
-              <div className="space-y-1.5">
-                <Label>Fonction</Label>
-                <Select value={coach.role} onValueChange={(v) => setCoach({ ...coach, role: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{COACH_ROLES.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Fédération</Label>
-                  <Select value={coach.federation_id} onValueChange={(v) => setCoach({ ...coach, federation_id: v, club_id: "" })}>
-                    <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                    <SelectContent>{federations.map((f) => <SelectItem key={f.id} value={f.id}>{f.acronym ?? ""} — {f.name}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Club</Label>
-                  <Select value={coach.club_id} onValueChange={(v) => setCoach({ ...coach, club_id: v })}>
-                    <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                    <SelectContent>{filteredClubsCoach.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </section>
-          )}
-
-          {role === "federation_member" && (
-            <section className="space-y-3">
-              <div className="space-y-1.5">
-                <Label>Fédération *</Label>
-                <Select value={fedMember.federation_id} onValueChange={(v) => setFedMember({ ...fedMember, federation_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                  <SelectContent>{federations.map((f) => <SelectItem key={f.id} value={f.id}>{f.acronym ?? ""} — {f.name}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Rôle</Label>
-                  <Select value={fedMember.role} onValueChange={(v) => setFedMember({ ...fedMember, role: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{FED_ROLES.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5"><Label>Depuis</Label><Input type="date" value={fedMember.start_date} onChange={(e) => setFedMember({ ...fedMember, start_date: e.target.value })} /></div>
-              </div>
-            </section>
-          )}
-
-          {role === "club_member" && (
-            <section className="space-y-3">
-              <div className="space-y-1.5">
-                <Label>Club *</Label>
-                <Select value={clubMember.club_id} onValueChange={(v) => setClubMember({ ...clubMember, club_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                  <SelectContent>{clubs.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Rôle</Label>
-                  <Select value={clubMember.role} onValueChange={(v) => setClubMember({ ...clubMember, role: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{CLUB_ROLES.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5"><Label>Depuis</Label><Input type="date" value={clubMember.start_date} onChange={(e) => setClubMember({ ...clubMember, start_date: e.target.value })} /></div>
-              </div>
-            </section>
-          )}
-
-          {(role === "official" || role === "volunteer" || role === "staff") && (
-            <p className="text-sm text-muted-foreground">Aucune information supplémentaire requise pour ce rôle.</p>
-          )}
+          <RoleProfileForm
+            role={role}
+            sports={sports}
+            federations={federations}
+            clubs={clubs}
+            athlete={athlete}
+            coach={coach}
+            fedMember={fedMember}
+            clubMember={clubMember}
+            onAthlete={patchAthlete}
+            onCoach={patchCoach}
+            onFedMember={patchFedMember}
+            onClubMember={patchClubMember}
+            athleteBlocked={!!athleteBlocked}
+          />
         </div>
 
         <DialogFooter>
