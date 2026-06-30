@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Search, UserRound, Building2, Shield } from "lucide-react";
+import { Search, UserRound, Building2, Shield, Upload, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { friendlyError } from "@/lib/error-messages";
@@ -32,6 +32,14 @@ import {
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/DataTableShell";
 import { AddPersonButton } from "@/components/persons/AddPersonButton";
+import { CsvImportDialog } from "@/components/CsvImportDialog";
+import { federationMembersImportConfig, clubMembersImportConfig } from "@/lib/csv-import-configs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export const Route = createFileRoute("/_authenticated/members/")({
   component: MembersPage,
@@ -50,6 +58,8 @@ function MembersPage() {
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [scope, setScope] = useState<"all" | "fed" | "club">("all");
+  const [importOpen, setImportOpen] = useState(false);
+  const [importType, setImportType] = useState<"fed" | "club">("fed");
 
   const load = async () => {
     const [f, c, fm, cm] = await Promise.all([
@@ -133,6 +143,22 @@ function MembersPage() {
           </div>
         </div>
         <div className="flex gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <Upload className="mr-2 h-4 w-4" /> Importer
+                <ChevronDown className="ml-1 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => { setImportType("fed"); setImportOpen(true); }}>
+                <Building2 className="mr-2 h-4 w-4" /> Membres de fédération
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { setImportType("club"); setImportOpen(true); }}>
+                <Shield className="mr-2 h-4 w-4" /> Membres de club
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <AddPersonButton
             role="federation_member"
             label="Ajouter un membre"
@@ -256,6 +282,12 @@ function MembersPage() {
           </Table>
         )}
       </div>
+      <CsvImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        config={importType === "fed" ? federationMembersImportConfig : clubMembersImportConfig}
+        onImported={() => load()}
+      />
     </div>
   );
 }

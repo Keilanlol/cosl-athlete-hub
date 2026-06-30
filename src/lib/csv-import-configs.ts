@@ -117,6 +117,8 @@ export const clubsImportConfig: CsvImportConfig = {
   table: "clubs",
   columns: [
     { key: "name", label: "FC Luxembourg", required: true },
+    { key: "federation_acronym", label: "FLA", required: true, aliases: ["federation"] },
+    { key: "federation_name", label: "Fédération Luxembourgeoise d'Athlétisme", required: true },
     { key: "city", label: "Luxembourg" },
     { key: "street", label: "12 Rue de la Gare" },
     { key: "postcode", label: "L-1234" },
@@ -130,7 +132,7 @@ export const clubsImportConfig: CsvImportConfig = {
   },
   links: [
     {
-      csvColumn: "federation",
+      csvColumn: "federation_acronym",
       table: "federations",
       matchColumn: "acronym",
       selectColumns: "id,acronym",
@@ -250,4 +252,127 @@ export const gamesImportConfig: CsvImportConfig = {
     keys: ["name"],
     description: "nom",
   },
+};
+
+// ============================================================
+// Federation Members
+// ============================================================
+
+export const federationMembersImportConfig: CsvImportConfig = {
+  entityName: "Membre de fédération",
+  table: "federation_members",
+  columns: [
+    { key: "first_name", label: "Jean", required: true },
+    { key: "last_name", label: "Dupont", required: true },
+    { key: "role", label: "president", required: true, aliases: ["fonction"] },
+    { key: "email", label: "jean.dupont@fla.lu" },
+    { key: "phone", label: "+352 691 000 000" },
+    { key: "start_date", label: "2024-01-01" },
+    { key: "end_date", label: "2028-12-31" },
+    { key: "notes", label: "Notes" },
+  ],
+  duplicateCheck: {
+    keys: ["federation_id", "first_name", "last_name"],
+    description: "fédération + nom",
+  },
+  links: [
+    {
+      csvColumn: "federation_acronym",
+      table: "federations",
+      matchColumn: "acronym",
+      selectColumns: "id,acronym",
+      createIfMissing: false,
+      targetColumn: "federation_id",
+    },
+    {
+      csvColumn: "federation_name",
+      table: "federations",
+      matchColumn: "name",
+      selectColumns: "id,name",
+      createIfMissing: false,
+      targetColumn: "federation_id",
+    },
+  ],
+  extraPayload: { is_active: true },
+};
+
+// ============================================================
+// Club Members
+// ============================================================
+
+export const clubMembersImportConfig: CsvImportConfig = {
+  entityName: "Membre de club",
+  table: "club_members",
+  columns: [
+    { key: "first_name", label: "Jean", required: true },
+    { key: "last_name", label: "Dupont", required: true },
+    { key: "role", label: "president", required: true, aliases: ["fonction"] },
+    { key: "email", label: "jean.dupont@club.lu" },
+    { key: "phone", label: "+352 691 000 000" },
+    { key: "start_date", label: "2024-01-01" },
+    { key: "end_date", label: "2028-12-31" },
+    { key: "notes", label: "Notes" },
+  ],
+  duplicateCheck: {
+    keys: ["club_id", "first_name", "last_name"],
+    description: "club + nom",
+  },
+  links: [
+    {
+      csvColumn: "club_name",
+      table: "clubs",
+      matchColumn: "name",
+      selectColumns: "id,name",
+      createIfMissing: false,
+      targetColumn: "club_id",
+    },
+  ],
+  extraPayload: { is_active: true },
+};
+
+// ============================================================
+// Coaches (Encadrants)
+// ============================================================
+
+export const coachesImportConfig: CsvImportConfig = {
+  entityName: "Encadrant",
+  table: "coaches",
+  columns: [
+    { key: "first_name", label: "Jean", required: true },
+    { key: "last_name", label: "Dupont", required: true },
+    { key: "role", label: "coach", required: true, aliases: ["fonction"] },
+    { key: "email", label: "jean.dupont@email.lu" },
+    { key: "phone", label: "+352 691 000 000" },
+  ],
+  duplicateCheck: {
+    keys: ["first_name", "last_name", "role"],
+    description: "nom + rôle",
+  },
+  links: [
+    {
+      csvColumn: "federation_acronym",
+      table: "federations",
+      matchColumn: "acronym",
+      selectColumns: "id,acronym",
+      createIfMissing: false,
+      targetColumn: "federation_id",
+    },
+    {
+      csvColumn: "federation_name",
+      table: "federations",
+      matchColumn: "name",
+      selectColumns: "id,name",
+      createIfMissing: false,
+      targetColumn: "federation_id",
+    },
+    {
+      csvColumn: "club_name",
+      table: "clubs",
+      matchColumn: "name",
+      selectColumns: "id,name",
+      createIfMissing: false,
+      targetColumn: "club_id",
+    },
+  ],
+  extraPayload: { is_active: true },
 };

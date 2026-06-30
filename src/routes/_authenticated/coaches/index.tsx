@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
-import { Pencil, Trash2, Search, GraduationCap } from "lucide-react";
+import { Pencil, Trash2, Search, GraduationCap, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { COACH_ROLES, type Club, type Coach, type Federation } from "@/lib/types";
@@ -52,6 +52,8 @@ import {
   TableSkeleton,
 } from "@/components/DataTableShell";
 import { AddPersonButton } from "@/components/persons/AddPersonButton";
+import { CsvImportDialog } from "@/components/CsvImportDialog";
+import { coachesImportConfig } from "@/lib/csv-import-configs";
 
 export const Route = createFileRoute("/_authenticated/coaches/")({
   component: CoachesPage,
@@ -95,6 +97,7 @@ function CoachesPage() {
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   const fedMap = useMemo(() => {
     const m = new Map<string, Federation>();
@@ -248,14 +251,19 @@ function CoachesPage() {
             </p>
           </div>
         </div>
-        <AddPersonButton
-          role="coach"
-          label="Ajouter un encadrant"
-          onChanged={(personId) => {
-            load();
-            navigate({ to: "/persons/$personId", params: { personId } });
-          }}
-        />
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <Upload className="mr-2 h-4 w-4" /> Importer
+          </Button>
+          <AddPersonButton
+            role="coach"
+            label="Ajouter un encadrant"
+            onChanged={(personId) => {
+              load();
+              navigate({ to: "/persons/$personId", params: { personId } });
+            }}
+          />
+        </div>
       </div>
 
 
@@ -620,6 +628,13 @@ function CoachesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <CsvImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        config={coachesImportConfig}
+        onImported={() => load()}
+      />
     </div>
   );
 }
