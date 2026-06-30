@@ -119,6 +119,36 @@ function normalizeHeader(h: string): string {
     .replace(/[^a-z0-9_]/g, "_");
 }
 
+export type ColumnMatch = {
+  csvHeader: string | null;
+  found: boolean;
+};
+
+/** Check which CSV headers match the expected columns */
+export function matchColumns(
+  csvHeaders: string[],
+  columns: CsvColumn[],
+): Record<string, ColumnMatch> {
+  const normalizedKeys = new Map(
+    csvHeaders.map((h) => [normalizeHeader(h), h]),
+  );
+  const result: Record<string, ColumnMatch> = {};
+  for (const col of columns) {
+    const candidates = [col.key, ...(col.aliases ?? [])];
+    let matched: string | null = null;
+    for (const c of candidates) {
+      const nk = normalizeHeader(c);
+      const actualKey = normalizedKeys.get(nk);
+      if (actualKey) {
+        matched = actualKey;
+        break;
+      }
+    }
+    result[col.key] = { csvHeader: matched, found: !!matched };
+  }
+  return result;
+}
+
 /** Find a value in a CSV row by trying the column key and its aliases */
 function findValue(
   row: Record<string, string>,

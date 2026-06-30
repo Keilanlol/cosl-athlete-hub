@@ -1,14 +1,16 @@
 import { useRef, useState } from "react";
 import { Upload, FileSpreadsheet, CheckCircle2, AlertCircle, Loader2, Download } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/lib/supabase";
 import {
   parseCsv,
   runImport,
+  matchColumns,
   type CsvImportConfig,
   type ImportResult,
+  type ColumnMatch,
 } from "@/lib/csv-import";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -33,12 +35,14 @@ export function CsvImportDialog({ open, onOpenChange, config, onImported }: Prop
   const [rows, setRows] = useState<Record<string, string>[]>([]);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [progress, setProgress] = useState({ current: 0, total: 0 });
+  const [columnMatches, setColumnMatches] = useState<Record<string, ColumnMatch>>({});
 
   const reset = () => {
     setStage("upload");
     setRows([]);
     setResult(null);
     setProgress({ current: 0, total: 0 });
+    setColumnMatches({});
   };
 
   const handleFile = async (file: File) => {
@@ -52,6 +56,9 @@ export function CsvImportDialog({ open, onOpenChange, config, onImported }: Prop
       toast.error("Le fichier CSV est vide ou mal formaté");
       return;
     }
+    const headers = Object.keys(parsed[0]);
+    const matches = matchColumns(headers, config.columns);
+    setColumnMatches(matches);
     setRows(parsed);
     setStage("preview");
   };
@@ -73,7 +80,7 @@ export function CsvImportDialog({ open, onOpenChange, config, onImported }: Prop
   const downloadTemplate = () => {
     const headers = config.columns.map((c) => c.key).join(";");
     const example = config.columns.map((c) => c.label).join(";");
-    const blob = new Blob([`${headers}\n# Exemple:\n${example}\n`], {
+    const blob = new Blob([`${headers}\n${example}\n`], {
       type: "text/csv;charset=utf-8",
     });
     const url = URL.createObjectURL(blob);
@@ -85,6 +92,11 @@ export function CsvImportDialog({ open, onOpenChange, config, onImported }: Prop
   };
 
   const previewHeaders = rows.length > 0 ? Object.keys(rows[0]) : [];
+
+  const missingRequired = config.columns.filter(
+    (c) => c.required && !columnMatches[c.key]?.found,
+  );
+  const canImport = missingRequired.length === 0;
 
   return (
     <Dialog
@@ -101,7 +113,7 @@ export function CsvImportDialog({ open, onOpenChange, config, onImported }: Prop
             Importer des {config.entityName.toLowerCase()}s
           </DialogTitle>
           <DialogDescription>
-            Sélectionnez un fichier CSV. {config.duplicateCheck.description} seront ignorés (doublons).
+            Sélectionnez un fichier CSV. Les doublons ({config.duplicateCheck.description}) seront ignorés.
           </DialogDescription>
         </DialogHeader>
 
@@ -129,72 +141,148 @@ export function CsvImportDialog({ open, onOpenChange, config, onImported }: Prop
               }}
             />
             <div className="space-y-2">
-              <p className="text-sm font-medium text-foreground">Colonnes attendues :</p>
-              <div className="flex flex-wrap gap-2">
-                {config.columns.map((c) => (
-                  <span
-                    key={c.key}
-                    className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs ${
-                      c.required
-                        ? "border-red-200 bg-red-50 text-red-700"
-                        : "border-border bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    {c.key}
-                    {c.required && <span className="text-red-500">*</span>}
-                  </span>
-                ))}
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-foreground">Format attendu :</p>
+                <Button variant="ghost" size="sm" onClick={downloadTemplate}>
+                  <Download className="mr-1.5 h-3.5 w-3.5" /> Modèle CSV
+                </Button>
               </div>
-              {config.links && config.links.length > 0 && (
-                <p className="text-xs text-muted-foreground mt-2">
-                  Colonnes de liaison : {config.links.map((l) => l.csvColumn).join(", ")} —
-                  les entités manquantes seront créées automatiquement.
-                </p>
-              )}
+              <div className="rounded-md border border-border bg-muted/30 p-3">
+                <div className="flex flex-wrap gap-1.5">
+                  {config.columns.map((c) => (
+                    <span
+                      key={c.key}
+                      className={`inline-flex items-center gap-0.5 rounded border px-1.5 py-0.5 text-xs font-mono ${
+                        c.required
+                          ? "border-red-200 bg-red-50 text-red-700"
+                          : "border-border bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {c.key}
+                      {c.required && <span className="text-red-500">*</span>}
+                    </span>
+                  ))}
+                </div>
+                {config.links && config.links.length > 0 && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    + colonnes de liaison : {config.links.map((l) => l.csvColumn).join(", ")} —
+                    les entités manquantes seront créées automatiquement.
+                  </p>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Le matching des colonnes est flexible (insensible à la casse, aux accents et aux espaces).
+                Les champs marqués <span className="text-red-500">*</span> sont obligatoires.
+              </p>
             </div>
-            <Button variant="outline" size="sm" onClick={downloadTemplate}>
-              <Download className="mr-2 h-4 w-4" /> Télécharger un modèle
-            </Button>
           </div>
         )}
 
         {/* Preview stage */}
         {stage === "preview" && (
-          <div className="py-4 space-y-3">
+          <div className="py-4 space-y-4">
             <div className="flex items-center gap-2 text-sm">
               <CheckCircle2 className="h-4 w-4 text-emerald-600" />
               <span><strong>{rows.length}</strong> ligne(s) détectée(s)</span>
             </div>
-            <div className="rounded-lg border border-border overflow-auto max-h-[300px]">
-              <table className="w-full text-xs">
-                <thead className="bg-muted sticky top-0">
-                  <tr>
-                    <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">#</th>
-                    {previewHeaders.map((h) => (
-                      <th key={h} className="px-2 py-1.5 text-left font-medium text-muted-foreground whitespace-nowrap">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.slice(0, 50).map((row, i) => (
-                    <tr key={i} className="border-t border-border">
-                      <td className="px-2 py-1 text-muted-foreground">{i + 1}</td>
-                      {previewHeaders.map((h) => (
-                        <td key={h} className="px-2 py-1 whitespace-nowrap max-w-[200px] truncate">
-                          {row[h]}
-                        </td>
-                      ))}
+
+            {/* Column mapping */}
+            <div className="space-y-1.5">
+              <p className="text-sm font-medium text-foreground">Correspondance des colonnes :</p>
+              <div className="rounded-lg border border-border overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted">
+                    <tr>
+                      <th className="px-3 py-1.5 text-left font-medium text-muted-foreground">Champ attendu</th>
+                      <th className="px-3 py-1.5 text-left font-medium text-muted-foreground">Colonne CSV</th>
+                      <th className="px-3 py-1.5 text-left font-medium text-muted-foreground">Statut</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {config.columns.map((col) => {
+                      const m = columnMatches[col.key];
+                      return (
+                        <tr key={col.key} className="border-t border-border">
+                          <td className="px-3 py-1.5 font-mono">
+                            {col.key}
+                            {col.required && <span className="text-red-500 ml-0.5">*</span>}
+                          </td>
+                          <td className="px-3 py-1.5 font-mono text-muted-foreground">
+                            {m?.csvHeader ?? "—"}
+                          </td>
+                          <td className="px-3 py-1.5">
+                            {m?.found ? (
+                              <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                                <CheckCircle2 className="h-3 w-3 mr-0.5" /> Trouvé
+                              </Badge>
+                            ) : col.required ? (
+                              <Badge className="bg-red-100 text-red-700 hover:bg-red-100">
+                                <AlertCircle className="h-3 w-3 mr-0.5" /> Manquant
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-muted-foreground">
+                                Optionnel
+                              </Badge>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
-            {rows.length > 50 && (
-              <p className="text-xs text-muted-foreground">
-                Affichage des 50 premières lignes sur {rows.length}.
-              </p>
+
+            {/* Missing required warning */}
+            {missingRequired.length > 0 && (
+              <div className="rounded-md border-2 border-red-300 bg-red-50 p-3 text-sm text-red-800">
+                <p className="font-medium">Impossible d'importer : colonnes obligatoires manquantes</p>
+                <p className="mt-1 text-xs">
+                  Les colonnes suivantes sont requises mais n'ont pas été trouvées dans le fichier CSV :{" "}
+                  <strong>{missingRequired.map((c) => c.key).join(", ")}</strong>
+                </p>
+                <p className="mt-1 text-xs">
+                  Téléchargez le modèle pour voir le format attendu, puis réessayez.
+                </p>
+              </div>
+            )}
+
+            {/* Data preview */}
+            {canImport && (
+              <>
+                <p className="text-sm font-medium text-foreground">Aperçu des données :</p>
+                <div className="rounded-lg border border-border overflow-auto max-h-[200px]">
+                  <table className="w-full text-xs">
+                    <thead className="bg-muted sticky top-0">
+                      <tr>
+                        <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">#</th>
+                        {previewHeaders.map((h) => (
+                          <th key={h} className="px-2 py-1.5 text-left font-medium text-muted-foreground whitespace-nowrap">
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.slice(0, 20).map((row, i) => (
+                        <tr key={i} className="border-t border-border">
+                          <td className="px-2 py-1 text-muted-foreground">{i + 1}</td>
+                          {previewHeaders.map((h) => (
+                            <td key={h} className="px-2 py-1 whitespace-nowrap max-w-[180px] truncate">
+                              {row[h]}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {rows.length > 20 && (
+                  <p className="text-xs text-muted-foreground">
+                    Affichage des 20 premières lignes sur {rows.length}.
+                  </p>
+                )}
+              </>
             )}
           </div>
         )}
@@ -279,8 +367,12 @@ export function CsvImportDialog({ open, onOpenChange, config, onImported }: Prop
           {stage === "preview" && (
             <>
               <Button variant="outline" onClick={reset}>Retour</Button>
-              <Button onClick={handleImport} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
-                Importer {rows.length} ligne(s)
+              <Button
+                onClick={handleImport}
+                disabled={!canImport}
+                className="bg-primary hover:bg-[var(--cosl-red-dark)]"
+              >
+                {canImport ? `Importer ${rows.length} ligne(s)` : "Colonnes manquantes"}
               </Button>
             </>
           )}
