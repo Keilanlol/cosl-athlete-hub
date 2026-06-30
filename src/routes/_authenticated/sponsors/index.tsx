@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, Search, Star, Settings2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Star, Settings2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { friendlyError } from "@/lib/error-messages";
@@ -21,6 +21,8 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { EmptyState, TableSkeleton } from "@/components/DataTableShell";
+import { CsvImportDialog } from "@/components/CsvImportDialog";
+import { sponsorsImportConfig } from "@/lib/csv-import-configs";
 
 export const Route = createFileRoute("/_authenticated/sponsors/")({
   component: SponsorsPage,
@@ -63,6 +65,7 @@ function SponsorsPage() {
 
   const [ranksOpen, setRanksOpen] = useState(false);
   const [newRank, setNewRank] = useState("");
+  const [importOpen, setImportOpen] = useState(false);
 
 
   const load = async () => {
@@ -178,9 +181,14 @@ function SponsorsPage() {
           <Button variant="outline" onClick={() => setRanksOpen(true)}>
             <Settings2 className="mr-2 h-4 w-4" /> Gérer les rangs
           </Button>
-          <Button onClick={openCreate} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
-            <Plus className="mr-2 h-4 w-4" /> Ajouter un sponsor
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setImportOpen(true)}>
+              <Upload className="mr-2 h-4 w-4" /> Importer
+            </Button>
+            <Button onClick={openCreate} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
+              <Plus className="mr-2 h-4 w-4" /> Ajouter un sponsor
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -343,6 +351,13 @@ function SponsorsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <CsvImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        config={sponsorsImportConfig}
+        onImported={() => load()}
+      />
     </div>
   );
 }

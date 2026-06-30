@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
-import { Pencil, Search, AlertTriangle, Users } from "lucide-react";
+import { Pencil, Search, AlertTriangle, Users, Upload } from "lucide-react";
 import { KycStatusBadge } from "@/components/KycStatusBadge";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -19,6 +19,8 @@ import {
 import { EditableSelect } from "@/components/EditableSelect";
 import { AthletePhotoUpload } from "@/components/AthletePhotoUpload";
 import { AddPersonButton } from "@/components/persons/AddPersonButton";
+import { CsvImportDialog } from "@/components/CsvImportDialog";
+import { athletesImportConfig } from "@/lib/csv-import-configs";
 import { useAthleteLevels, useSports } from "@/hooks/useReferenceData";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -149,6 +151,7 @@ function AthletesPage() {
 
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   
   const [editing, setEditing] = useState<Athlete | null>(null);
   const [form, setForm] = useState<AthleteForm>(emptyForm);
@@ -431,14 +434,19 @@ function AthletesPage() {
             </p>
           </div>
         </div>
-        <AddPersonButton
-          role="athlete"
-          label="Ajouter un athlète"
-          onChanged={(personId) => {
-            load();
-            navigate({ to: "/persons/$personId", params: { personId } });
-          }}
-        />
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <Upload className="mr-2 h-4 w-4" /> Importer
+          </Button>
+          <AddPersonButton
+            role="athlete"
+            label="Ajouter un athlète"
+            onChanged={(personId) => {
+              load();
+              navigate({ to: "/persons/$personId", params: { personId } });
+            }}
+          />
+        </div>
       </div>
 
 
@@ -1019,6 +1027,13 @@ function AthletesPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <CsvImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        config={athletesImportConfig}
+        onImported={() => load()}
+      />
     </div>
   );
 }

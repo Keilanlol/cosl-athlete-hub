@@ -1,0 +1,296 @@
+import { useRef, useState } from "react";
+import { Upload, FileSpreadsheet, CheckCircle2, AlertCircle, Loader2, Download } from "lucide-react";
+import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
+import {
+  parseCsv,
+  runImport,
+  type CsvImportConfig,
+  type ImportResult,
+} from "@/lib/csv-import";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+type Props = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  config: CsvImportConfig;
+  onImported?: () => void;
+};
+
+type Stage = "upload" | "preview" | "importing" | "result";
+
+export function CsvImportDialog({ open, onOpenChange, config, onImported }: Props) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [stage, setStage] = useState<Stage>("upload");
+  const [rows, setRows] = useState<Record<string, string>[]>([]);
+  const [result, setResult] = useState<ImportResult | null>(null);
+  const [progress, setProgress] = useState({ current: 0, total: 0 });
+
+  const reset = () => {
+    setStage("upload");
+    setRows([]);
+    setResult(null);
+    setProgress({ current: 0, total: 0 });
+  };
+
+  const handleFile = async (file: File) => {
+    if (!file.name.endsWith(".csv") && file.type !== "text/csv") {
+      toast.error("Veuillez sélectionner un fichier CSV");
+      return;
+    }
+    const text = await file.text();
+    const parsed = parseCsv(text);
+    if (parsed.length === 0) {
+      toast.error("Le fichier CSV est vide ou mal formaté");
+      return;
+    }
+    setRows(parsed);
+    setStage("preview");
+  };
+
+  const handleImport = async () => {
+    setStage("importing");
+    setProgress({ current: 0, total: rows.length });
+    const res = await runImport(config, rows, (current, total) => {
+      setProgress({ current, total });
+    });
+    setResult(res);
+    setStage("result");
+    if (res.inserted > 0) {
+      toast.success(`${res.inserted} ${config.entityName.toLowerCase()}(s) importé(s)`);
+      onImported?.();
+    }
+  };
+
+  const downloadTemplate = () => {
+    const headers = config.columns.map((c) => c.key).join(";");
+    const example = config.columns.map((c) => c.label).join(";");
+    const blob = new Blob([`${headers}\n# Exemple:\n${example}\n`], {
+      type: "text/csv;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `template_${config.table}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const previewHeaders = rows.length > 0 ? Object.keys(rows[0]) : [];
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        onOpenChange(v);
+        if (!v) reset();
+      }}
+    >
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Upload className="h-5 w-5" />
+            Importer des {config.entityName.toLowerCase()}s
+          </DialogTitle>
+          <DialogDescription>
+            Sélectionnez un fichier CSV. {config.duplicateCheck.description} seront ignorés (doublons).
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* Upload stage */}
+        {stage === "upload" && (
+          <div className="py-6 space-y-4">
+            <div
+              onClick={() => fileRef.current?.click()}
+              className="flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-border p-10 cursor-pointer hover:border-primary hover:bg-muted/50 transition-colors"
+            >
+              <FileSpreadsheet className="h-10 w-10 text-muted-foreground" />
+              <div className="text-center">
+                <p className="text-sm font-medium">Cliquez pour sélectionner un fichier CSV</p>
+                <p className="text-xs text-muted-foreground mt-1">ou glissez-déposez votre fichier ici</p>
+              </div>
+            </div>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".csv,text/csv"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleFile(f);
+              }}
+            />
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-foreground">Colonnes attendues :</p>
+              <div className="flex flex-wrap gap-2">
+                {config.columns.map((c) => (
+                  <span
+                    key={c.key}
+                    className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs ${
+                      c.required
+                        ? "border-red-200 bg-red-50 text-red-700"
+                        : "border-border bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {c.key}
+                    {c.required && <span className="text-red-500">*</span>}
+                  </span>
+                ))}
+              </div>
+              {config.links && config.links.length > 0 && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Colonnes de liaison : {config.links.map((l) => l.csvColumn).join(", ")} —
+                  les entités manquantes seront créées automatiquement.
+                </p>
+              )}
+            </div>
+            <Button variant="outline" size="sm" onClick={downloadTemplate}>
+              <Download className="mr-2 h-4 w-4" /> Télécharger un modèle
+            </Button>
+          </div>
+        )}
+
+        {/* Preview stage */}
+        {stage === "preview" && (
+          <div className="py-4 space-y-3">
+            <div className="flex items-center gap-2 text-sm">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+              <span><strong>{rows.length}</strong> ligne(s) détectée(s)</span>
+            </div>
+            <div className="rounded-lg border border-border overflow-auto max-h-[300px]">
+              <table className="w-full text-xs">
+                <thead className="bg-muted sticky top-0">
+                  <tr>
+                    <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">#</th>
+                    {previewHeaders.map((h) => (
+                      <th key={h} className="px-2 py-1.5 text-left font-medium text-muted-foreground whitespace-nowrap">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.slice(0, 50).map((row, i) => (
+                    <tr key={i} className="border-t border-border">
+                      <td className="px-2 py-1 text-muted-foreground">{i + 1}</td>
+                      {previewHeaders.map((h) => (
+                        <td key={h} className="px-2 py-1 whitespace-nowrap max-w-[200px] truncate">
+                          {row[h]}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {rows.length > 50 && (
+              <p className="text-xs text-muted-foreground">
+                Affichage des 50 premières lignes sur {rows.length}.
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Importing stage */}
+        {stage === "importing" && (
+          <div className="py-10 flex flex-col items-center gap-4">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-sm font-medium">
+              Importation en cours… {progress.current}/{progress.total}
+            </p>
+            <div className="w-full max-w-xs h-2 rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full bg-primary transition-all"
+                style={{ width: `${progress.total > 0 ? (progress.current / progress.total) * 100 : 0}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Result stage */}
+        {stage === "result" && result && (
+          <div className="py-4 space-y-4">
+            <div className="grid grid-cols-3 gap-3">
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-center">
+                <CheckCircle2 className="h-5 w-5 text-emerald-600 mx-auto mb-1" />
+                <p className="text-2xl font-bold text-emerald-700">{result.inserted}</p>
+                <p className="text-xs text-emerald-600">Importés</p>
+              </div>
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-center">
+                <AlertCircle className="h-5 w-5 text-amber-600 mx-auto mb-1" />
+                <p className="text-2xl font-bold text-amber-700">{result.skipped.length}</p>
+                <p className="text-xs text-amber-600">Ignorés (doublons)</p>
+              </div>
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-center">
+                <AlertCircle className="h-5 w-5 text-red-600 mx-auto mb-1" />
+                <p className="text-2xl font-bold text-red-700">{result.errors.length}</p>
+                <p className="text-xs text-red-600">Erreurs</p>
+              </div>
+            </div>
+
+            {result.skipped.length > 0 && (
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-amber-700">Lignes ignorées (doublons)</p>
+                <div className="rounded-lg border border-amber-200 bg-amber-50/50 max-h-[150px] overflow-auto">
+                  {result.skipped.map((s, i) => {
+                    const name = config.duplicateCheck.keys
+                      .map((k) => s.row[k] ?? Object.values(s.row)[0])
+                      .filter(Boolean)
+                      .join(" ");
+                    return (
+                      <div key={i} className="px-3 py-1.5 text-xs border-b border-amber-100 last:border-0">
+                        <span className="text-amber-700 font-medium">{name}</span>
+                        <span className="text-muted-foreground ml-2">— {s.reason}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {result.errors.length > 0 && (
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-red-700">Erreurs</p>
+                <div className="rounded-lg border border-red-200 bg-red-50/50 max-h-[150px] overflow-auto">
+                  {result.errors.map((e, i) => (
+                    <div key={i} className="px-3 py-1.5 text-xs border-b border-red-100 last:border-0">
+                      <span className="text-red-700 font-medium">Ligne {i + 1}</span>
+                      <span className="text-muted-foreground ml-2">— {e.reason}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <DialogFooter>
+          {stage === "upload" && (
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
+          )}
+          {stage === "preview" && (
+            <>
+              <Button variant="outline" onClick={reset}>Retour</Button>
+              <Button onClick={handleImport} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
+                Importer {rows.length} ligne(s)
+              </Button>
+            </>
+          )}
+          {stage === "result" && (
+            <Button onClick={() => onOpenChange(false)} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
+              Fermer
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

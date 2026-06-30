@@ -1,11 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, Search, Building2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Building2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import type { Federation } from "@/lib/types";
 import { EntityImageUpload } from "@/components/EntityImageUpload";
+import { CsvImportDialog } from "@/components/CsvImportDialog";
+import { federationsImportConfig } from "@/lib/csv-import-configs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -82,6 +84,7 @@ function FederationsPage() {
   const [editing, setEditing] = useState<Federation | null>(null);
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const load = async () => {
@@ -248,9 +251,14 @@ function FederationsPage() {
             <p className="mt-1 text-sm text-muted-foreground">Fédérations sportives nationales du COSL.</p>
           </div>
         </div>
-        <Button onClick={openCreate} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
-          <Plus className="mr-2 h-4 w-4" /> Ajouter une fédération
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <Upload className="mr-2 h-4 w-4" /> Importer
+          </Button>
+          <Button onClick={openCreate} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
+            <Plus className="mr-2 h-4 w-4" /> Ajouter une fédération
+          </Button>
+        </div>
       </div>
 
       <div className="flex items-center gap-3">
@@ -420,6 +428,13 @@ function FederationsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <CsvImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        config={federationsImportConfig}
+        onImported={() => load()}
+      />
     </div>
   );
 }

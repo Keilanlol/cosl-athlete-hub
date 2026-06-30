@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, Search, Archive, Trophy } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Archive, Trophy, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import {
@@ -56,6 +56,8 @@ import {
   PagerBar,
   TableSkeleton,
 } from "@/components/DataTableShell";
+import { CsvImportDialog } from "@/components/CsvImportDialog";
+import { gamesImportConfig } from "@/lib/csv-import-configs";
 
 export const Route = createFileRoute("/_authenticated/games/")({
   component: GamesListPage,
@@ -90,6 +92,7 @@ function GamesListPage() {
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   const load = async () => {
     setRows(null);
@@ -239,10 +242,15 @@ function GamesListPage() {
             </p>
           </div>
         </div>
-        <Button onClick={openCreate} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
-          <Plus className="mr-2 h-4 w-4" />
-          Créer un Games
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <Upload className="mr-2 h-4 w-4" /> Importer
+          </Button>
+          <Button onClick={openCreate} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
+            <Plus className="mr-2 h-4 w-4" />
+            Créer un Games
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -486,6 +494,13 @@ function GamesListPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <CsvImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        config={gamesImportConfig}
+        onImported={() => load()}
+      />
     </div>
   );
 }

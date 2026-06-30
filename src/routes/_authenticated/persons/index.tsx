@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Search, Users } from "lucide-react";
+import { Plus, Search, Users, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import {
@@ -12,6 +12,8 @@ import {
 } from "@/lib/persons";
 import { PersonRoleBadge } from "@/components/persons/PersonRoleBadge";
 import { PersonCreateDialog } from "@/components/persons/PersonCreateDialog";
+import { CsvImportDialog } from "@/components/CsvImportDialog";
+import { personsImportConfig } from "@/lib/csv-import-configs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -48,6 +50,7 @@ function PersonsPage() {
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
   const [createOpen, setCreateOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const load = async () => {
     setRows(null);
@@ -103,13 +106,18 @@ function PersonsPage() {
             </p>
           </div>
         </div>
-        <Button
-          onClick={() => setCreateOpen(true)}
-          className="bg-primary hover:bg-[var(--cosl-red-dark)]"
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Nouvelle personne
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <Upload className="mr-2 h-4 w-4" /> Importer
+          </Button>
+          <Button
+            onClick={() => setCreateOpen(true)}
+            className="bg-primary hover:bg-[var(--cosl-red-dark)]"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Nouvelle personne
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -239,6 +247,13 @@ function PersonsPage() {
           load();
           navigate({ to: "/persons/$personId", params: { personId: id } });
         }}
+      />
+
+      <CsvImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        config={personsImportConfig}
+        onImported={() => load()}
       />
     </div>
   );

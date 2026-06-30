@@ -1,11 +1,13 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, Search, Shield } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Shield, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import type { Club, ClubMember, Federation } from "@/lib/types";
 import { EntityImageUpload } from "@/components/EntityImageUpload";
+import { CsvImportDialog } from "@/components/CsvImportDialog";
+import { clubsImportConfig } from "@/lib/csv-import-configs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AddressSearch } from "@/components/AddressSearch";
@@ -89,6 +91,7 @@ function ClubsPage() {
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   const fedMap = useMemo(() => {
     const m = new Map<string, Federation>();
@@ -271,10 +274,15 @@ function ClubsPage() {
             </p>
           </div>
         </div>
-        <Button onClick={openCreate} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
-          <Plus className="mr-2 h-4 w-4" />
-          Ajouter un club
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <Upload className="mr-2 h-4 w-4" /> Importer
+          </Button>
+          <Button onClick={openCreate} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
+            <Plus className="mr-2 h-4 w-4" />
+            Ajouter un club
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -593,6 +601,13 @@ function ClubsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <CsvImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        config={clubsImportConfig}
+        onImported={() => load()}
+      />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, Search, Handshake } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Handshake, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { friendlyError } from "@/lib/error-messages";
@@ -18,6 +18,8 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { EmptyState, TableSkeleton } from "@/components/DataTableShell";
+import { CsvImportDialog } from "@/components/CsvImportDialog";
+import { partnersImportConfig } from "@/lib/csv-import-configs";
 
 export const Route = createFileRoute("/_authenticated/partners/")({
   component: PartnersPage,
@@ -58,6 +60,7 @@ function PartnersPage() {
   const [saving, setSaving] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoCleared, setLogoCleared] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
 
   const load = async () => {
@@ -150,9 +153,14 @@ function PartnersPage() {
           <h1 className="text-2xl font-semibold flex items-center gap-2"><Handshake className="h-6 w-6 text-indigo-500" /> Partenaires</h1>
           <p className="text-sm text-muted-foreground">Gestion des partenaires.</p>
         </div>
-        <Button onClick={openCreate} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
-          <Plus className="mr-2 h-4 w-4" /> Ajouter un partenaire
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <Upload className="mr-2 h-4 w-4" /> Importer
+          </Button>
+          <Button onClick={openCreate} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
+            <Plus className="mr-2 h-4 w-4" /> Ajouter un partenaire
+          </Button>
+        </div>
       </div>
 
       <div className="relative max-w-sm">
@@ -311,6 +319,13 @@ function PartnersPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <CsvImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        config={partnersImportConfig}
+        onImported={() => load()}
+      />
     </div>
   );
 }

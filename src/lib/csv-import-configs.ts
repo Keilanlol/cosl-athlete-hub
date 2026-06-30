@@ -1,0 +1,253 @@
+import { supabase } from "@/lib/supabase";
+import type { CsvImportConfig } from "@/lib/csv-import";
+
+// ============================================================
+// Athletes
+// ============================================================
+
+export const athletesImportConfig: CsvImportConfig = {
+  entityName: "Athlète",
+  table: "athletes",
+  columns: [
+    { key: "cosl_id", label: "COSL-2026-0001", required: false },
+    { key: "first_name", label: "Jean", required: true },
+    { key: "last_name", label: "Dupont", required: true },
+    { key: "birth_date", label: "1998-05-15", required: true },
+    { key: "gender", label: "male", required: true, transform: (v) => v.toLowerCase() },
+    { key: "nationality", label: "LUX", required: true, transform: (v) => v.toUpperCase() },
+    { key: "sport_nationality", label: "LUX", transform: (v) => v.toUpperCase() || null },
+    { key: "email", label: "jean.dupont@email.lu" },
+    { key: "phone", label: "+352 691 000 000" },
+    { key: "street", label: "12 Rue de la Gare" },
+    { key: "postcode", label: "L-1234" },
+    { key: "city", label: "Luxembourg" },
+    { key: "country", label: "LU" },
+    { key: "status", label: "active", default: "active", transform: (v) => v.toLowerCase() },
+    { key: "level", label: "elite" },
+    { key: "license_number", label: "LIC-001" },
+    { key: "passport_number", label: "AB1234567" },
+    { key: "passport_expiry", label: "2030-01-01" },
+  ],
+  duplicateCheck: {
+    keys: ["cosl_id", "email"],
+    description: "COSL ID ou email",
+  },
+  links: [
+    {
+      csvColumn: "primary_sport",
+      table: "sports",
+      matchColumn: "name",
+      selectColumns: "id,name",
+      createIfMissing: true,
+      createColumns: (name) => ({ name }),
+      targetColumn: "primary_sport_id",
+    },
+    {
+      csvColumn: "primary_federation",
+      table: "federations",
+      matchColumn: "acronym",
+      selectColumns: "id,acronym",
+      createIfMissing: false,
+      targetColumn: "primary_federation_id",
+    },
+    {
+      csvColumn: "current_club",
+      table: "clubs",
+      matchColumn: "name",
+      selectColumns: "id,name",
+      createIfMissing: false,
+      targetColumn: "current_club_id",
+    },
+  ],
+  extraPayload: { is_active: true },
+  generateColumn: async (column, existing) => {
+    if (column !== "cosl_id") return null;
+    const year = new Date().getFullYear();
+    const prefix = `COSL-${year}-`;
+    const { data } = await supabase
+      .from("athletes")
+      .select("cosl_id")
+      .ilike("cosl_id", `COSL-${year}-%`)
+      .order("cosl_id", { ascending: false })
+      .limit(1);
+    const last = data?.[0]?.cosl_id as string | undefined;
+    const seq = last ? parseInt(last.split("-")[2] ?? "0", 10) + 1 : 1;
+    // Also check generated values in this batch
+    const batchMax = existing
+      .filter((id) => id.startsWith(prefix))
+      .map((id) => parseInt(id.slice(prefix.length), 10))
+      .reduce((m, n) => Math.max(m, n), 0);
+    return `${prefix}${String(Math.max(seq, batchMax + 1)).padStart(4, "0")}`;
+  },
+};
+
+// ============================================================
+// Persons
+// ============================================================
+
+export const personsImportConfig: CsvImportConfig = {
+  entityName: "Personne",
+  table: "persons",
+  columns: [
+    { key: "first_name", label: "Jean", required: true },
+    { key: "last_name", label: "Dupont", required: true },
+    { key: "birth_date", label: "1998-05-15" },
+    { key: "gender", label: "male", transform: (v) => v.toLowerCase() || null },
+    { key: "nationality", label: "LUX", transform: (v) => v.toUpperCase() || null },
+    { key: "email", label: "jean.dupont@email.lu" },
+    { key: "phone", label: "+352 691 000 000" },
+    { key: "street", label: "12 Rue de la Gare" },
+    { key: "postcode", label: "L-1234" },
+    { key: "city", label: "Luxembourg" },
+    { key: "country", label: "LU" },
+  ],
+  duplicateCheck: {
+    keys: ["email"],
+    description: "email",
+  },
+  extraPayload: { is_active: true },
+};
+
+// ============================================================
+// Clubs
+// ============================================================
+
+export const clubsImportConfig: CsvImportConfig = {
+  entityName: "Club",
+  table: "clubs",
+  columns: [
+    { key: "name", label: "FC Luxembourg", required: true },
+    { key: "city", label: "Luxembourg" },
+    { key: "street", label: "12 Rue de la Gare" },
+    { key: "postcode", label: "L-1234" },
+    { key: "country", label: "LU" },
+    { key: "email", label: "contact@club.lu" },
+    { key: "phone", label: "+352 000 000" },
+  ],
+  duplicateCheck: {
+    keys: ["name"],
+    description: "nom du club",
+  },
+  links: [
+    {
+      csvColumn: "federation",
+      table: "federations",
+      matchColumn: "acronym",
+      selectColumns: "id,acronym",
+      createIfMissing: false,
+      targetColumn: "federation_id",
+    },
+  ],
+};
+
+// ============================================================
+// Federations
+// ============================================================
+
+export const federationsImportConfig: CsvImportConfig = {
+  entityName: "Fédération",
+  table: "federations",
+  columns: [
+    { key: "acronym", label: "FLA", required: true },
+    { key: "name", label: "Fédération Luxembourgeoise d'Athlétisme", required: true },
+    { key: "president_name", label: "Jean Dupont" },
+    { key: "contact_email", label: "contact@fla.lu" },
+    { key: "contact_phone", label: "+352 000 000" },
+    { key: "international_federation", label: "World Athletics" },
+    { key: "is_olympic", label: "true", transform: (v) => v.toLowerCase() === "true" || v === "1" },
+  ],
+  duplicateCheck: {
+    keys: ["acronym"],
+    description: "acronyme",
+  },
+};
+
+// ============================================================
+// Sponsors
+// ============================================================
+
+export const sponsorsImportConfig: CsvImportConfig = {
+  entityName: "Sponsor",
+  table: "sponsors",
+  columns: [
+    { key: "name", label: "Sponsor SA", required: true },
+    { key: "email", label: "contact@sponsor.lu" },
+    { key: "phone", label: "+352 000 000" },
+    { key: "contact_first_name", label: "Jean" },
+    { key: "contact_last_name", label: "Dupont" },
+    { key: "contact_email", label: "jean@sponsor.lu" },
+    { key: "contact_phone", label: "+352 691 000" },
+    { key: "notes", label: "Notes diverses" },
+  ],
+  duplicateCheck: {
+    keys: ["name"],
+    description: "nom du sponsor",
+  },
+  links: [
+    {
+      csvColumn: "rank",
+      table: "sponsor_ranks",
+      matchColumn: "name",
+      selectColumns: "id,name",
+      createIfMissing: false,
+      targetColumn: "rank_id",
+    },
+  ],
+  extraPayload: { is_active: true },
+};
+
+// ============================================================
+// Partners
+// ============================================================
+
+export const partnersImportConfig: CsvImportConfig = {
+  entityName: "Partenaire",
+  table: "partners",
+  columns: [
+    { key: "name", label: "Partenaire SARL", required: true },
+    { key: "email", label: "contact@partenaire.lu" },
+    { key: "phone", label: "+352 000 000" },
+    { key: "street", label: "12 Rue de la Gare" },
+    { key: "postcode", label: "L-1234" },
+    { key: "city", label: "Luxembourg" },
+    { key: "country", label: "LU" },
+    { key: "contact_first_name", label: "Jean" },
+    { key: "contact_last_name", label: "Dupont" },
+    { key: "contact_email", label: "jean@partenaire.lu" },
+    { key: "contact_phone", label: "+352 691 000" },
+    { key: "notes", label: "Notes diverses" },
+  ],
+  duplicateCheck: {
+    keys: ["name"],
+    description: "nom du partenaire",
+  },
+  extraPayload: { is_active: true },
+};
+
+// ============================================================
+// Games
+// ============================================================
+
+export const gamesImportConfig: CsvImportConfig = {
+  entityName: "Games",
+  table: "games",
+  columns: [
+    { key: "name", label: "Jeux Olympiques Paris 2024", required: true },
+    { key: "short_name", label: "JO2024" },
+    { key: "game_type", label: "jo_summer", required: true, transform: (v) => v.toLowerCase() },
+    { key: "edition_year", label: "2024", required: true, transform: (v) => parseInt(v, 10) || null },
+    { key: "host_country", label: "France" },
+    { key: "host_city", label: "Paris" },
+    { key: "organizer", label: "CIO" },
+    { key: "preparation_start", label: "2021-01-01" },
+    { key: "competition_start", label: "2024-07-26", required: true },
+    { key: "competition_end", label: "2024-08-11", required: true },
+    { key: "closing_date", label: "2024-08-11" },
+    { key: "status", label: "preparation", default: "preparation", transform: (v) => v.toLowerCase() },
+    { key: "description", label: "Description de l'événement" },
+  ],
+  duplicateCheck: {
+    keys: ["name"],
+    description: "nom",
+  },
+};
