@@ -69,6 +69,9 @@ export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAd
   // Local editable copies of person fields needed for athlete creation
   const [birthDate, setBirthDate] = useState(person.birth_date ?? "");
   const [gender, setGender] = useState(person.gender ?? "");
+  // Track which fields were missing when the dialog opened (frozen until submit)
+  const [showBirthDate, setShowBirthDate] = useState(false);
+  const [showGender, setShowGender] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -78,6 +81,9 @@ export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAd
     setClubMember({ ...defaultClubMemberProfile, club_id: presetClubId ?? "" });
     setBirthDate(person.birth_date ?? "");
     setGender(person.gender ?? "");
+    // Freeze which fields are missing at open time
+    setShowBirthDate(role === "athlete" && !person.birth_date);
+    setShowGender(role === "athlete" && !person.gender);
 
     supabase.from("sports").select("id, name").order("name")
       .then(({ data }) => setSports((data ?? []) as typeof sports));
@@ -96,8 +102,8 @@ export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAd
   const patchClubMember = (patch: Partial<ClubMemberProfileFields>) =>
     setClubMember((c) => ({ ...c, ...patch }));
 
-  const missingBirthDate = role === "athlete" && !birthDate;
-  const missingGender = role === "athlete" && !gender;
+  const missingBirthDate = showBirthDate && !birthDate;
+  const missingGender = showGender && !gender;
   const athleteBlocked = missingBirthDate || missingGender;
 
   const handleSubmit = async () => {
@@ -268,13 +274,13 @@ export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAd
 
         <div className="space-y-4 py-2">
           {/* Inline missing person fields for athlete creation */}
-          {role === "athlete" && (missingBirthDate || missingGender) && (
+          {role === "athlete" && (showBirthDate || showGender) && (
             <div className="space-y-3 rounded-md border-2 border-red-300 bg-red-50 p-3">
               <p className="text-sm font-medium text-red-800">
                 Champs obligatoires pour les athlètes
               </p>
               <div className="grid grid-cols-2 gap-3">
-                {missingBirthDate && (
+                {showBirthDate && (
                   <div className="space-y-1.5">
                     <Label className="text-red-700">Date de naissance</Label>
                     <Input
@@ -285,7 +291,7 @@ export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAd
                     />
                   </div>
                 )}
-                {missingGender && (
+                {showGender && (
                   <div className="space-y-1.5">
                     <Label className="text-red-700">Genre</Label>
                     <Select value={gender} onValueChange={setGender}>
