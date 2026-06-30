@@ -4,7 +4,7 @@ import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const distDir = path.resolve(__dirname, "..", "dist", "client");
+const distDir = path.resolve(__dirname, "..", "dist");
 
 // TanStack Start may emit either index.html or _shell.html
 const candidateShells = ["index.html", "_shell.html"];
