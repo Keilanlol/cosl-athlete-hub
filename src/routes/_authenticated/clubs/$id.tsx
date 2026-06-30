@@ -43,7 +43,6 @@ import {
   Select,
   SelectContent,
   SelectItem,
-  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -196,8 +195,6 @@ function ClubDetailPage() {
   const [coachOpen, setCoachOpen] = useState(false);
   const [coachForm, setCoachForm] = useState(emptyCoach);
   const [coachSaving, setCoachSaving] = useState(false);
-  const [pickedCoachId, setPickedCoachId] = useState("");
-  const [freeCoaches, setFreeCoaches] = useState<Coach[]>([]);
   const [selectedCoachPersonId, setSelectedCoachPersonId] = useState("");
 
 
@@ -229,13 +226,6 @@ function ClubDetailPage() {
     setAthletes((a.data ?? []) as AthleteRow[]);
     setSports((sp.data ?? []) as Sport[]);
     setMembers((m.data ?? []) as ClubMember[]);
-
-    const { data: freeC } = await supabase
-      .from("coaches")
-      .select("*")
-      .is("club_id", null)
-      .order("last_name");
-    setFreeCoaches((freeC ?? []) as Coach[]);
 
     const { data: personsData } = await supabase
       .from("persons")
@@ -471,7 +461,6 @@ function ClubDetailPage() {
 
   // ---------- Coach CRUD ----------
   const openCreateCoach = () => {
-    setPickedCoachId("");
     setCoachForm(emptyCoach);
     setCoachOpen(true);
   };
@@ -492,23 +481,6 @@ function ClubDetailPage() {
       role: coachForm.role,
       is_active: coachForm.is_active,
     };
-
-    if (pickedCoachId) {
-      const { error } = await supabase
-        .from("coaches")
-        .update(payload)
-        .eq("id", pickedCoachId);
-      setCoachSaving(false);
-      if (error) {
-        toast.error("Échec de l'enregistrement", { description: friendlyError(error) });
-        return;
-      }
-      toast.success("Encadrant rattaché");
-      setCoachOpen(false);
-      setPickedCoachId("");
-      load();
-      return;
-    }
 
     // New coach (optionally linked to a person)
     const payloadWithPerson = selectedCoachPersonId
@@ -545,7 +517,6 @@ function ClubDetailPage() {
     setCoachSaving(false);
     toast.success("Encadrant ajouté");
     setCoachOpen(false);
-    setPickedCoachId("");
     setSelectedCoachPersonId("");
     load();
   };
@@ -1360,106 +1331,51 @@ function ClubDetailPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              {!pickedCoachId && (
-                <div className="space-y-1.5 rounded-md border border-dashed border-border bg-muted p-3">
-                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Lier à une personne existante (optionnel)
-                  </Label>
-                  <PersonCombobox
-                    value={selectedCoachPersonId || "__none__"}
-                    onChange={(v) => {
-                      if (v === "__none__") {
-                        setSelectedCoachPersonId("");
-                        return;
-                      }
-                      if (v === "__new__") {
-                        setCoachOpen(false);
-                        setSelectedCoachPersonId("");
-                        setPersonCreateRoles(["coach"]);
-                        setPersonCreateOpen(true);
-                        return;
-                      }
-                      setSelectedCoachPersonId(v);
-                      setPickedCoachId("");
-                      const p = personsPool.find((x) => x.id === v);
-                      if (!p) return;
-                      setCoachForm((f) => ({
-                        ...f,
-                        first_name: p.first_name,
-                        last_name: p.last_name,
-                        email: p.email ?? f.email,
-                      }));
+              <div className="space-y-1.5 rounded-md border border-dashed border-border bg-muted p-3">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Lier à une personne existante (optionnel)
+                </Label>
+                <PersonCombobox
+                  value={selectedCoachPersonId || "__none__"}
+                  onChange={(v) => {
+                    if (v === "__none__") {
+                      setSelectedCoachPersonId("");
+                      return;
+                    }
+                    if (v === "__new__") {
+                      setCoachOpen(false);
+                      setSelectedCoachPersonId("");
+                      setPersonCreateRoles(["coach"]);
+                      setPersonCreateOpen(true);
+                      return;
+                    }
+                    setSelectedCoachPersonId(v);
+                    const p = personsPool.find((x) => x.id === v);
+                    if (!p) return;
+                    setCoachForm((f) => ({
+                      ...f,
+                      first_name: p.first_name,
+                      last_name: p.last_name,
+                      email: p.email ?? f.email,
+                    }));
+                  }}
+                  options={personPickOptions}
+                  placeholder="Aucune (créer sans personne liée)"
+                  searchPlaceholder="Rechercher une personne…"
+                />
+                {selectedCoachPersonId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCoachPersonId("");
+                      setCoachForm(emptyCoach);
                     }}
-                    options={personPickOptions}
-                    placeholder="Aucune (créer sans personne liée)"
-                    searchPlaceholder="Rechercher une personne…"
-                  />
-                  {selectedCoachPersonId && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedCoachPersonId("");
-                        setCoachForm(emptyCoach);
-                      }}
-                      className="text-xs text-muted-foreground hover:text-foreground underline"
-                    >
-                      Détacher
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {!selectedCoachPersonId && (
-                <div className="space-y-1.5 rounded-md border border-dashed border-border bg-muted p-3">
-                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Choisir un encadrant existant ou créer un nouveau
-                  </Label>
-                  <Select
-                    value={pickedCoachId || "__new__"}
-                    onValueChange={(v) => {
-                      if (v === "__new__") {
-                        setPickedCoachId("");
-                        setCoachForm(emptyCoach);
-                        return;
-                      }
-                      setPickedCoachId(v);
-                      const c = freeCoaches.find((x) => x.id === v);
-                      if (!c) return;
-                      setCoachForm({
-                        first_name: c.first_name,
-                        last_name: c.last_name,
-                        email: c.email ?? "",
-                        phone: c.phone ?? "",
-                        role: c.role ?? "coach",
-                        is_active: c.is_active ?? true,
-                      });
-                    }}
+                    className="text-xs text-muted-foreground hover:text-foreground underline"
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Nouvel encadrant" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__new__" className="text-primary font-medium">
-                        + Créer une nouvelle personne
-                      </SelectItem>
-                      {freeCoaches.length > 0 && (
-                        <>
-                          <SelectSeparator />
-                          {freeCoaches.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>
-                              {c.first_name} {c.last_name}
-                              {c.email ? ` — ${c.email}` : ""}
-                            </SelectItem>
-                          ))}
-                        </>
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    Seuls les encadrants sans club sont listés.
-                  </p>
-                </div>
-              )}
+                    Détacher
+                  </button>
+                )}
+              </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
@@ -1543,7 +1459,7 @@ function ClubDetailPage() {
                 disabled={coachSaving}
                 className="bg-primary hover:bg-[var(--cosl-red-dark)]"
               >
-                {coachSaving ? "Enregistrement…" : pickedCoachId ? "Rattacher" : "Ajouter"}
+                {coachSaving ? "Enregistrement…" : "Ajouter"}
               </Button>
             </DialogFooter>
           </form>

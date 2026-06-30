@@ -29,7 +29,6 @@ import {
   Select,
   SelectContent,
   SelectItem,
-  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -56,6 +55,8 @@ import { AddressSearch } from "@/components/AddressSearch";
 import { confirmAction } from "@/components/ConfirmDialog";
 import { EntityImageUpload } from "@/components/EntityImageUpload";
 import { PersonCombobox } from "@/components/PersonCombobox";
+import { PersonCreateDialog } from "@/components/persons/PersonCreateDialog";
+import type { PersonRoleType } from "@/lib/persons";
 
 type PersonLite = {
   id: string;
@@ -183,13 +184,15 @@ function FederationDetailPage() {
   const [coachOpen, setCoachOpen] = useState(false);
   const [coachForm, setCoachForm] = useState(emptyCoach);
   const [coachSaving, setCoachSaving] = useState(false);
-  const [pickedCoachId, setPickedCoachId] = useState("");
-  const [freeCoaches, setFreeCoaches] = useState<Coach[]>([]);
 
   // Persons for "use existing person" combobox
   const [persons, setPersons] = useState<PersonLite[]>([]);
   const [selectedMemberPersonId, setSelectedMemberPersonId] = useState("");
   const [selectedCoachPersonId, setSelectedCoachPersonId] = useState("");
+
+  // PersonCreateDialog (new person flow)
+  const [personCreateOpen, setPersonCreateOpen] = useState(false);
+  const [personCreateRoles, setPersonCreateRoles] = useState<PersonRoleType[]>([]);
 
   const load = async () => {
     setLoading(true);
@@ -234,20 +237,13 @@ function FederationDetailPage() {
       coachesQuery.eq("federation_id", id);
     }
 
-    const [a, co, fc, pe] = await Promise.all([
+    const [a, co, pe] = await Promise.all([
       athletesQuery,
       coachesQuery,
-      supabase
-        .from("coaches")
-        .select("*")
-        .is("federation_id", null)
-        .is("club_id", null)
-        .order("last_name"),
       supabase.from("persons").select("id, first_name, last_name, email, phone").order("last_name"),
     ]);
     setAthletes((a.data ?? []) as AthleteRow[]);
     setCoaches((co.data ?? []) as Coach[]);
-    setFreeCoaches((fc.data ?? []) as Coach[]);
     setPersons((pe.data ?? []) as PersonLite[]);
     setLoading(false);
   };
@@ -521,7 +517,6 @@ function FederationDetailPage() {
 
   // ---------- Coach CRUD ----------
   const openCreateCoach = () => {
-    setPickedCoachId("");
     setSelectedCoachPersonId("");
     setCoachForm(emptyCoach);
     setCoachOpen(true);
@@ -546,11 +541,7 @@ function FederationDetailPage() {
 
     let newCoachId: string | null = null;
     let opError: { message: string } | null = null;
-    if (pickedCoachId) {
-      const { error } = await supabase.from("coaches").update(payload).eq("id", pickedCoachId);
-      opError = error;
-      newCoachId = pickedCoachId;
-    } else {
+    {
       const insertPayload = selectedCoachPersonId
         ? { ...payload, person_id: selectedCoachPersonId }
         : payload;
@@ -563,7 +554,7 @@ function FederationDetailPage() {
       newCoachId = (data?.id as string | undefined) ?? null;
     }
 
-    if (!opError && !pickedCoachId && selectedCoachPersonId && newCoachId) {
+    if (!opError && selectedCoachPersonId && newCoachId) {
       const { error: profErr } = await supabase.from("coach_profiles").insert({
         person_id: selectedCoachPersonId,
         legacy_coach_id: newCoachId,
@@ -588,9 +579,8 @@ function FederationDetailPage() {
       toast.error("Échec de l'enregistrement", { description: friendlyError(opError) });
       return;
     }
-    toast.success(pickedCoachId ? "Encadrant rattaché" : "Encadrant ajouté");
+    toast.success("Encadrant ajouté");
     setCoachOpen(false);
-    setPickedCoachId("");
     setSelectedCoachPersonId("");
     load();
   };
@@ -604,9 +594,29 @@ function FederationDetailPage() {
     [persons],
   );
 
-  const applyPersonToMember = (personId: string) => {
-    setSelectedMemberPersonId(personId);
-    const p = persons.find((x) => x.id === personId);
+  const personPickOptions = useMemo(
+    () => [
+      { id: "__none__", label: "Aucune (créer sans personne liée)" },
+      { id: "__new__", label: "+ Créer une nouvelle personne" },
+      ...personOptions,
+    ],
+    [personOptions],
+  );
+
+  const applyPersonToMember = (value: string) => {
+    if (value === "__none__") {
+      setSelectedMemberPersonId("");
+      return;
+    }
+    if (value === "__new__") {
+      setMemberOpen(false);
+      setSelectedMemberPersonId("");
+      setPersonCreateRoles(["federation_member"]);
+      setPersonCreateOpen(true);
+      return;
+    }
+    setSelectedMemberPersonId(value);
+    const p = persons.find((x) => x.id === value);
     if (!p) return;
     setMemberForm((f) => ({
       ...f,
@@ -617,9 +627,20 @@ function FederationDetailPage() {
     }));
   };
 
-  const applyPersonToCoach = (personId: string) => {
-    setSelectedCoachPersonId(personId);
-    const p = persons.find((x) => x.id === personId);
+  const applyPersonToCoach = (value: string) => {
+    if (value === "__none__") {
+      setSelectedCoachPersonId("");
+      return;
+    }
+    if (value === "__new__") {
+      setCoachOpen(false);
+      setSelectedCoachPersonId("");
+      setPersonCreateRoles(["coach"]);
+      setPersonCreateOpen(true);
+      return;
+    }
+    setSelectedCoachPersonId(value);
+    const p = persons.find((x) => x.id === value);
     if (!p) return;
     setCoachForm((f) => ({
       ...f,
@@ -1274,26 +1295,17 @@ function FederationDetailPage() {
               )}
 
               {!editingMember && (
-                <div className="space-y-1.5 rounded-md border border-dashed border-border bg-muted/40 p-3">
+                <div className="space-y-1.5 rounded-md border border-dashed border-border bg-muted p-3">
                   <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Personne existante (optionnel)
+                    Lier à une personne existante (optionnel)
                   </Label>
                   <PersonCombobox
-                    value={selectedMemberPersonId}
+                    value={selectedMemberPersonId || "__none__"}
                     onChange={applyPersonToMember}
-                    options={personOptions}
-                    placeholder="Lier à une personne déjà enregistrée…"
+                    options={personPickOptions}
+                    placeholder="Aucune (créer sans personne liée)"
                     searchPlaceholder="Rechercher une personne…"
                   />
-                  {selectedMemberPersonId && (
-                    <button
-                      type="button"
-                      onClick={() => setSelectedMemberPersonId("")}
-                      className="text-xs text-muted-foreground hover:text-foreground underline"
-                    >
-                      Détacher
-                    </button>
-                  )}
                 </div>
               )}
 
@@ -1477,82 +1489,31 @@ function FederationDetailPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              {!selectedCoachPersonId && (
-                <div className="space-y-1.5 rounded-md border border-dashed border-border bg-muted p-3">
-                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Choisir un encadrant existant ou créer un nouveau
-                  </Label>
-                  <Select
-                    value={pickedCoachId || "__new__"}
-                    onValueChange={(v) => {
-                      if (v === "__new__") {
-                        setPickedCoachId("");
-                        setCoachForm(emptyCoach);
-                        return;
-                      }
-                      setPickedCoachId(v);
-                      const c = freeCoaches.find((x) => x.id === v);
-                      if (!c) return;
-                      setCoachForm({
-                        first_name: c.first_name,
-                        last_name: c.last_name,
-                        email: c.email ?? "",
-                        phone: c.phone ?? "",
-                        role: c.role ?? "coach",
-                        club_id: "__none__",
-                        is_active: c.is_active ?? true,
-                      });
+              <div className="space-y-1.5 rounded-md border border-dashed border-border bg-muted p-3">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Lier à une personne existante (optionnel)
+                </Label>
+                <PersonCombobox
+                  value={selectedCoachPersonId || "__none__"}
+                  onChange={applyPersonToCoach}
+                  options={personPickOptions}
+                  placeholder="Aucune (créer sans personne liée)"
+                  searchPlaceholder="Rechercher une personne…"
+                />
+                {selectedCoachPersonId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCoachPersonId("");
+                      setCoachForm(emptyCoach);
                     }}
+                    className="text-xs text-muted-foreground hover:text-foreground underline"
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Nouvel encadrant" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__new__" className="text-primary font-medium">
-                        + Créer une nouvelle personne
-                      </SelectItem>
-                      {freeCoaches.length > 0 && (
-                        <>
-                          <SelectSeparator />
-                          {freeCoaches.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>
-                              {c.first_name} {c.last_name}
-                              {c.email ? ` — ${c.email}` : ""}
-                            </SelectItem>
-                          ))}
-                        </>
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    Seuls les encadrants sans fédération ni club sont listés.
-                  </p>
-                </div>
-              )}
+                    Détacher
+                  </button>
+                )}
+              </div>
 
-              {!pickedCoachId && (
-                <div className="space-y-1.5 rounded-md border border-dashed border-border bg-muted/40 p-3">
-                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Personne existante (optionnel)
-                  </Label>
-                  <PersonCombobox
-                    value={selectedCoachPersonId}
-                    onChange={applyPersonToCoach}
-                    options={personOptions}
-                    placeholder="Lier à une personne déjà enregistrée…"
-                    searchPlaceholder="Rechercher une personne…"
-                  />
-                  {selectedCoachPersonId && (
-                    <button
-                      type="button"
-                      onClick={() => setSelectedCoachPersonId("")}
-                      className="text-xs text-muted-foreground hover:text-foreground underline"
-                    >
-                      Détacher
-                    </button>
-                  )}
-                </div>
-              )}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="cfn">Prénom *</Label>
@@ -1656,12 +1617,21 @@ function FederationDetailPage() {
                 disabled={coachSaving}
                 className="bg-primary hover:bg-[var(--cosl-red-dark)]"
               >
-                {coachSaving ? "Enregistrement…" : pickedCoachId ? "Rattacher" : "Ajouter"}
+                {coachSaving ? "Enregistrement…" : "Ajouter"}
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+
+      <PersonCreateDialog
+        open={personCreateOpen}
+        onOpenChange={setPersonCreateOpen}
+        initialRoles={personCreateRoles}
+        onCreated={() => {
+          load();
+        }}
+      />
     </div>
   );
 }
