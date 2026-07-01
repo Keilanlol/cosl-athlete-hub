@@ -11,7 +11,7 @@ export type CsvColumn = {
   aliases?: string[];
   /** Human-readable label for preview/template */
   label: string;
-  /** Whether this field is required to proceed */
+  /** Whether this field is expected (shown in UI, but does not block import) */
   required?: boolean;
   /** Default value if column is missing/empty */
   default?: unknown;
@@ -19,46 +19,34 @@ export type CsvColumn = {
   transform?: (raw: string) => unknown;
   /** If true, the column is used for link resolution only and NOT inserted into the payload */
   linkOnly?: boolean;
+  /** If true, this field is auto-generated for new records (using generateColumn) */
+  autoGenerate?: boolean;
 };
 
 export type DuplicateCheck = {
-  /** Column keys to check for duplicates */
-  keys: string[];
-  /** Description for the report (e.g. "COSL ID ou email") */
-  description: string;
+  /** Cascading check strategies, tried in order. First match wins. */
+  checks: { keys: string[]; description: string }[];
+  /** Whether to update existing records instead of skipping */
+  updateOnDuplicate?: boolean;
 };
 
 export type LinkResolver = {
-  /** Column key in the CSV that contains the linked entity's name/identifier */
   csvColumn: string;
-  /** Table to search in */
   table: string;
-  /** Column in the target table to match against */
   matchColumn: string;
-  /** Columns to select from the target table (must include id) */
   selectColumns: string;
-  /** Whether to create the entity if not found */
   createIfMissing: boolean;
-  /** Columns to set when creating the linked entity */
   createColumns?: (value: string) => Record<string, unknown>;
-  /** Column key in the payload to set with the resolved id */
   targetColumn: string;
 };
 
 export type CsvImportConfig = {
-  /** Entity name (for display) */
   entityName: string;
-  /** Supabase table to insert into */
   table: string;
-  /** CSV columns definition */
   columns: CsvColumn[];
-  /** How to check for duplicates */
   duplicateCheck: DuplicateCheck;
-  /** Linked entity resolvers (clubs, federations, sports...) */
   links?: LinkResolver[];
-  /** Extra payload fields to add to every row (e.g. is_active: true) */
   extraPayload?: Record<string, unknown>;
-  /** Function to generate a value for a column if missing (e.g. cosl_id) */
   generateColumn?: (
     column: string,
     existingValues: string[],
@@ -94,18 +82,9 @@ export function normalizeDate(raw: string): string | null {
     const n2 = parseInt(p2, 10);
 
     let day: number, month: number;
-    // If first > 12, it must be DD/MM
-    if (n1 > 12) {
-      day = n1; month = n2;
-    }
-    // If second > 12, it must be MM/DD
-    else if (n2 > 12) {
-      month = n1; day = n2;
-    }
-    // Both ≤ 12: ambiguous, default to European DD/MM
-    else {
-      day = n1; month = n2;
-    }
+    if (n1 > 12) { day = n1; month = n2; }
+    else if (n2 > 12) { month = n1; day = n2; }
+    else { day = n1; month = n2; }
 
     if (month < 1 || month > 12 || day < 1 || day > 31) return null;
     return `${y}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -215,40 +194,52 @@ function findValue(
 
 export type ImportResult = {
   inserted: number;
+  updated: number;
   skipped: { row: Record<string, string>; reason: string }[];
   errors: { row: Record<string, string>; reason: string }[];
 };
 
 /**
- * Runs the full import process.
- * @param config The entity-specific config
- * @param rows Parsed CSV rows
- * @param onProgress Callback for progress updates
+ * Runs the full import process with cascading duplicate checks and upsert.
  */
 export async function runImport(
   config: CsvImportConfig,
   rows: Record<string, string>[],
   onProgress?: (current: number, total: number) => void,
 ): Promise<ImportResult> {
-  const result: ImportResult = { inserted: 0, skipped: [], errors: [] };
+  const result: ImportResult = { inserted: 0, updated: 0, skipped: [], errors: [] };
 
-  // Pre-load existing entities for duplicate check
+  // Pre-load existing entities for each duplicate check strategy
+  const allCheckKeys = new Set<string>();
+  config.duplicateCheck.checks.forEach((c) => c.keys.forEach((k) => allCheckKeys.add(k)));
+
   const { data: existing } = await supabase
     .from(config.table)
-    .select(config.duplicateCheck.keys.join(","));
+    .select([...allCheckKeys, "id"].join(","));
 
-  const existingValues = new Map<string, Set<string>>();
-  for (const key of config.duplicateCheck.keys) {
-    existingValues.set(key, new Set());
-  }
-  ((existing ?? []) as unknown as Record<string, unknown>[]).forEach((row) => {
-    for (const key of config.duplicateCheck.keys) {
-      const val = row[key];
-      if (val && typeof val === "string") {
-        existingValues.get(key)!.add(val.toLowerCase());
+  // Build lookup maps for each check strategy: "key1|key2" → record id
+  const checkMaps: Map<string, string>[] = config.duplicateCheck.checks.map((check) => {
+    const map = new Map<string, string>();
+    ((existing ?? []) as unknown as Record<string, unknown>[]).forEach((row) => {
+      const key = check.keys
+        .map((k) => {
+          const v = row[k];
+          return v != null ? String(v).toLowerCase().trim() : "";
+        })
+        .join("|");
+      // Only add if all keys have values
+      if (key && !key.includes("||") && !key.startsWith("|") && !key.endsWith("|")) {
+        const id = row.id as string;
+        if (id) map.set(key, id);
       }
-    }
+    });
+    return map;
   });
+
+  // Track generated values in this batch
+  const generatedValues: string[] = [];
+  // Track inserted/updated keys to prevent duplicates within the same batch
+  const batchSeen = new Set<string>();
 
   // Pre-load linked entities
   const linkCache: Record<string, Map<string, string>> = {};
@@ -269,9 +260,6 @@ export async function runImport(
     }
   }
 
-  // Track generated values (e.g. cosl_id sequences)
-  const generatedValues: string[] = [];
-
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     onProgress?.(i + 1, rows.length);
@@ -279,28 +267,14 @@ export async function runImport(
     // Build payload
     const payload: Record<string, unknown> = { ...config.extraPayload };
 
-    let hasError = false;
-    let errorReason = "";
-
-    // Process columns
+    // Process columns — no errors on missing fields, just leave them out
     for (const col of config.columns) {
-      let raw = findValue(row, col);
+      // Skip autoGenerate fields — they'll be handled later for new records
+      if (col.autoGenerate) continue;
+
+      const raw = findValue(row, col);
 
       if (raw === undefined || raw === "") {
-        if (col.required) {
-          // Try generateColumn
-          if (config.generateColumn) {
-            const gen = await config.generateColumn(col.key, generatedValues);
-            if (gen) {
-              generatedValues.push(gen);
-              if (!col.linkOnly) payload[col.key] = gen;
-              continue;
-            }
-          }
-          hasError = true;
-          errorReason = `Champ requis manquant : ${col.label}`;
-          break;
-        }
         if (col.default !== undefined && !col.linkOnly) {
           payload[col.key] = col.default;
         }
@@ -311,51 +285,6 @@ export async function runImport(
       if (!col.linkOnly) {
         payload[col.key] = col.transform ? col.transform(raw) : raw;
       }
-    }
-
-    if (hasError) {
-      result.errors.push({ row, reason: errorReason });
-      continue;
-    }
-
-    // Check duplicates
-    let isDuplicate = false;
-    let dupReason = "";
-    for (const key of config.duplicateCheck.keys) {
-      const val = payload[key];
-      if (val && typeof val === "string") {
-        if (existingValues.get(key)!.has(val.toLowerCase())) {
-          isDuplicate = true;
-          dupReason = `${key} déjà existant : ${val}`;
-          break;
-        }
-        // Also check against generated values in this batch
-        if (generatedValues.includes(val)) {
-          isDuplicate = true;
-          dupReason = `${key} dupliqué dans le fichier : ${val}`;
-          break;
-        }
-      }
-    }
-
-    if (isDuplicate) {
-      // Build a readable description
-      const desc = config.duplicateCheck.keys
-        .map((k) => payload[k])
-        .filter(Boolean)
-        .join(" / ");
-      result.skipped.push({
-        row,
-        reason: `Doublon (${config.duplicateCheck.description}) — ${desc}`,
-      });
-      // Add to existing to prevent further duplicates in same batch
-      for (const key of config.duplicateCheck.keys) {
-        const val = payload[key];
-        if (val && typeof val === "string") {
-          existingValues.get(key)!.add(val.toLowerCase());
-        }
-      }
-      continue;
     }
 
     // Resolve links
@@ -388,20 +317,111 @@ export async function runImport(
       }
     }
 
-    // Insert
-    const { error } = await supabase.from(config.table).insert(payload);
-    if (error) {
-      result.errors.push({ row, reason: error.message });
+    // Cascading duplicate check
+    let existingId: string | null = null;
+    let matchedDescription = "";
+
+    for (let s = 0; s < config.duplicateCheck.checks.length; s++) {
+      const check = config.duplicateCheck.checks[s];
+      // Check if all keys have non-empty values in payload
+      const allKeysPresent = check.keys.every((k) => {
+        const v = payload[k];
+        return v != null && v !== "";
+      });
+      if (!allKeysPresent) continue;
+
+      const key = check.keys
+        .map((k) => String(payload[k]).toLowerCase().trim())
+        .join("|");
+
+      // Check in existing map
+      const found = checkMaps[s].get(key);
+      if (found) {
+        existingId = found;
+        matchedDescription = check.description;
+        break;
+      }
+
+      // Check in batch (prevent duplicates within same CSV)
+      if (batchSeen.has(`${s}:${key}`)) {
+        existingId = "__batch_duplicate__";
+        matchedDescription = `${check.description} (dupliqué dans le fichier)`;
+        break;
+      }
+    }
+
+    if (existingId === "__batch_duplicate__") {
+      const desc = config.duplicateCheck.checks
+        .flatMap((c) => c.keys.map((k) => payload[k]))
+        .filter(Boolean)
+        .join(" / ");
+      result.skipped.push({
+        row,
+        reason: `Doublon (${matchedDescription}) — ${desc}`,
+      });
       continue;
     }
 
-    result.inserted++;
-    // Add to existing to prevent duplicates in same batch
-    for (const key of config.duplicateCheck.keys) {
-      const val = payload[key];
-      if (val && typeof val === "string") {
-        existingValues.get(key)!.add(val.toLowerCase());
+    if (existingId) {
+      // Found an existing record
+      if (config.duplicateCheck.updateOnDuplicate) {
+        // Update the existing record
+        const { error } = await supabase
+          .from(config.table)
+          .update(payload)
+          .eq("id", existingId);
+        if (error) {
+          result.errors.push({ row, reason: error.message });
+          continue;
+        }
+        result.updated++;
+      } else {
+        // Skip
+        const desc = config.duplicateCheck.checks
+          .flatMap((c) => c.keys.map((k) => payload[k]))
+          .filter(Boolean)
+          .join(" / ");
+        result.skipped.push({
+          row,
+          reason: `Doublon (${matchedDescription}) — ${desc}`,
+        });
+        continue;
       }
+    } else {
+      // New record — generate auto fields
+      if (config.generateColumn) {
+        for (const col of config.columns) {
+          if (!col.autoGenerate) continue;
+          if (payload[col.key]) continue; // Already has a value
+          const gen = await config.generateColumn(col.key, generatedValues);
+          if (gen) {
+            generatedValues.push(gen);
+            payload[col.key] = gen;
+          }
+        }
+      }
+
+      // Insert
+      const { error } = await supabase.from(config.table).insert(payload);
+      if (error) {
+        result.errors.push({ row, reason: error.message });
+        continue;
+      }
+      result.inserted++;
+    }
+
+    // Mark as seen in batch for all check strategies
+    for (let s = 0; s < config.duplicateCheck.checks.length; s++) {
+      const check = config.duplicateCheck.checks[s];
+      const allKeysPresent = check.keys.every((k) => {
+        const v = payload[k];
+        return v != null && v !== "";
+      });
+      if (!allKeysPresent) continue;
+      const key = check.keys
+        .map((k) => String(payload[k]).toLowerCase().trim())
+        .join("|");
+      batchSeen.add(`${s}:${key}`);
     }
   }
 

@@ -10,13 +10,13 @@ export const athletesImportConfig: CsvImportConfig = {
   entityName: "Athlète",
   table: "athletes",
   columns: [
-    { key: "cosl_id", label: "COSL-2026-0001", required: false },
+    { key: "cosl_id", label: "COSL-2026-0001", autoGenerate: true },
     { key: "first_name", label: "Jean", required: true },
     { key: "last_name", label: "Dupont", required: true },
     { key: "birth_date", label: "1998-05-15", required: true, transform: normalizeDate },
     { key: "gender", label: "male", required: true, transform: (v) => v.toLowerCase() },
     { key: "nationality", label: "LUX", required: true, transform: (v) => v.toUpperCase() },
-    { key: "sport_nationality", label: "LUX", transform: (v) => v.toUpperCase() || null },
+    { key: "sport_nationality", label: "LUX", transform: (v) => (v ? v.toUpperCase() : null) },
     { key: "email", label: "jean.dupont@email.lu" },
     { key: "phone", label: "+352 691 000 000" },
     { key: "street", label: "12 Rue de la Gare" },
@@ -33,8 +33,12 @@ export const athletesImportConfig: CsvImportConfig = {
     { key: "current_club", label: "FC Luxembourg", linkOnly: true },
   ],
   duplicateCheck: {
-    keys: ["cosl_id", "email"],
-    description: "COSL ID ou email",
+    checks: [
+      { keys: ["cosl_id"], description: "COSL ID" },
+      { keys: ["first_name", "last_name", "birth_date"], description: "nom + date de naissance" },
+      { keys: ["email"], description: "email" },
+    ],
+    updateOnDuplicate: true,
   },
   links: [
     {
@@ -76,7 +80,6 @@ export const athletesImportConfig: CsvImportConfig = {
       .limit(1);
     const last = data?.[0]?.cosl_id as string | undefined;
     const seq = last ? parseInt(last.split("-")[2] ?? "0", 10) + 1 : 1;
-    // Also check generated values in this batch
     const batchMax = existing
       .filter((id) => id.startsWith(prefix))
       .map((id) => parseInt(id.slice(prefix.length), 10))
@@ -96,8 +99,8 @@ export const personsImportConfig: CsvImportConfig = {
     { key: "first_name", label: "Jean", required: true },
     { key: "last_name", label: "Dupont", required: true },
     { key: "birth_date", label: "1998-05-15", transform: normalizeDate },
-    { key: "gender", label: "male", transform: (v) => v.toLowerCase() || null },
-    { key: "nationality", label: "LUX", transform: (v) => v.toUpperCase() || null },
+    { key: "gender", label: "male", transform: (v) => (v ? v.toLowerCase() : null) },
+    { key: "nationality", label: "LUX", transform: (v) => (v ? v.toUpperCase() : null) },
     { key: "email", label: "jean.dupont@email.lu" },
     { key: "phone", label: "+352 691 000 000" },
     { key: "street", label: "12 Rue de la Gare" },
@@ -106,8 +109,11 @@ export const personsImportConfig: CsvImportConfig = {
     { key: "country", label: "LU" },
   ],
   duplicateCheck: {
-    keys: ["email"],
-    description: "email",
+    checks: [
+      { keys: ["email"], description: "email" },
+      { keys: ["first_name", "last_name", "birth_date"], description: "nom + date de naissance" },
+    ],
+    updateOnDuplicate: true,
   },
   extraPayload: { is_active: true },
 };
@@ -131,8 +137,10 @@ export const clubsImportConfig: CsvImportConfig = {
     { key: "phone", label: "+352 000 000" },
   ],
   duplicateCheck: {
-    keys: ["name"],
-    description: "nom du club",
+    checks: [
+      { keys: ["name"], description: "nom" },
+    ],
+    updateOnDuplicate: true,
   },
   links: [
     {
@@ -163,8 +171,11 @@ export const federationsImportConfig: CsvImportConfig = {
     { key: "is_olympic", label: "true", transform: (v) => v.toLowerCase() === "true" || v === "1" },
   ],
   duplicateCheck: {
-    keys: ["acronym"],
-    description: "acronyme",
+    checks: [
+      { keys: ["acronym"], description: "acronyme" },
+      { keys: ["name"], description: "nom" },
+    ],
+    updateOnDuplicate: true,
   },
 };
 
@@ -187,8 +198,10 @@ export const sponsorsImportConfig: CsvImportConfig = {
     { key: "rank", label: "Gold", linkOnly: true },
   ],
   duplicateCheck: {
-    keys: ["name"],
-    description: "nom du sponsor",
+    checks: [
+      { keys: ["name"], description: "nom" },
+    ],
+    updateOnDuplicate: true,
   },
   links: [
     {
@@ -225,8 +238,10 @@ export const partnersImportConfig: CsvImportConfig = {
     { key: "notes", label: "Notes diverses" },
   ],
   duplicateCheck: {
-    keys: ["name"],
-    description: "nom du partenaire",
+    checks: [
+      { keys: ["name"], description: "nom" },
+    ],
+    updateOnDuplicate: true,
   },
   extraPayload: { is_active: true },
 };
@@ -254,8 +269,10 @@ export const gamesImportConfig: CsvImportConfig = {
     { key: "description", label: "Description de l'événement" },
   ],
   duplicateCheck: {
-    keys: ["name"],
-    description: "nom",
+    checks: [
+      { keys: ["name"], description: "nom" },
+    ],
+    updateOnDuplicate: true,
   },
 };
 
@@ -279,8 +296,11 @@ export const federationMembersImportConfig: CsvImportConfig = {
     { key: "notes", label: "Notes" },
   ],
   duplicateCheck: {
-    keys: ["federation_id", "first_name", "last_name"],
-    description: "fédération + nom",
+    checks: [
+      { keys: ["federation_id", "first_name", "last_name"], description: "fédération + nom" },
+      { keys: ["federation_id", "email"], description: "fédération + email" },
+    ],
+    updateOnDuplicate: true,
   },
   links: [
     {
@@ -322,8 +342,11 @@ export const clubMembersImportConfig: CsvImportConfig = {
     { key: "notes", label: "Notes" },
   ],
   duplicateCheck: {
-    keys: ["club_id", "first_name", "last_name"],
-    description: "club + nom",
+    checks: [
+      { keys: ["club_id", "first_name", "last_name"], description: "club + nom" },
+      { keys: ["club_id", "email"], description: "club + email" },
+    ],
+    updateOnDuplicate: true,
   },
   links: [
     {
@@ -356,8 +379,11 @@ export const coachesImportConfig: CsvImportConfig = {
     { key: "phone", label: "+352 691 000 000" },
   ],
   duplicateCheck: {
-    keys: ["first_name", "last_name", "role"],
-    description: "nom + rôle",
+    checks: [
+      { keys: ["federation_id", "club_id", "first_name", "last_name"], description: "fédération + club + nom" },
+      { keys: ["federation_id", "club_id", "email"], description: "fédération + club + email" },
+    ],
+    updateOnDuplicate: true,
   },
   links: [
     {

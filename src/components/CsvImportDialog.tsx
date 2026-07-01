@@ -76,8 +76,8 @@ export function CsvImportDialog({ open, onOpenChange, config, onImported }: Prop
     });
     setResult(res);
     setStage("result");
-    if (res.inserted > 0) {
-      toast.success(`${res.inserted} ${config.entityName.toLowerCase()}(s) importé(s)`);
+    if (res.inserted > 0 || res.updated > 0) {
+      toast.success(`${res.inserted} créé(s), ${res.updated} mis à jour`);
       onImported?.();
     }
   };
@@ -115,7 +115,7 @@ export function CsvImportDialog({ open, onOpenChange, config, onImported }: Prop
             Importer des {config.entityName.toLowerCase()}s
           </DialogTitle>
           <DialogDescription>
-            Sélectionnez un fichier CSV. Les doublons ({config.duplicateCheck.description}) seront ignorés.
+            Sélectionnez un fichier CSV. Les doublons seront mis à jour automatiquement.
           </DialogDescription>
         </DialogHeader>
 
@@ -308,16 +308,21 @@ export function CsvImportDialog({ open, onOpenChange, config, onImported }: Prop
         {/* Result stage */}
         {stage === "result" && result && (
           <div className="py-4 space-y-4">
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-4 gap-3">
               <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-center">
                 <CheckCircle2 className="h-5 w-5 text-emerald-600 mx-auto mb-1" />
                 <p className="text-2xl font-bold text-emerald-700">{result.inserted}</p>
-                <p className="text-xs text-emerald-600">Importés</p>
+                <p className="text-xs text-emerald-600">Créés</p>
+              </div>
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-center">
+                <CheckCircle2 className="h-5 w-5 text-blue-600 mx-auto mb-1" />
+                <p className="text-2xl font-bold text-blue-700">{result.updated}</p>
+                <p className="text-xs text-blue-600">Mis à jour</p>
               </div>
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-center">
                 <AlertCircle className="h-5 w-5 text-amber-600 mx-auto mb-1" />
                 <p className="text-2xl font-bold text-amber-700">{result.skipped.length}</p>
-                <p className="text-xs text-amber-600">Ignorés (doublons)</p>
+                <p className="text-xs text-amber-600">Ignorés</p>
               </div>
               <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-center">
                 <AlertCircle className="h-5 w-5 text-red-600 mx-auto mb-1" />
@@ -328,13 +333,10 @@ export function CsvImportDialog({ open, onOpenChange, config, onImported }: Prop
 
             {result.skipped.length > 0 && (
               <div className="space-y-1">
-                <p className="text-sm font-medium text-amber-700">Lignes ignorées (doublons)</p>
+                <p className="text-sm font-medium text-amber-700">Lignes ignorées (doublons dans le fichier)</p>
                 <div className="rounded-lg border border-amber-200 bg-amber-50/50 max-h-[150px] overflow-auto">
                   {result.skipped.map((s, i) => {
-                    const name = config.duplicateCheck.keys
-                      .map((k) => s.row[k] ?? Object.values(s.row)[0])
-                      .filter(Boolean)
-                      .join(" ");
+                    const name = Object.values(s.row).slice(0, 3).filter(Boolean).join(" ");
                     return (
                       <div key={i} className="px-3 py-1.5 text-xs border-b border-amber-100 last:border-0">
                         <span className="text-amber-700 font-medium">{name}</span>
