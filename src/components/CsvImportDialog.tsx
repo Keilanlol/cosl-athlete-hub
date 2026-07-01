@@ -10,6 +10,7 @@ import {
   type ImportResult,
   type ImportAction,
   type ColumnMatch,
+  type LinkedEntityToCreate,
 } from "@/lib/csv-import";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -463,6 +464,26 @@ export function CsvImportDialog({ open, onOpenChange, config, onImported }: Prop
                     <span className="text-muted-foreground ml-2">— {e.reason}</span>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Linked entities to create */}
+            {previewResult.linkedToCreate.length > 0 && (
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-amber-700">
+                  Entités liées qui seront créées ({previewResult.linkedToCreate.length})
+                </p>
+                <div className="rounded-lg border border-amber-200 bg-amber-50/50 overflow-auto">
+                  {previewResult.linkedToCreate.map((item, i) => (
+                    <div key={i} className="px-3 py-1.5 text-xs border-b border-amber-100 last:border-0 flex items-center gap-2">
+                      <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 shrink-0">
+                        {item.entityName}
+                      </Badge>
+                      <span className="text-amber-700 font-medium">{item.value}</span>
+                      <span className="text-muted-foreground">— sera créé automatiquement</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 

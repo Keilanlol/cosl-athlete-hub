@@ -148,12 +148,21 @@ export type ImportAction = {
   label: string;
 };
 
+export type LinkedEntityToCreate = {
+  linkColumn: string;
+  table: string;
+  value: string;
+  /** Entity name for display (e.g. "Sport", "Fédération") */
+  entityName: string;
+};
+
 export type ImportResult = {
   actions: ImportAction[];
   skipped: { row: Record<string, string>; reason: string }[];
   errors: { row: Record<string, string>; reason: string }[];
   inserted: number;
   updated: number;
+  linkedToCreate: LinkedEntityToCreate[];
 };
 
 // Shared state between preview and confirm
@@ -221,6 +230,22 @@ export async function previewImport(
     }
   }
 
+  // Track linked entities that need to be created
+  const linkedToCreateMap = new Map<string, LinkedEntityToCreate>();
+  // Map linkColumn → entity name for display
+  const linkEntityNames: Record<string, string> = {};
+  if (config.links) {
+    for (const link of config.links) {
+      // Derive a display name from the table name
+      const entityName = link.table === "sports" ? "Sport"
+        : link.table === "federations" ? "Fédération"
+        : link.table === "clubs" ? "Club"
+        : link.table === "sponsor_ranks" ? "Rang sponsor"
+        : link.table;
+      linkEntityNames[link.csvColumn] = entityName;
+    }
+  }
+
   const generatedValues: string[] = [];
   const batchSeen = new Set<string>();
 
@@ -248,8 +273,16 @@ export async function previewImport(
         if (!raw) continue;
         let linkId = linkCache[link.csvColumn]?.get(raw.toLowerCase());
         if (!linkId && link.createIfMissing && link.createColumns) {
-          // Note: we don't create linked entities during preview, only during confirm.
-          // For preview, if the entity doesn't exist, we just skip the link.
+          // Track this entity as needing creation
+          const mapKey = `${link.csvColumn}:${raw.toLowerCase()}`;
+          if (!linkedToCreateMap.has(mapKey)) {
+            linkedToCreateMap.set(mapKey, {
+              linkColumn: link.csvColumn,
+              table: link.table,
+              value: raw,
+              entityName: linkEntityNames[link.csvColumn] ?? link.table,
+            });
+          }
         }
         if (linkId) payload[link.targetColumn] = linkId;
       }
@@ -320,7 +353,14 @@ export async function previewImport(
     }
   }
 
-  return { actions, skipped, errors, inserted: 0, updated: 0 };
+  return {
+    actions,
+    skipped,
+    errors,
+    inserted: 0,
+    updated: 0,
+    linkedToCreate: Array.from(linkedToCreateMap.values()),
+  };
 }
 
 /**
@@ -333,7 +373,7 @@ export async function confirmImport(
   selectedIds: Set<number>,
   onProgress?: (current: number, total: number) => void,
 ): Promise<ImportResult> {
-  const result: ImportResult = { actions: [], skipped: [], errors: [], inserted: 0, updated: 0 };
+  const result: ImportResult = { actions: [], skipped: [], errors: [], inserted: 0, updated: 0, linkedToCreate: [] };
   const selected = actions.filter((a) => selectedIds.has(a.id));
 
   // Pre-load linked entities again (in case some were created in preview)
