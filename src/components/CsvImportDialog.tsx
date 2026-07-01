@@ -63,7 +63,15 @@ function ActionRow({
 
   return (
     <div className="border-b border-border last:border-0">
-      <div className="flex items-center gap-2 px-3 py-2 hover:bg-muted/50">
+      <div
+        className={`flex items-center gap-2 px-3 py-2 hover:bg-muted/50 ${action.type === "update" && diff.length > 0 ? "cursor-pointer" : ""}`}
+        onClick={(e) => {
+          // Only toggle expand if the click is NOT on the checkbox
+          if (action.type === "update" && diff.length > 0 && (e.target as HTMLElement).tagName !== "BUTTON") {
+            setExpanded((v) => !v);
+          }
+        }}
+      >
         <Checkbox checked={selected} onCheckedChange={onToggle} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
@@ -84,16 +92,11 @@ function ActionRow({
             </p>
           )}
         </div>
-        {/* Expand button for updates */}
+        {/* Chevron indicator for updates */}
         {action.type === "update" && diff.length > 0 && (
-          <button
-            type="button"
-            onClick={() => setExpanded((v) => !v)}
-            className="text-muted-foreground hover:text-foreground shrink-0"
-            aria-label="Voir les différences"
-          >
+          <div className="text-muted-foreground shrink-0">
             {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </button>
+          </div>
         )}
       </div>
       {expanded && diff.length > 0 && (
