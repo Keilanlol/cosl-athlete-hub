@@ -3,14 +3,18 @@ import { Upload, FileSpreadsheet, CheckCircle2, AlertCircle, Loader2, Download }
 import { toast } from "sonner";
 import {
   parseCsv,
-  runImport,
+  previewImport,
+  confirmImport,
   matchColumns,
   type CsvImportConfig,
   type ImportResult,
+  type ImportAction,
   type ColumnMatch,
 } from "@/lib/csv-import";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -33,19 +37,22 @@ export function CsvImportDialog({ open, onOpenChange, config, onImported }: Prop
   const fileRef = useRef<HTMLInputElement>(null);
   const [stage, setStage] = useState<Stage>("upload");
   const [rows, setRows] = useState<Record<string, string>[]>([]);
-  const [result, setResult] = useState<ImportResult | null>(null);
+  const [previewResult, setPreviewResult] = useState<ImportResult | null>(null);
+  const [finalResult, setFinalResult] = useState<ImportResult | null>(null);
   const [progress, setProgress] = useState({ current: 0, total: 0 });
   const [columnMatches, setColumnMatches] = useState<Record<string, ColumnMatch>>({});
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   const reset = () => {
     setStage("upload");
     setRows([]);
-    setResult(null);
+    setPreviewResult(null);
+    setFinalResult(null);
     setProgress({ current: 0, total: 0 });
     setColumnMatches({});
+    setSelectedIds(new Set());
   };
 
-  // Reset when dialog opens (handles case where user re-opens without closing first)
   useEffect(() => {
     if (open) reset();
   }, [open]);
@@ -68,26 +75,35 @@ export function CsvImportDialog({ open, onOpenChange, config, onImported }: Prop
     setStage("preview");
   };
 
-  const handleImport = async () => {
+  const handleAnalyze = async () => {
     setStage("importing");
     setProgress({ current: 0, total: rows.length });
-    const res = await runImport(config, rows, (current, total) => {
+    const res = await previewImport(config, rows);
+    setPreviewResult(res);
+    // Select all by default
+    setSelectedIds(new Set(res.actions.map((a) => a.id)));
+    setStage("result");
+  };
+
+  const handleConfirm = async () => {
+    if (!previewResult) return;
+    setStage("importing");
+    setProgress({ current: 0, total: selectedIds.size });
+    const res = await confirmImport(config, previewResult.actions, selectedIds, (current, total) => {
       setProgress({ current, total });
     });
-    setResult(res);
-    setStage("result");
+    setFinalResult(res);
     if (res.inserted > 0 || res.updated > 0) {
       toast.success(`${res.inserted} créé(s), ${res.updated} mis à jour`);
       onImported?.();
     }
+    setStage("result");
   };
 
   const downloadTemplate = () => {
     const headers = config.columns.map((c) => c.key).join(";");
     const example = config.columns.map((c) => c.label).join(";");
-    const blob = new Blob([`${headers}\n${example}\n`], {
-      type: "text/csv;charset=utf-8",
-    });
+    const blob = new Blob([`${headers}\n${example}\n`], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -97,18 +113,35 @@ export function CsvImportDialog({ open, onOpenChange, config, onImported }: Prop
   };
 
   const previewHeaders = rows.length > 0 ? Object.keys(rows[0]) : [];
-
   const missingRequired = config.columns.filter(
     (c) => c.required && !columnMatches[c.key]?.found,
   );
-  const canImport = missingRequired.length === 0;
+  const canAnalyze = missingRequired.length === 0;
+
+  const toggleSelection = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const allSelected = previewResult ? previewResult.actions.every((a) => selectedIds.has(a.id)) : false;
+  const toggleAll = () => {
+    if (!previewResult) return;
+    if (allSelected) setSelectedIds(new Set());
+    else setSelectedIds(new Set(previewResult.actions.map((a) => a.id)));
+  };
+
+  // Show final result (after confirm) when we have finalResult
+  const showFinal = stage === "result" && finalResult;
+  // Show preview result (with checkboxes) when we have previewResult but no finalResult
+  const showPreview = stage === "result" && previewResult && !finalResult;
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={onOpenChange}
-    >
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Upload className="h-5 w-5" />
@@ -165,22 +198,15 @@ export function CsvImportDialog({ open, onOpenChange, config, onImported }: Prop
                     </span>
                   ))}
                 </div>
-                {config.links && config.links.length > 0 && (
-                  <p className="text-xs text-muted-foreground mt-2">
-                    + colonnes de liaison : {config.links.map((l) => l.csvColumn).join(", ")} —
-                    les entités manquantes seront créées automatiquement.
-                  </p>
-                )}
               </div>
               <p className="text-xs text-muted-foreground">
                 Le matching des colonnes est flexible (insensible à la casse, aux accents et aux espaces).
-                Les champs marqués <span className="text-red-500">*</span> sont obligatoires.
               </p>
             </div>
           </div>
         )}
 
-        {/* Preview stage */}
+        {/* Preview stage (column mapping + data) */}
         {stage === "preview" && (
           <div className="py-4 space-y-4">
             <div className="flex items-center gap-2 text-sm">
@@ -188,7 +214,6 @@ export function CsvImportDialog({ open, onOpenChange, config, onImported }: Prop
               <span><strong>{rows.length}</strong> ligne(s) détectée(s)</span>
             </div>
 
-            {/* Column mapping */}
             <div className="space-y-1.5">
               <p className="text-sm font-medium text-foreground">Correspondance des colonnes :</p>
               <div className="rounded-lg border border-border overflow-hidden">
@@ -235,22 +260,17 @@ export function CsvImportDialog({ open, onOpenChange, config, onImported }: Prop
               </div>
             </div>
 
-            {/* Missing required warning */}
             {missingRequired.length > 0 && (
               <div className="rounded-md border-2 border-red-300 bg-red-50 p-3 text-sm text-red-800">
-                <p className="font-medium">Impossible d'importer : colonnes obligatoires manquantes</p>
+                <p className="font-medium">Colonnes obligatoires manquantes</p>
                 <p className="mt-1 text-xs">
-                  Les colonnes suivantes sont requises mais n'ont pas été trouvées dans le fichier CSV :{" "}
+                  Les colonnes suivantes sont requises :{" "}
                   <strong>{missingRequired.map((c) => c.key).join(", ")}</strong>
-                </p>
-                <p className="mt-1 text-xs">
-                  Téléchargez le modèle pour voir le format attendu, puis réessayez.
                 </p>
               </div>
             )}
 
-            {/* Data preview */}
-            {canImport && (
+            {canAnalyze && (
               <>
                 <p className="text-sm font-medium text-foreground">Aperçu des données :</p>
                 <div className="rounded-lg border border-border overflow-auto max-h-[200px]">
@@ -294,7 +314,7 @@ export function CsvImportDialog({ open, onOpenChange, config, onImported }: Prop
           <div className="py-10 flex flex-col items-center gap-4">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="text-sm font-medium">
-              Importation en cours… {progress.current}/{progress.total}
+              Analyse en cours… {progress.current}/{progress.total}
             </p>
             <div className="w-full max-w-xs h-2 rounded-full bg-muted overflow-hidden">
               <div
@@ -305,37 +325,99 @@ export function CsvImportDialog({ open, onOpenChange, config, onImported }: Prop
           </div>
         )}
 
-        {/* Result stage */}
-        {stage === "result" && result && (
+        {/* Preview result (with checkboxes) */}
+        {showPreview && previewResult && (
           <div className="py-4 space-y-4">
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-center">
                 <CheckCircle2 className="h-5 w-5 text-emerald-600 mx-auto mb-1" />
-                <p className="text-2xl font-bold text-emerald-700">{result.inserted}</p>
-                <p className="text-xs text-emerald-600">Créés</p>
+                <p className="text-2xl font-bold text-emerald-700">
+                  {previewResult.actions.filter((a) => a.type === "create").length}
+                </p>
+                <p className="text-xs text-emerald-600">À créer</p>
               </div>
               <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-center">
                 <CheckCircle2 className="h-5 w-5 text-blue-600 mx-auto mb-1" />
-                <p className="text-2xl font-bold text-blue-700">{result.updated}</p>
-                <p className="text-xs text-blue-600">Mis à jour</p>
+                <p className="text-2xl font-bold text-blue-700">
+                  {previewResult.actions.filter((a) => a.type === "update").length}
+                </p>
+                <p className="text-xs text-blue-600">À mettre à jour</p>
               </div>
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-center">
                 <AlertCircle className="h-5 w-5 text-amber-600 mx-auto mb-1" />
-                <p className="text-2xl font-bold text-amber-700">{result.skipped.length}</p>
+                <p className="text-2xl font-bold text-amber-700">{previewResult.skipped.length}</p>
                 <p className="text-xs text-amber-600">Ignorés</p>
-              </div>
-              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-center">
-                <AlertCircle className="h-5 w-5 text-red-600 mx-auto mb-1" />
-                <p className="text-2xl font-bold text-red-700">{result.errors.length}</p>
-                <p className="text-xs text-red-600">Erreurs</p>
               </div>
             </div>
 
-            {result.skipped.length > 0 && (
+            {previewResult.errors.length > 0 && (
+              <div className="rounded-lg border border-red-200 bg-red-50/50 max-h-[100px] overflow-auto">
+                {previewResult.errors.map((e, i) => (
+                  <div key={i} className="px-3 py-1.5 text-xs border-b border-red-100 last:border-0">
+                    <span className="text-red-700 font-medium">Erreur</span>
+                    <span className="text-muted-foreground ml-2">— {e.reason}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Action list with checkboxes */}
+            {previewResult.actions.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      checked={allSelected}
+                      onCheckedChange={toggleAll}
+                    />
+                    <span className="text-sm font-medium">
+                      {allSelected ? "Tout désélectionner" : "Tout sélectionner"}
+                    </span>
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {selectedIds.size} sélectionné(s) sur {previewResult.actions.length}
+                  </span>
+                </div>
+                <div className="rounded-lg border border-border max-h-[280px] overflow-auto">
+                  {previewResult.actions.map((action) => (
+                    <label
+                      key={action.id}
+                      className="flex items-center gap-3 px-3 py-2 border-b border-border last:border-0 cursor-pointer hover:bg-muted/50"
+                    >
+                      <Checkbox
+                        checked={selectedIds.has(action.id)}
+                        onCheckedChange={() => toggleSelection(action.id)}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            className={
+                              action.type === "create"
+                                ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
+                                : "bg-blue-100 text-blue-700 hover:bg-blue-100"
+                            }
+                          >
+                            {action.type === "create" ? "Créer" : "Mettre à jour"}
+                          </Badge>
+                          <span className="text-sm font-medium truncate">{action.label}</span>
+                        </div>
+                        {action.matchReason && (
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Correspondance : {action.matchReason}
+                          </p>
+                        )}
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {previewResult.skipped.length > 0 && (
               <div className="space-y-1">
                 <p className="text-sm font-medium text-amber-700">Lignes ignorées (doublons dans le fichier)</p>
-                <div className="rounded-lg border border-amber-200 bg-amber-50/50 max-h-[150px] overflow-auto">
-                  {result.skipped.map((s, i) => {
+                <div className="rounded-lg border border-amber-200 bg-amber-50/50 max-h-[100px] overflow-auto">
+                  {previewResult.skipped.map((s, i) => {
                     const name = Object.values(s.row).slice(0, 3).filter(Boolean).join(" ");
                     return (
                       <div key={i} className="px-3 py-1.5 text-xs border-b border-amber-100 last:border-0">
@@ -347,12 +429,42 @@ export function CsvImportDialog({ open, onOpenChange, config, onImported }: Prop
                 </div>
               </div>
             )}
+          </div>
+        )}
 
-            {result.errors.length > 0 && (
+        {/* Final result (after confirm) */}
+        {showFinal && finalResult && (
+          <div className="py-4 space-y-4">
+            <div className="grid grid-cols-4 gap-3">
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-center">
+                <CheckCircle2 className="h-5 w-5 text-emerald-600 mx-auto mb-1" />
+                <p className="text-2xl font-bold text-emerald-700">{finalResult.inserted}</p>
+                <p className="text-xs text-emerald-600">Créés</p>
+              </div>
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-center">
+                <CheckCircle2 className="h-5 w-5 text-blue-600 mx-auto mb-1" />
+                <p className="text-2xl font-bold text-blue-700">{finalResult.updated}</p>
+                <p className="text-xs text-blue-600">Mis à jour</p>
+              </div>
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-center">
+                <AlertCircle className="h-5 w-5 text-amber-600 mx-auto mb-1" />
+                <p className="text-2xl font-bold text-amber-700">
+                  {(previewResult?.actions.length ?? 0) - selectedIds.size}
+                </p>
+                <p className="text-xs text-amber-600">Non importés</p>
+              </div>
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-center">
+                <AlertCircle className="h-5 w-5 text-red-600 mx-auto mb-1" />
+                <p className="text-2xl font-bold text-red-700">{finalResult.errors.length}</p>
+                <p className="text-xs text-red-600">Erreurs</p>
+              </div>
+            </div>
+
+            {finalResult.errors.length > 0 && (
               <div className="space-y-1">
                 <p className="text-sm font-medium text-red-700">Erreurs</p>
                 <div className="rounded-lg border border-red-200 bg-red-50/50 max-h-[150px] overflow-auto">
-                  {result.errors.map((e, i) => (
+                  {finalResult.errors.map((e, i) => (
                     <div key={i} className="px-3 py-1.5 text-xs border-b border-red-100 last:border-0">
                       <span className="text-red-700 font-medium">Ligne {i + 1}</span>
                       <span className="text-muted-foreground ml-2">— {e.reason}</span>
@@ -372,15 +484,31 @@ export function CsvImportDialog({ open, onOpenChange, config, onImported }: Prop
             <>
               <Button variant="outline" onClick={reset}>Retour</Button>
               <Button
-                onClick={handleImport}
-                disabled={!canImport}
+                onClick={handleAnalyze}
+                disabled={!canAnalyze}
                 className="bg-primary hover:bg-[var(--cosl-red-dark)]"
               >
-                {canImport ? `Importer ${rows.length} ligne(s)` : "Colonnes manquantes"}
+                {canAnalyze ? `Analyser ${rows.length} ligne(s)` : "Colonnes manquantes"}
               </Button>
             </>
           )}
-          {stage === "result" && (
+          {showPreview && (
+            <>
+              <Button variant="outline" onClick={() => { setPreviewResult(null); setStage("preview"); }}>
+                Retour
+              </Button>
+              <Button
+                onClick={handleConfirm}
+                disabled={selectedIds.size === 0}
+                className="bg-primary hover:bg-[var(--cosl-red-dark)]"
+              >
+                {selectedIds.size === 0
+                  ? "Rien à importer"
+                  : `Confirmer l'import (${selectedIds.size})`}
+              </Button>
+            </>
+          )}
+          {showFinal && (
             <Button onClick={() => onOpenChange(false)} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
               Fermer
             </Button>
