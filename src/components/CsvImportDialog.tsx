@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Upload, FileSpreadsheet, CheckCircle2, AlertCircle, Loader2, Download } from "lucide-react";
+import { Upload, FileSpreadsheet, CheckCircle2, AlertCircle, Loader2, Download, ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import {
   parseCsv,
@@ -32,6 +32,111 @@ type Props = {
 };
 
 type Stage = "upload" | "preview" | "importing" | "result";
+
+function ActionRow({
+  action,
+  selected,
+  onToggle,
+}: {
+  action: ImportAction;
+  selected: boolean;
+  onToggle: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  // Build diff for updates
+  const diff: { field: string; oldValue: string; newValue: string; changed: boolean }[] = [];
+  if (action.type === "update" && action.existingData) {
+    const existing = action.existingData;
+    for (const [key, newVal] of Object.entries(action.payload)) {
+      // Skip internal/system fields
+      if (["id", "created_at", "updated_at", "is_active"].includes(key)) continue;
+      const oldVal = existing[key];
+      const oldStr = oldVal == null ? "" : String(oldVal);
+      const newStr = newVal == null ? "" : String(newVal);
+      const changed = oldStr !== newStr;
+      // Show all fields for updates, highlight changed ones
+      diff.push({ field: key, oldValue: oldStr, newValue: newStr, changed });
+    }
+  }
+
+  return (
+    <div className="border-b border-border last:border-0">
+      <div className="flex items-center gap-2 px-3 py-2 hover:bg-muted/50">
+        <Checkbox checked={selected} onCheckedChange={onToggle} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <Badge
+              className={
+                action.type === "create"
+                  ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
+                  : "bg-blue-100 text-blue-700 hover:bg-blue-100"
+              }
+            >
+              {action.type === "create" ? "Créer" : "Mettre à jour"}
+            </Badge>
+            <span className="text-sm font-medium truncate">{action.label}</span>
+          </div>
+          {action.matchReason && (
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Correspondance : {action.matchReason}
+            </p>
+          )}
+        </div>
+        {/* Expand button for updates */}
+        {action.type === "update" && diff.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="text-muted-foreground hover:text-foreground shrink-0"
+            aria-label="Voir les différences"
+          >
+            {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+        )}
+      </div>
+      {expanded && diff.length > 0 && (
+        <div className="px-3 pb-3 pl-10">
+          <div className="rounded-md border border-border overflow-hidden text-xs">
+            <table className="w-full">
+              <thead className="bg-muted">
+                <tr>
+                  <th className="px-2 py-1 text-left font-medium text-muted-foreground">Champ</th>
+                  <th className="px-2 py-1 text-left font-medium text-muted-foreground">Valeur actuelle</th>
+                  <th className="px-2 py-1 text-left font-medium text-muted-foreground">Nouvelle valeur</th>
+                </tr>
+              </thead>
+              <tbody>
+                {diff.map((d) => (
+                  <tr
+                    key={d.field}
+                    className={`border-t border-border ${d.changed ? "bg-amber-50" : ""}`}
+                  >
+                    <td className="px-2 py-1 font-mono text-muted-foreground">{d.field}</td>
+                    <td className="px-2 py-1">
+                      {d.changed ? (
+                        <span className="text-red-600 line-through">{d.oldValue || "—"}</span>
+                      ) : (
+                        <span className="text-muted-foreground">{d.oldValue || "—"}</span>
+                      )}
+                    </td>
+                    <td className="px-2 py-1">
+                      {d.changed ? (
+                        <span className="text-emerald-700 font-medium">{d.newValue || "—"}</span>
+                      ) : (
+                        <span className="text-muted-foreground">{d.newValue || "—"}</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function CsvImportDialog({ open, onOpenChange, config, onImported }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -380,34 +485,12 @@ export function CsvImportDialog({ open, onOpenChange, config, onImported }: Prop
                 </div>
                 <div className="rounded-lg border border-border max-h-[280px] overflow-auto">
                   {previewResult.actions.map((action) => (
-                    <label
+                    <ActionRow
                       key={action.id}
-                      className="flex items-center gap-3 px-3 py-2 border-b border-border last:border-0 cursor-pointer hover:bg-muted/50"
-                    >
-                      <Checkbox
-                        checked={selectedIds.has(action.id)}
-                        onCheckedChange={() => toggleSelection(action.id)}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <Badge
-                            className={
-                              action.type === "create"
-                                ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
-                                : "bg-blue-100 text-blue-700 hover:bg-blue-100"
-                            }
-                          >
-                            {action.type === "create" ? "Créer" : "Mettre à jour"}
-                          </Badge>
-                          <span className="text-sm font-medium truncate">{action.label}</span>
-                        </div>
-                        {action.matchReason && (
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            Correspondance : {action.matchReason}
-                          </p>
-                        )}
-                      </div>
-                    </label>
+                      action={action}
+                      selected={selectedIds.has(action.id)}
+                      onToggle={() => toggleSelection(action.id)}
+                    />
                   ))}
                 </div>
               </div>

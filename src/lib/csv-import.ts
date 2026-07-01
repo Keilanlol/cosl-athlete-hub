@@ -143,6 +143,7 @@ export type ImportAction = {
   row: Record<string, string>;
   payload: Record<string, unknown>;
   existingId?: string | null;
+  existingData?: Record<string, unknown> | null;
   matchReason?: string;
   label: string;
 };
@@ -194,6 +195,13 @@ export async function previewImport(
       }
     });
     return map;
+  });
+
+  // Also build a map of id → full existing record for comparison display
+  const existingById = new Map<string, Record<string, unknown>>();
+  ((existing ?? []) as unknown as Record<string, unknown>[]).forEach((row) => {
+    const id = row.id as string;
+    if (id) existingById.set(id, row);
   });
 
   // Pre-load linked entities
@@ -282,6 +290,7 @@ export async function previewImport(
       if (config.duplicateCheck.updateOnDuplicate) {
         actions.push({
           id: i, type: "update", row, payload, existingId,
+          existingData: existingById.get(existingId) ?? null,
           matchReason: matchedDescription, label,
         });
       } else {
