@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Upload, FileSpreadsheet, CheckCircle2, AlertCircle, Loader2, Download } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -44,6 +44,11 @@ export function CsvImportDialog({ open, onOpenChange, config, onImported }: Prop
     setProgress({ current: 0, total: 0 });
     setColumnMatches({});
   };
+
+  // Reset when dialog opens (handles case where user re-opens without closing first)
+  useEffect(() => {
+    if (open) reset();
+  }, [open]);
 
   const handleFile = async (file: File) => {
     if (!file.name.endsWith(".csv") && file.type !== "text/csv") {
@@ -101,10 +106,7 @@ export function CsvImportDialog({ open, onOpenChange, config, onImported }: Prop
   return (
     <Dialog
       open={open}
-      onOpenChange={(v) => {
-        onOpenChange(v);
-        if (!v) reset();
-      }}
+      onOpenChange={onOpenChange}
     >
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
