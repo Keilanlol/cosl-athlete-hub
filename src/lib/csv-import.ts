@@ -69,6 +69,51 @@ export type CsvImportConfig = {
 // Helpers
 // ============================================================
 
+/**
+ * Normalizes a date string from various common formats to ISO (YYYY-MM-DD).
+ * Accepts: 2024-01-15, 15/01/2024, 01/15/2024, 15-01-2024, 15.01.2024, 2024/01/15
+ * For ambiguous DD/MM vs MM/DD (both ≤ 12), defaults to DD/MM (European/French).
+ * Returns null if the input cannot be parsed.
+ */
+export function normalizeDate(raw: string): string | null {
+  const s = raw.trim();
+  if (!s) return null;
+
+  // Already ISO: 2024-01-15 or 2024/01/15
+  const isoMatch = s.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
+  if (isoMatch) {
+    const [, y, m, d] = isoMatch;
+    return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  }
+
+  // DD/MM/YYYY or MM/DD/YYYY (with / or - or .)
+  const partsMatch = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
+  if (partsMatch) {
+    let [, p1, p2, y] = partsMatch;
+    const n1 = parseInt(p1, 10);
+    const n2 = parseInt(p2, 10);
+
+    let day: number, month: number;
+    // If first > 12, it must be DD/MM
+    if (n1 > 12) {
+      day = n1; month = n2;
+    }
+    // If second > 12, it must be MM/DD
+    else if (n2 > 12) {
+      month = n1; day = n2;
+    }
+    // Both ≤ 12: ambiguous, default to European DD/MM
+    else {
+      day = n1; month = n2;
+    }
+
+    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+    return `${y}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  }
+
+  return null;
+}
+
 /** Parse CSV text into array of objects, handling quoted fields, semicolons and commas */
 export function parseCsv(text: string): Record<string, string>[] {
   const lines = text.split(/\r?\n/).filter((l) => l.trim());

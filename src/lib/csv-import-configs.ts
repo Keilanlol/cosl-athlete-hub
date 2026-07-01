@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { normalizeDate } from "@/lib/csv-import";
 import type { CsvImportConfig } from "@/lib/csv-import";
 
 // ============================================================
@@ -12,7 +13,7 @@ export const athletesImportConfig: CsvImportConfig = {
     { key: "cosl_id", label: "COSL-2026-0001", required: false },
     { key: "first_name", label: "Jean", required: true },
     { key: "last_name", label: "Dupont", required: true },
-    { key: "birth_date", label: "1998-05-15", required: true },
+    { key: "birth_date", label: "1998-05-15", required: true, transform: normalizeDate },
     { key: "gender", label: "male", required: true, transform: (v) => v.toLowerCase() },
     { key: "nationality", label: "LUX", required: true, transform: (v) => v.toUpperCase() },
     { key: "sport_nationality", label: "LUX", transform: (v) => v.toUpperCase() || null },
@@ -26,7 +27,7 @@ export const athletesImportConfig: CsvImportConfig = {
     { key: "level", label: "elite" },
     { key: "license_number", label: "LIC-001" },
     { key: "passport_number", label: "AB1234567" },
-    { key: "passport_expiry", label: "2030-01-01" },
+    { key: "passport_expiry", label: "2030-01-01", transform: normalizeDate },
     { key: "primary_sport", label: "Athlétisme", linkOnly: true },
     { key: "primary_federation", label: "FLA", linkOnly: true },
     { key: "current_club", label: "FC Luxembourg", linkOnly: true },
@@ -94,7 +95,7 @@ export const personsImportConfig: CsvImportConfig = {
   columns: [
     { key: "first_name", label: "Jean", required: true },
     { key: "last_name", label: "Dupont", required: true },
-    { key: "birth_date", label: "1998-05-15" },
+    { key: "birth_date", label: "1998-05-15", transform: normalizeDate },
     { key: "gender", label: "male", transform: (v) => v.toLowerCase() || null },
     { key: "nationality", label: "LUX", transform: (v) => v.toUpperCase() || null },
     { key: "email", label: "jean.dupont@email.lu" },
@@ -245,10 +246,10 @@ export const gamesImportConfig: CsvImportConfig = {
     { key: "host_country", label: "France" },
     { key: "host_city", label: "Paris" },
     { key: "organizer", label: "CIO" },
-    { key: "preparation_start", label: "2021-01-01" },
-    { key: "competition_start", label: "2024-07-26", required: true },
-    { key: "competition_end", label: "2024-08-11", required: true },
-    { key: "closing_date", label: "2024-08-11" },
+    { key: "preparation_start", label: "2021-01-01", transform: normalizeDate },
+    { key: "competition_start", label: "2024-07-26", required: true, transform: normalizeDate },
+    { key: "competition_end", label: "2024-08-11", required: true, transform: normalizeDate },
+    { key: "closing_date", label: "2024-08-11", transform: normalizeDate },
     { key: "status", label: "preparation", default: "preparation", transform: (v) => v.toLowerCase() },
     { key: "description", label: "Description de l'événement" },
   ],
@@ -273,8 +274,8 @@ export const federationMembersImportConfig: CsvImportConfig = {
     { key: "role", label: "president", required: true, aliases: ["fonction"] },
     { key: "email", label: "jean.dupont@fla.lu" },
     { key: "phone", label: "+352 691 000 000" },
-    { key: "start_date", label: "2024-01-01" },
-    { key: "end_date", label: "2028-12-31" },
+    { key: "start_date", label: "2024-01-01", transform: normalizeDate },
+    { key: "end_date", label: "2028-12-31", transform: normalizeDate },
     { key: "notes", label: "Notes" },
   ],
   duplicateCheck: {
@@ -316,8 +317,8 @@ export const clubMembersImportConfig: CsvImportConfig = {
     { key: "role", label: "president", required: true, aliases: ["fonction"] },
     { key: "email", label: "jean.dupont@club.lu" },
     { key: "phone", label: "+352 691 000 000" },
-    { key: "start_date", label: "2024-01-01" },
-    { key: "end_date", label: "2028-12-31" },
+    { key: "start_date", label: "2024-01-01", transform: normalizeDate },
+    { key: "end_date", label: "2028-12-31", transform: normalizeDate },
     { key: "notes", label: "Notes" },
   ],
   duplicateCheck: {
