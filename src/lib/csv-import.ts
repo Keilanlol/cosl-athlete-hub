@@ -175,12 +175,12 @@ export async function previewImport(
   const skipped: { row: Record<string, string>; reason: string }[] = [];
   const errors: { row: Record<string, string>; reason: string }[] = [];
 
-  // Pre-load existing entities
+  // Pre-load existing entities (all columns for comparison display)
   const allCheckKeys = new Set<string>();
   config.duplicateCheck.checks.forEach((c) => c.keys.forEach((k) => allCheckKeys.add(k)));
   const { data: existing } = await supabase
     .from(config.table)
-    .select([...allCheckKeys, "id"].join(","));
+    .select("*");
 
   const checkMaps: Map<string, string>[] = config.duplicateCheck.checks.map((check) => {
     const map = new Map<string, string>();
