@@ -13,6 +13,10 @@ import {
   Settings,
   Star,
   Handshake,
+  Volleyball,
+  Target,
+  CalendarDays,
+  Tag,
 } from "lucide-react";
 
 import {
@@ -36,7 +40,7 @@ const groups: { label: string; items: Item[] }[] = [
     items: [{ title: "Dashboard", url: "/dashboard", icon: LayoutDashboard }],
   },
   {
-    label: "Athlete Management",
+    label: "Gestion de fédérations & effectifs",
     items: [
       { title: "Personnes", url: "/persons", icon: Users },
       { title: "Athlètes", url: "/athletes", icon: Users },
@@ -47,21 +51,22 @@ const groups: { label: string; items: Item[] }[] = [
     ],
   },
   {
-    label: "Games & Competitions",
+    label: "Games Management",
     items: [
       { title: "Games", url: "/games", icon: Trophy },
+      { title: "Sports", url: "/sports", icon: Volleyball },
+      { title: "Disciplines", url: "/disciplines", icon: Target },
+      { title: "Logistique", url: "/logistics", icon: Plane },
+      { title: "Accréditations", url: "/accreditations", icon: BadgeCheck },
+    ],
+  },
+  {
+    label: "Events Management",
+    items: [
+      { title: "Events", url: "/events", icon: CalendarDays },
       { title: "Sponsors", url: "/sponsors", icon: Star },
       { title: "Partenaires", url: "/partners", icon: Handshake },
     ],
-  },
-
-  {
-    label: "Accreditation",
-    items: [{ title: "Accréditations", url: "/accreditations", icon: BadgeCheck }],
-  },
-  {
-    label: "Logistics & Travel",
-    items: [{ title: "Logistique", url: "/logistics", icon: Plane }],
   },
   {
     label: "Communication",
@@ -69,7 +74,10 @@ const groups: { label: string; items: Item[] }[] = [
   },
   {
     label: "Administration",
-    items: [{ title: "Comptes COSL", url: "/admin/users", icon: Settings }],
+    items: [
+      { title: "Types & Rôles", url: "/admin/types-roles", icon: Tag },
+      { title: "Comptes COSL", url: "/admin/users", icon: Settings },
+    ],
   },
 ];
 
