@@ -287,6 +287,7 @@ function PersonsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-14"></TableHead>
+                <TableHead><SortBtn active={sort.key === "first_name"} dir={sort.dir} onClick={() => toggleSort("first_name")}>Prénom</SortBtn></TableHead>
                 <TableHead><SortBtn active={sort.key === "last_name"} dir={sort.dir} onClick={() => toggleSort("last_name")}>Nom</SortBtn></TableHead>
                 <TableHead><SortBtn active={sort.key === "email"} dir={sort.dir} onClick={() => toggleSort("email")}>Email</SortBtn></TableHead>
                 <TableHead><SortBtn active={sort.key === "phone"} dir={sort.dir} onClick={() => toggleSort("phone")}>Téléphone</SortBtn></TableHead>
@@ -321,7 +322,8 @@ function PersonsPage() {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="font-medium">{personFullName(p)}</TableCell>
+                  <TableCell className="font-medium">{p.first_name}</TableCell>
+                  <TableCell className="font-medium">{p.last_name}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {p.email ?? "—"}
                   </TableCell>
