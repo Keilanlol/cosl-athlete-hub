@@ -35,6 +35,7 @@ import {
   EmptyState,
   PAGE_SIZE,
   PagerBar,
+  SortBtn,
   TableSkeleton,
 } from "@/components/DataTableShell";
 
@@ -44,12 +45,18 @@ export const Route = createFileRoute("/_authenticated/persons/")({
 
 type Game = { id: string; name: string; short_name: string | null };
 
+type SortKey = "first_name" | "last_name" | "email" | "phone";
+
 function PersonsPage() {
   const navigate = useNavigate();
   const [rows, setRows] = useState<PersonListItem[] | null>(null);
   const [totalCount, setTotalCount] = useState<number>(0);
   const [games, setGames] = useState<Game[]>([]);
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
+    key: "last_name",
+    dir: "asc",
+  });
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [gameFilter, setGameFilter] = useState<string>("all");
@@ -163,8 +170,19 @@ function PersonsPage() {
       r = r.filter((p) =>
         `${p.first_name} ${p.last_name} ${p.email ?? ""}`.toLowerCase().includes(q),
       );
+    r.sort((a, b) => {
+      const av = (a[sort.key] ?? "").toString().toLowerCase();
+      const bv = (b[sort.key] ?? "").toString().toLowerCase();
+      const cmp = av.localeCompare(bv);
+      return sort.dir === "asc" ? cmp : -cmp;
+    });
     return r;
-  }, [rows, search, roleFilter, activeFilter]);
+  }, [rows, search, roleFilter, activeFilter, sort]);
+
+  const toggleSort = (key: SortKey) =>
+    setSort((s) =>
+      s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" },
+    );
 
   useEffect(() => {
     setPage(1);
@@ -269,9 +287,9 @@ function PersonsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-14"></TableHead>
-                <TableHead>Nom</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Téléphone</TableHead>
+                <TableHead><SortBtn active={sort.key === "last_name"} dir={sort.dir} onClick={() => toggleSort("last_name")}>Nom</SortBtn></TableHead>
+                <TableHead><SortBtn active={sort.key === "email"} dir={sort.dir} onClick={() => toggleSort("email")}>Email</SortBtn></TableHead>
+                <TableHead><SortBtn active={sort.key === "phone"} dir={sort.dir} onClick={() => toggleSort("phone")}>Téléphone</SortBtn></TableHead>
                 <TableHead>Rôles</TableHead>
                 <TableHead>Statut</TableHead>
               </TableRow>

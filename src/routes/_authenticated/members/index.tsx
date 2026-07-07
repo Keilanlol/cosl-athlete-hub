@@ -30,7 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { EmptyState } from "@/components/DataTableShell";
+import { EmptyState, SortBtn } from "@/components/DataTableShell";
 import { AddPersonButton } from "@/components/persons/AddPersonButton";
 import { CsvImportDialog } from "@/components/CsvImportDialog";
 import { federationMembersImportConfig, clubMembersImportConfig } from "@/lib/csv-import-configs";
@@ -58,6 +58,10 @@ function MembersPage() {
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [scope, setScope] = useState<"all" | "fed" | "club">("all");
+  const [sort, setSort] = useState<{ key: "last_name" | "first_name"; dir: "asc" | "desc" }>({
+    key: "last_name",
+    dir: "asc",
+  });
   const [importOpen, setImportOpen] = useState(false);
   const [importType, setImportType] = useState<"fed" | "club">("fed");
 
@@ -116,12 +120,18 @@ function MembersPage() {
           );
         })
       : out;
-    return filtered.sort((a, b) =>
-      `${a.data.last_name}${a.data.first_name}`.localeCompare(
-        `${b.data.last_name}${b.data.first_name}`,
-      ),
+    return filtered.sort((a, b) => {
+      const av = (a.data[sort.key] ?? "").toString().toLowerCase();
+      const bv = (b.data[sort.key] ?? "").toString().toLowerCase();
+      const cmp = av.localeCompare(bv);
+      return sort.dir === "asc" ? cmp : -cmp;
+    });
+  }, [feds, clubs, fedMembers, clubMembers, scope, q, sort]);
+
+  const toggleSort = (key: "last_name" | "first_name") =>
+    setSort((s) =>
+      s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" },
     );
-  }, [feds, clubs, fedMembers, clubMembers, q, scope]);
 
   const roleLabel = (kind: "fed" | "club", v: string) =>
     (kind === "fed" ? FEDERATION_MEMBER_ROLES : CLUB_MEMBER_ROLES).find(
@@ -200,7 +210,7 @@ function MembersPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nom</TableHead>
+                <TableHead><SortBtn active={sort.key === "last_name"} dir={sort.dir} onClick={() => toggleSort("last_name")}>Nom</SortBtn></TableHead>
                 <TableHead>Fonction</TableHead>
                 <TableHead>Organisation</TableHead>
                 <TableHead>Email</TableHead>

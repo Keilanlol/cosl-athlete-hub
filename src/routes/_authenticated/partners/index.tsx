@@ -17,7 +17,7 @@ import {
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { EmptyState, TableSkeleton } from "@/components/DataTableShell";
+import { EmptyState, TableSkeleton, SortBtn } from "@/components/DataTableShell";
 import { CsvImportDialog } from "@/components/CsvImportDialog";
 import { partnersImportConfig } from "@/lib/csv-import-configs";
 
@@ -51,9 +51,15 @@ const empty = {
   notes: "",
 };
 
+type SortKey = "name" | "city";
+
 function PartnersPage() {
   const [rows, setRows] = useState<Partner[] | null>(null);
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
+    key: "name",
+    dir: "asc",
+  });
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Partner | null>(null);
   const [form, setForm] = useState(empty);
@@ -74,12 +80,25 @@ function PartnersPage() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!rows) return [];
-    if (!q) return rows;
-    return rows.filter((p) =>
-      `${p.name} ${p.email ?? ""} ${p.city ?? ""} ${p.contact_first_name ?? ""} ${p.contact_last_name ?? ""}`
-        .toLowerCase().includes(q),
+    let r = q
+      ? rows.filter((p) =>
+          `${p.name} ${p.email ?? ""} ${p.city ?? ""} ${p.contact_first_name ?? ""} ${p.contact_last_name ?? ""}`
+            .toLowerCase().includes(q),
+        )
+      : rows.slice();
+    r.sort((a, b) => {
+      const av = (a[sort.key] ?? "").toString().toLowerCase();
+      const bv = (b[sort.key] ?? "").toString().toLowerCase();
+      const cmp = av.localeCompare(bv);
+      return sort.dir === "asc" ? cmp : -cmp;
+    });
+    return r;
+  }, [rows, search, sort]);
+
+  const toggleSort = (key: SortKey) =>
+    setSort((s) =>
+      s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" },
     );
-  }, [rows, search]);
 
   const openCreate = () => { setEditing(null); setForm(empty); setLogoFile(null); setLogoCleared(false); setOpen(true); };
   const openEdit = (p: Partner) => {
@@ -177,9 +196,9 @@ function PartnersPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Logo</TableHead>
-                <TableHead>Nom</TableHead>
-                <TableHead>Adresse</TableHead>
+                <TableHead className="w-14">Logo</TableHead>
+                <TableHead><SortBtn active={sort.key === "name"} dir={sort.dir} onClick={() => toggleSort("name")}>Nom</SortBtn></TableHead>
+                <TableHead><SortBtn active={sort.key === "city"} dir={sort.dir} onClick={() => toggleSort("city")}>Ville</SortBtn></TableHead>
                 <TableHead>Contact</TableHead>
                 <TableHead>Personne référente</TableHead>
                 <TableHead className="w-28 text-right">Actions</TableHead>

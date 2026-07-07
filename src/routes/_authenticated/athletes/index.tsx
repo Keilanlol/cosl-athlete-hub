@@ -55,6 +55,7 @@ import {
   EmptyState,
   PAGE_SIZE,
   PagerBar,
+  SortBtn,
   TableSkeleton,
 } from "@/components/DataTableShell";
 
@@ -130,6 +131,8 @@ function kycBadge(s: string | null | undefined) {
   );
 }
 
+type SortKey = "cosl_id" | "first_name" | "last_name" | "status" | "level";
+
 function AthletesPage() {
   const navigate = useNavigate();
   const [rows, setRows] = useState<AthleteRow[] | null>(null);
@@ -141,6 +144,10 @@ function AthletesPage() {
   const [athleteDisciplines, setAthleteDisciplines] = useState<Record<string, string[]>>({});
 
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
+    key: "last_name",
+    dir: "asc",
+  });
   const [fSport, setFSport] = useState(ALL);
   const [fDiscipline, setFDiscipline] = useState(ALL);
   const [fFed, setFFed] = useState(ALL);
@@ -201,7 +208,7 @@ function AthletesPage() {
   const filtered = useMemo(() => {
     if (!rows) return [];
     const q = search.trim().toLowerCase();
-    return rows.filter((a) => {
+    let r = rows.filter((a) => {
       if (fActive === "active" && a.is_active === false) return false;
       if (fActive === "inactive" && a.is_active !== false) return false;
       if (fSport !== ALL && a.primary_sport_id !== fSport) return false;
@@ -220,7 +227,19 @@ function AthletesPage() {
       }
       return true;
     });
-  }, [rows, search, fSport, fDiscipline, fFed, fStatus, fLevel, fKyc, fActive, athleteDisciplines]);
+    r.sort((a, b) => {
+      const av = (a[sort.key] ?? "").toString().toLowerCase();
+      const bv = (b[sort.key] ?? "").toString().toLowerCase();
+      const cmp = av.localeCompare(bv);
+      return sort.dir === "asc" ? cmp : -cmp;
+    });
+    return r;
+  }, [rows, search, fSport, fDiscipline, fFed, fStatus, fLevel, fKyc, fActive, athleteDisciplines, sort]);
+
+  const toggleSort = (key: SortKey) =>
+    setSort((s) =>
+      s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" },
+    );
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -474,8 +493,8 @@ function AthletesPage() {
         </div>
       )}
 
-      <div className="grid gap-3 rounded-lg border border-border bg-card p-4 lg:grid-cols-6">
-        <div className="relative lg:col-span-2">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative max-w-sm flex-1 min-w-[220px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Nom, prénom, ID COSL, email…"
@@ -485,7 +504,7 @@ function AthletesPage() {
           />
         </div>
         <Select value={fSport} onValueChange={(v) => { setFSport(v); setFDiscipline(ALL); }}>
-          <SelectTrigger><SelectValue placeholder="Sport" /></SelectTrigger>
+          <SelectTrigger className="w-[160px]"><SelectValue placeholder="Sport" /></SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL}>Tous les sports</SelectItem>
             {sports.map((s) => (
@@ -493,19 +512,8 @@ function AthletesPage() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={fDiscipline} onValueChange={setFDiscipline}>
-          <SelectTrigger><SelectValue placeholder="Discipline" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>Toutes les disciplines</SelectItem>
-            {disciplines
-              .filter((d) => fSport === ALL || d.sport_id === fSport)
-              .map((d) => (
-                <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-              ))}
-          </SelectContent>
-        </Select>
         <Select value={fFed} onValueChange={setFFed}>
-          <SelectTrigger><SelectValue placeholder="Fédération" /></SelectTrigger>
+          <SelectTrigger className="w-[160px]"><SelectValue placeholder="Fédération" /></SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL}>Toutes les fédérations</SelectItem>
             {federations.map((f) => (
@@ -514,7 +522,7 @@ function AthletesPage() {
           </SelectContent>
         </Select>
         <Select value={fStatus} onValueChange={setFStatus}>
-          <SelectTrigger><SelectValue placeholder="Statut" /></SelectTrigger>
+          <SelectTrigger className="w-[150px]"><SelectValue placeholder="Statut" /></SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL}>Tous les statuts</SelectItem>
             {ATHLETE_STATUSES.map((s) => (
@@ -523,7 +531,7 @@ function AthletesPage() {
           </SelectContent>
         </Select>
         <Select value={fLevel} onValueChange={setFLevel}>
-          <SelectTrigger><SelectValue placeholder="Niveau" /></SelectTrigger>
+          <SelectTrigger className="w-[150px]"><SelectValue placeholder="Niveau" /></SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL}>Tous les niveaux</SelectItem>
             {levels.map((s) => (
@@ -532,7 +540,7 @@ function AthletesPage() {
           </SelectContent>
         </Select>
         <Select value={fKyc} onValueChange={setFKyc}>
-          <SelectTrigger><SelectValue placeholder="KYC" /></SelectTrigger>
+          <SelectTrigger className="w-[130px]"><SelectValue placeholder="KYC" /></SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL}>Tous KYC</SelectItem>
             <SelectItem value="green">Vert</SelectItem>
@@ -541,16 +549,16 @@ function AthletesPage() {
           </SelectContent>
         </Select>
         <Select value={fActive} onValueChange={(v) => setFActive(v as "active" | "inactive" | "all")}>
-          <SelectTrigger><SelectValue placeholder="Activité" /></SelectTrigger>
+          <SelectTrigger className="w-[140px]"><SelectValue placeholder="Activité" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tous</SelectItem>
-            <SelectItem value="active">Athlètes activées</SelectItem>
-            <SelectItem value="inactive">Athlètes désactivés</SelectItem>
+            <SelectItem value="active">Activés</SelectItem>
+            <SelectItem value="inactive">Désactivés</SelectItem>
           </SelectContent>
         </Select>
-        <div className="flex items-center text-sm text-muted-foreground">
+        <span className="text-sm text-muted-foreground ml-auto whitespace-nowrap">
           {filtered.length} résultat(s)
-        </div>
+        </span>
       </div>
 
       <div className="rounded-lg border border-border bg-card">
@@ -564,17 +572,17 @@ function AthletesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>ID COSL</TableHead>
-                <TableHead>Photo</TableHead>
-                <TableHead>Prénom</TableHead>
-                <TableHead>Nom</TableHead>
+                <TableHead><SortBtn active={sort.key === "cosl_id"} dir={sort.dir} onClick={() => toggleSort("cosl_id")}>ID COSL</SortBtn></TableHead>
+                <TableHead className="w-14"></TableHead>
+                <TableHead><SortBtn active={sort.key === "first_name"} dir={sort.dir} onClick={() => toggleSort("first_name")}>Prénom</SortBtn></TableHead>
+                <TableHead><SortBtn active={sort.key === "last_name"} dir={sort.dir} onClick={() => toggleSort("last_name")}>Nom</SortBtn></TableHead>
                 <TableHead>Sport</TableHead>
                 <TableHead>Fédération</TableHead>
                 <TableHead>Club</TableHead>
-                <TableHead>Statut</TableHead>
-                <TableHead>Niveau</TableHead>
+                <TableHead><SortBtn active={sort.key === "status"} dir={sort.dir} onClick={() => toggleSort("status")}>Statut</SortBtn></TableHead>
+                <TableHead><SortBtn active={sort.key === "level"} dir={sort.dir} onClick={() => toggleSort("level")}>Niveau</SortBtn></TableHead>
                 <TableHead>KYC</TableHead>
-                <TableHead className="w-24 text-right">Actions</TableHead>
+                <TableHead className="w-12 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

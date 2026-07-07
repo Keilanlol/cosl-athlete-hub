@@ -54,6 +54,7 @@ import {
   EmptyState,
   PAGE_SIZE,
   PagerBar,
+  SortBtn,
   TableSkeleton,
 } from "@/components/DataTableShell";
 import { CsvImportDialog } from "@/components/CsvImportDialog";
@@ -79,10 +80,16 @@ const empty = {
   status: "preparation" as GameStatus,
 };
 
+type SortKey = "name" | "game_type" | "edition_year" | "host_city" | "status";
+
 function GamesListPage() {
   const navigate = useNavigate();
   const [rows, setRows] = useState<Game[] | null>(null);
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
+    key: "name",
+    dir: "asc",
+  });
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [yearFilter, setYearFilter] = useState<string>("all");
@@ -121,14 +128,26 @@ function GamesListPage() {
   const filtered = useMemo(() => {
     if (!rows) return [];
     const q = search.trim().toLowerCase();
-    return rows.filter((g) => {
+    let r = rows.filter((g) => {
       if (typeFilter !== "all" && g.game_type !== typeFilter) return false;
       if (statusFilter !== "all" && g.status !== statusFilter) return false;
       if (yearFilter !== "all" && String(g.edition_year) !== yearFilter) return false;
       if (q && !g.name.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [rows, search, typeFilter, statusFilter, yearFilter]);
+    r.sort((a, b) => {
+      const av = (a[sort.key] ?? "").toString().toLowerCase();
+      const bv = (b[sort.key] ?? "").toString().toLowerCase();
+      const cmp = av.localeCompare(bv);
+      return sort.dir === "asc" ? cmp : -cmp;
+    });
+    return r;
+  }, [rows, search, typeFilter, statusFilter, yearFilter, sort]);
+
+  const toggleSort = (key: SortKey) =>
+    setSort((s) =>
+      s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" },
+    );
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -304,14 +323,14 @@ function GamesListPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nom</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Édition</TableHead>
+                <TableHead><SortBtn active={sort.key === "name"} dir={sort.dir} onClick={() => toggleSort("name")}>Nom</SortBtn></TableHead>
+                <TableHead><SortBtn active={sort.key === "game_type"} dir={sort.dir} onClick={() => toggleSort("game_type")}>Type</SortBtn></TableHead>
+                <TableHead><SortBtn active={sort.key === "edition_year"} dir={sort.dir} onClick={() => toggleSort("edition_year")}>Édition</SortBtn></TableHead>
                 <TableHead>Pays</TableHead>
-                <TableHead>Ville</TableHead>
+                <TableHead><SortBtn active={sort.key === "host_city"} dir={sort.dir} onClick={() => toggleSort("host_city")}>Ville</SortBtn></TableHead>
                 <TableHead>Début</TableHead>
                 <TableHead>Fin</TableHead>
-                <TableHead>Statut</TableHead>
+                <TableHead><SortBtn active={sort.key === "status"} dir={sort.dir} onClick={() => toggleSort("status")}>Statut</SortBtn></TableHead>
                 <TableHead className="w-32 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>

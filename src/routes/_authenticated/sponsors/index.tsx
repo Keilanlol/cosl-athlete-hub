@@ -20,7 +20,7 @@ import {
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { EmptyState, TableSkeleton } from "@/components/DataTableShell";
+import { EmptyState, TableSkeleton, SortBtn } from "@/components/DataTableShell";
 import { CsvImportDialog } from "@/components/CsvImportDialog";
 import { sponsorsImportConfig } from "@/lib/csv-import-configs";
 
@@ -52,10 +52,16 @@ const empty = {
   notes: "",
 };
 
+type SortKey = "name" | "rank_id";
+
 function SponsorsPage() {
   const [rows, setRows] = useState<Sponsor[] | null>(null);
   const [ranks, setRanks] = useState<Rank[]>([]);
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
+    key: "name",
+    dir: "asc",
+  });
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Sponsor | null>(null);
   const [form, setForm] = useState(empty);
@@ -85,12 +91,25 @@ function SponsorsPage() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!rows) return [];
-    if (!q) return rows;
-    return rows.filter((s) =>
-      `${s.name} ${s.email ?? ""} ${s.contact_first_name ?? ""} ${s.contact_last_name ?? ""} ${rankName(s.rank_id)}`
-        .toLowerCase().includes(q),
+    let r = q
+      ? rows.filter((s) =>
+          `${s.name} ${s.email ?? ""} ${s.contact_first_name ?? ""} ${s.contact_last_name ?? ""} ${rankName(s.rank_id)}`
+            .toLowerCase().includes(q),
+        )
+      : rows.slice();
+    r.sort((a, b) => {
+      const av = (a[sort.key] ?? "").toString().toLowerCase();
+      const bv = (b[sort.key] ?? "").toString().toLowerCase();
+      const cmp = av.localeCompare(bv);
+      return sort.dir === "asc" ? cmp : -cmp;
+    });
+    return r;
+  }, [rows, search, ranks, sort]);
+
+  const toggleSort = (key: SortKey) =>
+    setSort((s) =>
+      s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" },
     );
-  }, [rows, search, ranks]);
 
   const openCreate = () => { setEditing(null); setForm(empty); setLogoFile(null); setLogoCleared(false); setOpen(true); };
   const openEdit = (s: Sponsor) => {
@@ -206,9 +225,9 @@ function SponsorsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Logo</TableHead>
-                <TableHead>Nom</TableHead>
-                <TableHead>Rang</TableHead>
+                <TableHead className="w-14">Logo</TableHead>
+                <TableHead><SortBtn active={sort.key === "name"} dir={sort.dir} onClick={() => toggleSort("name")}>Nom</SortBtn></TableHead>
+                <TableHead><SortBtn active={sort.key === "rank_id"} dir={sort.dir} onClick={() => toggleSort("rank_id")}>Rang</SortBtn></TableHead>
                 <TableHead>Contact</TableHead>
                 <TableHead>Personne référente</TableHead>
                 <TableHead className="w-28 text-right">Actions</TableHead>
