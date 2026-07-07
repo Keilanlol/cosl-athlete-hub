@@ -42,15 +42,53 @@ export const Route = createFileRoute("/_authenticated/persons/")({
   component: PersonsPage,
 });
 
+type Game = { id: string; name: string; short_name: string | null };
+
 function PersonsPage() {
   const navigate = useNavigate();
   const [rows, setRows] = useState<PersonListItem[] | null>(null);
+  const [games, setGames] = useState<Game[]>([]);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [activeFilter, setActiveFilter] = useState<string>("all");
+  const [gameFilter, setGameFilter] = useState<string>("all");
+  const [gamePersonIds, setGamePersonIds] = useState<Set<string> | null>(null);
   const [page, setPage] = useState(1);
   const [createOpen, setCreateOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+
+  // Load games list once
+  useEffect(() => {
+    supabase
+      .from("games")
+      .select("id, name, short_name")
+      .order("name", { ascending: true })
+      .then(({ data }) => {
+        if (data) setGames(data as Game[]);
+      });
+  }, []);
+
+  // Load person_ids for selected game
+  useEffect(() => {
+    if (gameFilter === "all") {
+      setGamePersonIds(null);
+      return;
+    }
+    supabase
+      .from("v_persons_in_games")
+      .select("person_id")
+      .eq("game_id", gameFilter)
+      .then(({ data, error }) => {
+        if (error) {
+          toast.error("Erreur lors du filtrage par Games", {
+            description: error.message,
+          });
+          setGamePersonIds(new Set());
+          return;
+        }
+        setGamePersonIds(new Set((data ?? []).map((r) => r.person_id as string)));
+      });
+  }, [gameFilter]);
 
   const load = async () => {
     setRows(null);
@@ -78,16 +116,17 @@ function PersonsPage() {
       r = r.filter((p) => (p.roles ?? []).includes(roleFilter as PersonRoleType));
     if (activeFilter === "active") r = r.filter((p) => p.is_active);
     if (activeFilter === "inactive") r = r.filter((p) => !p.is_active);
+    if (gamePersonIds) r = r.filter((p) => gamePersonIds.has(p.id));
     if (q)
       r = r.filter((p) =>
         `${p.first_name} ${p.last_name} ${p.email ?? ""}`.toLowerCase().includes(q),
       );
     return r;
-  }, [rows, search, roleFilter, activeFilter]);
+  }, [rows, search, roleFilter, activeFilter, gamePersonIds]);
 
   useEffect(() => {
     setPage(1);
-  }, [search, roleFilter, activeFilter]);
+  }, [search, roleFilter, activeFilter, gameFilter]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -153,8 +192,21 @@ function PersonsPage() {
             <SelectItem value="inactive">Inactifs</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={gameFilter} onValueChange={setGameFilter}>
+          <SelectTrigger className="w-[220px]">
+            <SelectValue placeholder="Tous les Games" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous les Games</SelectItem>
+            {games.map((g) => (
+              <SelectItem key={g.id} value={g.id}>
+                {g.short_name ?? g.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <span className="text-sm text-muted-foreground">
-          {filtered.length} résultat(s)
+          {gamePersonIds !== null && rows !== null ? "…" : filtered.length} résultat(s)
         </span>
       </div>
 
