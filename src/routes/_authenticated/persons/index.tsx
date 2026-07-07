@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { Plus, Search, Users, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -52,7 +52,6 @@ function PersonsPage() {
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [gameFilter, setGameFilter] = useState<string>("all");
-  const [gamePersonIds, setGamePersonIds] = useState<Set<string> | null>(null);
   const [page, setPage] = useState(1);
   const [createOpen, setCreateOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -68,30 +67,49 @@ function PersonsPage() {
       });
   }, []);
 
-  // Load person_ids for selected game
-  useEffect(() => {
-    if (gameFilter === "all") {
-      setGamePersonIds(null);
-      return;
-    }
-    supabase
-      .from("v_persons_in_games")
-      .select("person_id")
-      .eq("game_id", gameFilter)
-      .then(({ data, error }) => {
+  // When a game is selected, fetch person_ids from the view, then
+  // load only those persons from v_persons_with_roles (server-side filter).
+  // When no game is selected, load all (capped by PostgREST max rows).
+  const load = useCallback(async () => {
+    setRows(null);
+    if (gameFilter !== "all") {
+      // 1. Get person_ids for this game
+      const { data: links, error: linkErr } = await supabase
+        .from("v_persons_in_games")
+        .select("person_id")
+        .eq("game_id", gameFilter);
+      if (linkErr) {
+        toast.error("Erreur lors du filtrage par Games", {
+          description: linkErr.message,
+        });
+        setRows([]);
+        return;
+      }
+      const ids = (links ?? []).map((r) => r.person_id as string);
+      if (ids.length === 0) {
+        setRows([]);
+        return;
+      }
+      // 2. Fetch only those persons (in batches of 200 to avoid URL length limits)
+      const allRows: PersonListItem[] = [];
+      for (let i = 0; i < ids.length; i += 200) {
+        const batch = ids.slice(i, i + 200);
+        const { data, error } = await supabase
+          .from("v_persons_with_roles")
+          .select("*")
+          .in("id", batch)
+          .order("last_name", { ascending: true });
         if (error) {
-          toast.error("Erreur lors du filtrage par Games", {
-            description: error.message,
-          });
-          setGamePersonIds(new Set());
+          toast.error("Erreur de chargement", { description: error.message });
+          setRows([]);
           return;
         }
-        setGamePersonIds(new Set((data ?? []).map((r) => r.person_id as string)));
-      });
-  }, [gameFilter]);
-
-  const load = async () => {
-    setRows(null);
+        allRows.push(...((data ?? []) as PersonListItem[]));
+      }
+      setRows(allRows);
+      return;
+    }
+    // No game filter: load all
     const { data, error } = await supabase
       .from("v_persons_with_roles")
       .select("*")
@@ -102,11 +120,11 @@ function PersonsPage() {
       return;
     }
     setRows((data ?? []) as PersonListItem[]);
-  };
+  }, [gameFilter]);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   const filtered = useMemo(() => {
     if (!rows) return [];
@@ -116,13 +134,12 @@ function PersonsPage() {
       r = r.filter((p) => (p.roles ?? []).includes(roleFilter as PersonRoleType));
     if (activeFilter === "active") r = r.filter((p) => p.is_active);
     if (activeFilter === "inactive") r = r.filter((p) => !p.is_active);
-    if (gamePersonIds) r = r.filter((p) => gamePersonIds.has(p.id));
     if (q)
       r = r.filter((p) =>
         `${p.first_name} ${p.last_name} ${p.email ?? ""}`.toLowerCase().includes(q),
       );
     return r;
-  }, [rows, search, roleFilter, activeFilter, gamePersonIds]);
+  }, [rows, search, roleFilter, activeFilter]);
 
   useEffect(() => {
     setPage(1);
@@ -206,7 +223,7 @@ function PersonsPage() {
           </SelectContent>
         </Select>
         <span className="text-sm text-muted-foreground">
-          {gamePersonIds !== null && rows !== null ? "…" : filtered.length} résultat(s)
+          {filtered.length} résultat(s)
         </span>
       </div>
 
