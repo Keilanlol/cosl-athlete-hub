@@ -47,6 +47,7 @@ type Game = { id: string; name: string; short_name: string | null };
 function PersonsPage() {
   const navigate = useNavigate();
   const [rows, setRows] = useState<PersonListItem[] | null>(null);
+  const [totalCount, setTotalCount] = useState<number>(0);
   const [games, setGames] = useState<Game[]>([]);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
@@ -67,11 +68,20 @@ function PersonsPage() {
       });
   }, []);
 
-  // When a game is selected, fetch person_ids from the view, then
-  // load only those persons from v_persons_with_roles (server-side filter).
-  // When no game is selected, load all (capped by PostgREST max rows).
+  // Get total count of all persons (without game filter)
+  useEffect(() => {
+    supabase
+      .from("persons")
+      .select("*", { count: "exact", head: true })
+      .then(({ count }) => {
+        if (count !== null) setTotalCount(count);
+      });
+  }, []);
+
+  // Load persons — filtered by game if selected
   const load = useCallback(async () => {
     setRows(null);
+
     if (gameFilter !== "all") {
       // 1. Get person_ids for this game
       const { data: links, error: linkErr } = await supabase
@@ -90,10 +100,10 @@ function PersonsPage() {
         setRows([]);
         return;
       }
-      // 2. Fetch only those persons (in batches of 200 to avoid URL length limits)
+      // 2. Fetch only those persons (in batches of 100 to avoid URL length limits)
       const allRows: PersonListItem[] = [];
-      for (let i = 0; i < ids.length; i += 200) {
-        const batch = ids.slice(i, i + 200);
+      for (let i = 0; i < ids.length; i += 100) {
+        const batch = ids.slice(i, i + 100);
         const { data, error } = await supabase
           .from("v_persons_with_roles")
           .select("*")
@@ -106,10 +116,18 @@ function PersonsPage() {
         }
         allRows.push(...((data ?? []) as PersonListItem[]));
       }
-      setRows(allRows);
+      // Deduplicate by id (in case of duplicates in the view)
+      const seen = new Set<string>();
+      const deduped = allRows.filter((r) => {
+        if (seen.has(r.id)) return false;
+        seen.add(r.id);
+        return true;
+      });
+      setRows(deduped);
       return;
     }
-    // No game filter: load all
+
+    // No game filter: load all (capped by PostgREST max rows)
     const { data, error } = await supabase
       .from("v_persons_with_roles")
       .select("*")
@@ -119,7 +137,14 @@ function PersonsPage() {
       setRows([]);
       return;
     }
-    setRows((data ?? []) as PersonListItem[]);
+    // Deduplicate by id
+    const seen = new Set<string>();
+    const deduped = ((data ?? []) as PersonListItem[]).filter((r) => {
+      if (seen.has(r.id)) return false;
+      seen.add(r.id);
+      return true;
+    });
+    setRows(deduped);
   }, [gameFilter]);
 
   useEffect(() => {
@@ -147,6 +172,11 @@ function PersonsPage() {
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  // Display: "X résultat(s) sur Y" — Y is the total without filters
+  const countLabel = gameFilter !== "all"
+    ? `${filtered.length} résultat(s) sur ${totalCount}`
+    : `${filtered.length} résultat(s)${totalCount > filtered.length ? ` sur ${totalCount}` : ""}`;
 
   return (
     <div className="space-y-6">
@@ -222,8 +252,8 @@ function PersonsPage() {
             ))}
           </SelectContent>
         </Select>
-        <span className="text-sm text-muted-foreground">
-          {filtered.length} résultat(s)
+        <span className="text-sm text-muted-foreground whitespace-nowrap">
+          {rows === null ? "Chargement…" : countLabel}
         </span>
       </div>
 
