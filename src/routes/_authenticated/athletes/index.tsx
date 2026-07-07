@@ -572,8 +572,8 @@ function AthletesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead><SortBtn active={sort.key === "cosl_id"} dir={sort.dir} onClick={() => toggleSort("cosl_id")}>ID COSL</SortBtn></TableHead>
                 <TableHead className="w-14"></TableHead>
+                <TableHead><SortBtn active={sort.key === "cosl_id"} dir={sort.dir} onClick={() => toggleSort("cosl_id")}>ID COSL</SortBtn></TableHead>
                 <TableHead><SortBtn active={sort.key === "first_name"} dir={sort.dir} onClick={() => toggleSort("first_name")}>Prénom</SortBtn></TableHead>
                 <TableHead><SortBtn active={sort.key === "last_name"} dir={sort.dir} onClick={() => toggleSort("last_name")}>Nom</SortBtn></TableHead>
                 <TableHead>Sport</TableHead>
@@ -593,26 +593,24 @@ function AthletesPage() {
                   <TableRow
                     key={a.id}
                     onClick={() => navigate({ to: "/athletes/$id", params: { id: a.id } })}
-                    className={`cursor-pointer hover:bg-muted ${a.is_active === false ? "opacity-60" : ""}`}
+                    className="cursor-pointer hover:bg-muted"
                   >
-                    <TableCell className="font-mono text-xs">{a.cosl_id}</TableCell>
                     <TableCell>
-                      <div className="h-8 w-8 overflow-hidden rounded-full bg-slate-200">
+                      <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-border bg-muted">
                         {a.photo_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
                           <img
                             src={a.photo_url}
                             alt=""
                             className="h-full w-full object-cover"
                           />
                         ) : (
-                          <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-muted-foreground">
-                            {a.first_name[0]}
-                            {a.last_name[0]}
-                          </div>
+                          <span className="text-xs font-semibold text-muted-foreground">
+                            {(a.first_name[0] ?? "") + (a.last_name[0] ?? "")}
+                          </span>
                         )}
                       </div>
                     </TableCell>
+                    <TableCell className="font-mono text-xs">{a.cosl_id}</TableCell>
                     <TableCell>{a.first_name}</TableCell>
                     <TableCell className="font-medium">{a.last_name}</TableCell>
                     <TableCell className="text-muted-foreground">
