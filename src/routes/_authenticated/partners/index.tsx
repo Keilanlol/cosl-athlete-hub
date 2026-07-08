@@ -215,14 +215,14 @@ function PartnersPage() {
                     )}
                   </TableCell>
                   <TableCell className="font-medium">{p.name}</TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
+                  <TableCell className="text-muted-foreground">
                     {[p.street, [p.postcode, p.city].filter(Boolean).join(" "), p.country].filter(Boolean).join(", ") || "—"}
                   </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
+                  <TableCell className="text-muted-foreground">
                     <div>{p.email ?? "—"}</div>
                     <div>{p.phone ?? ""}</div>
                   </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
+                  <TableCell className="text-muted-foreground">
                     <div>{[p.contact_first_name, p.contact_last_name].filter(Boolean).join(" ") || "—"}</div>
                     <div>{p.contact_email ?? ""} {p.contact_phone ? `· ${p.contact_phone}` : ""}</div>
                   </TableCell>

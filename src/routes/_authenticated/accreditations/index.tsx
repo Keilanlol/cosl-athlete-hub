@@ -193,7 +193,7 @@ function GlobalAccreditationsPage() {
                     <TableCell className="text-muted-foreground">{r.game?.short_name ?? r.game?.name ?? "—"}</TableCell>
                     <TableCell className="font-medium">{r.full_name}</TableCell>
                     <TableCell>{cat ? <Badge variant="outline">{cat.label}</Badge> : "—"}</TableCell>
-                    <TableCell className="font-mono text-xs">{r.type?.type_code ?? "—"}</TableCell>
+                    <TableCell className="font-mono">{r.type?.type_code ?? "—"}</TableCell>
                     <TableCell>{sb && <Badge className={`${sb.cls} hover:${sb.cls}`}>{sb.label}</Badge>}</TableCell>
                     <TableCell className="min-w-[160px]">
                       <div className="flex items-center gap-2">

@@ -610,7 +610,7 @@ function AthletesPage() {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="font-mono text-xs">{a.cosl_id}</TableCell>
+                    <TableCell className="font-mono">{a.cosl_id}</TableCell>
                     <TableCell>{a.first_name}</TableCell>
                     <TableCell className="font-medium">{a.last_name}</TableCell>
                     <TableCell className="text-muted-foreground">

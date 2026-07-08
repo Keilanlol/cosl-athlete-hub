@@ -317,7 +317,7 @@ function FederationsPage() {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="font-mono text-sm font-medium">{f.acronym}</TableCell>
+                  <TableCell className="font-mono font-medium">{f.acronym}</TableCell>
                   <TableCell>{f.name}</TableCell>
                   <TableCell className="text-muted-foreground">{f.president_name ?? "—"}</TableCell>
                   <TableCell className="text-muted-foreground">{f.contact_email ?? "—"}</TableCell>

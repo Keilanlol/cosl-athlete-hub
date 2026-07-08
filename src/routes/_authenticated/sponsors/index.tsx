@@ -247,11 +247,11 @@ function SponsorsPage() {
                   <TableCell>
                     {s.rank_id ? <Badge className="bg-amber-100 text-amber-800 border-amber-200">{rankName(s.rank_id)}</Badge> : "—"}
                   </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
+                  <TableCell className="text-muted-foreground">
                     <div>{s.email ?? "—"}</div>
                     <div>{s.phone ?? ""}</div>
                   </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
+                  <TableCell className="text-muted-foreground">
                     <div>{[s.contact_first_name, s.contact_last_name].filter(Boolean).join(" ") || "—"}</div>
                     <div>{s.contact_email ?? ""} {s.contact_phone ? `· ${s.contact_phone}` : ""}</div>
                   </TableCell>
