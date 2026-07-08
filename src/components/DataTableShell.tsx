@@ -104,7 +104,7 @@ export function SortBtn({
       variant="ghost"
       size="sm"
       onClick={onClick}
-      className="-ml-2 h-7 px-2 font-medium"
+      className="-ml-2 h-7 px-2 font-medium text-muted-foreground hover:text-muted-foreground"
     >
       {children}
       <span className="ml-1 text-xs text-muted-foreground">
