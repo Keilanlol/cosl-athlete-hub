@@ -1,10 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
-import { Search, BadgeCheck } from "lucide-react";
+import { BadgeCheck } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -14,8 +13,12 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  EmptyState, PAGE_SIZE, PagerBar, TableSkeleton,
-} from "@/components/DataTableShell";
+  ListPageHeader,
+  SearchInput,
+  ResultCount,
+  SortableHeader,
+} from "@/components/list-table";
+import { EmptyState, PAGE_SIZE, PagerBar, TableSkeleton } from "@/components/DataTableShell";
 
 export const Route = createFileRoute("/_authenticated/accreditations/")({
   component: GlobalAccreditationsPage,
@@ -49,10 +52,16 @@ type Row = {
   docs: { status: string }[];
 };
 
+type SortKey = "full_name" | "status";
+
 function GlobalAccreditationsPage() {
   const navigate = useNavigate();
   const [rows, setRows] = useState<Row[] | null>(null);
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
+    key: "full_name",
+    dir: "asc",
+  });
   const [gameFilter, setGameFilter] = useState("all");
   const [catFilter, setCatFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -82,36 +91,47 @@ function GlobalAccreditationsPage() {
   const filtered = useMemo(() => {
     if (!rows) return [];
     const q = search.trim().toLowerCase();
-    return rows.filter((r) => {
+    let r = rows.filter((r) => {
       if (gameFilter !== "all" && r.game_id !== gameFilter) return false;
       if (catFilter !== "all" && r.type?.category !== catFilter) return false;
       if (statusFilter !== "all" && r.status !== statusFilter) return false;
       if (q && !r.full_name.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [rows, search, gameFilter, catFilter, statusFilter]);
+    r.sort((a, b) => {
+      const av = (a[sort.key] ?? "").toString().toLowerCase();
+      const bv = (b[sort.key] ?? "").toString().toLowerCase();
+      const cmp = av.localeCompare(bv);
+      return sort.dir === "asc" ? cmp : -cmp;
+    });
+    return r;
+  }, [rows, search, gameFilter, catFilter, statusFilter, sort]);
+
+  useEffect(() => { setPage(1); }, [search, gameFilter, catFilter, statusFilter, sort.key]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   useEffect(() => { if (page > pageCount) setPage(1); }, [pageCount, page]);
 
+  const toggleSort = (key: SortKey) =>
+    setSort((s) =>
+      s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" },
+    );
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-white">
-          <BadgeCheck className="h-5 w-5" />
-        </span>
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">Accréditations</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Vue globale toutes éditions confondues.</p>
-        </div>
-      </div>
+      <ListPageHeader
+        icon={BadgeCheck}
+        title="Accréditations"
+        description="Vue globale toutes éditions confondues."
+      />
 
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative max-w-sm flex-1 min-w-[220px]">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Rechercher une personne…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
-        </div>
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder="Rechercher une personne…"
+        />
         <Select value={gameFilter} onValueChange={setGameFilter}>
           <SelectTrigger className="w-48"><SelectValue placeholder="Games" /></SelectTrigger>
           <SelectContent>
@@ -133,12 +153,12 @@ function GlobalAccreditationsPage() {
             {ACCRED_STATUSES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
           </SelectContent>
         </Select>
-        <span className="ml-auto text-sm text-muted-foreground">{filtered.length} résultat(s)</span>
+        <ResultCount count={filtered.length} />
       </div>
 
       <div className="rounded-lg border border-border bg-card">
         {rows === null ? (
-          <TableSkeleton cols={7} />
+          <TableSkeleton cols={6} />
         ) : filtered.length === 0 ? (
           <div className="p-6"><EmptyState message="Aucune accréditation." /></div>
         ) : (
@@ -146,10 +166,14 @@ function GlobalAccreditationsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Games</TableHead>
-                <TableHead>Personne</TableHead>
+                <SortableHeader sortKey="full_name" sort={sort} onToggle={toggleSort}>
+                  Personne
+                </SortableHeader>
                 <TableHead>Catégorie</TableHead>
                 <TableHead>Type</TableHead>
-                <TableHead>Statut</TableHead>
+                <SortableHeader sortKey="status" sort={sort} onToggle={toggleSort}>
+                  Statut
+                </SortableHeader>
                 <TableHead>Complétude</TableHead>
               </TableRow>
             </TableHeader>
