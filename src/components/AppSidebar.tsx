@@ -55,7 +55,6 @@ const groups: { label: string; items: Item[] }[] = [
     items: [
       { title: "Games", url: "/games", icon: Trophy },
       { title: "Sports", url: "/sports", icon: Volleyball },
-      { title: "Disciplines", url: "/disciplines", icon: Target },
       { title: "Logistique", url: "/logistics", icon: Plane },
       { title: "Accréditations", url: "/accreditations", icon: BadgeCheck },
     ],

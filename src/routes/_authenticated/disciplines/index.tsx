@@ -1,17 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { PageStub } from "@/components/PageStub";
+import { redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_authenticated/disciplines/")({
-  component: DisciplinesPage,
+  beforeLoad: () => {
+    throw redirect({ to: "/sports" });
+  },
+  component: () => null,
 });
-
-function DisciplinesPage() {
-  return (
-    <PageStub
-      title="Disciplines"
-      description="Gestion des disciplines rattachées aux sports."
-    >
-      Module à implémenter — scaffold uniquement.
-    </PageStub>
-  );
-}
