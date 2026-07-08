@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Tag,
   Plus,
@@ -48,6 +48,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { SortBtn } from "@/components/DataTableShell";
+
+type SortKey = "sort_order" | "code" | "label" | "is_system";
 import { TableSkeleton, EmptyState } from "@/components/DataTableShell";
 
 export const Route = createFileRoute("/_authenticated/admin/types-roles")({
@@ -217,13 +220,31 @@ function GroupPanel({
   onDelete: (item: AppTypeItem) => void;
 }) {
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
+    key: "sort_order",
+    dir: "asc",
+  });
 
-  const filtered = group.items.filter(
-    (i) =>
-      !search.trim() ||
-      i.label.toLowerCase().includes(search.trim().toLowerCase()) ||
-      i.code.toLowerCase().includes(search.trim().toLowerCase()),
-  );
+  const filtered = useMemo(() => {
+    let r = group.items.filter(
+      (i) =>
+        !search.trim() ||
+        i.label.toLowerCase().includes(search.trim().toLowerCase()) ||
+        i.code.toLowerCase().includes(search.trim().toLowerCase()),
+    );
+    r.sort((a, b) => {
+      const av = ((a as Record<string, unknown>)[sort.key] ?? "").toString().toLowerCase();
+      const bv = ((b as Record<string, unknown>)[sort.key] ?? "").toString().toLowerCase();
+      const cmp = av.localeCompare(bv);
+      return sort.dir === "asc" ? cmp : -cmp;
+    });
+    return r;
+  }, [group.items, search, sort]);
+
+  const toggleSort = (key: SortKey) =>
+    setSort((s) =>
+      s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" },
+    );
 
   return (
     <div className="space-y-4">
@@ -261,10 +282,10 @@ function GroupPanel({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-24">Ordre</TableHead>
-                <TableHead className="w-56">Code</TableHead>
-                <TableHead>Libellé</TableHead>
-                <TableHead className="w-24">Type</TableHead>
+                <TableHead className="w-24"><SortBtn active={sort.key === "sort_order"} dir={sort.dir} onClick={() => toggleSort("sort_order")}>Ordre</SortBtn></TableHead>
+                <TableHead className="w-56"><SortBtn active={sort.key === "code"} dir={sort.dir} onClick={() => toggleSort("code")}>Code</SortBtn></TableHead>
+                <TableHead><SortBtn active={sort.key === "label"} dir={sort.dir} onClick={() => toggleSort("label")}>Libellé</SortBtn></TableHead>
+                <TableHead className="w-24"><SortBtn active={sort.key === "is_system"} dir={sort.dir} onClick={() => toggleSort("is_system")}>Type</SortBtn></TableHead>
                 <TableHead className="w-24 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>

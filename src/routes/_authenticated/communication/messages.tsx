@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Pencil, Trash2, Send, Search, Mail } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import {
@@ -29,7 +30,10 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { TableSkeleton, EmptyState } from "@/components/DataTableShell";
+import { TableSkeleton, EmptyState, SortBtn } from "@/components/DataTableShell";
+import { ListPageHeader, SearchInput, ResultCount } from "@/components/list-table";
+
+type SortKey = "name" | "subject" | "channel" | "is_active";
 
 export const Route = createFileRoute("/_authenticated/communication/messages")({
   component: MessagesPage,
@@ -62,16 +66,33 @@ function MessagesPage() {
   const [tplForm, setTplForm] = useState<TemplateForm>(emptyTpl);
   const [tplDel, setTplDel] = useState<MessageTemplate | null>(null);
   const [tplSearch, setTplSearch] = useState("");
+  const [tplSort, setTplSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
+    key: "name",
+    dir: "asc",
+  });
 
   const filteredTemplates = useMemo(() => {
     const q = tplSearch.trim().toLowerCase();
-    if (!q) return templates;
-    return templates.filter(
-      (t) =>
-        t.name.toLowerCase().includes(q) ||
-        (t.subject ?? "").toLowerCase().includes(q),
+    let r = q
+      ? templates.filter(
+          (t) =>
+            t.name.toLowerCase().includes(q) ||
+            (t.subject ?? "").toLowerCase().includes(q),
+        )
+      : templates.slice();
+    r.sort((a, b) => {
+      const av = ((a as Record<string, unknown>)[tplSort.key] ?? "").toString().toLowerCase();
+      const bv = ((b as Record<string, unknown>)[tplSort.key] ?? "").toString().toLowerCase();
+      const cmp = av.localeCompare(bv);
+      return tplSort.dir === "asc" ? cmp : -cmp;
+    });
+    return r;
+  }, [templates, tplSearch, tplSort]);
+
+  const toggleTplSort = (key: SortKey) =>
+    setTplSort((s) =>
+      s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" },
     );
-  }, [templates, tplSearch]);
 
   // Send block
   const [selectedTplId, setSelectedTplId] = useState<string>("none");
@@ -250,15 +271,7 @@ function MessagesPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center gap-3">
-        <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-white">
-          <Mail className="h-5 w-5" />
-        </span>
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">Messages</h1>
-          <p className="text-sm text-muted-foreground">Templates et envois ciblés.</p>
-        </div>
-      </div>
+      <ListPageHeader icon={Mail as LucideIcon} title="Messages" description="Templates et envois ciblés." />
 
       {/* Templates */}
       <section className="space-y-3">
@@ -269,16 +282,8 @@ function MessagesPage() {
           </Button>
         </div>
         <div className="flex items-center gap-3">
-          <div className="relative max-w-sm flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Rechercher un template…"
-              value={tplSearch}
-              onChange={(e) => setTplSearch(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          <span className="text-sm text-muted-foreground">{filteredTemplates.length} résultat(s)</span>
+          <SearchInput value={tplSearch} onChange={setTplSearch} placeholder="Rechercher un template…" />
+          <ResultCount count={filteredTemplates.length} />
         </div>
         <div className="rounded-lg border border-border bg-card">
           {loading ? (
@@ -289,10 +294,10 @@ function MessagesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nom</TableHead>
-                  <TableHead>Sujet</TableHead>
-                  <TableHead>Canal</TableHead>
-                  <TableHead>Actif</TableHead>
+                  <TableHead><SortBtn active={tplSort.key === "name"} dir={tplSort.dir} onClick={() => toggleTplSort("name")}>Nom</SortBtn></TableHead>
+                  <TableHead><SortBtn active={tplSort.key === "subject"} dir={tplSort.dir} onClick={() => toggleTplSort("subject")}>Sujet</SortBtn></TableHead>
+                  <TableHead><SortBtn active={tplSort.key === "channel"} dir={tplSort.dir} onClick={() => toggleTplSort("channel")}>Canal</SortBtn></TableHead>
+                  <TableHead><SortBtn active={tplSort.key === "is_active"} dir={tplSort.dir} onClick={() => toggleTplSort("is_active")}>Actif</SortBtn></TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>

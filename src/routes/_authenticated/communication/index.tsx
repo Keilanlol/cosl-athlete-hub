@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Mail, BellRing, MailOpen, Send, Megaphone } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { type MessageSent } from "@/lib/types";
@@ -8,6 +9,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/DataTableShell";
+import { ListPageHeader } from "@/components/list-table";
+import { SortBtn } from "@/components/DataTableShell";
+
+type SortKey = "subject" | "recipients_count" | "audience_segment" | "channel" | "sent_at";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -23,6 +28,26 @@ function CommunicationDashboard() {
   const [latest, setLatest] = useState<MessageSent[]>([]);
   const [loading, setLoading] = useState(true);
   const [openMsgId, setOpenMsgId] = useState<string | null>(null);
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
+    key: "sent_at",
+    dir: "desc",
+  });
+
+  const sortedLatest = useMemo(() => {
+    let r = latest.slice();
+    r.sort((a, b) => {
+      const av = ((a as Record<string, unknown>)[sort.key] ?? "").toString().toLowerCase();
+      const bv = ((b as Record<string, unknown>)[sort.key] ?? "").toString().toLowerCase();
+      const cmp = av.localeCompare(bv);
+      return sort.dir === "asc" ? cmp : -cmp;
+    });
+    return r;
+  }, [latest, sort]);
+
+  const toggleSort = (key: SortKey) =>
+    setSort((s) =>
+      s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" },
+    );
 
   useEffect(() => {
     (async () => {
@@ -62,22 +87,13 @@ function CommunicationDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-white">
-            <Megaphone className="h-5 w-5" />
-          </span>
-          <div>
-            <h1 className="text-2xl font-semibold text-foreground">Communication</h1>
-            <p className="text-sm text-muted-foreground">Tableau de bord des envois et notifications.</p>
-          </div>
-        </div>
+      <ListPageHeader icon={Megaphone as LucideIcon} title="Communication" description="Tableau de bord des envois et notifications.">
         <Link to="/communication/messages">
           <Button className="bg-primary hover:bg-[var(--cosl-red-dark)]">
             <Send className="mr-2 h-4 w-4" /> Envoyer un message
           </Button>
         </Link>
-      </div>
+      </ListPageHeader>
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Card icon={<Mail className="h-5 w-5" />} label="Messages envoyés ce mois" value={sentThisMonth} />
@@ -99,7 +115,7 @@ function CommunicationDashboard() {
                 <Skeleton key={i} className="h-10 w-full" />
               ))}
             </div>
-          ) : latest.length === 0 ? (
+          ) : sortedLatest.length === 0 ? (
             <div className="p-6">
               <EmptyState
                 message="Aucun envoi pour le moment."
@@ -117,15 +133,15 @@ function CommunicationDashboard() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Sujet</TableHead>
-                  <TableHead>Destinataires</TableHead>
-                  <TableHead>Audience</TableHead>
-                  <TableHead>Canal</TableHead>
-                  <TableHead>Date</TableHead>
+                  <TableHead><SortBtn active={sort.key === "subject"} dir={sort.dir} onClick={() => toggleSort("subject")}>Sujet</SortBtn></TableHead>
+                  <TableHead><SortBtn active={sort.key === "recipients_count"} dir={sort.dir} onClick={() => toggleSort("recipients_count")}>Destinataires</SortBtn></TableHead>
+                  <TableHead><SortBtn active={sort.key === "audience_segment"} dir={sort.dir} onClick={() => toggleSort("audience_segment")}>Audience</SortBtn></TableHead>
+                  <TableHead><SortBtn active={sort.key === "channel"} dir={sort.dir} onClick={() => toggleSort("channel")}>Canal</SortBtn></TableHead>
+                  <TableHead><SortBtn active={sort.key === "sent_at"} dir={sort.dir} onClick={() => toggleSort("sent_at")}>Date</SortBtn></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {latest.map((m) => (
+                {sortedLatest.map((m) => (
                   <TableRow
                     key={m.id}
                     className="cursor-pointer hover:bg-muted"
@@ -133,7 +149,7 @@ function CommunicationDashboard() {
                   >
                     <TableCell className="font-medium">{m.subject}</TableCell>
                     <TableCell>{m.recipients_count}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{m.audience_segment}</TableCell>
+                    <TableCell className="text-muted-foreground">{m.audience_segment}</TableCell>
                     <TableCell>
                       <Badge variant="outline">{m.channel}</Badge>
                     </TableCell>
