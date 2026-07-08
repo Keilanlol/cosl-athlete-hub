@@ -5,9 +5,7 @@ import {
   Plus,
   Pencil,
   Trash2,
-  Search,
   Volleyball,
-  Upload,
   ChevronRight,
   ChevronDown,
 } from "lucide-react";
@@ -27,14 +25,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -52,7 +42,22 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  ListPageHeader,
+  SearchInput,
+  ResultCount,
+  SortableHeader,
+  ActionsCell,
+} from "@/components/list-table";
 import { EmptyState, TableSkeleton } from "@/components/DataTableShell";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export const Route = createFileRoute("/_authenticated/sports/")({
   component: SportsPage,
@@ -73,10 +78,16 @@ type Discipline = {
   age_category: string | null;
 };
 
+type SortKey = "name";
+
 function SportsPage() {
   const [sports, setSports] = useState<Sport[] | null>(null);
   const [disciplines, setDisciplines] = useState<Discipline[]>([]);
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
+    key: "name",
+    dir: "asc",
+  });
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [sportDialog, setSportDialog] = useState<{
     mode: "create" | "edit";
@@ -106,15 +117,27 @@ function SportsPage() {
   const filtered = useMemo(() => {
     if (!sports) return [];
     const q = search.trim().toLowerCase();
-    if (!q) return sports;
-    return sports.filter(
-      (s) =>
-        s.name.toLowerCase().includes(q) ||
-        disciplines.some(
-          (d) => d.sport_id === s.id && d.name.toLowerCase().includes(q),
-        ),
+    let r = sports.slice();
+    if (q) {
+      r = r.filter(
+        (s) =>
+          s.name.toLowerCase().includes(q) ||
+          disciplines.some(
+            (d) => d.sport_id === s.id && d.name.toLowerCase().includes(q),
+          ),
+      );
+    }
+    r.sort((a, b) => {
+      const cmp = a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+      return sort.dir === "asc" ? cmp : -cmp;
+    });
+    return r;
+  }, [sports, search, disciplines, sort]);
+
+  const toggleSort = (key: SortKey) =>
+    setSort((s) =>
+      s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" },
     );
-  }, [sports, search, disciplines]);
 
   const toggleExpand = (id: string) => {
     setExpanded((prev) => {
@@ -129,7 +152,12 @@ function SportsPage() {
     disciplines.filter((d) => d.sport_id === sportId);
 
   // ── Sport CRUD ────────────────────────────────────────────────────────────
-  const saveSport = async (name: string, isOlympic: boolean, isSummer: boolean, existing?: Sport) => {
+  const saveSport = async (
+    name: string,
+    isOlympic: boolean,
+    isSummer: boolean,
+    existing?: Sport,
+  ) => {
     if (!name.trim()) {
       toast.error("Le nom est requis");
       return false;
@@ -224,47 +252,31 @@ function SportsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-white">
-            <Volleyball className="h-5 w-5" />
-          </span>
-          <div>
-            <h1 className="text-2xl font-semibold text-foreground">Sports & Disciplines</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Gestion des sports reconnus par le COSL et de leurs disciplines.
-            </p>
-          </div>
-        </div>
+      <ListPageHeader
+        icon={Volleyball}
+        title="Sports & Disciplines"
+        description="Gestion des sports reconnus par le COSL et de leurs disciplines."
+      >
         <Button
           onClick={() => setSportDialog({ mode: "create", sport: null })}
           className="bg-primary hover:bg-[var(--cosl-red-dark)]"
         >
           <Plus className="mr-2 h-4 w-4" /> Ajouter un sport
         </Button>
-      </div>
+      </ListPageHeader>
 
-      {/* Search */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative max-w-sm flex-1 min-w-[220px]">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Rechercher un sport ou une discipline…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <span className="text-sm text-muted-foreground ml-auto whitespace-nowrap">
-          {filtered.length} sport(s) · {disciplines.length} discipline(s)
-        </span>
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder="Rechercher un sport ou une discipline…"
+        />
+        <ResultCount count={filtered.length} total={disciplines.length > 0 ? sports?.length ?? 0 : undefined} />
       </div>
 
-      {/* Table */}
       <div className="rounded-lg border border-border bg-card">
         {sports === null ? (
-          <TableSkeleton cols={4} />
+          <TableSkeleton cols={6} />
         ) : filtered.length === 0 ? (
           <div className="p-6">
             <EmptyState message="Aucun sport enregistré." />
@@ -274,8 +286,10 @@ function SportsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-10"></TableHead>
-                <TableHead className="w-8"></TableHead>
-                <TableHead>Nom</TableHead>
+                <TableHead className="w-10"></TableHead>
+                <SortableHeader sortKey="name" sort={sort} onToggle={toggleSort}>
+                  Nom
+                </SortableHeader>
                 <TableHead>Disciplines</TableHead>
                 <TableHead>Olympique</TableHead>
                 <TableHead>Saison</TableHead>
@@ -287,145 +301,27 @@ function SportsPage() {
                 const isExpanded = expanded.has(sport.id);
                 const discList = disciplinesFor(sport.id);
                 return (
-                  <>
-                    <TableRow
-                      key={sport.id}
-                      className="cursor-pointer hover:bg-muted"
-                      onClick={() => toggleExpand(sport.id)}
-                    >
-                      <TableCell className="p-2">
-                        <span className="inline-flex h-6 w-6 items-center justify-center text-muted-foreground">
-                          {isExpanded ? (
-                            <ChevronDown className="h-4 w-4" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4" />
-                          )}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[var(--cosl-red-light)] text-primary">
-                          <Volleyball className="h-4 w-4" />
-                        </span>
-                      </TableCell>
-                      <TableCell className="font-medium">{sport.name}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {discList.length} discipline(s)
-                      </TableCell>
-                      <TableCell>
-                        {sport.is_olympic ? (
-                          <Badge className="bg-[var(--cosl-red-light)] text-primary hover:bg-[var(--cosl-red-light)]">Olympique</Badge>
-                        ) : (
-                          <Badge variant="outline">Non</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {sport.is_summer === false ? "Hiver" : "Été"}
-                      </TableCell>
-                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => setSportDialog({ mode: "edit", sport })}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-red-600 hover:text-red-700"
-                          onClick={() =>
-                            setDeleteTarget({ type: "sport", id: sport.id, name: sport.name })
-                          }
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                    {isExpanded && (
-                      <TableRow key={sport.id + "-disc"} className="bg-muted/30">
-                        <TableCell colSpan={7} className="p-0">
-                          <div className="px-12 py-3">
-                            {discList.length === 0 ? (
-                              <p className="text-sm text-muted-foreground py-2">
-                                Aucune discipline.{" "}
-                                <button
-                                  className="text-primary underline"
-                                  onClick={() =>
-                                    setDiscDialog({ sportId: sport.id, discipline: null })
-                                  }
-                                >
-                                  Ajouter une discipline
-                                </button>
-                              </p>
-                            ) : (
-                              <div className="space-y-1">
-                                <div className="flex items-center justify-between mb-2">
-                                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                                    Disciplines de {sport.name}
-                                  </p>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-7"
-                                    onClick={() =>
-                                      setDiscDialog({ sportId: sport.id, discipline: null })
-                                    }
-                                  >
-                                    <Plus className="mr-1 h-3.5 w-3.5" /> Ajouter
-                                  </Button>
-                                </div>
-                                {discList.map((d) => (
-                                  <div
-                                    key={d.id}
-                                    className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2"
-                                  >
-                                    <div className="flex items-center gap-3">
-                                      <span className="font-medium text-sm">{d.name}</span>
-                                      <Badge variant="outline" className="text-xs">
-                                        {genderLabel(d.gender)}
-                                      </Badge>
-                                      {d.age_category && (
-                                        <span className="text-xs text-muted-foreground">
-                                          {d.age_category}
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-7 w-7"
-                                        onClick={() =>
-                                          setDiscDialog({ sportId: sport.id, discipline: d })
-                                        }
-                                      >
-                                        <Pencil className="h-3.5 w-3.5" />
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-7 w-7 text-red-600 hover:text-red-700"
-                                        onClick={() =>
-                                          setDeleteTarget({
-                                            type: "discipline",
-                                            id: d.id,
-                                            name: d.name,
-                                          })
-                                        }
-                                      >
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                      </Button>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </>
+                  <SportRow
+                    key={sport.id}
+                    sport={sport}
+                    isExpanded={isExpanded}
+                    discList={discList}
+                    onToggle={() => toggleExpand(sport.id)}
+                    onEditSport={() => setSportDialog({ mode: "edit", sport })}
+                    onDeleteSport={() =>
+                      setDeleteTarget({ type: "sport", id: sport.id, name: sport.name })
+                    }
+                    onAddDiscipline={() =>
+                      setDiscDialog({ sportId: sport.id, discipline: null })
+                    }
+                    onEditDiscipline={(d) =>
+                      setDiscDialog({ sportId: sport.id, discipline: d })
+                    }
+                    onDeleteDiscipline={(d) =>
+                      setDeleteTarget({ type: "discipline", id: d.id, name: d.name })
+                    }
+                    genderLabel={genderLabel}
+                  />
                 );
               })}
             </TableBody>
@@ -454,7 +350,10 @@ function SportsPage() {
       )}
 
       {/* Delete confirmation */}
-      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+      <AlertDialog
+        open={!!deleteTarget}
+        onOpenChange={(o) => !o && setDeleteTarget(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
@@ -480,6 +379,150 @@ function SportsPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SportRow — ligne de sport avec accordéon des disciplines
+// ─────────────────────────────────────────────────────────────────────────────
+
+function SportRow({
+  sport,
+  isExpanded,
+  discList,
+  onToggle,
+  onEditSport,
+  onDeleteSport,
+  onAddDiscipline,
+  onEditDiscipline,
+  onDeleteDiscipline,
+  genderLabel,
+}: {
+  sport: Sport;
+  isExpanded: boolean;
+  discList: Discipline[];
+  onToggle: () => void;
+  onEditSport: () => void;
+  onDeleteSport: () => void;
+  onAddDiscipline: () => void;
+  onEditDiscipline: (d: Discipline) => void;
+  onDeleteDiscipline: (d: Discipline) => void;
+  genderLabel: (g: string) => string;
+}) {
+  return (
+    <>
+      <TableRow
+        className="cursor-pointer hover:bg-muted"
+        onClick={onToggle}
+      >
+        <TableCell className="p-2">
+          <span className="inline-flex h-6 w-6 items-center justify-center text-muted-foreground">
+            {isExpanded ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+          </span>
+        </TableCell>
+        <TableCell>
+          <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[var(--cosl-red-light)] text-primary">
+            <Volleyball className="h-4 w-4" />
+          </span>
+        </TableCell>
+        <TableCell className="font-medium">{sport.name}</TableCell>
+        <TableCell className="text-muted-foreground">
+          {discList.length} discipline(s)
+        </TableCell>
+        <TableCell>
+          {sport.is_olympic ? (
+            <Badge className="bg-[var(--cosl-red-light)] text-primary hover:bg-[var(--cosl-red-light)]">
+              Olympique
+            </Badge>
+          ) : (
+            <Badge variant="outline">Non</Badge>
+          )}
+        </TableCell>
+        <TableCell className="text-muted-foreground">
+          {sport.is_summer === false ? "Hiver" : "Été"}
+        </TableCell>
+        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEditSport}>
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-red-600 hover:text-red-700"
+            onClick={onDeleteSport}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </TableCell>
+      </TableRow>
+      {isExpanded && (
+        <TableRow className="bg-muted/30">
+          <TableCell colSpan={7} className="p-0">
+            <div className="px-12 py-3">
+              {discList.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-2">
+                  Aucune discipline.{" "}
+                  <button className="text-primary underline" onClick={onAddDiscipline}>
+                    Ajouter une discipline
+                  </button>
+                </p>
+              ) : (
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Disciplines de {sport.name}
+                    </p>
+                    <Button variant="outline" size="sm" className="h-7" onClick={onAddDiscipline}>
+                      <Plus className="mr-1 h-3.5 w-3.5" /> Ajouter
+                    </Button>
+                  </div>
+                  {discList.map((d) => (
+                    <div
+                      key={d.id}
+                      className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="font-medium text-sm">{d.name}</span>
+                        <Badge variant="outline" className="text-xs">
+                          {genderLabel(d.gender)}
+                        </Badge>
+                        {d.age_category && (
+                          <span className="text-xs text-muted-foreground">
+                            {d.age_category}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => onEditDiscipline(d)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-red-600 hover:text-red-700"
+                          onClick={() => onDeleteDiscipline(d)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </TableCell>
+        </TableRow>
+      )}
+    </>
   );
 }
 
@@ -517,7 +560,12 @@ function SportDialog({
 
   const submit = async () => {
     setSaving(true);
-    const ok = await onSave(name, isOlympic, isSummer, mode === "edit" ? sport ?? undefined : undefined);
+    const ok = await onSave(
+      name,
+      isOlympic,
+      isSummer,
+      mode === "edit" ? sport ?? undefined : undefined,
+    );
     setSaving(false);
     if (ok) onOpenChange(false);
   };
@@ -553,7 +601,9 @@ function SportDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Annuler
+          </Button>
           <Button
             onClick={submit}
             disabled={saving || !name.trim()}
@@ -636,10 +686,14 @@ function DisciplineDialog({
           <div className="space-y-1.5">
             <Label>Genre</Label>
             <Select value={gender} onValueChange={setGender}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 {GENDERS.map((g) => (
-                  <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
+                  <SelectItem key={g.value} value={g.value}>
+                    {g.label}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -654,7 +708,9 @@ function DisciplineDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Annuler
+          </Button>
           <Button
             onClick={submit}
             disabled={saving || !name.trim()}
