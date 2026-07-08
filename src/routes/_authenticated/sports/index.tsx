@@ -49,6 +49,7 @@ import {
   SortableHeader,
   ActionsCell,
 } from "@/components/list-table";
+import { SortBtn } from "@/components/DataTableShell";
 import { EmptyState, TableSkeleton } from "@/components/DataTableShell";
 import {
   Table,
@@ -78,7 +79,7 @@ type Discipline = {
   age_category: string | null;
 };
 
-type SortKey = "name";
+type SortKey = "name" | "is_olympic" | "is_summer";
 
 function SportsPage() {
   const [sports, setSports] = useState<Sport[] | null>(null);
@@ -128,7 +129,9 @@ function SportsPage() {
       );
     }
     r.sort((a, b) => {
-      const cmp = a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+      const av = ((a as Record<string, unknown>)[sort.key] ?? "").toString().toLowerCase();
+      const bv = ((b as Record<string, unknown>)[sort.key] ?? "").toString().toLowerCase();
+      const cmp = av.localeCompare(bv);
       return sort.dir === "asc" ? cmp : -cmp;
     });
     return r;
@@ -291,8 +294,8 @@ function SportsPage() {
                   Nom
                 </SortableHeader>
                 <TableHead>Disciplines</TableHead>
-                <TableHead>Olympique</TableHead>
-                <TableHead>Saison</TableHead>
+                <TableHead><SortBtn active={sort.key === "is_olympic"} dir={sort.dir} onClick={() => toggleSort("is_olympic")}>Olympique</SortBtn></TableHead>
+                <TableHead><SortBtn active={sort.key === "is_summer"} dir={sort.dir} onClick={() => toggleSort("is_summer")}>Saison</SortBtn></TableHead>
                 <TableHead className="w-24 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>

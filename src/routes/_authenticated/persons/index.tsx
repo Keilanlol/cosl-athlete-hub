@@ -45,7 +45,7 @@ export const Route = createFileRoute("/_authenticated/persons/")({
 
 type Game = { id: string; name: string; short_name: string | null };
 
-type SortKey = "first_name" | "last_name" | "email" | "phone";
+type SortKey = "first_name" | "last_name" | "email" | "phone" | "is_active";
 
 function PersonsPage() {
   const navigate = useNavigate();
@@ -292,7 +292,7 @@ function PersonsPage() {
                 <TableHead><SortBtn active={sort.key === "email"} dir={sort.dir} onClick={() => toggleSort("email")}>Email</SortBtn></TableHead>
                 <TableHead><SortBtn active={sort.key === "phone"} dir={sort.dir} onClick={() => toggleSort("phone")}>Téléphone</SortBtn></TableHead>
                 <TableHead>Rôles</TableHead>
-                <TableHead>Statut</TableHead>
+                <TableHead><SortBtn active={sort.key === "is_active"} dir={sort.dir} onClick={() => toggleSort("is_active")}>Statut</SortBtn></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

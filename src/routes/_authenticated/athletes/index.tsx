@@ -131,7 +131,7 @@ function kycBadge(s: string | null | undefined) {
   );
 }
 
-type SortKey = "cosl_id" | "first_name" | "last_name" | "status" | "level";
+type SortKey = "cosl_id" | "first_name" | "last_name" | "primary_sport" | "primary_federation" | "current_club" | "status" | "level" | "athlete_kyc";
 
 function AthletesPage() {
   const navigate = useNavigate();
@@ -228,8 +228,24 @@ function AthletesPage() {
       return true;
     });
     r.sort((a, b) => {
-      const av = (a[sort.key] ?? "").toString().toLowerCase();
-      const bv = (b[sort.key] ?? "").toString().toLowerCase();
+      let av: string;
+      let bv: string;
+      if (sort.key === "primary_sport") {
+        av = a.primary_sport?.name ?? "";
+        bv = b.primary_sport?.name ?? "";
+      } else if (sort.key === "primary_federation") {
+        av = a.primary_federation?.acronym ?? "";
+        bv = b.primary_federation?.acronym ?? "";
+      } else if (sort.key === "current_club") {
+        av = a.current_club?.name ?? "";
+        bv = b.current_club?.name ?? "";
+      } else if (sort.key === "athlete_kyc") {
+        av = readKyc(a.athlete_kyc);
+        bv = readKyc(b.athlete_kyc);
+      } else {
+        av = (a[sort.key] ?? "").toString().toLowerCase();
+        bv = (b[sort.key] ?? "").toString().toLowerCase();
+      }
       const cmp = av.localeCompare(bv);
       return sort.dir === "asc" ? cmp : -cmp;
     });
@@ -576,12 +592,12 @@ function AthletesPage() {
                 <TableHead><SortBtn active={sort.key === "cosl_id"} dir={sort.dir} onClick={() => toggleSort("cosl_id")}>ID COSL</SortBtn></TableHead>
                 <TableHead><SortBtn active={sort.key === "first_name"} dir={sort.dir} onClick={() => toggleSort("first_name")}>Prénom</SortBtn></TableHead>
                 <TableHead><SortBtn active={sort.key === "last_name"} dir={sort.dir} onClick={() => toggleSort("last_name")}>Nom</SortBtn></TableHead>
-                <TableHead>Sport</TableHead>
-                <TableHead>Fédération</TableHead>
-                <TableHead>Club</TableHead>
+                <TableHead><SortBtn active={sort.key === "primary_sport"} dir={sort.dir} onClick={() => toggleSort("primary_sport")}>Sport</SortBtn></TableHead>
+                <TableHead><SortBtn active={sort.key === "primary_federation"} dir={sort.dir} onClick={() => toggleSort("primary_federation")}>Fédération</SortBtn></TableHead>
+                <TableHead><SortBtn active={sort.key === "current_club"} dir={sort.dir} onClick={() => toggleSort("current_club")}>Club</SortBtn></TableHead>
                 <TableHead><SortBtn active={sort.key === "status"} dir={sort.dir} onClick={() => toggleSort("status")}>Statut</SortBtn></TableHead>
                 <TableHead><SortBtn active={sort.key === "level"} dir={sort.dir} onClick={() => toggleSort("level")}>Niveau</SortBtn></TableHead>
-                <TableHead>KYC</TableHead>
+                <TableHead><SortBtn active={sort.key === "athlete_kyc"} dir={sort.dir} onClick={() => toggleSort("athlete_kyc")}>KYC</SortBtn></TableHead>
                 <TableHead className="w-12 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>

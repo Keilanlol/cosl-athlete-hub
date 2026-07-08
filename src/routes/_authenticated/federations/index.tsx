@@ -58,7 +58,7 @@ export const Route = createFileRoute("/_authenticated/federations/")({
   component: FederationsPage,
 });
 
-type SortKey = "acronym" | "name" | "president_name";
+type SortKey = "acronym" | "name" | "president_name" | "contact_email" | "contact_phone" | "is_olympic";
 
 const empty = {
   acronym: "",
@@ -295,9 +295,9 @@ function FederationsPage() {
                 <TableHead><SortBtn active={sort.key === "acronym"} dir={sort.dir} onClick={() => toggleSort("acronym")}>Acronyme</SortBtn></TableHead>
                 <TableHead><SortBtn active={sort.key === "name"} dir={sort.dir} onClick={() => toggleSort("name")}>Nom</SortBtn></TableHead>
                 <TableHead><SortBtn active={sort.key === "president_name"} dir={sort.dir} onClick={() => toggleSort("president_name")}>Président</SortBtn></TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Téléphone</TableHead>
-                <TableHead>Olympique</TableHead>
+                <TableHead><SortBtn active={sort.key === "contact_email"} dir={sort.dir} onClick={() => toggleSort("contact_email")}>Email</SortBtn></TableHead>
+                <TableHead><SortBtn active={sort.key === "contact_phone"} dir={sort.dir} onClick={() => toggleSort("contact_phone")}>Téléphone</SortBtn></TableHead>
+                <TableHead><SortBtn active={sort.key === "is_olympic"} dir={sort.dir} onClick={() => toggleSort("is_olympic")}>Olympique</SortBtn></TableHead>
                 <TableHead className="w-24 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>

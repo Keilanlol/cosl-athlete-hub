@@ -51,7 +51,7 @@ const empty = {
   notes: "",
 };
 
-type SortKey = "name" | "city";
+type SortKey = "name" | "city" | "email" | "contact_first_name";
 
 function PartnersPage() {
   const [rows, setRows] = useState<Partner[] | null>(null);
@@ -199,8 +199,8 @@ function PartnersPage() {
                 <TableHead className="w-14">Logo</TableHead>
                 <TableHead><SortBtn active={sort.key === "name"} dir={sort.dir} onClick={() => toggleSort("name")}>Nom</SortBtn></TableHead>
                 <TableHead><SortBtn active={sort.key === "city"} dir={sort.dir} onClick={() => toggleSort("city")}>Ville</SortBtn></TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead>Personne référente</TableHead>
+                <TableHead><SortBtn active={sort.key === "email"} dir={sort.dir} onClick={() => toggleSort("email")}>Contact</SortBtn></TableHead>
+                <TableHead><SortBtn active={sort.key === "contact_first_name"} dir={sort.dir} onClick={() => toggleSort("contact_first_name")}>Personne référente</SortBtn></TableHead>
                 <TableHead className="w-28 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>

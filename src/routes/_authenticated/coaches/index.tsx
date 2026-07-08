@@ -59,7 +59,7 @@ export const Route = createFileRoute("/_authenticated/coaches/")({
   component: CoachesPage,
 });
 
-type SortKey = "first_name" | "last_name" | "role";
+type SortKey = "first_name" | "last_name" | "email" | "phone" | "role" | "is_active";
 
 const NONE = "__none__";
 const empty = {
@@ -327,37 +327,25 @@ function CoachesPage() {
               <TableRow>
                 <TableHead className="w-14"></TableHead>
                 <TableHead>
-                  <SortBtn
-                    active={sort.key === "first_name"}
-                    dir={sort.dir}
-                    onClick={() => toggleSort("first_name")}
-                  >
+                  <SortBtn active={sort.key === "first_name"} dir={sort.dir} onClick={() => toggleSort("first_name")}>
                     Prénom
                   </SortBtn>
                 </TableHead>
                 <TableHead>
-                  <SortBtn
-                    active={sort.key === "last_name"}
-                    dir={sort.dir}
-                    onClick={() => toggleSort("last_name")}
-                  >
+                  <SortBtn active={sort.key === "last_name"} dir={sort.dir} onClick={() => toggleSort("last_name")}>
                     Nom
                   </SortBtn>
                 </TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Téléphone</TableHead>
+                <TableHead><SortBtn active={sort.key === "email"} dir={sort.dir} onClick={() => toggleSort("email")}>Email</SortBtn></TableHead>
+                <TableHead><SortBtn active={sort.key === "phone"} dir={sort.dir} onClick={() => toggleSort("phone")}>Téléphone</SortBtn></TableHead>
                 <TableHead>
-                  <SortBtn
-                    active={sort.key === "role"}
-                    dir={sort.dir}
-                    onClick={() => toggleSort("role")}
-                  >
+                  <SortBtn active={sort.key === "role"} dir={sort.dir} onClick={() => toggleSort("role")}>
                     Rôle
                   </SortBtn>
                 </TableHead>
                 <TableHead>Fédération</TableHead>
                 <TableHead>Club</TableHead>
-                <TableHead>Actif</TableHead>
+                <TableHead><SortBtn active={sort.key === "is_active"} dir={sort.dir} onClick={() => toggleSort("is_active")}>Actif</SortBtn></TableHead>
                 <TableHead className="w-24 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>

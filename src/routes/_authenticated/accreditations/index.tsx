@@ -18,7 +18,7 @@ import {
   ResultCount,
   SortableHeader,
 } from "@/components/list-table";
-import { EmptyState, PAGE_SIZE, PagerBar, TableSkeleton } from "@/components/DataTableShell";
+import { EmptyState, PAGE_SIZE, PagerBar, SortBtn, TableSkeleton } from "@/components/DataTableShell";
 
 export const Route = createFileRoute("/_authenticated/accreditations/")({
   component: GlobalAccreditationsPage,
@@ -52,7 +52,7 @@ type Row = {
   docs: { status: string }[];
 };
 
-type SortKey = "full_name" | "status";
+type SortKey = "full_name" | "status" | "game_id" | "category" | "type_code";
 
 function GlobalAccreditationsPage() {
   const navigate = useNavigate();
@@ -99,8 +99,21 @@ function GlobalAccreditationsPage() {
       return true;
     });
     r.sort((a, b) => {
-      const av = (a[sort.key] ?? "").toString().toLowerCase();
-      const bv = (b[sort.key] ?? "").toString().toLowerCase();
+      let av: string;
+      let bv: string;
+      if (sort.key === "game_id") {
+        av = a.game?.short_name ?? a.game?.name ?? "";
+        bv = b.game?.short_name ?? b.game?.name ?? "";
+      } else if (sort.key === "category") {
+        av = a.type?.category ?? "";
+        bv = b.type?.category ?? "";
+      } else if (sort.key === "type_code") {
+        av = a.type?.type_code ?? "";
+        bv = b.type?.type_code ?? "";
+      } else {
+        av = (a[sort.key] ?? "").toString().toLowerCase();
+        bv = (b[sort.key] ?? "").toString().toLowerCase();
+      }
       const cmp = av.localeCompare(bv);
       return sort.dir === "asc" ? cmp : -cmp;
     });
@@ -165,12 +178,12 @@ function GlobalAccreditationsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Games</TableHead>
+                <TableHead><SortBtn active={sort.key === "game_id"} dir={sort.dir} onClick={() => toggleSort("game_id")}>Games</SortBtn></TableHead>
                 <SortableHeader sortKey="full_name" sort={sort} onToggle={toggleSort}>
                   Personne
                 </SortableHeader>
-                <TableHead>Catégorie</TableHead>
-                <TableHead>Type</TableHead>
+                <TableHead><SortBtn active={sort.key === "category"} dir={sort.dir} onClick={() => toggleSort("category")}>Catégorie</SortBtn></TableHead>
+                <TableHead><SortBtn active={sort.key === "type_code"} dir={sort.dir} onClick={() => toggleSort("type_code")}>Type</SortBtn></TableHead>
                 <SortableHeader sortKey="status" sort={sort} onToggle={toggleSort}>
                   Statut
                 </SortableHeader>

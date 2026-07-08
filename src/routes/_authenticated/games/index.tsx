@@ -80,7 +80,7 @@ const empty = {
   status: "preparation" as GameStatus,
 };
 
-type SortKey = "name" | "game_type" | "edition_year" | "host_city" | "status";
+type SortKey = "name" | "game_type" | "edition_year" | "host_country" | "host_city" | "competition_start" | "competition_end" | "status";
 
 function GamesListPage() {
   const navigate = useNavigate();
@@ -326,10 +326,10 @@ function GamesListPage() {
                 <TableHead><SortBtn active={sort.key === "name"} dir={sort.dir} onClick={() => toggleSort("name")}>Nom</SortBtn></TableHead>
                 <TableHead><SortBtn active={sort.key === "game_type"} dir={sort.dir} onClick={() => toggleSort("game_type")}>Type</SortBtn></TableHead>
                 <TableHead><SortBtn active={sort.key === "edition_year"} dir={sort.dir} onClick={() => toggleSort("edition_year")}>Édition</SortBtn></TableHead>
-                <TableHead>Pays</TableHead>
+                <TableHead><SortBtn active={sort.key === "host_country"} dir={sort.dir} onClick={() => toggleSort("host_country")}>Pays</SortBtn></TableHead>
                 <TableHead><SortBtn active={sort.key === "host_city"} dir={sort.dir} onClick={() => toggleSort("host_city")}>Ville</SortBtn></TableHead>
-                <TableHead>Début</TableHead>
-                <TableHead>Fin</TableHead>
+                <TableHead><SortBtn active={sort.key === "competition_start"} dir={sort.dir} onClick={() => toggleSort("competition_start")}>Début</SortBtn></TableHead>
+                <TableHead><SortBtn active={sort.key === "competition_end"} dir={sort.dir} onClick={() => toggleSort("competition_end")}>Fin</SortBtn></TableHead>
                 <TableHead><SortBtn active={sort.key === "status"} dir={sort.dir} onClick={() => toggleSort("status")}>Statut</SortBtn></TableHead>
                 <TableHead className="w-32 text-right">Actions</TableHead>
               </TableRow>

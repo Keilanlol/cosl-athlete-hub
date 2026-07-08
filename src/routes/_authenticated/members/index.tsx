@@ -58,7 +58,7 @@ function MembersPage() {
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [scope, setScope] = useState<"all" | "fed" | "club">("all");
-  const [sort, setSort] = useState<{ key: "last_name" | "first_name"; dir: "asc" | "desc" }>({
+  const [sort, setSort] = useState<{ key: "last_name" | "first_name" | "role" | "email" | "phone" | "is_active"; dir: "asc" | "desc" }>({
     key: "last_name",
     dir: "asc",
   });
@@ -121,14 +121,14 @@ function MembersPage() {
         })
       : out;
     return filtered.sort((a, b) => {
-      const av = (a.data[sort.key] ?? "").toString().toLowerCase();
-      const bv = (b.data[sort.key] ?? "").toString().toLowerCase();
+      const av = ((a.data as Record<string, unknown>)[sort.key] ?? "").toString().toLowerCase();
+      const bv = ((b.data as Record<string, unknown>)[sort.key] ?? "").toString().toLowerCase();
       const cmp = av.localeCompare(bv);
       return sort.dir === "asc" ? cmp : -cmp;
     });
   }, [feds, clubs, fedMembers, clubMembers, scope, q, sort]);
 
-  const toggleSort = (key: "last_name" | "first_name") =>
+  const toggleSort = (key: "last_name" | "first_name" | "role" | "email" | "phone" | "is_active") =>
     setSort((s) =>
       s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" },
     );
@@ -211,11 +211,11 @@ function MembersPage() {
             <TableHeader>
               <TableRow>
                 <TableHead><SortBtn active={sort.key === "last_name"} dir={sort.dir} onClick={() => toggleSort("last_name")}>Nom</SortBtn></TableHead>
-                <TableHead>Fonction</TableHead>
+                <TableHead><SortBtn active={sort.key === "role"} dir={sort.dir} onClick={() => toggleSort("role")}>Fonction</SortBtn></TableHead>
                 <TableHead>Organisation</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Téléphone</TableHead>
-                <TableHead>Statut</TableHead>
+                <TableHead><SortBtn active={sort.key === "email"} dir={sort.dir} onClick={() => toggleSort("email")}>Email</SortBtn></TableHead>
+                <TableHead><SortBtn active={sort.key === "phone"} dir={sort.dir} onClick={() => toggleSort("phone")}>Téléphone</SortBtn></TableHead>
+                <TableHead><SortBtn active={sort.key === "is_active"} dir={sort.dir} onClick={() => toggleSort("is_active")}>Statut</SortBtn></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

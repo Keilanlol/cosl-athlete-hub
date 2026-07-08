@@ -52,7 +52,7 @@ const empty = {
   notes: "",
 };
 
-type SortKey = "name" | "rank_id";
+type SortKey = "name" | "rank_id" | "email" | "contact_first_name";
 
 function SponsorsPage() {
   const [rows, setRows] = useState<Sponsor[] | null>(null);
@@ -228,8 +228,8 @@ function SponsorsPage() {
                 <TableHead className="w-14">Logo</TableHead>
                 <TableHead><SortBtn active={sort.key === "name"} dir={sort.dir} onClick={() => toggleSort("name")}>Nom</SortBtn></TableHead>
                 <TableHead><SortBtn active={sort.key === "rank_id"} dir={sort.dir} onClick={() => toggleSort("rank_id")}>Rang</SortBtn></TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead>Personne référente</TableHead>
+                <TableHead><SortBtn active={sort.key === "email"} dir={sort.dir} onClick={() => toggleSort("email")}>Contact</SortBtn></TableHead>
+                <TableHead><SortBtn active={sort.key === "contact_first_name"} dir={sort.dir} onClick={() => toggleSort("contact_first_name")}>Personne référente</SortBtn></TableHead>
                 <TableHead className="w-28 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>

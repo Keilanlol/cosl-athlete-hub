@@ -58,7 +58,7 @@ export const Route = createFileRoute("/_authenticated/clubs/")({
   component: ClubsPage,
 });
 
-type SortKey = "name" | "city";
+type SortKey = "name" | "city" | "email" | "phone";
 
 const empty = {
   name: "",
@@ -334,27 +334,15 @@ function ClubsPage() {
               <TableRow>
                 <TableHead className="w-14"></TableHead>
                 <TableHead>
-                  <SortBtn
-                    active={sort.key === "name"}
-                    dir={sort.dir}
-                    onClick={() => toggleSort("name")}
-                  >
-                    Nom
-                  </SortBtn>
+                  <SortBtn active={sort.key === "name"} dir={sort.dir} onClick={() => toggleSort("name")}>Nom</SortBtn>
                 </TableHead>
                 <TableHead>Fédération</TableHead>
                 <TableHead>
-                  <SortBtn
-                    active={sort.key === "city"}
-                    dir={sort.dir}
-                    onClick={() => toggleSort("city")}
-                  >
-                    Ville
-                  </SortBtn>
+                  <SortBtn active={sort.key === "city"} dir={sort.dir} onClick={() => toggleSort("city")}>Ville</SortBtn>
                 </TableHead>
                 <TableHead>Président</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Téléphone</TableHead>
+                <TableHead><SortBtn active={sort.key === "email"} dir={sort.dir} onClick={() => toggleSort("email")}>Email</SortBtn></TableHead>
+                <TableHead><SortBtn active={sort.key === "phone"} dir={sort.dir} onClick={() => toggleSort("phone")}>Téléphone</SortBtn></TableHead>
                 <TableHead className="w-24 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>

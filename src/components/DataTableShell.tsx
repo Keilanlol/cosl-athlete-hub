@@ -100,16 +100,15 @@ export function SortBtn({
   children: ReactNode;
 }) {
   return (
-    <Button
-      variant="ghost"
-      size="sm"
+    <button
+      type="button"
       onClick={onClick}
-      className="-ml-2 h-7 px-2 font-medium text-muted-foreground hover:text-muted-foreground"
+      className="inline-flex items-center gap-1 text-left text-muted-foreground hover:text-foreground"
     >
       {children}
-      <span className="ml-1 text-xs text-muted-foreground">
+      <span className="text-muted-foreground">
         {active ? (dir === "asc" ? "▲" : "▼") : "↕"}
       </span>
-    </Button>
+    </button>
   );
 }
