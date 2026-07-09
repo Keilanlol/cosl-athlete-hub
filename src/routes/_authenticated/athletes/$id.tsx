@@ -140,7 +140,6 @@ function AthleteDetailPage() {
   const [loading, setLoading] = useState(true);
   const [sport, setSport] = useState<Sport | null>(null);
   const [federation, setFederation] = useState<Federation | null>(null);
-  const [club, setClub] = useState<Club | null>(null);
   const [docs, setDocs] = useState<AthleteDocument[] | null>(null);
   const [kyc, setKyc] = useState<AthleteKyc | null>(null);
   const [kycHistory, setKycHistory] = useState<(KycHistoryEntry & { changed_by_profile?: { username?: string | null; full_name?: string | null } | null })[]>([]);
