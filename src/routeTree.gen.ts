@@ -25,7 +25,6 @@ import { Route as AuthenticatedEventsIndexRouteImport } from './routes/_authenti
 import { Route as AuthenticatedDisciplinesIndexRouteImport } from './routes/_authenticated/disciplines/index'
 import { Route as AuthenticatedCommunicationIndexRouteImport } from './routes/_authenticated/communication/index'
 import { Route as AuthenticatedCoachesIndexRouteImport } from './routes/_authenticated/coaches/index'
-import { Route as AuthenticatedClubsIndexRouteImport } from './routes/_authenticated/clubs/index'
 import { Route as AuthenticatedAthletesIndexRouteImport } from './routes/_authenticated/athletes/index'
 import { Route as AuthenticatedAccreditationsIndexRouteImport } from './routes/_authenticated/accreditations/index'
 import { Route as AuthenticatedPersonsPersonIdRouteImport } from './routes/_authenticated/persons/$personId'
@@ -34,7 +33,6 @@ import { Route as AuthenticatedFederationsIdRouteImport } from './routes/_authen
 import { Route as AuthenticatedCommunicationNotificationsRouteImport } from './routes/_authenticated/communication/notifications'
 import { Route as AuthenticatedCommunicationMessagesRouteImport } from './routes/_authenticated/communication/messages'
 import { Route as AuthenticatedCoachesIdRouteImport } from './routes/_authenticated/coaches/$id'
-import { Route as AuthenticatedClubsIdRouteImport } from './routes/_authenticated/clubs/$id'
 import { Route as AuthenticatedAthletesIdRouteImport } from './routes/_authenticated/athletes/$id'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin/users'
 import { Route as AuthenticatedAdminTypesRolesRouteImport } from './routes/_authenticated/admin/types-roles'
@@ -47,7 +45,6 @@ import { Route as AuthenticatedGamesIdDelegationRouteImport } from './routes/_au
 import { Route as AuthenticatedGamesIdCompetitionsRouteImport } from './routes/_authenticated/games/$id/competitions'
 import { Route as AuthenticatedGamesIdAccreditationsRouteImport } from './routes/_authenticated/games/$id/accreditations'
 import { Route as AuthenticatedFederationsMembersMemberIdRouteImport } from './routes/_authenticated/federations/members.$memberId'
-import { Route as AuthenticatedClubsMembersMemberIdRouteImport } from './routes/_authenticated/clubs/members.$memberId'
 import { Route as AuthenticatedGamesIdLogisticsIndexRouteImport } from './routes/_authenticated/games/$id/logistics/index'
 import { Route as AuthenticatedGamesIdLogisticsTransportRouteImport } from './routes/_authenticated/games/$id/logistics/transport'
 import { Route as AuthenticatedGamesIdLogisticsLodgingRouteImport } from './routes/_authenticated/games/$id/logistics/lodging'
@@ -143,11 +140,6 @@ const AuthenticatedCoachesIndexRoute =
     path: '/coaches/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedClubsIndexRoute = AuthenticatedClubsIndexRouteImport.update({
-  id: '/clubs/',
-  path: '/clubs/',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
 const AuthenticatedAthletesIndexRoute =
   AuthenticatedAthletesIndexRouteImport.update({
     id: '/athletes/',
@@ -192,11 +184,6 @@ const AuthenticatedCommunicationMessagesRoute =
 const AuthenticatedCoachesIdRoute = AuthenticatedCoachesIdRouteImport.update({
   id: '/coaches/$id',
   path: '/coaches/$id',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedClubsIdRoute = AuthenticatedClubsIdRouteImport.update({
-  id: '/clubs/$id',
-  path: '/clubs/$id',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedAthletesIdRoute = AuthenticatedAthletesIdRouteImport.update({
@@ -269,12 +256,6 @@ const AuthenticatedFederationsMembersMemberIdRoute =
     path: '/federations/members/$memberId',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedClubsMembersMemberIdRoute =
-  AuthenticatedClubsMembersMemberIdRouteImport.update({
-    id: '/clubs/members/$memberId',
-    path: '/clubs/members/$memberId',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
 const AuthenticatedGamesIdLogisticsIndexRoute =
   AuthenticatedGamesIdLogisticsIndexRouteImport.update({
     id: '/logistics/',
@@ -307,7 +288,6 @@ export interface FileRoutesByFullPath {
   '/admin/types-roles': typeof AuthenticatedAdminTypesRolesRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/athletes/$id': typeof AuthenticatedAthletesIdRoute
-  '/clubs/$id': typeof AuthenticatedClubsIdRoute
   '/coaches/$id': typeof AuthenticatedCoachesIdRoute
   '/communication/messages': typeof AuthenticatedCommunicationMessagesRoute
   '/communication/notifications': typeof AuthenticatedCommunicationNotificationsRoute
@@ -316,7 +296,6 @@ export interface FileRoutesByFullPath {
   '/persons/$personId': typeof AuthenticatedPersonsPersonIdRoute
   '/accreditations/': typeof AuthenticatedAccreditationsIndexRoute
   '/athletes/': typeof AuthenticatedAthletesIndexRoute
-  '/clubs/': typeof AuthenticatedClubsIndexRoute
   '/coaches/': typeof AuthenticatedCoachesIndexRoute
   '/communication/': typeof AuthenticatedCommunicationIndexRoute
   '/disciplines/': typeof AuthenticatedDisciplinesIndexRoute
@@ -329,7 +308,6 @@ export interface FileRoutesByFullPath {
   '/persons/': typeof AuthenticatedPersonsIndexRoute
   '/sponsors/': typeof AuthenticatedSponsorsIndexRoute
   '/sports/': typeof AuthenticatedSportsIndexRoute
-  '/clubs/members/$memberId': typeof AuthenticatedClubsMembersMemberIdRoute
   '/federations/members/$memberId': typeof AuthenticatedFederationsMembersMemberIdRoute
   '/games/$id/accreditations': typeof AuthenticatedGamesIdAccreditationsRoute
   '/games/$id/competitions': typeof AuthenticatedGamesIdCompetitionsRoute
@@ -351,7 +329,6 @@ export interface FileRoutesByTo {
   '/admin/types-roles': typeof AuthenticatedAdminTypesRolesRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/athletes/$id': typeof AuthenticatedAthletesIdRoute
-  '/clubs/$id': typeof AuthenticatedClubsIdRoute
   '/coaches/$id': typeof AuthenticatedCoachesIdRoute
   '/communication/messages': typeof AuthenticatedCommunicationMessagesRoute
   '/communication/notifications': typeof AuthenticatedCommunicationNotificationsRoute
@@ -359,7 +336,6 @@ export interface FileRoutesByTo {
   '/persons/$personId': typeof AuthenticatedPersonsPersonIdRoute
   '/accreditations': typeof AuthenticatedAccreditationsIndexRoute
   '/athletes': typeof AuthenticatedAthletesIndexRoute
-  '/clubs': typeof AuthenticatedClubsIndexRoute
   '/coaches': typeof AuthenticatedCoachesIndexRoute
   '/communication': typeof AuthenticatedCommunicationIndexRoute
   '/disciplines': typeof AuthenticatedDisciplinesIndexRoute
@@ -372,7 +348,6 @@ export interface FileRoutesByTo {
   '/persons': typeof AuthenticatedPersonsIndexRoute
   '/sponsors': typeof AuthenticatedSponsorsIndexRoute
   '/sports': typeof AuthenticatedSportsIndexRoute
-  '/clubs/members/$memberId': typeof AuthenticatedClubsMembersMemberIdRoute
   '/federations/members/$memberId': typeof AuthenticatedFederationsMembersMemberIdRoute
   '/games/$id/accreditations': typeof AuthenticatedGamesIdAccreditationsRoute
   '/games/$id/competitions': typeof AuthenticatedGamesIdCompetitionsRoute
@@ -396,7 +371,6 @@ export interface FileRoutesById {
   '/_authenticated/admin/types-roles': typeof AuthenticatedAdminTypesRolesRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/athletes/$id': typeof AuthenticatedAthletesIdRoute
-  '/_authenticated/clubs/$id': typeof AuthenticatedClubsIdRoute
   '/_authenticated/coaches/$id': typeof AuthenticatedCoachesIdRoute
   '/_authenticated/communication/messages': typeof AuthenticatedCommunicationMessagesRoute
   '/_authenticated/communication/notifications': typeof AuthenticatedCommunicationNotificationsRoute
@@ -405,7 +379,6 @@ export interface FileRoutesById {
   '/_authenticated/persons/$personId': typeof AuthenticatedPersonsPersonIdRoute
   '/_authenticated/accreditations/': typeof AuthenticatedAccreditationsIndexRoute
   '/_authenticated/athletes/': typeof AuthenticatedAthletesIndexRoute
-  '/_authenticated/clubs/': typeof AuthenticatedClubsIndexRoute
   '/_authenticated/coaches/': typeof AuthenticatedCoachesIndexRoute
   '/_authenticated/communication/': typeof AuthenticatedCommunicationIndexRoute
   '/_authenticated/disciplines/': typeof AuthenticatedDisciplinesIndexRoute
@@ -418,7 +391,6 @@ export interface FileRoutesById {
   '/_authenticated/persons/': typeof AuthenticatedPersonsIndexRoute
   '/_authenticated/sponsors/': typeof AuthenticatedSponsorsIndexRoute
   '/_authenticated/sports/': typeof AuthenticatedSportsIndexRoute
-  '/_authenticated/clubs/members/$memberId': typeof AuthenticatedClubsMembersMemberIdRoute
   '/_authenticated/federations/members/$memberId': typeof AuthenticatedFederationsMembersMemberIdRoute
   '/_authenticated/games/$id/accreditations': typeof AuthenticatedGamesIdAccreditationsRoute
   '/_authenticated/games/$id/competitions': typeof AuthenticatedGamesIdCompetitionsRoute
@@ -442,7 +414,6 @@ export interface FileRouteTypes {
     | '/admin/types-roles'
     | '/admin/users'
     | '/athletes/$id'
-    | '/clubs/$id'
     | '/coaches/$id'
     | '/communication/messages'
     | '/communication/notifications'
@@ -451,7 +422,6 @@ export interface FileRouteTypes {
     | '/persons/$personId'
     | '/accreditations/'
     | '/athletes/'
-    | '/clubs/'
     | '/coaches/'
     | '/communication/'
     | '/disciplines/'
@@ -464,7 +434,6 @@ export interface FileRouteTypes {
     | '/persons/'
     | '/sponsors/'
     | '/sports/'
-    | '/clubs/members/$memberId'
     | '/federations/members/$memberId'
     | '/games/$id/accreditations'
     | '/games/$id/competitions'
@@ -486,7 +455,6 @@ export interface FileRouteTypes {
     | '/admin/types-roles'
     | '/admin/users'
     | '/athletes/$id'
-    | '/clubs/$id'
     | '/coaches/$id'
     | '/communication/messages'
     | '/communication/notifications'
@@ -494,7 +462,6 @@ export interface FileRouteTypes {
     | '/persons/$personId'
     | '/accreditations'
     | '/athletes'
-    | '/clubs'
     | '/coaches'
     | '/communication'
     | '/disciplines'
@@ -507,7 +474,6 @@ export interface FileRouteTypes {
     | '/persons'
     | '/sponsors'
     | '/sports'
-    | '/clubs/members/$memberId'
     | '/federations/members/$memberId'
     | '/games/$id/accreditations'
     | '/games/$id/competitions'
@@ -530,7 +496,6 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/types-roles'
     | '/_authenticated/admin/users'
     | '/_authenticated/athletes/$id'
-    | '/_authenticated/clubs/$id'
     | '/_authenticated/coaches/$id'
     | '/_authenticated/communication/messages'
     | '/_authenticated/communication/notifications'
@@ -539,7 +504,6 @@ export interface FileRouteTypes {
     | '/_authenticated/persons/$personId'
     | '/_authenticated/accreditations/'
     | '/_authenticated/athletes/'
-    | '/_authenticated/clubs/'
     | '/_authenticated/coaches/'
     | '/_authenticated/communication/'
     | '/_authenticated/disciplines/'
@@ -552,7 +516,6 @@ export interface FileRouteTypes {
     | '/_authenticated/persons/'
     | '/_authenticated/sponsors/'
     | '/_authenticated/sports/'
-    | '/_authenticated/clubs/members/$memberId'
     | '/_authenticated/federations/members/$memberId'
     | '/_authenticated/games/$id/accreditations'
     | '/_authenticated/games/$id/competitions'
@@ -688,13 +651,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCoachesIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/clubs/': {
-      id: '/_authenticated/clubs/'
-      path: '/clubs'
-      fullPath: '/clubs/'
-      preLoaderRoute: typeof AuthenticatedClubsIndexRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
     '/_authenticated/athletes/': {
       id: '/_authenticated/athletes/'
       path: '/athletes'
@@ -749,13 +705,6 @@ declare module '@tanstack/react-router' {
       path: '/coaches/$id'
       fullPath: '/coaches/$id'
       preLoaderRoute: typeof AuthenticatedCoachesIdRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/clubs/$id': {
-      id: '/_authenticated/clubs/$id'
-      path: '/clubs/$id'
-      fullPath: '/clubs/$id'
-      preLoaderRoute: typeof AuthenticatedClubsIdRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/athletes/$id': {
@@ -842,13 +791,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFederationsMembersMemberIdRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/clubs/members/$memberId': {
-      id: '/_authenticated/clubs/members/$memberId'
-      path: '/clubs/members/$memberId'
-      fullPath: '/clubs/members/$memberId'
-      preLoaderRoute: typeof AuthenticatedClubsMembersMemberIdRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
     '/_authenticated/games/$id/logistics/': {
       id: '/_authenticated/games/$id/logistics/'
       path: '/logistics'
@@ -923,7 +865,6 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAdminTypesRolesRoute: typeof AuthenticatedAdminTypesRolesRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
   AuthenticatedAthletesIdRoute: typeof AuthenticatedAthletesIdRoute
-  AuthenticatedClubsIdRoute: typeof AuthenticatedClubsIdRoute
   AuthenticatedCoachesIdRoute: typeof AuthenticatedCoachesIdRoute
   AuthenticatedCommunicationMessagesRoute: typeof AuthenticatedCommunicationMessagesRoute
   AuthenticatedCommunicationNotificationsRoute: typeof AuthenticatedCommunicationNotificationsRoute
@@ -932,7 +873,6 @@ interface AuthenticatedRouteChildren {
   AuthenticatedPersonsPersonIdRoute: typeof AuthenticatedPersonsPersonIdRoute
   AuthenticatedAccreditationsIndexRoute: typeof AuthenticatedAccreditationsIndexRoute
   AuthenticatedAthletesIndexRoute: typeof AuthenticatedAthletesIndexRoute
-  AuthenticatedClubsIndexRoute: typeof AuthenticatedClubsIndexRoute
   AuthenticatedCoachesIndexRoute: typeof AuthenticatedCoachesIndexRoute
   AuthenticatedCommunicationIndexRoute: typeof AuthenticatedCommunicationIndexRoute
   AuthenticatedDisciplinesIndexRoute: typeof AuthenticatedDisciplinesIndexRoute
@@ -945,7 +885,6 @@ interface AuthenticatedRouteChildren {
   AuthenticatedPersonsIndexRoute: typeof AuthenticatedPersonsIndexRoute
   AuthenticatedSponsorsIndexRoute: typeof AuthenticatedSponsorsIndexRoute
   AuthenticatedSportsIndexRoute: typeof AuthenticatedSportsIndexRoute
-  AuthenticatedClubsMembersMemberIdRoute: typeof AuthenticatedClubsMembersMemberIdRoute
   AuthenticatedFederationsMembersMemberIdRoute: typeof AuthenticatedFederationsMembersMemberIdRoute
 }
 
@@ -954,7 +893,6 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminTypesRolesRoute: AuthenticatedAdminTypesRolesRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
   AuthenticatedAthletesIdRoute: AuthenticatedAthletesIdRoute,
-  AuthenticatedClubsIdRoute: AuthenticatedClubsIdRoute,
   AuthenticatedCoachesIdRoute: AuthenticatedCoachesIdRoute,
   AuthenticatedCommunicationMessagesRoute:
     AuthenticatedCommunicationMessagesRoute,
@@ -965,7 +903,6 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedPersonsPersonIdRoute: AuthenticatedPersonsPersonIdRoute,
   AuthenticatedAccreditationsIndexRoute: AuthenticatedAccreditationsIndexRoute,
   AuthenticatedAthletesIndexRoute: AuthenticatedAthletesIndexRoute,
-  AuthenticatedClubsIndexRoute: AuthenticatedClubsIndexRoute,
   AuthenticatedCoachesIndexRoute: AuthenticatedCoachesIndexRoute,
   AuthenticatedCommunicationIndexRoute: AuthenticatedCommunicationIndexRoute,
   AuthenticatedDisciplinesIndexRoute: AuthenticatedDisciplinesIndexRoute,
@@ -978,8 +915,6 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedPersonsIndexRoute: AuthenticatedPersonsIndexRoute,
   AuthenticatedSponsorsIndexRoute: AuthenticatedSponsorsIndexRoute,
   AuthenticatedSportsIndexRoute: AuthenticatedSportsIndexRoute,
-  AuthenticatedClubsMembersMemberIdRoute:
-    AuthenticatedClubsMembersMemberIdRoute,
   AuthenticatedFederationsMembersMemberIdRoute:
     AuthenticatedFederationsMembersMemberIdRoute,
 }

@@ -3,7 +3,6 @@ import {
   LayoutDashboard,
   Users,
   Building2,
-  Shield,
   UserCog,
   UserRound,
   Trophy,
@@ -14,7 +13,6 @@ import {
   Star,
   Handshake,
   Volleyball,
-  Target,
   CalendarDays,
   Tag,
 } from "lucide-react";
@@ -45,7 +43,6 @@ const groups: { label: string; items: Item[] }[] = [
       { title: "Personnes", url: "/persons", icon: Users },
       { title: "Athlètes", url: "/athletes", icon: Users },
       { title: "Fédérations", url: "/federations", icon: Building2 },
-      { title: "Clubs", url: "/clubs", icon: Shield },
       { title: "Encadrement", url: "/coaches", icon: UserCog },
       { title: "Membres", url: "/members", icon: UserRound },
     ],
@@ -57,15 +54,13 @@ const groups: { label: string; items: Item[] }[] = [
       { title: "Sports", url: "/sports", icon: Volleyball },
       { title: "Logistique", url: "/logistics", icon: Plane },
       { title: "Accréditations", url: "/accreditations", icon: BadgeCheck },
+      { title: "Sponsors", url: "/sponsors", icon: Star },
+      { title: "Partenaires", url: "/partners", icon: Handshake },
     ],
   },
   {
     label: "Events Management",
-    items: [
-      { title: "Events", url: "/events", icon: CalendarDays },
-      { title: "Sponsors", url: "/sponsors", icon: Star },
-      { title: "Partenaires", url: "/partners", icon: Handshake },
-    ],
+    items: [{ title: "Events", url: "/events", icon: CalendarDays }],
   },
   {
     label: "Communication",
@@ -140,4 +135,3 @@ export function AppSidebar() {
     </Sidebar>
   );
 }
-

@@ -14,23 +14,6 @@ export type Federation = {
   created_at: string;
 };
 
-export type Club = {
-  id: string;
-  name: string;
-  federation_id: string;
-  city: string | null;
-  address: string | null;
-  street: string | null;
-  postcode: string | null;
-  country: string | null;
-  email: string | null;
-  phone: string | null;
-  logo_url: string | null;
-  logo_storage_path: string | null;
-  created_at: string;
-};
-
-
 export type Coach = {
   id: string;
   first_name: string;
@@ -39,7 +22,6 @@ export type Coach = {
   phone: string | null;
   role: string;
   federation_id: string | null;
-  club_id: string | null;
   is_active: boolean | null;
   photo_url: string | null;
   photo_storage_path: string | null;
@@ -49,13 +31,14 @@ export type Coach = {
 
 export const COACH_ROLES = [
   { value: "coach", label: "Coach" },
-  { value: "manager", label: "Manager" },
-  { value: "medical", label: "Médical" },
-  { value: "official", label: "Officiel" },
-  { value: "chief_of_mission", label: "Chef de mission" },
-  { value: "press", label: "Presse" },
-  { value: "physio", label: "Physiothérapeute" },
-  { value: "logistics", label: "Logistique" },
+  { value: "mechanic", label: "Mécano" },
+  { value: "medical", label: "Medical" },
+  { value: "press", label: "Press" },
+  { value: "chief_of_mission", label: "Chief of Mission" },
+  { value: "physio_v2", label: "Kiné" },
+  { value: "team_manager", label: "Team Manager" },
+  { value: "judge", label: "Juge" },
+  { value: "other", label: "Autre" },
 ] as const;
 
 export type FederationMember = {
@@ -83,44 +66,11 @@ export type FederationMember = {
 
 export const FEDERATION_MEMBER_ROLES = [
   { value: "president", label: "Président" },
-  { value: "vice_president", label: "Vice-président" },
+  { value: "vice_president", label: "Vice-Président" },
   { value: "secretary_general", label: "Secrétaire général" },
   { value: "treasurer", label: "Trésorier" },
-  { value: "board_member", label: "Membre du bureau" },
-  { value: "delegate", label: "Délégué" },
-  { value: "other", label: "Autre" },
-] as const;
-
-export type ClubMember = {
-  id: string;
-  club_id: string;
-  first_name: string;
-  last_name: string;
-  role: string;
-  email: string | null;
-  phone: string | null;
-  address: string | null;
-  street: string | null;
-  postcode: string | null;
-  city: string | null;
-  country: string | null;
-  start_date: string | null;
-  end_date: string | null;
-  notes: string | null;
-  is_active: boolean | null;
-  photo_url?: string | null;
-  photo_storage_path?: string | null;
-  person_id: string | null;
-  created_at: string;
-};
-
-export const CLUB_MEMBER_ROLES = [
-  { value: "president", label: "Président" },
-  { value: "vice_president", label: "Vice-président" },
-  { value: "secretary", label: "Secrétaire" },
-  { value: "treasurer", label: "Trésorier" },
-  { value: "board_member", label: "Membre du bureau" },
-  { value: "head_coach", label: "Entraîneur principal" },
+  { value: "member_ca", label: "Membre CA" },
+  { value: "staff", label: "Staff" },
   { value: "other", label: "Autre" },
 ] as const;
 
@@ -189,7 +139,6 @@ export type Athlete = {
   birth_place: string | null;
   gender: Gender;
   nationality: string;
-  sport_nationality: string | null;
   email: string | null;
   phone: string | null;
   address: string | null;
@@ -202,14 +151,12 @@ export type Athlete = {
   photo_url: string | null;
   primary_sport_id: string | null;
   primary_federation_id: string | null;
-  current_club_id: string | null;
   status: AthleteStatus;
   level: string | null;
   size_clothing: string | null;
   size_shoes: string | null;
   size_gloves: string | null;
   license_number: string | null;
-  ada_number: string | null;
   passport_number: string | null;
   passport_expiry: string | null;
   is_active: boolean | null;
@@ -344,12 +291,6 @@ export const athleteSchema = z.object({
     .string()
     .trim()
     .regex(/^[A-Za-z]{2,3}$/, "Code ISO 2 ou 3 lettres"),
-  sport_nationality: z
-    .string()
-    .trim()
-    .regex(/^[A-Za-z]{2,3}$/, "Code ISO 2 ou 3 lettres")
-    .optional()
-    .or(z.literal("")),
   email: z.string().trim().email("Email invalide").optional().or(z.literal("")),
   phone: z.string().trim().max(40).optional().or(z.literal("")),
   address: z.string().trim().max(255).optional().or(z.literal("")),
@@ -362,7 +303,6 @@ export const athleteSchema = z.object({
   photo_url: z.string().trim().url("URL invalide").optional().or(z.literal("")),
   primary_sport_id: z.string().uuid().optional().or(z.literal("")),
   primary_federation_id: z.string().uuid().optional().or(z.literal("")),
-  current_club_id: z.string().uuid().optional().or(z.literal("")),
   status: z.enum(["active", "injured", "suspended", "retired", "ambassador"]),
   level: z
     .string()
@@ -374,7 +314,6 @@ export const athleteSchema = z.object({
   size_shoes: z.string().trim().max(20).optional().or(z.literal("")),
   size_gloves: z.string().trim().max(20).optional().or(z.literal("")),
   license_number: z.string().trim().max(60).optional().or(z.literal("")),
-  ada_number: z.string().trim().max(60).optional().or(z.literal("")),
   passport_number: z.string().trim().max(60).optional().or(z.literal("")),
   passport_expiry: z.string().optional().or(z.literal("")),
 });
@@ -460,7 +399,7 @@ export const ROUND_OPTIONS = [
 // Games
 export type GameType =
   | "jo_summer" | "jo_winter" | "joj_summer" | "joj_winter"
-  | "jpee" | "european_games" | "eyof_summer" | "eyof_winter" | "other";
+  | "jpee" | "european_games" | "eyof_summer" | "eyof_winter" | "world_games" | "other";
 
 export type GameStatus = "preparation" | "in_progress" | "finished" | "archived";
 
@@ -473,6 +412,7 @@ export const GAME_TYPES: { value: GameType; label: string; cls: string }[] = [
   { value: "european_games", label: "European Games", cls: "bg-blue-100 text-blue-800" },
   { value: "eyof_summer", label: "EYOF été", cls: "bg-emerald-100 text-emerald-700" },
   { value: "eyof_winter", label: "EYOF hiver", cls: "bg-cyan-100 text-cyan-800" },
+  { value: "world_games", label: "World Games", cls: "bg-violet-100 text-violet-800" },
   { value: "other", label: "Autre", cls: "bg-slate-200 text-slate-700" },
 ];
 

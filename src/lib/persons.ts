@@ -6,7 +6,6 @@ export const PERSON_ROLE_TYPES = [
   "athlete",
   "coach",
   "federation_member",
-  "club_member",
   "official",
   "volunteer",
   "staff",
@@ -18,7 +17,6 @@ export const ROLE_LABELS: Record<PersonRoleType, string> = {
   athlete: "Athlète",
   coach: "Encadrant",
   federation_member: "Membre fédération",
-  club_member: "Membre club",
   official: "Officiel",
   volunteer: "Bénévole",
   staff: "Staff",
@@ -29,7 +27,6 @@ export const ROLE_BADGE_CLASSES: Record<PersonRoleType, string> = {
   athlete: "bg-red-100 text-red-700 border-red-200",
   coach: "bg-blue-100 text-blue-700 border-blue-200",
   federation_member: "bg-indigo-100 text-indigo-700 border-indigo-200",
-  club_member: "bg-emerald-100 text-emerald-700 border-emerald-200",
   official: "bg-amber-100 text-amber-800 border-amber-200",
   volunteer: "bg-purple-100 text-purple-700 border-purple-200",
   staff: "bg-slate-200 text-slate-700 border-slate-300",
@@ -45,7 +42,6 @@ export type Person = {
   birth_date: string | null;
   gender: string | null;
   nationality: string | null;
-  sport_nationality: string | null;
   email: string | null;
   phone: string | null;
   street: string | null;
@@ -76,14 +72,12 @@ export type AthleteProfile = {
   cosl_id: string | null;
   primary_sport_id: string | null;
   primary_federation_id: string | null;
-  current_club_id: string | null;
   status: string;
   level: string | null;
   size_clothing: string | null;
   size_shoes: string | null;
   size_gloves: string | null;
   license_number: string | null;
-  ada_number: string | null;
   passport_number: string | null;
   passport_expiry: string | null;
   birth_place: string | null;
@@ -95,7 +89,6 @@ export type CoachProfile = {
   legacy_coach_id: string | null;
   role: string;
   federation_id: string | null;
-  club_id: string | null;
   is_active: boolean;
 };
 
@@ -104,18 +97,6 @@ export type FederationMemberProfile = {
   person_id: string;
   legacy_federation_member_id: string | null;
   federation_id: string;
-  role: string;
-  start_date: string | null;
-  end_date: string | null;
-  is_active: boolean;
-  notes: string | null;
-};
-
-export type ClubMemberProfile = {
-  id: string;
-  person_id: string;
-  legacy_club_member_id: string | null;
-  club_id: string;
   role: string;
   start_date: string | null;
   end_date: string | null;
@@ -154,7 +135,6 @@ export type PersonGeneralFields = {
 export type AthleteProfileFields = {
   primary_sport_id: string;
   primary_federation_id: string;
-  current_club_id: string;
   status: string;
   level: string;
   license_number: string;
@@ -165,19 +145,13 @@ export type AthleteProfileFields = {
 export type CoachProfileFields = {
   role: string;
   federation_id: string;
-  club_id: string;
 };
 
 export type FedMemberProfileFields = {
   federation_id: string;
   role: string;
   start_date: string;
-};
-
-export type ClubMemberProfileFields = {
-  club_id: string;
-  role: string;
-  start_date: string;
+  notes: string;
 };
 
 export const defaultPersonGeneral: PersonGeneralFields = {
@@ -197,7 +171,6 @@ export const defaultPersonGeneral: PersonGeneralFields = {
 export const defaultAthleteProfile: AthleteProfileFields = {
   primary_sport_id: "",
   primary_federation_id: "",
-  current_club_id: "",
   status: "active",
   level: "",
   license_number: "",
@@ -208,19 +181,13 @@ export const defaultAthleteProfile: AthleteProfileFields = {
 export const defaultCoachProfile: CoachProfileFields = {
   role: "coach",
   federation_id: "",
-  club_id: "",
 };
 
 export const defaultFedMemberProfile: FedMemberProfileFields = {
   federation_id: "",
   role: "president",
   start_date: "",
-};
-
-export const defaultClubMemberProfile: ClubMemberProfileFields = {
-  club_id: "",
-  role: "president",
-  start_date: "",
+  notes: "",
 };
 
 /**
