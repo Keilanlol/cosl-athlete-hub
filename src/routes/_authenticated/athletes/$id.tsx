@@ -25,7 +25,6 @@ import {
   type AthleteKyc,
   type AthleteRelation,
   type AthleteResult,
-  type Club,
   type Coach,
   type Federation,
   type Game,
