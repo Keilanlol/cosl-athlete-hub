@@ -227,10 +227,9 @@ function AthleteDetailPage() {
   const [athleteMessages, setAthleteMessages] = useState<AthleteMsg[] | null>(null);
   const [openMsgId, setOpenMsgId] = useState<string | null>(null);
 
-  const [refs, setRefs] = useState<{ sports: Sport[]; feds: Federation[]; clubs: Club[] }>({
+  const [refs, setRefs] = useState<{ sports: Sport[]; feds: Federation[] }>({
     sports: [],
     feds: [],
-    clubs: [],
   });
 
   const loadAll = async () => {
@@ -265,14 +264,6 @@ function AthleteDetailPage() {
         .maybeSingle();
       setFederation((d ?? null) as Federation | null);
     } else setFederation(null);
-    if (a.current_club_id) {
-      const { data: d } = await supabase
-        .from("clubs")
-        .select("*")
-        .eq("id", a.current_club_id)
-        .maybeSingle();
-      setClub((d ?? null) as Club | null);
-    } else setClub(null);
 
     const [{ data: dd }, { data: kk }, { data: rr }, { data: ss }, { data: rs }, { data: ap }, { data: mr }] = await Promise.all([
       supabase
@@ -367,23 +358,23 @@ function AthleteDetailPage() {
       birth_place: athlete.birth_place ?? "",
       gender: athlete.gender,
       nationality: athlete.nationality,
-      sport_nationality: athlete.sport_nationality ?? "",
       email: athlete.email ?? "",
       phone: athlete.phone ?? "",
       address: athlete.address ?? "",
+      street: athlete.street ?? "",
+      postcode: athlete.postcode ?? "",
+      city: athlete.city ?? "",
+      country: athlete.country ?? "",
       emergency_contact_name: athlete.emergency_contact_name ?? "",
       emergency_contact_phone: athlete.emergency_contact_phone ?? "",
       photo_url: athlete.photo_url ?? "",
       primary_sport_id: athlete.primary_sport_id ?? "",
       primary_federation_id: athlete.primary_federation_id ?? "",
-      current_club_id: athlete.current_club_id ?? "",
       status: athlete.status,
       level: athlete.level ?? "",
       size_clothing: athlete.size_clothing ?? "",
       size_shoes: athlete.size_shoes ?? "",
       size_gloves: athlete.size_gloves ?? "",
-      license_number: athlete.license_number ?? "",
-      ada_number: athlete.ada_number ?? "",
       passport_number: athlete.passport_number ?? "",
       passport_expiry: athlete.passport_expiry ?? "",
     });
@@ -410,7 +401,6 @@ function AthleteDetailPage() {
       ...v,
       cosl_id: v.cosl_id || athlete.cosl_id,
       birth_place: v.birth_place || null,
-      sport_nationality: v.sport_nationality?.toUpperCase() || null,
       nationality: v.nationality.toUpperCase(),
       email: v.email || null,
       phone: v.phone || null,
@@ -419,13 +409,10 @@ function AthleteDetailPage() {
       emergency_contact_phone: v.emergency_contact_phone || null,
       primary_sport_id: v.primary_sport_id || null,
       primary_federation_id: v.primary_federation_id || null,
-      current_club_id: v.current_club_id || null,
       level: v.level || null,
       size_clothing: v.size_clothing || null,
       size_shoes: v.size_shoes || null,
       size_gloves: v.size_gloves || null,
-      license_number: v.license_number || null,
-      ada_number: v.ada_number || null,
       passport_number: v.passport_number || null,
       passport_expiry: v.passport_expiry || null,
       updated_at: new Date().toISOString(),
@@ -834,7 +821,6 @@ function AthleteDetailPage() {
               value={GENDERS.find((g) => g.value === athlete.gender)?.label ?? athlete.gender}
             />
             <Field label="Nationalité" value={athlete.nationality} />
-            <Field label="Nationalité sportive" value={athlete.sport_nationality} />
             <Field label="Email" value={athlete.email} />
             <Field label="Téléphone" value={athlete.phone} />
             <Field label="Adresse" value={athlete.address} />
@@ -852,14 +838,11 @@ function AthleteDetailPage() {
           <div className="grid gap-4 rounded-lg border border-border bg-card p-6 md:grid-cols-2">
             <Field label="Sport principal" value={sport?.name} />
             <Field label="Fédération" value={federation ? `${federation.acronym} — ${federation.name}` : null} />
-            <Field label="Club" value={club?.name} />
             <Field
               label="Statut"
               value={ATHLETE_STATUSES.find((s) => s.value === athlete.status)?.label}
             />
             <Field label="Niveau" value={lvl?.label} />
-            <Field label="N° de licence" value={athlete.license_number} />
-            <Field label="N° antidopage" value={athlete.ada_number} />
             <div className="md:col-span-2 text-sm text-muted-foreground">
               Historique des statuts — à enrichir lors d'évolutions du statut.
             </div>
