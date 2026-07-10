@@ -54,13 +54,15 @@ const groups: { label: string; items: Item[] }[] = [
       { title: "Sports", url: "/sports", icon: Volleyball },
       { title: "Logistique", url: "/logistics", icon: Plane },
       { title: "Accréditations", url: "/accreditations", icon: BadgeCheck },
-      { title: "Sponsors", url: "/sponsors", icon: Star },
-      { title: "Partenaires", url: "/partners", icon: Handshake },
     ],
   },
   {
     label: "Events Management",
-    items: [{ title: "Events", url: "/events", icon: CalendarDays }],
+    items: [
+      { title: "Events", url: "/events", icon: CalendarDays },
+      { title: "Sponsors", url: "/sponsors", icon: Star },
+      { title: "Partenaires", url: "/partners", icon: Handshake },
+    ],
   },
   {
     label: "Communication",
