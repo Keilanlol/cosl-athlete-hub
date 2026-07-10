@@ -4,8 +4,7 @@
 -- Objectifs :
 --   1. Aligner les labels/codes des référentiels clés (app_type_items)
 --      avec les valeurs attendues par le COSL.
---   2. Supprimer les valeurs obsolètes (Produite/Délivrée, Délégué, Membre du bureau,
---      Pré-sélectionné, Sélectionné, Réserve, Rejeté, etc.).
+--   2. Supprimer les valeurs obsolètes (Produite/Délivrée, Délégué, etc.).
 --   3. Remapper les données existantes avant suppression.
 --   4. Ajouter « World Games » et les nouveaux rôles.
 -- ============================================================================
@@ -22,9 +21,6 @@ END
 WHERE group_key = 'athlete_levels';
 
 -- ── 2. Athlete statuses ─────────────────────────────────────────────────────
--- On garde les codes techniques existants mais on ajuste les labels.
--- Le PDF mentionne "Actif" (et probablement Inactif). On conserve active/injured/
--- suspended/retired/ambassador côté DB mais on affiche "Actif" pour active.
 UPDATE public.app_type_items
 SET label = CASE code
     WHEN 'active'     THEN 'Actif'
@@ -37,53 +33,65 @@ END
 WHERE group_key = 'athlete_statuses';
 
 -- ── 3. Coach roles ───────────────────────────────────────────────────────────
+-- Nouvelle liste : Coach, Mécano, Medical, Press, Chief of Mission, Kiné,
+-- Team Manager, Juge, Autre
 UPDATE public.app_type_items
 SET label = CASE code
-    WHEN 'coach'           THEN 'Coach'
-    WHEN 'manager'         THEN 'Mécano'
-    WHEN 'medical'         THEN 'Medical'
-    WHEN 'official'        THEN 'Press'
+    WHEN 'coach'            THEN 'Coach'
+    WHEN 'manager'          THEN 'Mécano'
+    WHEN 'medical'          THEN 'Medical'
     WHEN 'chief_of_mission' THEN 'Chief of Mission'
-    WHEN 'press'           THEN 'Kiné'
-    WHEN 'physio'          THEN 'Team Manager'
-    WHEN 'logistics'       THEN 'Juge'
+    WHEN 'logistics'        THEN 'Juge'
     ELSE label
 END
 WHERE group_key = 'coach_roles';
 
--- Ajouter les nouveaux rôles demandés (Autre, etc.)
+-- Ajouter les nouveaux rôles
 INSERT INTO public.app_type_items (group_key, code, label, sort_order, is_system) VALUES
-  ('coach_roles', 'other',        'Autre',        9, true),
-  ('coach_roles', 'mechanic',     'Mécano',       2, true),  -- équivalent manager
-  ('coach_roles', 'physio_v2',    'Kiné',         7, true),
-  ('coach_roles', 'team_manager', 'Team Manager', 8, true),
-  ('coach_roles', 'judge',        'Juge',         9, true)
+  ('coach_roles', 'other',        'Autre',        10, true),
+  ('coach_roles', 'press_v2',     'Press',         6, true),
+  ('coach_roles', 'physio_v2',    'Kiné',          7, true),
+  ('coach_roles', 'team_manager', 'Team Manager',   8, true),
+  ('coach_roles', 'judge',        'Juge',          9, true)
 ON CONFLICT (group_key, code) DO NOTHING;
 
--- Nettoyage des anciens codes coach qui ne sont plus dans le PDF
--- (on garde les codes existants mais on supprime 'official'/'press'/'physio'/'logistics'
--- si on considère que le remapping les rend obsolètes — ici on les remappe plutôt)
-UPDATE public.app_type_items
-SET code = CASE code
-    WHEN 'manager'         THEN 'mechanic'
-    WHEN 'official'        THEN 'press'     -- sera supprimé ensuite
-    WHEN 'press'           THEN 'physio_v2'
-    WHEN 'physio'          THEN 'team_manager'
-    WHEN 'logistics'       THEN 'judge'
-    ELSE code
+-- Supprimer les anciens codes coach obsolètes (official, press, physio)
+-- après avoir remappé les données existantes
+UPDATE public.coaches
+SET role = CASE role
+    WHEN 'official' THEN 'press_v2'
+    WHEN 'press'    THEN 'press_v2'
+    WHEN 'physio'   THEN 'physio_v2'
+    ELSE role
 END
-WHERE group_key = 'coach_roles' AND code IN ('manager','official','press','physio','logistics');
+WHERE role IN ('official', 'press', 'physio');
 
--- Supprimer l'ancien 'official' si présent (remap via l'étape précédente)
+UPDATE public.athlete_relations
+SET relation_role = CASE relation_role
+    WHEN 'official' THEN 'press_v2'
+    WHEN 'press'    THEN 'press_v2'
+    WHEN 'physio'   THEN 'physio_v2'
+    ELSE relation_role
+END
+WHERE relation_role IN ('official', 'press', 'physio');
+
 DELETE FROM public.app_type_items
-WHERE group_key = 'coach_roles' AND code = 'official';
+WHERE group_key = 'coach_roles' AND code IN ('official', 'press', 'physio');
 
 -- ── 4. Federation member roles ─────────────────────────────────────────────────
 -- Nouvelle liste : Président, Vice-Président, Secrétaire général, Trésorier,
 -- Membre CA, Staff, Autre. Supprimer Délégué & Membre du bureau.
 
--- Remap des données existantes avant suppression des codes
+-- Remap des données existantes avant suppression
 UPDATE public.federation_members
+SET role = CASE role
+    WHEN 'delegate'      THEN 'other'
+    WHEN 'board_member'  THEN 'member_ca'
+    ELSE role
+END
+WHERE role IN ('delegate', 'board_member');
+
+UPDATE public.federation_member_profiles
 SET role = CASE role
     WHEN 'delegate'      THEN 'other'
     WHEN 'board_member'  THEN 'member_ca'
@@ -94,24 +102,28 @@ WHERE role IN ('delegate', 'board_member');
 -- Mise à jour des labels
 UPDATE public.app_type_items
 SET label = CASE code
-    WHEN 'president'        THEN 'Président'
-    WHEN 'vice_president'   THEN 'Vice-Président'
+    WHEN 'president'         THEN 'Président'
+    WHEN 'vice_president'    THEN 'Vice-Président'
     WHEN 'secretary_general' THEN 'Secrétaire général'
     WHEN 'treasurer'         THEN 'Trésorier'
-    WHEN 'board_member'      THEN 'Membre CA'
     WHEN 'other'             THEN 'Autre'
     ELSE label
 END
-WHERE group_key = 'federation_member_roles';
+WHERE group_key = 'federation_member_roles' AND code IN ('president','vice_president','secretary_general','treasurer','other');
+
+-- Renommer board_member → member_ca dans app_type_items
+UPDATE public.app_type_items
+SET code = 'member_ca', label = 'Membre CA'
+WHERE group_key = 'federation_member_roles' AND code = 'board_member';
 
 -- Ajouter Staff
 INSERT INTO public.app_type_items (group_key, code, label, sort_order, is_system) VALUES
   ('federation_member_roles', 'staff', 'Staff', 6, true)
 ON CONFLICT (group_key, code) DO NOTHING;
 
--- Supprimer Délégué et Board member de la liste de référence (les données ont été remapées)
+-- Supprimer Délégué (les données ont été remapées)
 DELETE FROM public.app_type_items
-WHERE group_key = 'federation_member_roles' AND code IN ('delegate', 'board_member');
+WHERE group_key = 'federation_member_roles' AND code = 'delegate';
 
 -- ── 5. Accreditation categories ─────────────────────────────────────────────
 UPDATE public.app_type_items
@@ -142,47 +154,32 @@ DELETE FROM public.app_type_items
 WHERE group_key = 'accreditation_statuses' AND code IN ('produced', 'delivered');
 
 -- ── 7. Selection statuses ───────────────────────────────────────────────────
--- Uniquement Long List / Short List. Remap : pre_selected -> long_list,
--- selected -> short_list, reserve/rejected -> supprimer ?
--- Le PDF dit "Long List, Short List uniquement". On remappe reserve/rejected -> short_list
--- (ou on les supprime). Choix : remapper reserve -> short_list, rejected -> long_list
--- pour ne pas perdre l'info de rejet. À discuter ; ici on garde les 4 codes mais on
--- change les labels pour être cohérent avec le front.
 UPDATE public.app_type_items
 SET label = CASE code
     WHEN 'pre_selected' THEN 'Long List'
     WHEN 'selected'     THEN 'Short List'
     WHEN 'reserve'      THEN 'Réserve'
-    WHEN 'rejected'     THEN 'Rejeté'
+    WHEN 'rejected'     THEN 'Refusé'
     ELSE label
 END
 WHERE group_key = 'selection_statuses';
-
--- Remap technique (optionnel — si on veut vraiment "uniquement" 2 valeurs, on
--- ferait un ALTER + remap. On reste conservateur ici pour ne pas casser la logique
--- existante.)
 
 -- ── 8. Game types ───────────────────────────────────────────────────────────
 INSERT INTO public.app_type_items (group_key, code, label, sort_order, is_system) VALUES
   ('game_types', 'world_games', 'World Games', 9, true)
 ON CONFLICT (group_key, code) DO NOTHING;
 
--- ── 9. Document statuses / travel statuses / game statuses ────────────────────
--- Pas de changement demandé hormis l'expiration automatique qui est gérée côté
--- application (document_statuses.expired). On s'assure juste que 'expired' existe.
+-- ── 9. Document statuses — s'assurer que 'expired' existe ────────────────────
 INSERT INTO public.app_type_items (group_key, code, label, sort_order, is_system) VALUES
   ('document_statuses', 'expired', 'Expiré', 4, true)
 ON CONFLICT (group_key, code) DO NOTHING;
 
 -- ── 10. person_role_types : retirer club_member ──────────────────────────────
--- Soft removal : on garde la ligne en DB pour l'historique mais on la désactive
--- visuellement en la marquant is_system ET on supprime le rôle club_member des
--- choix. Ici on supprime purement le code car clubs disparaît du front.
 DELETE FROM public.app_type_items
 WHERE group_key = 'person_role_types' AND code = 'club_member';
 
 -- ============================================================================
--- Réindexation des sort_order par groupe pour garder un ordre cohérent
+-- Réindexation des sort_order par groupe
 -- ============================================================================
 DO $$
 DECLARE
@@ -200,3 +197,8 @@ BEGIN
         WHERE a.id = o.id;
     END LOOP;
 END $$;
+
+-- ── Enregistrer la migration ────────────────────────────────────────────────
+INSERT INTO supabase_migrations.schema_migrations (version, name)
+VALUES ('0039', 'update_type_items')
+ON CONFLICT (version) DO NOTHING;
