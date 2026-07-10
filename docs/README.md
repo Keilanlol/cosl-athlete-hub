@@ -10,6 +10,7 @@ docs/
 ├── architecture.md              ← Vue d'ensemble de l'architecture technique
 ├── routing.md                   ← Système de routing TanStack Router et arborescence des routes
 ├── data-model.md                ← Modèle de données : entités BDD, relations, contraintes
+├── migrations.md                 ← Système de migrations SQL : tracking, snapshots, up/down
 ├── auth.md                      ← Authentification Supabase, rôles utilisateurs, protection des routes
 ├── conventions.md               ← Conventions de code, charte graphique, règles de styling
 ├── components.md                ← Composants réutilisables, patterns UI, formulaires
