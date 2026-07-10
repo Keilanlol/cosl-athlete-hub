@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/dialog";
 import { EntityImageUpload } from "@/components/EntityImageUpload";
 import { syncPhotoFromPerson } from "@/lib/person-photo-sync";
+import { syncPersonToLegacy } from "@/lib/person-sync";
 
 
 export const Route = createFileRoute("/_authenticated/persons/$personId")({
@@ -185,6 +186,11 @@ function PersonDetailPage() {
       toast.error("Échec", { description: friendlyError(error) });
       return;
     }
+    // Sync email/phone to legacy athlete and coach rows
+    await syncPersonToLegacy(personId, {
+      email: editForm.email?.trim() || null,
+      phone: editForm.phone?.trim() || null,
+    });
     toast.success("Personne mise à jour");
     setEditOpen(false);
     load();

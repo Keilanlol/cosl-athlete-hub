@@ -37,6 +37,7 @@ import {
 import { EditableSelect } from "@/components/EditableSelect";
 import { AthletePhotoUpload } from "@/components/AthletePhotoUpload";
 import { findPersonIdForLegacy, syncPhotoFromLegacy } from "@/lib/person-photo-sync";
+import { syncLegacyToPerson } from "@/lib/person-sync";
 
 import {
   useAthleteLevels,
@@ -422,6 +423,19 @@ function AthleteDetailPage() {
     if (error) {
       toast.error("Échec", { description: friendlyError(error) });
       return;
+    }
+    // Sync contact/address to persons table
+    if (personId) {
+      await syncLegacyToPerson(personId, {
+        email: v.email || null,
+        phone: v.phone || null,
+        street: v.street || null,
+        postcode: v.postcode || null,
+        city: v.city || null,
+        country: v.country || null,
+        emergency_contact_name: v.emergency_contact_name || null,
+        emergency_contact_phone: v.emergency_contact_phone || null,
+      });
     }
     toast.success("Athlète mis à jour");
     setEditOpen(false);

@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Mail, MapPin, Pencil, Phone, Trash2, UserRound, CalendarDays, FileText, Users } from "lucide-react";
+import { ArrowLeft, Mail, MapPin, Pencil, Phone, Trash2, UserRound, CalendarDays, FileText, Users, Globe, CalendarCheck } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { confirmAction } from "@/components/ConfirmDialog";
@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -32,7 +33,25 @@ import {
 } from "@/components/ui/dialog";
 import { EntityImageUpload } from "@/components/EntityImageUpload";
 import { findPersonIdForLegacy, syncPhotoFromLegacy } from "@/lib/person-photo-sync";
+import { syncLegacyToPerson } from "@/lib/person-sync";
 
+type PersonData = {
+  birth_date: string | null;
+  gender: string | null;
+  nationality: string | null;
+  street: string | null;
+  postcode: string | null;
+  city: string | null;
+  country: string | null;
+  emergency_contact_name: string | null;
+  emergency_contact_phone: string | null;
+};
+
+type PersonEvent = {
+  id: string;
+  event_id: string;
+  events: { id: string; name: string; start_date: string | null; end_date: string | null } | null;
+};
 
 export const Route = createFileRoute("/_authenticated/federations/members/$memberId")({
   component: FedMemberDetailPage,
@@ -52,6 +71,8 @@ function FedMemberDetailPage() {
   const [member, setMember] = useState<FederationMember | null>(null);
   const [fed, setFed] = useState<Federation | null>(null);
   const [personId, setPersonId] = useState<string | null>(null);
+  const [personData, setPersonData] = useState<PersonData | null>(null);
+  const [events, setEvents] = useState<PersonEvent[]>([]);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -60,11 +81,16 @@ function FedMemberDetailPage() {
     role: "president",
     email: "",
     phone: "",
-    address: "",
+    street: "",
+    postcode: "",
+    city: "",
+    country: "",
     start_date: "",
     end_date: "",
     notes: "",
     is_active: true,
+    emergency_contact_name: "",
+    emergency_contact_phone: "",
   });
 
   const load = async () => {
@@ -94,17 +120,29 @@ function FedMemberDetailPage() {
       .eq("legacy_federation_member_id", memberId)
       .maybeSingle();
     const pid = (fp as { person_id?: string | null } | null)?.person_id ?? null;
-    // Fallback: check if member row itself has person_id
-    if (!pid && m.person_id) {
-      setPersonId(m.person_id);
-    } else {
-      setPersonId(pid);
+    const finalPid = pid ?? m.person_id ?? null;
+    setPersonId(finalPid);
+
+    // Load person data
+    if (finalPid) {
+      const { data: pd } = await supabase
+        .from("persons")
+        .select("birth_date,gender,nationality,street,postcode,city,country,emergency_contact_name,emergency_contact_phone")
+        .eq("id", finalPid)
+        .maybeSingle();
+      setPersonData((pd ?? null) as PersonData | null);
+
+      // Load events linked to this person
+      const { data: evData } = await supabase
+        .from("person_events")
+        .select("id,event_id,events:id(name,start_date,end_date)")
+        .eq("person_id", finalPid);
+      setEvents(((evData ?? []) as unknown) as PersonEvent[]);
     }
   };
 
   useEffect(() => {
     load();
-     
   }, [memberId]);
 
   const openEdit = () => {
@@ -115,11 +153,16 @@ function FedMemberDetailPage() {
       role: member.role,
       email: member.email ?? "",
       phone: member.phone ?? "",
-      address: member.address ?? "",
+      street: personData?.street ?? "",
+      postcode: personData?.postcode ?? "",
+      city: personData?.city ?? "",
+      country: personData?.country ?? "",
       start_date: member.start_date ?? "",
       end_date: member.end_date ?? "",
       notes: member.notes ?? "",
       is_active: member.is_active ?? true,
+      emergency_contact_name: personData?.emergency_contact_name ?? "",
+      emergency_contact_phone: personData?.emergency_contact_phone ?? "",
     });
     setOpen(true);
   };
@@ -134,7 +177,6 @@ function FedMemberDetailPage() {
       role: form.role,
       email: form.email.trim() || null,
       phone: form.phone.trim() || null,
-      address: form.address.trim() || null,
       start_date: form.start_date || null,
       end_date: form.end_date || null,
       notes: form.notes.trim() || null,
@@ -144,11 +186,25 @@ function FedMemberDetailPage() {
       .from("federation_members")
       .update(payload)
       .eq("id", member.id);
-    setSaving(false);
     if (error) {
+      setSaving(false);
       toast.error("Échec", { description: friendlyError(error) });
       return;
     }
+    // Sync address + emergency + email/phone to persons
+    if (personId) {
+      await syncLegacyToPerson(personId, {
+        email: form.email.trim() || null,
+        phone: form.phone.trim() || null,
+        street: form.street.trim() || null,
+        postcode: form.postcode.trim() || null,
+        city: form.city.trim() || null,
+        country: form.country.trim() || null,
+        emergency_contact_name: form.emergency_contact_name.trim() || null,
+        emergency_contact_phone: form.emergency_contact_phone.trim() || null,
+      });
+    }
+    setSaving(false);
     toast.success("Membre modifié");
     setOpen(false);
     load();
@@ -173,6 +229,9 @@ function FedMemberDetailPage() {
   };
 
   if (!member) return <div className="p-6 text-sm text-muted-foreground">Chargement…</div>;
+
+  const genderLabel = (g: string | null) =>
+    g === "male" ? "Homme" : g === "female" ? "Femme" : g === "mixed" ? "Mixte" : "—";
 
   return (
     <div className="space-y-6">
@@ -219,12 +278,12 @@ function FedMemberDetailPage() {
               setMember((m) =>
                 m ? { ...m, photo_url: url, photo_storage_path: path } : m,
               );
-              const personId = await findPersonIdForLegacy(
+              const pid = await findPersonIdForLegacy(
                 "federation_member_profiles",
                 "legacy_federation_member_id",
                 member.id,
               );
-              await syncPhotoFromLegacy(personId, { photo_url: url, photo_storage_path: path });
+              await syncPhotoFromLegacy(pid, { photo_url: url, photo_storage_path: path });
             }}
             onDeleted={async () => {
               await supabase
@@ -234,14 +293,13 @@ function FedMemberDetailPage() {
               setMember((m) =>
                 m ? { ...m, photo_url: null, photo_storage_path: null } : m,
               );
-              const personId = await findPersonIdForLegacy(
+              const pid = await findPersonIdForLegacy(
                 "federation_member_profiles",
                 "legacy_federation_member_id",
                 member.id,
               );
-              await syncPhotoFromLegacy(personId, { photo_url: null, photo_storage_path: null });
+              await syncPhotoFromLegacy(pid, { photo_url: null, photo_storage_path: null });
             }}
-
           />
           <div className="flex-1">
             <h1 className="text-2xl font-semibold text-foreground">
@@ -266,36 +324,95 @@ function FedMemberDetailPage() {
             </div>
           </div>
         </div>
-
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          <InfoLine icon={<Mail className="h-4 w-4" />} label="Email">
-            {member.email ? (
-              <a href={`mailto:${member.email}`} className="text-[var(--lux-blue)] hover:underline">
-                {member.email}
-              </a>
-            ) : "—"}
-          </InfoLine>
-          <InfoLine icon={<Phone className="h-4 w-4" />} label="Téléphone">
-            {member.phone ?? "—"}
-          </InfoLine>
-          <InfoLine icon={<MapPin className="h-4 w-4" />} label="Adresse">
-            {member.address ?? "—"}
-          </InfoLine>
-          <InfoLine icon={<CalendarDays className="h-4 w-4" />} label="Mandat">
-            {member.start_date ?? "—"}{member.end_date ? ` → ${member.end_date}` : ""}
-          </InfoLine>
-          {member.notes && (
-            <div className="sm:col-span-2">
-              <InfoLine icon={<FileText className="h-4 w-4" />} label="Notes">
-                <div className="whitespace-pre-wrap">{member.notes}</div>
-              </InfoLine>
-            </div>
-          )}
-        </div>
       </div>
 
+      <Tabs defaultValue="info">
+        <TabsList>
+          <TabsTrigger value="info">Informations</TabsTrigger>
+          <TabsTrigger value="events">Événements ({events.length})</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="info">
+          <div className="rounded-xl border border-border bg-card p-6">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <InfoLine icon={<Mail className="h-4 w-4" />} label="Email">
+                {member.email ? (
+                  <a href={`mailto:${member.email}`} className="text-[var(--lux-blue)] hover:underline">
+                    {member.email}
+                  </a>
+                ) : "—"}
+              </InfoLine>
+              <InfoLine icon={<Phone className="h-4 w-4" />} label="Téléphone">
+                {member.phone ?? "—"}
+              </InfoLine>
+              <InfoLine icon={<MapPin className="h-4 w-4" />} label="Adresse">
+                {[personData?.street, personData?.postcode, personData?.city, personData?.country]
+                  .filter(Boolean).join(", ") || "—"}
+              </InfoLine>
+              <InfoLine icon={<CalendarDays className="h-4 w-4" />} label="Mandat">
+                {member.start_date ?? "—"}{member.end_date ? ` → ${member.end_date}` : ""}
+              </InfoLine>
+              <InfoLine icon={<CalendarCheck className="h-4 w-4" />} label="Date de naissance">
+                {personData?.birth_date
+                  ? new Date(personData.birth_date).toLocaleDateString("fr-FR")
+                  : "—"}
+              </InfoLine>
+              <InfoLine icon={<UserRound className="h-4 w-4" />} label="Genre">
+                {genderLabel(personData?.gender ?? null)}
+              </InfoLine>
+              <InfoLine icon={<Globe className="h-4 w-4" />} label="Nationalité">
+                {personData?.nationality ?? "—"}
+              </InfoLine>
+              <InfoLine icon={<Phone className="h-4 w-4" />} label="Contact urgence">
+                {personData?.emergency_contact_name || "—"}
+                {personData?.emergency_contact_phone ? ` · ${personData.emergency_contact_phone}` : ""}
+              </InfoLine>
+              {member.notes && (
+                <div className="sm:col-span-2">
+                  <InfoLine icon={<FileText className="h-4 w-4" />} label="Notes">
+                    <div className="whitespace-pre-wrap">{member.notes}</div>
+                  </InfoLine>
+                </div>
+              )}
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="events">
+          <div className="rounded-lg border border-border bg-card">
+            {events.length === 0 ? (
+              <div className="p-6 text-sm text-muted-foreground text-center">
+                Aucun événement lié à ce membre.
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {events.map((ev) => (
+                  <div key={ev.id} className="flex items-center gap-3 px-4 py-3">
+                    <CalendarCheck className="h-4 w-4 text-muted-foreground" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-foreground">
+                        {ev.events?.name ?? "Événement"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {ev.events?.start_date
+                          ? new Date(ev.events.start_date).toLocaleDateString("fr-FR")
+                          : "—"}
+                        {ev.events?.end_date
+                          ? ` → ${new Date(ev.events.end_date).toLocaleDateString("fr-FR")}`
+                          : ""}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      {/* Edit dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
           <form onSubmit={submit}>
             <DialogHeader>
               <DialogTitle>Modifier le membre</DialogTitle>
@@ -333,8 +450,32 @@ function FedMemberDetailPage() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label>Adresse</Label>
-                <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+                <Label>Rue</Label>
+                <Input value={form.street} onChange={(e) => setForm({ ...form, street: e.target.value })} />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Code postal</Label>
+                  <Input value={form.postcode} onChange={(e) => setForm({ ...form, postcode: e.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Ville</Label>
+                  <Input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Pays</Label>
+                  <Input value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Contact urgence — nom</Label>
+                  <Input value={form.emergency_contact_name} onChange={(e) => setForm({ ...form, emergency_contact_name: e.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Contact urgence — téléphone</Label>
+                  <Input value={form.emergency_contact_phone} onChange={(e) => setForm({ ...form, emergency_contact_phone: e.target.value })} />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">

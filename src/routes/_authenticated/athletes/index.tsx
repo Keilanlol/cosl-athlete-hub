@@ -17,6 +17,8 @@ import {
 } from "@/lib/types";
 import { EditableSelect } from "@/components/EditableSelect";
 import { AthletePhotoUpload } from "@/components/AthletePhotoUpload";
+import { findPersonIdForLegacy } from "@/lib/person-photo-sync";
+import { syncLegacyToPerson } from "@/lib/person-sync";
 import { AddPersonButton } from "@/components/persons/AddPersonButton";
 import { CsvImportDialog } from "@/components/CsvImportDialog";
 import { athletesImportConfig } from "@/lib/csv-import-configs";
@@ -388,6 +390,20 @@ function AthletesPage() {
         setSaving(false);
         toast.error("Échec de l'enregistrement", { description: friendlyError(error) });
         return;
+      }
+      // Sync to persons
+      const pid = await findPersonIdForLegacy("athlete_profiles", "legacy_athlete_id", editing.id);
+      if (pid) {
+        await syncLegacyToPerson(pid, {
+          email: v.email || null,
+          phone: v.phone || null,
+          street: v.street || null,
+          postcode: v.postcode || null,
+          city: v.city || null,
+          country: v.country || null,
+          emergency_contact_name: v.emergency_contact_name || null,
+          emergency_contact_phone: v.emergency_contact_phone || null,
+        });
       }
     } else {
       const { data: inserted, error } = await supabase

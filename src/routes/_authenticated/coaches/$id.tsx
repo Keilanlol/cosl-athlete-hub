@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Mail, Phone, Pencil, Trash2, UserCog, Users } from "lucide-react";
+import { ArrowLeft, Mail, Phone, MapPin, Pencil, Trash2, UserCog, Users } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { confirmAction } from "@/components/ConfirmDialog";
@@ -34,6 +34,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { EmptyState } from "@/components/DataTableShell";
 import { EntityImageUpload } from "@/components/EntityImageUpload";
 import { findPersonIdForLegacy, syncPhotoFromLegacy } from "@/lib/person-photo-sync";
+import { syncLegacyToPerson, syncPersonToLegacy } from "@/lib/person-sync";
 
 
 export const Route = createFileRoute("/_authenticated/coaches/$id")({
@@ -41,6 +42,15 @@ export const Route = createFileRoute("/_authenticated/coaches/$id")({
 });
 
 const NONE = "__none__";
+
+type PersonData = {
+  street: string | null;
+  postcode: string | null;
+  city: string | null;
+  country: string | null;
+  emergency_contact_name: string | null;
+  emergency_contact_phone: string | null;
+};
 
 function initials(c: { first_name: string; last_name: string }) {
   return `${c.first_name?.[0] ?? ""}${c.last_name?.[0] ?? ""}`.toUpperCase();
@@ -58,6 +68,7 @@ function CoachDetailPage() {
   const [athletes, setAthletes] = useState<(Athlete & { relation_role: string; start_date: string; end_date: string | null })[]>([]);
   const [feds, setFeds] = useState<Federation[]>([]);
   const [personId, setPersonId] = useState<string | null>(null);
+  const [personData, setPersonData] = useState<PersonData | null>(null);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -68,6 +79,12 @@ function CoachDetailPage() {
     role: "coach",
     federation_id: NONE,
     is_active: true,
+    street: "",
+    postcode: "",
+    city: "",
+    country: "",
+    emergency_contact_name: "",
+    emergency_contact_phone: "",
   });
 
   const load = async () => {
@@ -108,11 +125,17 @@ function CoachDetailPage() {
       .eq("legacy_coach_id", id)
       .maybeSingle();
     const pid = (cp as { person_id?: string | null } | null)?.person_id ?? null;
-    // Fallback: check if coach row itself has person_id
-    if (!pid && c.person_id) {
-      setPersonId(c.person_id);
-    } else {
-      setPersonId(pid);
+    const finalPid = pid ?? c.person_id ?? null;
+    setPersonId(finalPid);
+
+    // Load person data for address / emergency contact
+    if (finalPid) {
+      const { data: personData } = await supabase
+        .from("persons")
+        .select("street,postcode,city,country,emergency_contact_name,emergency_contact_phone")
+        .eq("id", finalPid)
+        .maybeSingle();
+      setPersonData(personData as PersonData | null);
     }
   };
 
@@ -131,6 +154,12 @@ function CoachDetailPage() {
       role: coach.role,
       federation_id: coach.federation_id ?? NONE,
       is_active: coach.is_active ?? true,
+      street: personData?.street ?? "",
+      postcode: personData?.postcode ?? "",
+      city: personData?.city ?? "",
+      country: personData?.country ?? "",
+      emergency_contact_name: personData?.emergency_contact_name ?? "",
+      emergency_contact_phone: personData?.emergency_contact_phone ?? "",
     });
     setOpen(true);
   };
@@ -149,11 +178,25 @@ function CoachDetailPage() {
       is_active: form.is_active,
     };
     const { error } = await supabase.from("coaches").update(payload).eq("id", coach.id);
-    setSaving(false);
     if (error) {
+      setSaving(false);
       toast.error("Échec", { description: friendlyError(error) });
       return;
     }
+    // Sync all shared fields between coach and person
+    if (personId) {
+      await syncLegacyToPerson(personId, {
+        email: form.email.trim() || null,
+        phone: form.phone.trim() || null,
+        street: form.street.trim() || null,
+        postcode: form.postcode.trim() || null,
+        city: form.city.trim() || null,
+        country: form.country.trim() || null,
+        emergency_contact_name: form.emergency_contact_name.trim() || null,
+        emergency_contact_phone: form.emergency_contact_phone.trim() || null,
+      });
+    }
+    setSaving(false);
     toast.success("Encadrant modifié");
     setOpen(false);
     load();
@@ -284,6 +327,15 @@ function CoachDetailPage() {
           <InfoLine icon={<Phone className="h-4 w-4" />} label="Téléphone">
             {coach.phone ?? "—"}
           </InfoLine>
+          <InfoLine icon={<MapPin className="h-4 w-4" />} label="Adresse">
+            {[personData?.street, personData?.postcode, personData?.city, personData?.country]
+              .filter(Boolean).join(", ") || "—"}
+          </InfoLine>
+          <InfoLine icon={<Phone className="h-4 w-4" />} label="Contact urgence">
+            {personData?.emergency_contact_name
+              ? `${personData.emergency_contact_name}${personData.emergency_contact_phone ? ` · ${personData.emergency_contact_phone}` : ""}`
+              : "—"}
+          </InfoLine>
         </div>
       </div>
 
@@ -371,6 +423,54 @@ function CoachDetailPage() {
                   <Input
                     value={form.phone}
                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Rue</Label>
+                  <Input
+                    value={form.street}
+                    onChange={(e) => setForm({ ...form, street: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Code postal</Label>
+                  <Input
+                    value={form.postcode}
+                    onChange={(e) => setForm({ ...form, postcode: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Ville</Label>
+                  <Input
+                    value={form.city}
+                    onChange={(e) => setForm({ ...form, city: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Pays</Label>
+                  <Input
+                    value={form.country}
+                    onChange={(e) => setForm({ ...form, country: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Contact urgence — nom</Label>
+                  <Input
+                    value={form.emergency_contact_name}
+                    onChange={(e) => setForm({ ...form, emergency_contact_name: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Contact urgence — téléphone</Label>
+                  <Input
+                    value={form.emergency_contact_phone}
+                    onChange={(e) => setForm({ ...form, emergency_contact_phone: e.target.value })}
                   />
                 </div>
               </div>
