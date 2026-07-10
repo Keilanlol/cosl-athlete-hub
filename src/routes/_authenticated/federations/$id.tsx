@@ -483,7 +483,9 @@ function FederationDetailPage() {
                       className="cursor-pointer hover:bg-muted"
                     >
                       <TableCell className="font-medium">
-                        {a.first_name} {a.last_name}
+                        <Link to="/athletes/$id" params={{ id: a.id as never }} className="hover:underline">
+                          {a.first_name} {a.last_name}
+                        </Link>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {a.primary_sport?.name ?? "—"}

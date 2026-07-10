@@ -309,7 +309,9 @@ function GamesListPage() {
             ))}
           </SelectContent>
         </Select>
-        <span className="ml-auto text-sm text-muted-foreground">{filtered.length} résultat(s)</span>
+        <span className="ml-auto text-sm text-muted-foreground whitespace-nowrap">
+          {filtered.length} résultat(s){rows && rows.length > filtered.length ? ` sur ${rows.length}` : ""}
+        </span>
       </div>
 
       <div className="rounded-lg border border-border bg-card">

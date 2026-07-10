@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
 import { Pencil, Search, AlertTriangle, Users, Upload } from "lucide-react";
@@ -643,8 +643,16 @@ function AthletesPage() {
                     <TableCell className="text-muted-foreground">
                       {a.primary_sport?.name ?? "—"}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {a.primary_federation?.acronym ?? "—"}
+                    <TableCell>
+                      {a.primary_federation ? (
+                        <Link to="/federations/$id" params={{ id: a.primary_federation_id! }}>
+                          <Badge variant="outline" className="font-mono hover:bg-muted">
+                            {a.primary_federation.acronym}
+                          </Badge>
+                        </Link>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       {statusBadge(a.status)}

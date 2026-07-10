@@ -330,7 +330,9 @@ function CoachesPage() {
             <SelectItem value="inactive">Inactifs</SelectItem>
           </SelectContent>
         </Select>
-        <span className="text-sm text-muted-foreground">{filtered.length} résultat(s)</span>
+        <span className="text-sm text-muted-foreground whitespace-nowrap">
+          {filtered.length} résultat(s){rows && rows.length > filtered.length ? ` sur ${rows.length}` : ""}
+        </span>
       </div>
 
       <div className="rounded-lg border border-border bg-card">

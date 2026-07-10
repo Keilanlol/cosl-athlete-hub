@@ -211,9 +211,14 @@ function SponsorsPage() {
         </div>
       </div>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input className="pl-9" placeholder="Rechercher…" value={search} onChange={(e) => setSearch(e.target.value)} />
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input className="pl-9" placeholder="Rechercher…" value={search} onChange={(e) => setSearch(e.target.value)} />
+        </div>
+        <span className="text-sm text-muted-foreground ml-auto whitespace-nowrap">
+          {filtered.length} résultat(s){rows && rows.length > filtered.length ? ` sur ${rows.length}` : ""}
+        </span>
       </div>
 
       <div className="rounded-lg border border-border bg-card">
@@ -235,7 +240,11 @@ function SponsorsPage() {
             </TableHeader>
             <TableBody>
               {filtered.map((s) => (
-                <TableRow key={s.id}>
+                <TableRow
+                  key={s.id}
+                  onClick={() => openEdit(s)}
+                  className="cursor-pointer hover:bg-muted"
+                >
                   <TableCell>
                     {s.logo_url ? (
                       <img src={s.logo_url} alt={s.name} className="h-10 w-10 rounded object-contain border" />
@@ -255,7 +264,7 @@ function SponsorsPage() {
                     <div>{[s.contact_first_name, s.contact_last_name].filter(Boolean).join(" ") || "—"}</div>
                     <div>{s.contact_email ?? ""} {s.contact_phone ? `· ${s.contact_phone}` : ""}</div>
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                     <Button variant="ghost" size="icon" onClick={() => openEdit(s)}><Pencil className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" onClick={() => remove(s)}><Trash2 className="h-4 w-4 text-red-600" /></Button>
                   </TableCell>
