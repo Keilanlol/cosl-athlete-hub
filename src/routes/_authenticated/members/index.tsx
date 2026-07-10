@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Search, UserRound, Building2, Upload } from "lucide-react";
+import { Search, UserRound, Building2, Upload, Filter } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import {
   FEDERATION_MEMBER_ROLES,
@@ -10,6 +10,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -35,6 +42,8 @@ function MembersPage() {
   const [fedMembers, setFedMembers] = useState<FederationMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [fedFilter, setFedFilter] = useState("all");
   const [sort, setSort] = useState<{ key: "last_name" | "first_name" | "role" | "email" | "phone" | "is_active"; dir: "asc" | "desc" }>({
     key: "last_name",
     dir: "asc",
@@ -68,7 +77,7 @@ function MembersPage() {
       });
     }
     const needle = q.trim().toLowerCase();
-    const filtered = needle
+    let filtered = needle
       ? out.filter((r) => {
           const m = r.data;
           return (
@@ -78,13 +87,15 @@ function MembersPage() {
           );
         })
       : out;
+    if (roleFilter !== "all") filtered = filtered.filter((r) => r.data.role === roleFilter);
+    if (fedFilter !== "all") filtered = filtered.filter((r) => r.orgId === fedFilter);
     return filtered.sort((a, b) => {
       const av = ((a.data as Record<string, unknown>)[sort.key] ?? "").toString().toLowerCase();
       const bv = ((b.data as Record<string, unknown>)[sort.key] ?? "").toString().toLowerCase();
       const cmp = av.localeCompare(bv);
       return sort.dir === "asc" ? cmp : -cmp;
     });
-  }, [feds, fedMembers, q, sort]);
+  }, [feds, fedMembers, q, sort, roleFilter, fedFilter]);
 
   const toggleSort = (key: "last_name" | "first_name" | "role" | "email" | "phone" | "is_active") =>
     setSort((s) =>
@@ -127,6 +138,24 @@ function MembersPage() {
             className="pl-9"
           />
         </div>
+        <Select value={roleFilter} onValueChange={setRoleFilter}>
+          <SelectTrigger className="w-[200px]"><SelectValue placeholder="Toutes les fonctions" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Toutes les fonctions</SelectItem>
+            {FEDERATION_MEMBER_ROLES.map((r) => (
+              <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={fedFilter} onValueChange={setFedFilter}>
+          <SelectTrigger className="w-[220px]"><SelectValue placeholder="Toutes les fédérations" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Toutes les fédérations</SelectItem>
+            {feds.map((f) => (
+              <SelectItem key={f.id} value={f.id}>{f.acronym} — {f.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="rounded-lg border border-border bg-card">

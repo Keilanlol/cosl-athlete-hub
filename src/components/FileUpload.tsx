@@ -19,6 +19,8 @@ export interface FileUploadProps {
   className?: string;
   /** Signed URL TTL in seconds (default ~1 year). */
   signedUrlTtl?: number;
+  /** If provided, overrides the uploaded file name with this value (sanitized). */
+  overrideFileName?: string;
 }
 
 const DEFAULT_ACCEPT = "image/jpeg,image/png,application/pdf,image/webp";
@@ -44,6 +46,7 @@ export function FileUpload({
   onError,
   className,
   signedUrlTtl = ONE_YEAR,
+  overrideFileName,
 }: FileUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [progress, setProgress] = useState<number | null>(null);
@@ -69,9 +72,16 @@ export function FileUpload({
       return;
     }
 
-    const cleanName = sanitize(file.name);
+    const rawName = overrideFileName || file.name;
+    const ext = file.name.split(".").pop() ?? "";
+    const baseName = overrideFileName
+      ? `${sanitize(overrideFileName)}${ext ? "." + ext : ""}`
+      : sanitize(file.name);
     const sep = path.endsWith("/") || path.endsWith("_") || path.endsWith("-") ? "" : "/";
-    const storagePath = `${path}${sep}${cleanName}`;
+    const storagePath = `${path}${sep}${baseName}`;
+    const displayName = overrideFileName
+      ? `${overrideFileName}.${ext}`
+      : file.name;
 
     setProgress(10);
     const { error: upErr } = await supabase.storage
@@ -94,7 +104,7 @@ export function FileUpload({
       return;
     }
     setTimeout(() => setProgress(null), 400);
-    onUploaded(signed.signedUrl, file.name, storagePath);
+    onUploaded(signed.signedUrl, displayName, storagePath);
     toast.success("Fichier téléversé");
   };
 

@@ -375,6 +375,7 @@ function AthleteDetailPage() {
       size_gloves: athlete.size_gloves ?? "",
       passport_number: athlete.passport_number ?? "",
       passport_expiry: athlete.passport_expiry ?? "",
+      last_medical_check: athlete.last_medical_check ?? "",
     });
     setErrors({});
     setEditOpen(true);
@@ -413,6 +414,7 @@ function AthleteDetailPage() {
       size_gloves: v.size_gloves || null,
       passport_number: v.passport_number || null,
       passport_expiry: v.passport_expiry || null,
+      last_medical_check: v.last_medical_check || null,
       updated_at: new Date().toISOString(),
     };
     const { error } = await supabase.from("athletes").update(payload).eq("id", athlete.id);
@@ -451,7 +453,8 @@ function AthleteDetailPage() {
       toast.error("Type et nom de fichier requis");
       return;
     }
-    const { error } = await supabase.from("athlete_documents").insert({
+    const isCOSLDoc = ["convention", "olympic_contract", "code_of_conduct", "medical_form"].includes(docForm.doc_type);
+    const { data: insertedDoc, error } = await supabase.from("athlete_documents").insert({
       athlete_id: id,
       category: docForm.category,
       doc_type: docForm.doc_type.trim(),
@@ -460,7 +463,21 @@ function AthleteDetailPage() {
       issued_date: docForm.issued_date || null,
       expiry_date: docForm.expiry_date || null,
       status: docForm.status,
-    });
+      uploaded_by: user?.id ?? null,
+      requires_action: isCOSLDoc,
+    }).select("id").single();
+
+    // Notify the athlete if COSL pushed a document requiring action
+    if (!error && insertedDoc && isCOSLDoc) {
+      const typeLabel = docTypes.find((t) => t.code === docForm.doc_type)?.label ?? docForm.doc_type;
+      await supabase.from("notifications").insert({
+        notification_type: "document_action_required",
+        message: `Nouveau document à examiner : ${typeLabel}`,
+        related_athlete_id: id,
+        related_doc_id: insertedDoc.id,
+        is_read: false,
+      });
+    }
     if (error) {
       toast.error("Échec", { description: friendlyError(error) });
       return;
@@ -782,7 +799,7 @@ function AthleteDetailPage() {
       <Tabs value={tab} onValueChange={setTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="profil">Profil</TabsTrigger>
-          <TabsTrigger value="sportif">Sportif</TabsTrigger>
+          <TabsTrigger value="sportif">Sport</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
           <TabsTrigger value="kyc">KYC</TabsTrigger>
           <TabsTrigger value="relations">Relations</TabsTrigger>
@@ -834,6 +851,9 @@ function AthleteDetailPage() {
               value={ATHLETE_STATUSES.find((s) => s.value === athlete.status)?.label}
             />
             <Field label="Niveau" value={lvl?.label} />
+            {(athlete.level === "elite" || athlete.level === "promotion") && (
+              <Field label="Dernier médico sportif" value={athlete.last_medical_check} />
+            )}
             <div className="md:col-span-2 text-sm text-muted-foreground">
               Historique des statuts — à enrichir lors d'évolutions du statut.
             </div>
@@ -929,7 +949,6 @@ function AthleteDetailPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Catégorie</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Nom du fichier</TableHead>
                       <TableHead>Émission</TableHead>
@@ -941,9 +960,6 @@ function AthleteDetailPage() {
                   <TableBody>
                     {docs.filter((d) => d.doc_type !== "photo_identite").map((d) => (
                       <TableRow key={d.id}>
-                        <TableCell>
-                          {DOCUMENT_CATEGORIES.find((c) => c.value === d.category)?.label ?? d.category}
-                        </TableCell>
                         <TableCell>{docTypes.find((t) => t.code === d.doc_type)?.label ?? d.doc_type}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -1381,6 +1397,27 @@ function AthleteDetailPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
+                    <Label>Adresse</Label>
+                    <Input
+                      value={form.address ?? ""}
+                      onChange={(e) => setForm({ ...form, address: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Contact urgence — nom</Label>
+                    <Input
+                      value={form.emergency_contact_name ?? ""}
+                      onChange={(e) => setForm({ ...form, emergency_contact_name: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Contact urgence — téléphone</Label>
+                    <Input
+                      value={form.emergency_contact_phone ?? ""}
+                      onChange={(e) => setForm({ ...form, emergency_contact_phone: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
                     <Label>Sport</Label>
                     <EditableSelect
                       value={form.primary_sport_id ?? ""}
@@ -1445,6 +1482,58 @@ function AthleteDetailPage() {
                     />
                   </div>
                 </div>
+                {(form.level === "elite" || form.level === "promotion") && (
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                    <div className="space-y-1.5">
+                      <Label>Dernier médico sportif</Label>
+                      <Input
+                        type="date"
+                        value={form.last_medical_check ?? ""}
+                        onChange={(e) => setForm({ ...form, last_medical_check: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                )}
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                  <div className="space-y-1.5">
+                    <Label>Taille vêtement</Label>
+                    <Input
+                      value={form.size_clothing ?? ""}
+                      onChange={(e) => setForm({ ...form, size_clothing: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Pointure</Label>
+                    <Input
+                      value={form.size_shoes ?? ""}
+                      onChange={(e) => setForm({ ...form, size_shoes: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Taille gants</Label>
+                    <Input
+                      value={form.size_gloves ?? ""}
+                      onChange={(e) => setForm({ ...form, size_gloves: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label>N° passeport</Label>
+                    <Input
+                      value={form.passport_number ?? ""}
+                      onChange={(e) => setForm({ ...form, passport_number: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Expiration passeport</Label>
+                    <Input
+                      type="date"
+                      value={form.passport_expiry ?? ""}
+                      onChange={(e) => setForm({ ...form, passport_expiry: e.target.value })}
+                    />
+                  </div>
+                </div>
               </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setEditOpen(false)} disabled={saving}>
@@ -1469,18 +1558,20 @@ function AthleteDetailPage() {
             <div className="grid gap-3 py-4">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label>Catégorie</Label>
-                  <Select
-                    value={docForm.category}
-                    onValueChange={(v) => setDocForm({ ...docForm, category: v })}
-                  >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {DOCUMENT_CATEGORIES.map((c) => (
-                        <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label>Type *</Label>
+                  <EditableSelect
+                    value={docForm.doc_type}
+                    onValueChange={(v) => {
+                      const dt = docTypes.find((t) => t.code === v);
+                      setDocForm({ ...docForm, doc_type: v, category: dt?.category ?? "admin" });
+                    }}
+                    options={docTypes.map((t) => ({ value: t.code, label: t.label }))}
+                    emptyLabel="—"
+                    onAdd={(label) => addDocType(label, "admin")}
+                    onDelete={removeDocType}
+                    addLabel="+ Ajouter un type…"
+                    manageTitle="Types de documents"
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Statut</Label>
@@ -1498,26 +1589,11 @@ function AthleteDetailPage() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label>Type *</Label>
-                <EditableSelect
-                  value={docForm.doc_type}
-                  onValueChange={(v) => setDocForm({ ...docForm, doc_type: v })}
-                  options={docTypes
-                    .filter((t) => t.category === docForm.category)
-                    .map((t) => ({ value: t.code, label: t.label }))}
-                  emptyLabel="—"
-                  onAdd={(label) => addDocType(label, docForm.category)}
-                  onDelete={removeDocType}
-                  addLabel={`+ Ajouter un type (${docForm.category})…`}
-                  manageTitle={`Types — ${docForm.category}`}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Nom du fichier *</Label>
+                <Label>Nom du fichier</Label>
                 <Input
                   value={docForm.file_name}
                   onChange={(e) => setDocForm({ ...docForm, file_name: e.target.value })}
-                  placeholder="Renseigné automatiquement après upload"
+                  placeholder="Auto-généré : Type_Prénom_Nom"
                 />
               </div>
               <div className="space-y-1.5">
@@ -1528,6 +1604,11 @@ function AthleteDetailPage() {
                   accept="image/jpeg,image/png,image/webp,application/pdf"
                   currentUrl={docForm.file_url || null}
                   currentName={docForm.file_name || null}
+                  overrideFileName={
+                    docForm.doc_type
+                      ? `${docForm.doc_type}_${athlete.first_name}_${athlete.last_name}`
+                      : undefined
+                  }
                   onUploaded={(url, fileName) => {
                     setDocForm((prev) => ({
                       ...prev,

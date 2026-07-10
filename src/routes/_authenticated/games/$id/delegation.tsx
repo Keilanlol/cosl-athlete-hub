@@ -1,7 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, Pencil, Download, UserCircle, Search } from "lucide-react";
+import { Plus, Trash2, Pencil, Download, UserCircle, Search, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { confirmAction } from "@/components/ConfirmDialog";
@@ -372,7 +372,7 @@ function DelegationPage() {
                 <TableHead>Rôle</TableHead>
                 <TableHead>Fonction</TableHead>
                 <TableHead>Sport</TableHead>
-                <TableHead className="w-20 text-right">Actions</TableHead>
+                <TableHead className="w-28 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -395,6 +395,20 @@ function DelegationPage() {
                       {isAth ? sportName(m.athlete?.primary_sport_id ?? null) : "—"}
                     </TableCell>
                     <TableCell className="text-right">
+                      {isAth && m.athlete && (
+                        <Button asChild variant="ghost" size="icon" aria-label="Voir la fiche athlète">
+                          <Link to="/athletes/$id" params={{ id: m.athlete.id }}>
+                            <ExternalLink className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                      )}
+                      {!isAth && m.coach && (
+                        <Button asChild variant="ghost" size="icon" aria-label="Voir la fiche encadrant">
+                          <Link to="/coaches/$id" params={{ id: m.coach.id }}>
+                            <ExternalLink className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                      )}
                       <Button variant="ghost" size="icon" onClick={() => removeMember(m)} aria-label="Retirer">
                         <Trash2 className="h-4 w-4 text-red-600" />
                       </Button>

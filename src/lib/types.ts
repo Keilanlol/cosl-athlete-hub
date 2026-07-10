@@ -159,6 +159,7 @@ export type Athlete = {
   license_number: string | null;
   passport_number: string | null;
   passport_expiry: string | null;
+  last_medical_check: string | null;
   is_active: boolean | null;
   created_at: string;
   updated_at: string;
@@ -316,6 +317,7 @@ export const athleteSchema = z.object({
   license_number: z.string().trim().max(60).optional().or(z.literal("")),
   passport_number: z.string().trim().max(60).optional().or(z.literal("")),
   passport_expiry: z.string().optional().or(z.literal("")),
+  last_medical_check: z.string().optional().or(z.literal("")),
 });
 
 export type AthleteForm = z.infer<typeof athleteSchema>;

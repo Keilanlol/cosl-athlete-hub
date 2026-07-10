@@ -80,9 +80,12 @@ function CoachesPage() {
   const navigate = useNavigate();
   const [rows, setRows] = useState<Coach[] | null>(null);
   const [feds, setFeds] = useState<Federation[]>([]);
+  const [games, setGames] = useState<{ id: string; name: string; short_name: string | null }[]>([]);
+  const [gameCoachIds, setGameCoachIds] = useState<string[] | null>(null);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [fedFilter, setFedFilter] = useState<string>("all");
+  const [gameFilter, setGameFilter] = useState<string>("all");
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
     key: "last_name",
@@ -104,9 +107,10 @@ function CoachesPage() {
   }, [feds]);
   const load = async () => {
     setRows(null);
-    const [c, f] = await Promise.all([
+    const [c, f, gm] = await Promise.all([
       supabase.from("coaches").select("*").order("last_name"),
       supabase.from("federations").select("*").order("acronym"),
+      supabase.from("games").select("id, name, short_name").order("name"),
     ]);
     if (c.error || f.error) {
       toast.error("Erreur de chargement", {
@@ -117,16 +121,42 @@ function CoachesPage() {
     }
     setRows((c.data ?? []) as Coach[]);
     setFeds((f.data ?? []) as Federation[]);
+    setGames((gm.data ?? []) as { id: string; name: string; short_name: string | null }[]);
   };
 
   useEffect(() => {
     load();
   }, []);
 
+  // Load coach IDs for the selected game
+  useEffect(() => {
+    if (gameFilter === "all") {
+      setGameCoachIds(null);
+      return;
+    }
+    (async () => {
+      const { data: links } = await supabase
+        .from("v_persons_in_games")
+        .select("person_id")
+        .eq("game_id", gameFilter);
+      const personIds = (links ?? []).map((r) => r.person_id as string);
+      if (personIds.length === 0) {
+        setGameCoachIds([]);
+        return;
+      }
+      const { data: cps } = await supabase
+        .from("coach_profiles")
+        .select("legacy_coach_id")
+        .in("person_id", personIds);
+      setGameCoachIds((cps ?? []).map((c) => c.legacy_coach_id as string).filter(Boolean));
+    })();
+  }, [gameFilter]);
+
   const filtered = useMemo(() => {
     if (!rows) return [];
     const q = search.trim().toLowerCase();
     let r = rows.slice();
+    if (gameCoachIds !== null) r = r.filter((c) => gameCoachIds.includes(c.id));
     if (roleFilter !== "all") r = r.filter((c) => c.role === roleFilter);
     if (fedFilter !== "all") r = r.filter((c) => c.federation_id === fedFilter);
     if (activeFilter === "active") r = r.filter((c) => c.is_active);
@@ -142,7 +172,7 @@ function CoachesPage() {
       return sort.dir === "asc" ? cmp : -cmp;
     });
     return r;
-  }, [rows, search, roleFilter, fedFilter, activeFilter, sort]);
+  }, [rows, search, roleFilter, fedFilter, activeFilter, sort, gameCoachIds]);
 
   useEffect(() => { setPage(1); }, [search, roleFilter, fedFilter, activeFilter]);
 
@@ -280,6 +310,15 @@ function CoachesPage() {
               <SelectItem key={f.id} value={f.id}>
                 {f.acronym} — {f.name}
               </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={gameFilter} onValueChange={setGameFilter}>
+          <SelectTrigger className="w-[200px]"><SelectValue placeholder="Games" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous les Games</SelectItem>
+            {games.map((g) => (
+              <SelectItem key={g.id} value={g.id}>{g.short_name ?? g.name}</SelectItem>
             ))}
           </SelectContent>
         </Select>

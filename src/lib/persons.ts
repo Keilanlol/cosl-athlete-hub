@@ -137,7 +137,6 @@ export type AthleteProfileFields = {
   primary_federation_id: string;
   status: string;
   level: string;
-  license_number: string;
   passport_number: string;
   passport_expiry: string;
 };
@@ -173,7 +172,6 @@ export const defaultAthleteProfile: AthleteProfileFields = {
   primary_federation_id: "",
   status: "active",
   level: "",
-  license_number: "",
   passport_number: "",
   passport_expiry: "",
 };

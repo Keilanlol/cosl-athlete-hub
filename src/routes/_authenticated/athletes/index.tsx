@@ -104,6 +104,7 @@ const emptyForm: AthleteForm = {
   size_gloves: "",
   passport_number: "",
   passport_expiry: "",
+  last_medical_check: "",
 };
 
 function statusBadge(s: string) {
@@ -133,6 +134,7 @@ function AthletesPage() {
   const { items: sports, add: addSport, remove: removeSport } = useSports();
   const { items: levels, add: addLevel, remove: removeLevel } = useAthleteLevels();
   const [federations, setFederations] = useState<Federation[]>([]);
+  const [games, setGames] = useState<{ id: string; name: string; short_name: string | null }[]>([]);
   const [disciplines, setDisciplines] = useState<Discipline[]>([]);
   const [athleteDisciplines, setAthleteDisciplines] = useState<Record<string, string[]>>({});
 
@@ -144,6 +146,7 @@ function AthletesPage() {
   const [fSport, setFSport] = useState(ALL);
   const [fDiscipline, setFDiscipline] = useState(ALL);
   const [fFed, setFFed] = useState(ALL);
+  const [fGame, setFGame] = useState(ALL);
   const [fStatus, setFStatus] = useState(ALL);
   const [fLevel, setFLevel] = useState(ALL);
   const [fKyc, setFKyc] = useState(ALL);
@@ -162,12 +165,38 @@ function AthletesPage() {
 
   const load = async () => {
     setRows(null);
-    const { data, error } = await supabase
+    let gameAthleteIds: string[] | null = null;
+    if (fGame !== ALL) {
+      // Get person_ids for this game, then resolve to athlete_ids via athlete_profiles
+      const { data: links } = await supabase
+        .from("v_persons_in_games")
+        .select("person_id")
+        .eq("game_id", fGame);
+      const personIds = (links ?? []).map((r) => r.person_id as string);
+      if (personIds.length === 0) {
+        setRows([]);
+        return;
+      }
+      const { data: aps } = await supabase
+        .from("athlete_profiles")
+        .select("legacy_athlete_id")
+        .in("person_id", personIds);
+      gameAthleteIds = (aps ?? []).map((a) => a.legacy_athlete_id as string).filter(Boolean);
+      if (gameAthleteIds.length === 0) {
+        setRows([]);
+        return;
+      }
+    }
+    let query = supabase
       .from("athletes")
       .select(
         "*, primary_sport:sports!athletes_primary_sport_id_fkey(name), primary_federation:federations!athletes_primary_federation_id_fkey(acronym,name), athlete_kyc(global_status)",
       )
       .order("last_name");
+    if (gameAthleteIds) {
+      query = query.in("id", gameAthleteIds);
+    }
+    const { data, error } = await query;
     if (error) {
       toast.error("Erreur de chargement", { description: friendlyError(error) });
       setRows([]);
@@ -177,13 +206,15 @@ function AthletesPage() {
   };
 
   const loadRefs = async () => {
-    const [fd, di, ad] = await Promise.all([
+    const [fd, di, ad, gm] = await Promise.all([
       supabase.from("federations").select("*").order("acronym"),
       supabase.from("disciplines").select("*").order("name"),
       supabase.from("athlete_disciplines").select("athlete_id, discipline_id"),
+      supabase.from("games").select("id, name, short_name").order("name"),
     ]);
     setFederations((fd.data ?? []) as Federation[]);
     setDisciplines((di.data ?? []) as Discipline[]);
+    setGames((gm.data ?? []) as { id: string; name: string; short_name: string | null }[]);
     const map: Record<string, string[]> = {};
     ((ad.data ?? []) as { athlete_id: string; discipline_id: string }[]).forEach((r) => {
       (map[r.athlete_id] ||= []).push(r.discipline_id);
@@ -194,7 +225,7 @@ function AthletesPage() {
   useEffect(() => {
     load();
     loadRefs();
-  }, []);
+  }, [fGame]);
 
   const filtered = useMemo(() => {
     if (!rows) return [];
@@ -296,6 +327,7 @@ function AthletesPage() {
       size_gloves: a.size_gloves ?? "",
       passport_number: a.passport_number ?? "",
       passport_expiry: a.passport_expiry ?? "",
+      last_medical_check: a.last_medical_check ?? "",
     });
     setOpen(true);
   };
@@ -344,6 +376,7 @@ function AthletesPage() {
       size_gloves: v.size_gloves || null,
       passport_number: v.passport_number || null,
       passport_expiry: v.passport_expiry || null,
+      last_medical_check: v.last_medical_check || null,
     };
     let createdId: string | null = editing?.id ?? null;
     if (editing) {
@@ -504,6 +537,15 @@ function AthletesPage() {
             <SelectItem value={ALL}>Toutes les fédérations</SelectItem>
             {federations.map((f) => (
               <SelectItem key={f.id} value={f.id}>{f.acronym}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={fGame} onValueChange={(v) => { setFGame(v); }}>
+          <SelectTrigger className="w-[180px]"><SelectValue placeholder="Games" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>Tous les Games</SelectItem>
+            {games.map((g) => (
+              <SelectItem key={g.id} value={g.id}>{g.short_name ?? g.name}</SelectItem>
             ))}
           </SelectContent>
         </Select>

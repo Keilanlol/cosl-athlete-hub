@@ -19,6 +19,15 @@ import {
 } from "@/lib/persons";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -28,6 +37,8 @@ import {
 } from "@/components/ui/dialog";
 import { PersonGeneralForm } from "@/components/persons/PersonGeneralForm";
 import { RoleProfileForm } from "@/components/persons/RoleProfileForm";
+
+type EventOption = { id: string; name: string };
 
 type Props = {
   open: boolean;
@@ -62,6 +73,9 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
   const [fedMember, setFedMember] = useState<FedMemberProfileFields>({ ...defaultFedMemberProfile });
   const [sports, setSports] = useState<{ id: string; name: string }[]>([]);
   const [federations, setFederations] = useState<{ id: string; name: string; acronym: string | null }[]>([]);
+  const [events, setEvents] = useState<EventOption[]>([]);
+  const [linkEvent, setLinkEvent] = useState(false);
+  const [selectedEventId, setSelectedEventId] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -72,12 +86,16 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
       setAthlete({ ...defaultAthleteProfile });
       setCoach({ ...defaultCoachProfile });
       setFedMember({ ...defaultFedMemberProfile });
+      setLinkEvent(false);
+      setSelectedEventId("");
       return;
     }
     supabase.from("sports").select("id, name").order("name")
       .then(({ data }) => setSports((data ?? []) as typeof sports));
     supabase.from("federations").select("id, name, acronym").order("acronym")
       .then(({ data }) => setFederations((data ?? []) as typeof federations));
+    supabase.from("events").select("id, name").order("name")
+      .then(({ data }) => setEvents((data ?? []) as EventOption[]));
   }, [open]);
 
   const patchGeneral = (patch: Partial<PersonGeneralFields>) =>
@@ -242,6 +260,17 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
         });
       }
 
+      // 6. Event link (if toggle is on)
+      if (linkEvent && selectedEventId) {
+        const { error: ee } = await supabase
+          .from("person_events")
+          .insert({ person_id: personId, event_id: selectedEventId });
+        if (ee) {
+          // Non-blocking — just warn
+          toast.warning("Lien événement non créé", { description: friendlyError(ee) });
+        }
+      }
+
       toast.success("Personne créée avec succès");
       onOpenChange(false);
       onCreated?.(personId);
@@ -279,11 +308,39 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
         </div>
 
         {step === "general" && (
-          <PersonGeneralForm
-            values={general}
-            onChange={patchGeneral}
-            athleteRequiresBirthGender={isAthleteSelected}
-          />
+          <>
+            <PersonGeneralForm
+              values={general}
+              onChange={patchGeneral}
+              athleteRequiresBirthGender={isAthleteSelected}
+            />
+            <div className="space-y-3 rounded-md border border-border p-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">Rattacher à un événement</Label>
+                <Switch
+                  checked={linkEvent}
+                  onCheckedChange={(v) => { setLinkEvent(v); if (!v) setSelectedEventId(""); }}
+                />
+              </div>
+              {linkEvent && (
+                <div className="space-y-1.5">
+                  <Label>Événement</Label>
+                  <Select value={selectedEventId} onValueChange={setSelectedEventId}>
+                    <SelectTrigger><SelectValue placeholder="Choisir un événement…" /></SelectTrigger>
+                    <SelectContent>
+                      {events.length === 0 ? (
+                        <SelectItem value="__none" disabled>Aucun événement disponible</SelectItem>
+                      ) : (
+                        events.map((e) => (
+                          <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          </>
         )}
 
         {step === "roles" && (
