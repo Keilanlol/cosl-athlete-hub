@@ -202,6 +202,43 @@ Historique des changements dans `kyc_history`.
 
 ---
 
+## Database Migrations
+
+### Système de migrations
+- Les migrations SQL vivent dans `supabase/sql/`.
+- Depuis la migration 39, un **système de tracking** est en place via la table `supabase_migrations.schema_migrations` (voir `00b_schema_migrations_init.sql`).
+- Les migrations 00 à 38 sont marquées comme déjà appliquées dans cette table.
+- Chaque nouvelle migration doit s'enregistrer à la fin du script `up` :
+  ```sql
+  INSERT INTO supabase_migrations.schema_migrations (version, name)
+  VALUES ('00XX', 'nom_migration')
+  ON CONFLICT (version) DO NOTHING;
+  ```
+- Le script `down` correspondant doit retirer l'enregistrement :
+  ```sql
+  DELETE FROM supabase_migrations.schema_migrations WHERE version = '00XX';
+  ```
+
+### Paire Up/Down avec snapshot
+- Chaque migration qui modifie des données existantes (UPDATE/DELETE) doit avoir :
+  1. Un fichier `NNb_snapshot_before_XX.sql` — sauvegarde les tables impactées dans des tables `migration_XX_snapshot_*`
+  2. Un fichier `XX_up_*.sql` — applique la migration
+  3. Un fichier `XX_down_*.sql` — restaure depuis le snapshot
+- Le snapshot est conservé après rollback (par sécurité) — suppression manuelle optionnelle.
+
+### Ordre d'exécution
+1. `00b_schema_migrations_init.sql` (une seule fois, pour initialiser le tracking)
+2. `NNb_snapshot_before_XX.sql` (avant chaque migration destructrice)
+3. `XX_up_*.sql` (appliquer)
+4. `XX_down_*.sql` (annuler si besoin)
+
+### Attention
+- Pas de `supabase db rollback` natif — le rollback est manuel via le script `down`.
+- `supabase db reset` remet TOUT à zéro (perte de données) — ne pas utiliser pour un rollback ciblé.
+- Toujours faire un snapshot avant une migration qui modifie des données existantes.
+
+---
+
 ## Code Quality Rules
 
 - Write TypeScript with strict typing. Avoid `any`. Define interfaces/types in `src/lib/types.ts` or co-located.
