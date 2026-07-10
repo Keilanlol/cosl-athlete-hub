@@ -29,17 +29,17 @@ const ACCRED_STATUSES: { value: string; label: string; cls: string }[] = [
   { value: "submitted", label: "Soumise", cls: "bg-amber-100 text-amber-700" },
   { value: "validated", label: "Validée", cls: "bg-emerald-100 text-emerald-700" },
   { value: "rejected", label: "Rejetée", cls: "bg-red-100 text-red-700" },
-  { value: "produced", label: "Produite", cls: "bg-[var(--cosl-red-light)] text-primary" },
-  { value: "delivered", label: "Délivrée", cls: "bg-blue-100 text-blue-800" },
 ];
 
 const CATEGORIES: { value: string; label: string }[] = [
-  { value: "athlete", label: "Athlète" },
-  { value: "coach", label: "Coach" },
-  { value: "official", label: "Officiel" },
-  { value: "medical", label: "Médical" },
-  { value: "press", label: "Presse" },
-  { value: "vip", label: "VIP" },
+  { value: "athlete", label: "Athlete" },
+  { value: "coach", label: "Encadrant" },
+  { value: "official", label: "NOC Guest" },
+  { value: "medical", label: "Dignitaires" },
+  { value: "press", label: "Press" },
+  { value: "vip", label: "Juge" },
+  { value: "president", label: "President" },
+  { value: "secretary_general", label: "Secretary General" },
 ];
 
 type Row = {

@@ -18,13 +18,11 @@ export const Route = createFileRoute("/_authenticated/games/$id")({
   component: GameLayout,
 });
 
-const TABS: Array<{ to: "/games/$id" | "/games/$id/selections" | "/games/$id/delegation" | "/games/$id/competitions" | "/games/$id/accreditations" | "/games/$id/logistics" | "/games/$id/volunteers" | "/games/$id/sponsors" | "/games/$id/partners"; label: string; exact?: boolean }> = [
+const TABS: Array<{ to: "/games/$id" | "/games/$id/selections" | "/games/$id/delegation" | "/games/$id/competitions" | "/games/$id/accreditations" | "/games/$id/logistics" | "/games/$id/partners"; label: string; exact?: boolean }> = [
   { to: "/games/$id", label: "Vue d'ensemble", exact: true },
   { to: "/games/$id/selections", label: "Sélections" },
   { to: "/games/$id/competitions", label: "Compétitions" },
   { to: "/games/$id/delegation", label: "Délégation" },
-  { to: "/games/$id/volunteers", label: "Bénévoles" },
-  { to: "/games/$id/sponsors", label: "Sponsors" },
   { to: "/games/$id/partners", label: "Partenaires" },
   { to: "/games/$id/accreditations", label: "Accréditations" },
   { to: "/games/$id/logistics", label: "Logistique" },

@@ -7,13 +7,11 @@ export function computeKycGlobalStatus(kyc: Partial<AthleteKyc> | null | undefin
 
   // Axes bloquants absolus (rouge immédiat)
   if (!kyc.identity_verified) return "red";
-  if (!kyc.nationality_verified) return "red";
   if (kyc.antidoping_status === "red") return "red";
 
-  // 6 axes (l'éligibilité d'âge est désormais calculée par épreuve)
+  // 5 axes (nationality removed, age eligibility computed per-competition)
   const allGreen =
     kyc.identity_verified === true &&
-    kyc.nationality_verified === true &&
     kyc.antidoping_status === "green" &&
     kyc.elearning_antidoping_completed === true &&
     kyc.ethics_charter_signed === true &&
@@ -26,7 +24,6 @@ export function countValidAxes(kyc: Partial<AthleteKyc> | null | undefined): num
   if (!kyc) return 0;
   const axes = [
     !!kyc.identity_verified,
-    !!kyc.nationality_verified,
     kyc.antidoping_status === "green",
     !!kyc.elearning_antidoping_completed,
     !!kyc.ethics_charter_signed,

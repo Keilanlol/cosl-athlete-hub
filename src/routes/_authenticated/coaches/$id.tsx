@@ -8,7 +8,6 @@ import { confirmAction } from "@/components/ConfirmDialog";
 import {
   COACH_ROLES,
   type Athlete,
-  type Club,
   type Coach,
   type Federation,
 } from "@/lib/types";
@@ -56,10 +55,8 @@ function CoachDetailPage() {
   const navigate = useNavigate();
   const [coach, setCoach] = useState<Coach | null>(null);
   const [fed, setFed] = useState<Federation | null>(null);
-  const [club, setClub] = useState<Club | null>(null);
   const [athletes, setAthletes] = useState<(Athlete & { relation_role: string; start_date: string; end_date: string | null })[]>([]);
   const [feds, setFeds] = useState<Federation[]>([]);
-  const [clubs, setClubs] = useState<Club[]>([]);
   const [personId, setPersonId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -70,7 +67,6 @@ function CoachDetailPage() {
     phone: "",
     role: "coach",
     federation_id: NONE,
-    club_id: NONE,
     is_active: true,
   });
 
@@ -83,12 +79,9 @@ function CoachDetailPage() {
     }
     const c = data as Coach;
     setCoach(c);
-    const [f, cl, rel, fedsAll, clubsAll] = await Promise.all([
+    const [f, rel, fedsAll] = await Promise.all([
       c.federation_id
         ? supabase.from("federations").select("*").eq("id", c.federation_id).maybeSingle()
-        : Promise.resolve({ data: null }),
-      c.club_id
-        ? supabase.from("clubs").select("*").eq("id", c.club_id).maybeSingle()
         : Promise.resolve({ data: null }),
       supabase
         .from("athlete_relations")
@@ -98,7 +91,6 @@ function CoachDetailPage() {
       supabase.from("clubs").select("*").order("name"),
     ]);
     setFed((f.data ?? null) as Federation | null);
-    setClub((cl.data ?? null) as Club | null);
     setAthletes(
       (rel.data ?? [])
         .flatMap((r: { relation_role: string; start_date: string; end_date: string | null; athlete: Athlete | Athlete[] | null }) => {
@@ -108,7 +100,6 @@ function CoachDetailPage() {
         }),
     );
     setFeds((fedsAll.data ?? []) as Federation[]);
-    setClubs((clubsAll.data ?? []) as Club[]);
 
     // Load person_id via coach_profiles
     const { data: cp } = await supabase
@@ -139,7 +130,6 @@ function CoachDetailPage() {
       phone: coach.phone ?? "",
       role: coach.role,
       federation_id: coach.federation_id ?? NONE,
-      club_id: coach.club_id ?? NONE,
       is_active: coach.is_active ?? true,
     });
     setOpen(true);
@@ -156,7 +146,6 @@ function CoachDetailPage() {
       phone: form.phone.trim() || null,
       role: form.role,
       federation_id: form.federation_id === NONE ? null : form.federation_id,
-      club_id: form.club_id === NONE ? null : form.club_id,
       is_active: form.is_active,
     };
     const { error } = await supabase.from("coaches").update(payload).eq("id", coach.id);
@@ -191,11 +180,6 @@ function CoachDetailPage() {
   if (!coach) {
     return <div className="p-6 text-sm text-muted-foreground">Chargement…</div>;
   }
-
-  const clubsForForm =
-    form.federation_id && form.federation_id !== NONE
-      ? clubs.filter((c) => c.federation_id === form.federation_id)
-      : clubs;
 
   return (
     <div className="space-y-6">
@@ -281,15 +265,6 @@ function CoachDetailPage() {
                   <Badge variant="outline" className="font-mono hover:bg-muted">
                     {fed.acronym}
                   </Badge>
-                </Link>
-              )}
-              {club && (
-                <Link
-                  to="/clubs/$id"
-                  params={{ id: club.id }}
-                  className="text-sm text-muted-foreground hover:underline"
-                >
-                  {club.name}
                 </Link>
               )}
             </div>
@@ -415,28 +390,13 @@ function CoachDetailPage() {
                   <Label>Fédération</Label>
                   <Select
                     value={form.federation_id}
-                    onValueChange={(v) => setForm({ ...form, federation_id: v, club_id: NONE })}
+                    onValueChange={(v) => setForm({ ...form, federation_id: v })}
                   >
                     <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value={NONE}>Aucune</SelectItem>
                       {feds.map((f) => (
                         <SelectItem key={f.id} value={f.id}>{f.acronym}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Club</Label>
-                  <Select
-                    value={form.club_id}
-                    onValueChange={(v) => setForm({ ...form, club_id: v })}
-                  >
-                    <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={NONE}>Aucun</SelectItem>
-                      {clubsForForm.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

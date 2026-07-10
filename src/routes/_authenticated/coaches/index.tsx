@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Pencil, Trash2, Search, GraduationCap, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import { COACH_ROLES, type Club, type Coach, type Federation } from "@/lib/types";
+import { COACH_ROLES, type Coach, type Federation } from "@/lib/types";
 import { EntityImageUpload } from "@/components/EntityImageUpload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,7 +69,6 @@ const empty = {
   phone: "",
   role: "coach",
   federation_id: NONE,
-  club_id: NONE,
   is_active: true,
 };
 
@@ -81,7 +80,6 @@ function CoachesPage() {
   const navigate = useNavigate();
   const [rows, setRows] = useState<Coach[] | null>(null);
   const [feds, setFeds] = useState<Federation[]>([]);
-  const [clubs, setClubs] = useState<Club[]>([]);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [fedFilter, setFedFilter] = useState<string>("all");
@@ -104,42 +102,26 @@ function CoachesPage() {
     feds.forEach((f) => m.set(f.id, f));
     return m;
   }, [feds]);
-  const clubMap = useMemo(() => {
-    const m = new Map<string, Club>();
-    clubs.forEach((c) => m.set(c.id, c));
-    return m;
-  }, [clubs]);
-
   const load = async () => {
     setRows(null);
-    const [c, f, cl] = await Promise.all([
+    const [c, f] = await Promise.all([
       supabase.from("coaches").select("*").order("last_name"),
       supabase.from("federations").select("*").order("acronym"),
-      supabase.from("clubs").select("*").order("name"),
     ]);
-    if (c.error || f.error || cl.error) {
+    if (c.error || f.error) {
       toast.error("Erreur de chargement", {
-        description: (c.error ?? f.error ?? cl.error)?.message,
+        description: (c.error ?? f.error)?.message,
       });
       setRows([]);
       return;
     }
     setRows((c.data ?? []) as Coach[]);
     setFeds((f.data ?? []) as Federation[]);
-    setClubs((cl.data ?? []) as Club[]);
   };
 
   useEffect(() => {
     load();
   }, []);
-
-  const clubsForForm = useMemo(
-    () =>
-      form.federation_id && form.federation_id !== NONE
-        ? clubs.filter((c) => c.federation_id === form.federation_id)
-        : clubs,
-    [clubs, form.federation_id],
-  );
 
   const filtered = useMemo(() => {
     if (!rows) return [];
@@ -190,7 +172,6 @@ function CoachesPage() {
       phone: c.phone ?? "",
       role: c.role,
       federation_id: c.federation_id ?? NONE,
-      club_id: c.club_id ?? NONE,
       is_active: c.is_active ?? true,
     });
     setOpen(true);
@@ -210,7 +191,6 @@ function CoachesPage() {
       phone: form.phone.trim() || null,
       role: form.role,
       federation_id: form.federation_id === NONE ? null : form.federation_id,
-      club_id: form.club_id === NONE ? null : form.club_id,
       is_active: form.is_active,
     };
     const { error } = editing
@@ -344,7 +324,6 @@ function CoachesPage() {
                   </SortBtn>
                 </TableHead>
                 <TableHead>Fédération</TableHead>
-                <TableHead>Club</TableHead>
                 <TableHead><SortBtn active={sort.key === "is_active"} dir={sort.dir} onClick={() => toggleSort("is_active")}>Actif</SortBtn></TableHead>
                 <TableHead className="w-24 text-right">Actions</TableHead>
               </TableRow>
@@ -352,7 +331,6 @@ function CoachesPage() {
             <TableBody>
               {visible.map((c) => {
                 const f = c.federation_id ? fedMap.get(c.federation_id) : null;
-                const cl = c.club_id ? clubMap.get(c.club_id) : null;
                 return (
                   <TableRow
                     key={c.id}
@@ -386,7 +364,6 @@ function CoachesPage() {
                         <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{cl?.name ?? "—"}</TableCell>
                     <TableCell>
                       {c.is_active ? (
                         <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
@@ -529,7 +506,7 @@ function CoachesPage() {
                   <Select
                     value={form.federation_id}
                     onValueChange={(v) =>
-                      setForm({ ...form, federation_id: v, club_id: NONE })
+                      setForm({ ...form, federation_id: v })
                     }
                   >
                     <SelectTrigger id="fd">
@@ -540,25 +517,6 @@ function CoachesPage() {
                       {feds.map((f) => (
                         <SelectItem key={f.id} value={f.id}>
                           {f.acronym}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="cl">Club</Label>
-                  <Select
-                    value={form.club_id}
-                    onValueChange={(v) => setForm({ ...form, club_id: v })}
-                  >
-                    <SelectTrigger id="cl">
-                      <SelectValue placeholder="—" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={NONE}>Aucun</SelectItem>
-                      {clubsForForm.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.name}
                         </SelectItem>
                       ))}
                     </SelectContent>

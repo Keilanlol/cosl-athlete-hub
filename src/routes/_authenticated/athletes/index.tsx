@@ -12,7 +12,6 @@ import {
   generateCoslId,
   type Athlete,
   type AthleteForm,
-  type Club,
   type Discipline,
   type Federation,
 } from "@/lib/types";
@@ -67,7 +66,6 @@ type KycEmbed = { global_status: string | null } | { global_status: string | nul
 type AthleteRow = Athlete & {
   primary_sport: { name: string } | null;
   primary_federation: { acronym: string; name: string } | null;
-  current_club: { name: string } | null;
   athlete_kyc: KycEmbed;
 };
 
@@ -87,7 +85,6 @@ const emptyForm: AthleteForm = {
   birth_place: "",
   gender: "male",
   nationality: "LUX",
-  sport_nationality: "",
   email: "",
   phone: "",
   address: "",
@@ -100,14 +97,11 @@ const emptyForm: AthleteForm = {
   photo_url: "",
   primary_sport_id: "",
   primary_federation_id: "",
-  current_club_id: "",
   status: "active",
   level: "",
   size_clothing: "",
   size_shoes: "",
   size_gloves: "",
-  license_number: "",
-  ada_number: "",
   passport_number: "",
   passport_expiry: "",
 };
@@ -131,7 +125,7 @@ function kycBadge(s: string | null | undefined) {
   );
 }
 
-type SortKey = "cosl_id" | "first_name" | "last_name" | "primary_sport" | "primary_federation" | "current_club" | "status" | "level" | "athlete_kyc";
+type SortKey = "cosl_id" | "first_name" | "last_name" | "primary_sport" | "primary_federation" | "status" | "level" | "athlete_kyc";
 
 function AthletesPage() {
   const navigate = useNavigate();
@@ -139,7 +133,6 @@ function AthletesPage() {
   const { items: sports, add: addSport, remove: removeSport } = useSports();
   const { items: levels, add: addLevel, remove: removeLevel } = useAthleteLevels();
   const [federations, setFederations] = useState<Federation[]>([]);
-  const [clubs, setClubs] = useState<Club[]>([]);
   const [disciplines, setDisciplines] = useState<Discipline[]>([]);
   const [athleteDisciplines, setAthleteDisciplines] = useState<Record<string, string[]>>({});
 
@@ -172,7 +165,7 @@ function AthletesPage() {
     const { data, error } = await supabase
       .from("athletes")
       .select(
-        "*, primary_sport:sports!athletes_primary_sport_id_fkey(name), primary_federation:federations!athletes_primary_federation_id_fkey(acronym,name), current_club:clubs!athletes_current_club_id_fkey(name), athlete_kyc(global_status)",
+        "*, primary_sport:sports!athletes_primary_sport_id_fkey(name), primary_federation:federations!athletes_primary_federation_id_fkey(acronym,name), athlete_kyc(global_status)",
       )
       .order("last_name");
     if (error) {
@@ -184,14 +177,12 @@ function AthletesPage() {
   };
 
   const loadRefs = async () => {
-    const [fd, cl, di, ad] = await Promise.all([
+    const [fd, di, ad] = await Promise.all([
       supabase.from("federations").select("*").order("acronym"),
-      supabase.from("clubs").select("*").order("name"),
       supabase.from("disciplines").select("*").order("name"),
       supabase.from("athlete_disciplines").select("athlete_id, discipline_id"),
     ]);
     setFederations((fd.data ?? []) as Federation[]);
-    setClubs((cl.data ?? []) as Club[]);
     setDisciplines((di.data ?? []) as Discipline[]);
     const map: Record<string, string[]> = {};
     ((ad.data ?? []) as { athlete_id: string; discipline_id: string }[]).forEach((r) => {
@@ -236,9 +227,6 @@ function AthletesPage() {
       } else if (sort.key === "primary_federation") {
         av = a.primary_federation?.acronym ?? "";
         bv = b.primary_federation?.acronym ?? "";
-      } else if (sort.key === "current_club") {
-        av = a.current_club?.name ?? "";
-        bv = b.current_club?.name ?? "";
       } else if (sort.key === "athlete_kyc") {
         av = readKyc(a.athlete_kyc);
         bv = readKyc(b.athlete_kyc);
@@ -263,14 +251,6 @@ function AthletesPage() {
   useEffect(() => {
     if (page > pageCount) setPage(1);
   }, [pageCount, page]);
-
-  const clubsForFed = useMemo(
-    () =>
-      form.primary_federation_id
-        ? clubs.filter((c) => c.federation_id === form.primary_federation_id)
-        : clubs,
-    [clubs, form.primary_federation_id],
-  );
 
   const openCreate = () => {
     setEditing(null);
@@ -297,7 +277,6 @@ function AthletesPage() {
       birth_place: a.birth_place ?? "",
       gender: a.gender,
       nationality: a.nationality,
-      sport_nationality: a.sport_nationality ?? "",
       email: a.email ?? "",
       phone: a.phone ?? "",
       address: a.address ?? "",
@@ -310,14 +289,11 @@ function AthletesPage() {
       photo_url: a.photo_url ?? "",
       primary_sport_id: a.primary_sport_id ?? "",
       primary_federation_id: a.primary_federation_id ?? "",
-      current_club_id: a.current_club_id ?? "",
       status: a.status,
       level: a.level ?? "",
       size_clothing: a.size_clothing ?? "",
       size_shoes: a.size_shoes ?? "",
       size_gloves: a.size_gloves ?? "",
-      license_number: a.license_number ?? "",
-      ada_number: a.ada_number ?? "",
       passport_number: a.passport_number ?? "",
       passport_expiry: a.passport_expiry ?? "",
     });
@@ -349,9 +325,6 @@ function AthletesPage() {
       birth_place: v.birth_place || null,
       gender: v.gender,
       nationality: v.nationality.toUpperCase(),
-      sport_nationality: v.sport_nationality
-        ? v.sport_nationality.toUpperCase()
-        : null,
       email: v.email || null,
       phone: v.phone || null,
       address: v.address || null,
@@ -364,14 +337,11 @@ function AthletesPage() {
       photo_url: v.photo_url || null,
       primary_sport_id: v.primary_sport_id || null,
       primary_federation_id: v.primary_federation_id || null,
-      current_club_id: v.current_club_id || null,
       status: v.status,
       level: v.level || null,
       size_clothing: v.size_clothing || null,
       size_shoes: v.size_shoes || null,
       size_gloves: v.size_gloves || null,
-      license_number: v.license_number || null,
-      ada_number: v.ada_number || null,
       passport_number: v.passport_number || null,
       passport_expiry: v.passport_expiry || null,
     };
@@ -594,7 +564,6 @@ function AthletesPage() {
                 <TableHead><SortBtn active={sort.key === "last_name"} dir={sort.dir} onClick={() => toggleSort("last_name")}>Nom</SortBtn></TableHead>
                 <TableHead><SortBtn active={sort.key === "primary_sport"} dir={sort.dir} onClick={() => toggleSort("primary_sport")}>Sport</SortBtn></TableHead>
                 <TableHead><SortBtn active={sort.key === "primary_federation"} dir={sort.dir} onClick={() => toggleSort("primary_federation")}>Fédération</SortBtn></TableHead>
-                <TableHead><SortBtn active={sort.key === "current_club"} dir={sort.dir} onClick={() => toggleSort("current_club")}>Club</SortBtn></TableHead>
                 <TableHead><SortBtn active={sort.key === "status"} dir={sort.dir} onClick={() => toggleSort("status")}>Statut</SortBtn></TableHead>
                 <TableHead><SortBtn active={sort.key === "level"} dir={sort.dir} onClick={() => toggleSort("level")}>Niveau</SortBtn></TableHead>
                 <TableHead><SortBtn active={sort.key === "athlete_kyc"} dir={sort.dir} onClick={() => toggleSort("athlete_kyc")}>KYC</SortBtn></TableHead>
@@ -634,9 +603,6 @@ function AthletesPage() {
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {a.primary_federation?.acronym ?? "—"}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {a.current_club?.name ?? "—"}
                     </TableCell>
                     <TableCell>
                       {statusBadge(a.status)}
@@ -750,17 +716,6 @@ function AthletesPage() {
                     />
                     {fieldErr("nationality")}
                   </div>
-                  <div className="space-y-1.5">
-                    <Label>Nationalité sportive</Label>
-                    <Input
-                      value={form.sport_nationality ?? ""}
-                      onChange={(e) =>
-                        setForm({ ...form, sport_nationality: e.target.value })
-                      }
-                      placeholder="LUX"
-                    />
-                    {fieldErr("sport_nationality")}
-                  </div>
                   {!editing && (
                     <div className="space-y-1.5">
                       <Label>Photo officielle</Label>
@@ -818,7 +773,6 @@ function AthletesPage() {
                         setForm({
                           ...form,
                           primary_federation_id: v === ALL ? "" : v,
-                          current_club_id: "",
                         })
                       }
                     >
@@ -829,23 +783,6 @@ function AthletesPage() {
                           <SelectItem key={f.id} value={f.id}>
                             {f.acronym} — {f.name}
                           </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Club</Label>
-                    <Select
-                      value={form.current_club_id || ALL}
-                      onValueChange={(v) =>
-                        setForm({ ...form, current_club_id: v === ALL ? "" : v })
-                      }
-                    >
-                      <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={ALL}>—</SelectItem>
-                        {clubsForFed.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -991,22 +928,6 @@ function AthletesPage() {
               <section className="space-y-3">
                 <h3 className="text-sm font-semibold text-foreground">Identifiants externes</h3>
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <Label>N° de licence</Label>
-                    <Input
-                      value={form.license_number ?? ""}
-                      onChange={(e) =>
-                        setForm({ ...form, license_number: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>N° ADAMS / antidopage</Label>
-                    <Input
-                      value={form.ada_number ?? ""}
-                      onChange={(e) => setForm({ ...form, ada_number: e.target.value })}
-                    />
-                  </div>
                   <div className="space-y-1.5">
                     <Label>N° de passeport</Label>
                     <Input

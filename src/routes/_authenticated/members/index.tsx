@@ -1,27 +1,15 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Search, UserRound, Building2, Shield, Upload, ChevronDown } from "lucide-react";
-import { toast } from "sonner";
+import { Search, UserRound, Building2, Upload } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { friendlyError } from "@/lib/error-messages";
 import {
-  CLUB_MEMBER_ROLES,
   FEDERATION_MEMBER_ROLES,
-  type Club,
-  type ClubMember,
   type Federation,
   type FederationMember,
 } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -33,49 +21,33 @@ import {
 import { EmptyState, SortBtn } from "@/components/DataTableShell";
 import { AddPersonButton } from "@/components/persons/AddPersonButton";
 import { CsvImportDialog } from "@/components/CsvImportDialog";
-import { federationMembersImportConfig, clubMembersImportConfig } from "@/lib/csv-import-configs";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { federationMembersImportConfig } from "@/lib/csv-import-configs";
 
 export const Route = createFileRoute("/_authenticated/members/")({
   component: MembersPage,
 });
 
-type Row =
-  | { kind: "fed"; data: FederationMember; orgId: string; orgLabel: string }
-  | { kind: "club"; data: ClubMember; orgId: string; orgLabel: string };
+type Row = { kind: "fed"; data: FederationMember; orgId: string; orgLabel: string };
 
 function MembersPage() {
   const navigate = useNavigate();
   const [feds, setFeds] = useState<Federation[]>([]);
-  const [clubs, setClubs] = useState<Club[]>([]);
   const [fedMembers, setFedMembers] = useState<FederationMember[]>([]);
-  const [clubMembers, setClubMembers] = useState<ClubMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
-  const [scope, setScope] = useState<"all" | "fed" | "club">("all");
   const [sort, setSort] = useState<{ key: "last_name" | "first_name" | "role" | "email" | "phone" | "is_active"; dir: "asc" | "desc" }>({
     key: "last_name",
     dir: "asc",
   });
   const [importOpen, setImportOpen] = useState(false);
-  const [importType, setImportType] = useState<"fed" | "club">("fed");
 
   const load = async () => {
-    const [f, c, fm, cm] = await Promise.all([
+    const [f, fm] = await Promise.all([
       supabase.from("federations").select("*"),
-      supabase.from("clubs").select("*"),
       supabase.from("federation_members").select("*").order("last_name"),
-      supabase.from("club_members").select("*").order("last_name"),
     ]);
     setFeds((f.data ?? []) as Federation[]);
-    setClubs((c.data ?? []) as Club[]);
     setFedMembers((fm.data ?? []) as FederationMember[]);
-    setClubMembers((cm.data ?? []) as ClubMember[]);
     setLoading(false);
   };
 
@@ -85,29 +57,15 @@ function MembersPage() {
 
   const rows: Row[] = useMemo(() => {
     const fedMap = new Map(feds.map((f) => [f.id, f]));
-    const clubMap = new Map(clubs.map((c) => [c.id, c]));
     const out: Row[] = [];
-    if (scope !== "club") {
-      for (const m of fedMembers) {
-        const f = fedMap.get(m.federation_id);
-        out.push({
-          kind: "fed",
-          data: m,
-          orgId: m.federation_id,
-          orgLabel: f ? `${f.acronym} — ${f.name}` : "—",
-        });
-      }
-    }
-    if (scope !== "fed") {
-      for (const m of clubMembers) {
-        const c = clubMap.get(m.club_id);
-        out.push({
-          kind: "club",
-          data: m,
-          orgId: m.club_id,
-          orgLabel: c?.name ?? "—",
-        });
-      }
+    for (const m of fedMembers) {
+      const f = fedMap.get(m.federation_id);
+      out.push({
+        kind: "fed",
+        data: m,
+        orgId: m.federation_id,
+        orgLabel: f ? `${f.acronym} — ${f.name}` : "—",
+      });
     }
     const needle = q.trim().toLowerCase();
     const filtered = needle
@@ -126,17 +84,12 @@ function MembersPage() {
       const cmp = av.localeCompare(bv);
       return sort.dir === "asc" ? cmp : -cmp;
     });
-  }, [feds, clubs, fedMembers, clubMembers, scope, q, sort]);
+  }, [feds, fedMembers, q, sort]);
 
   const toggleSort = (key: "last_name" | "first_name" | "role" | "email" | "phone" | "is_active") =>
     setSort((s) =>
       s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" },
     );
-
-  const roleLabel = (kind: "fed" | "club", v: string) =>
-    (kind === "fed" ? FEDERATION_MEMBER_ROLES : CLUB_MEMBER_ROLES).find(
-      (r) => r.value === v,
-    )?.label ?? v;
 
   return (
     <div className="space-y-6">
@@ -148,27 +101,14 @@ function MembersPage() {
           <div>
             <h1 className="text-2xl font-semibold text-foreground">Membres</h1>
             <p className="text-sm text-muted-foreground">
-              Membres des bureaux des fédérations et clubs.
+              Membres des bureaux des fédérations.
             </p>
           </div>
         </div>
         <div className="flex gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline">
-                <Upload className="mr-2 h-4 w-4" /> Importer
-                <ChevronDown className="ml-1 h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => { setImportType("fed"); setImportOpen(true); }}>
-                <Building2 className="mr-2 h-4 w-4" /> Membres de fédération
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { setImportType("club"); setImportOpen(true); }}>
-                <Shield className="mr-2 h-4 w-4" /> Membres de club
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <Upload className="mr-2 h-4 w-4" /> Importer
+          </Button>
           <AddPersonButton
             role="federation_member"
             label="Ajouter un membre"
@@ -183,20 +123,10 @@ function MembersPage() {
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Rechercher un membre, email, organisation…"
+            placeholder="Rechercher un membre, email, fédération…"
             className="pl-9"
           />
         </div>
-        <Select value={scope} onValueChange={(v) => setScope(v as typeof scope)}>
-          <SelectTrigger className="w-44">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Toutes organisations</SelectItem>
-            <SelectItem value="fed">Fédérations</SelectItem>
-            <SelectItem value="club">Clubs</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
 
       <div className="rounded-lg border border-border bg-card">
@@ -212,7 +142,7 @@ function MembersPage() {
               <TableRow>
                 <TableHead><SortBtn active={sort.key === "last_name"} dir={sort.dir} onClick={() => toggleSort("last_name")}>Nom</SortBtn></TableHead>
                 <TableHead><SortBtn active={sort.key === "role"} dir={sort.dir} onClick={() => toggleSort("role")}>Fonction</SortBtn></TableHead>
-                <TableHead>Organisation</TableHead>
+                <TableHead>Fédération</TableHead>
                 <TableHead><SortBtn active={sort.key === "email"} dir={sort.dir} onClick={() => toggleSort("email")}>Email</SortBtn></TableHead>
                 <TableHead><SortBtn active={sort.key === "phone"} dir={sort.dir} onClick={() => toggleSort("phone")}>Téléphone</SortBtn></TableHead>
                 <TableHead><SortBtn active={sort.key === "is_active"} dir={sort.dir} onClick={() => toggleSort("is_active")}>Statut</SortBtn></TableHead>
@@ -221,14 +151,10 @@ function MembersPage() {
             <TableBody>
               {rows.map((r) => {
                 const m = r.data;
-                const to =
-                  r.kind === "fed"
-                    ? "/federations/members/$memberId"
-                    : "/clubs/members/$memberId";
                 return (
                   <TableRow
-                    key={`${r.kind}:${m.id}`}
-                    onClick={() => navigate({ to, params: { memberId: m.id } })}
+                    key={`fed:${m.id}`}
+                    onClick={() => navigate({ to: "/federations/members/$memberId", params: { memberId: m.id } })}
                     className="cursor-pointer hover:bg-muted"
                   >
                     <TableCell className="font-medium">
@@ -253,20 +179,18 @@ function MembersPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">{roleLabel(r.kind, m.role)}</Badge>
+                      <Badge variant="outline">
+                        {FEDERATION_MEMBER_ROLES.find((rl) => rl.value === m.role)?.label ?? m.role}
+                      </Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       <Link
-                        to={r.kind === "fed" ? "/federations/$id" : "/clubs/$id"}
+                        to="/federations/$id"
                         params={{ id: r.orgId }}
                         onClick={(e) => e.stopPropagation()}
                         className="inline-flex items-center gap-1.5 hover:underline"
                       >
-                        {r.kind === "fed" ? (
-                          <Building2 className="h-3.5 w-3.5" />
-                        ) : (
-                          <Shield className="h-3.5 w-3.5" />
-                        )}
+                        <Building2 className="h-3.5 w-3.5" />
                         {r.orgLabel}
                       </Link>
                     </TableCell>
@@ -295,7 +219,7 @@ function MembersPage() {
       <CsvImportDialog
         open={importOpen}
         onOpenChange={setImportOpen}
-        config={importType === "fed" ? federationMembersImportConfig : clubMembersImportConfig}
+        config={federationMembersImportConfig}
         onImported={() => load()}
       />
     </div>

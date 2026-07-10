@@ -31,9 +31,9 @@ export const Route = createFileRoute("/_authenticated/games/$id/selections")({
 });
 
 const SELECTION_STATUSES: { value: string; label: string; cls: string }[] = [
-  { value: "pre_selected", label: "Pré-sélectionné", cls: "bg-amber-100 text-amber-700" },
-  { value: "selected", label: "Sélectionné", cls: "bg-emerald-100 text-emerald-700" },
-  { value: "reserve", label: "Réserviste", cls: "bg-sky-100 text-sky-700" },
+  { value: "pre_selected", label: "Long List", cls: "bg-amber-100 text-amber-700" },
+  { value: "selected", label: "Short List", cls: "bg-emerald-100 text-emerald-700" },
+  { value: "reserve", label: "Réserve", cls: "bg-sky-100 text-sky-700" },
   { value: "rejected", label: "Refusé", cls: "bg-red-100 text-red-700" },
 ];
 
@@ -220,7 +220,7 @@ function SelectionsPage() {
       toast.error("Échec", { description: friendlyError(error) });
       return;
     }
-    toast.success(editingId ? "Sélection mise à jour" : "Athlète pré-sélectionné");
+    toast.success(editingId ? "Sélection mise à jour" : "Athlète ajouté en Long List");
     setOpen(false);
     setEditingId(null);
     setForm({ athlete_id: "", sport_id: "", discipline_id: "", game_competition_id: "" });

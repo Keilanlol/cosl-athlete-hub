@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   Users,
-  Shield,
   UserCog,
   Mail,
   Phone,
@@ -17,7 +16,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import type { Athlete, Club, Coach, Federation, FederationMember, Sport } from "@/lib/types";
+import type { Athlete, Coach, Federation, FederationMember, Sport } from "@/lib/types";
 import { ATHLETE_STATUSES, COACH_ROLES, FEDERATION_MEMBER_ROLES } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -62,9 +61,7 @@ export const Route = createFileRoute("/_authenticated/federations/$id")({
 
 type AthleteRow = Athlete & {
   primary_sport?: { name: string } | null;
-  current_club?: { id: string; name: string } | null;
 };
-
 function statusBadge(s: string) {
   const m = ATHLETE_STATUSES.find((x) => x.value === s);
   return <Badge className={`${m?.cls ?? ""} hover:${m?.cls ?? ""}`}>{m?.label ?? s}</Badge>;
@@ -101,18 +98,6 @@ function StatPill({
   );
 }
 
-// ---------- Club form ----------
-const emptyClub = {
-  name: "",
-  city: "",
-  address: "",
-  street: "",
-  postcode: "",
-  country: "",
-  email: "",
-  phone: "",
-};
-
 // ---------- Member form ----------
 const emptyMember = {
   first_name: "",
@@ -135,7 +120,6 @@ function FederationDetailPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const [fed, setFed] = useState<Federation | null>(null);
-  const [clubs, setClubs] = useState<Club[]>([]);
   const [coaches, setCoaches] = useState<Coach[]>([]);
   const [athletes, setAthletes] = useState<AthleteRow[]>([]);
   const [members, setMembers] = useState<FederationMember[]>([]);
@@ -143,16 +127,9 @@ function FederationDetailPage() {
 
   const [loading, setLoading] = useState(true);
 
-  const [clubSearch, setClubSearch] = useState("");
   const [athleteSearch, setAthleteSearch] = useState("");
   const [memberSearch, setMemberSearch] = useState("");
   const [coachSearch, setCoachSearch] = useState("");
-
-  // Club dialog
-  const [clubOpen, setClubOpen] = useState(false);
-  const [editingClub, setEditingClub] = useState<Club | null>(null);
-  const [clubForm, setClubForm] = useState(emptyClub);
-  const [clubSaving, setClubSaving] = useState(false);
 
   // Member dialog (edit only)
   const [memberOpen, setMemberOpen] = useState(false);
@@ -167,9 +144,8 @@ function FederationDetailPage() {
   const load = async () => {
     setLoading(true);
     // First load federation + clubs to know which clubs belong
-    const [f, c, sp, m] = await Promise.all([
+    const [f, sp, m] = await Promise.all([
       supabase.from("federations").select("*").eq("id", id).maybeSingle(),
-      supabase.from("clubs").select("*").eq("federation_id", id).order("name"),
       supabase.from("sports").select("*"),
       supabase
         .from("federation_members")
@@ -179,33 +155,22 @@ function FederationDetailPage() {
     ]);
     if (f.error) toast.error("Erreur de chargement", { description: f.error.message });
     setFed((f.data ?? null) as Federation | null);
-    const clubsData = (c.data ?? []) as Club[];
-    setClubs(clubsData);
     setSports((sp.data ?? []) as Sport[]);
     setMembers((m.data ?? []) as FederationMember[]);
 
-    const clubIds = clubsData.map((cl) => cl.id);
-    // Athletes: those rattached to fed OR member of one of its clubs
+    // Athletes: those rattached to fed
     const athletesQuery = supabase
       .from("athletes")
       .select(
-        "*, primary_sport:sports!athletes_primary_sport_id_fkey(name), current_club:clubs!athletes_current_club_id_fkey(id,name)",
+        "*, primary_sport:sports!athletes_primary_sport_id_fkey(name)",
       )
       .eq("is_active", true)
       .order("last_name");
-    if (clubIds.length > 0) {
-      athletesQuery.or(`primary_federation_id.eq.${id},current_club_id.in.(${clubIds.join(",")})`);
-    } else {
-      athletesQuery.eq("primary_federation_id", id);
-    }
+    athletesQuery.eq("primary_federation_id", id);
 
-    // Coaches: those of the fed OR of one of its clubs
+    // Coaches: those of the fed
     const coachesQuery = supabase.from("coaches").select("*").order("last_name");
-    if (clubIds.length > 0) {
-      coachesQuery.or(`federation_id.eq.${id},club_id.in.(${clubIds.join(",")})`);
-    } else {
-      coachesQuery.eq("federation_id", id);
-    }
+    coachesQuery.eq("federation_id", id);
 
     const [a, co] = await Promise.all([
       athletesQuery,
@@ -221,12 +186,6 @@ function FederationDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  const clubMap = useMemo(() => {
-    const m = new Map<string, Club>();
-    clubs.forEach((c) => m.set(c.id, c));
-    return m;
-  }, [clubs]);
-
   const stats = useMemo(() => {
     const active = athletes.filter((a) => a.status === "active").length;
     const sportCounts = new Map<string, number>();
@@ -235,28 +194,19 @@ function FederationDetailPage() {
       sportCounts.set(n, (sportCounts.get(n) ?? 0) + 1);
     });
     return {
-      clubs: clubs.length,
       coaches: coaches.length,
       athletes: athletes.length,
       members: members.length,
       active,
       sportCounts: Array.from(sportCounts.entries()).sort((a, b) => b[1] - a[1]),
     };
-  }, [clubs, coaches, athletes, members]);
-
-  const visibleClubs = useMemo(() => {
-    const q = clubSearch.trim().toLowerCase();
-    if (!q) return clubs;
-    return clubs.filter((c) =>
-      `${c.name} ${c.city ?? ""} ${c.email ?? ""} ${c.phone ?? ""}`.toLowerCase().includes(q),
-    );
-  }, [clubs, clubSearch]);
+  }, [coaches, athletes, members]);
 
   const visibleAthletes = useMemo(() => {
     const q = athleteSearch.trim().toLowerCase();
     if (!q) return athletes;
     return athletes.filter((a) =>
-      `${a.first_name} ${a.last_name} ${a.cosl_id ?? ""} ${a.primary_sport?.name ?? ""} ${a.current_club?.name ?? ""}`
+      `${a.first_name} ${a.last_name} ${a.cosl_id ?? ""} ${a.primary_sport?.name ?? ""}`
         .toLowerCase()
         .includes(q),
     );
@@ -277,88 +227,11 @@ function FederationDetailPage() {
     if (!q) return coaches;
     return coaches.filter((c) => {
       const role = COACH_ROLES.find((r) => r.value === c.role)?.label ?? c.role;
-      const club = c.club_id ? clubMap.get(c.club_id) : null;
-      return `${c.first_name} ${c.last_name} ${c.email ?? ""} ${c.phone ?? ""} ${role} ${club?.name ?? ""}`
+      return `${c.first_name} ${c.last_name} ${c.email ?? ""} ${c.phone ?? ""} ${role}`
         .toLowerCase()
         .includes(q);
     });
-  }, [coaches, coachSearch, clubMap]);
-
-  // ---------- Club CRUD ----------
-  const openCreateClub = () => {
-    setEditingClub(null);
-    setClubForm(emptyClub);
-    setClubOpen(true);
-  };
-  const openEditClub = (c: Club) => {
-    setEditingClub(c);
-    setClubForm({
-      name: c.name,
-      city: c.city ?? "",
-      address: c.address ?? "",
-      street: c.street ?? c.address ?? "",
-      postcode: c.postcode ?? "",
-      country: c.country ?? "",
-      email: c.email ?? "",
-      phone: c.phone ?? "",
-    });
-    setClubOpen(true);
-  };
-  const submitClub = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!clubForm.name.trim()) {
-      toast.error("Nom requis");
-      return;
-    }
-    setClubSaving(true);
-    const street = clubForm.street.trim();
-    const city = clubForm.city.trim();
-    const postcode = clubForm.postcode.trim();
-    const country = clubForm.country.trim();
-    const fullAddress =
-      [street, [postcode, city].filter(Boolean).join(" "), country].filter(Boolean).join(", ") ||
-      clubForm.address.trim();
-    const payload = {
-      name: clubForm.name.trim(),
-      federation_id: id,
-      city: city || null,
-      address: fullAddress || null,
-      street: street || null,
-      postcode: postcode || null,
-      country: country || null,
-      email: clubForm.email.trim() || null,
-      phone: clubForm.phone.trim() || null,
-    };
-    const { error } = editingClub
-      ? await supabase.from("clubs").update(payload).eq("id", editingClub.id)
-      : await supabase.from("clubs").insert(payload);
-
-    setClubSaving(false);
-    if (error) {
-      toast.error("Échec de l'enregistrement", { description: friendlyError(error) });
-      return;
-    }
-    toast.success(editingClub ? "Club modifié" : "Club ajouté");
-    setClubOpen(false);
-    load();
-  };
-  const removeClub = async (c: Club) => {
-    const ok = await confirmAction({
-      title: `Retirer ${c.name} ?`,
-      description:
-        "Le club sera retiré de cette fédération. Le club reste existant mais sans fédération.",
-      confirmLabel: "Retirer",
-      destructive: true,
-    });
-    if (!ok) return;
-    const { error } = await supabase.from("clubs").update({ federation_id: null }).eq("id", c.id);
-    if (error) {
-      toast.error("Échec du retrait", { description: friendlyError(error) });
-    } else {
-      toast.success("Club retiré de la fédération");
-      load();
-    }
-  };
+  }, [coaches, coachSearch]);
 
   // ---------- Member CRUD (edit only) ----------
   const openEditMember = (m: FederationMember) => {
@@ -540,7 +413,6 @@ function FederationDetailPage() {
         </div>
 
         <div className="mt-5 pt-5 border-t border-slate-100 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <StatPill icon={Shield} label="Clubs" value={stats.clubs} />
           <StatPill
             icon={Users}
             label="Adhérents"
@@ -572,89 +444,10 @@ function FederationDetailPage() {
 
       <Tabs defaultValue="clubs">
         <TabsList>
-          <TabsTrigger value="clubs">Clubs ({clubs.length})</TabsTrigger>
           <TabsTrigger value="athletes">Adhérents ({athletes.length})</TabsTrigger>
           <TabsTrigger value="members">Membres ({members.length})</TabsTrigger>
           <TabsTrigger value="coaches">Encadrants ({coaches.length})</TabsTrigger>
         </TabsList>
-
-        {/* ============ CLUBS ============ */}
-        <TabsContent value="clubs" className="mt-4 space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="relative min-w-[220px] flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Nom, ville, email, téléphone…"
-                value={clubSearch}
-                onChange={(e) => setClubSearch(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <Button onClick={openCreateClub} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
-              <Plus className="mr-2 h-4 w-4" /> Ajouter un club
-            </Button>
-          </div>
-          <div className="rounded-lg border border-border bg-card">
-            {visibleClubs.length === 0 ? (
-              <div className="p-6">
-                <EmptyState message="Aucun club affilié." />
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nom</TableHead>
-                    <TableHead>Ville</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Téléphone</TableHead>
-                    <TableHead className="text-right">Adhérents</TableHead>
-                    <TableHead className="w-24 text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {visibleClubs.map((c) => {
-                    const n = athletes.filter((a) => a.current_club?.id === c.id).length;
-                    return (
-                      <TableRow
-                        key={c.id}
-                        onClick={() => navigate({ to: "/clubs/$id", params: { id: c.id } })}
-                        className="cursor-pointer hover:bg-muted"
-                      >
-                        <TableCell className="font-medium text-[var(--lux-blue)]">
-                          {c.name}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">{c.city ?? "—"}</TableCell>
-                        <TableCell className="text-muted-foreground">{c.email ?? "—"}</TableCell>
-                        <TableCell className="text-muted-foreground">{c.phone ?? "—"}</TableCell>
-                        <TableCell className="text-right">
-                          <Badge variant="outline">{n}</Badge>
-                        </TableCell>
-                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openEditClub(c)}
-                            aria-label="Modifier"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removeClub(c)}
-                            aria-label="Retirer"
-                          >
-                            <Trash2 className="h-4 w-4 text-red-600" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            )}
-          </div>
-        </TabsContent>
 
         {/* ============ ATHLETES (Adhérents) ============ */}
         <TabsContent value="athletes" className="mt-4 space-y-3">
@@ -678,7 +471,6 @@ function FederationDetailPage() {
                   <TableRow>
                     <TableHead>Nom</TableHead>
                     <TableHead>Sport</TableHead>
-                    <TableHead>Club</TableHead>
                     <TableHead>Statut</TableHead>
                     <TableHead>COSL ID</TableHead>
                   </TableRow>
@@ -695,9 +487,6 @@ function FederationDetailPage() {
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {a.primary_sport?.name ?? "—"}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {a.current_club?.name ?? "—"}
                       </TableCell>
                       <TableCell>{statusBadge(a.status)}</TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">
@@ -863,7 +652,6 @@ function FederationDetailPage() {
                   <TableRow>
                     <TableHead>Nom</TableHead>
                     <TableHead>Rôle</TableHead>
-                    <TableHead>Club</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Téléphone</TableHead>
                     <TableHead>Statut</TableHead>
@@ -872,7 +660,6 @@ function FederationDetailPage() {
                 <TableBody>
                   {visibleCoaches.map((c) => {
                     const role = COACH_ROLES.find((r) => r.value === c.role)?.label ?? c.role;
-                    const club = c.club_id ? clubMap.get(c.club_id) : null;
                     return (
                       <TableRow
                         key={c.id}
@@ -883,22 +670,6 @@ function FederationDetailPage() {
                           {c.first_name} {c.last_name}
                         </TableCell>
                         <TableCell className="text-muted-foreground">{role}</TableCell>
-                        <TableCell
-                          className="text-muted-foreground"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {club ? (
-                            <Link
-                              to="/clubs/$id"
-                              params={{ id: club.id }}
-                              className="hover:underline"
-                            >
-                              {club.name}
-                            </Link>
-                          ) : (
-                            "—"
-                          )}
-                        </TableCell>
                         <TableCell className="text-muted-foreground">{c.email ?? "—"}</TableCell>
                         <TableCell className="text-muted-foreground">{c.phone ?? "—"}</TableCell>
                         <TableCell>
@@ -919,111 +690,6 @@ function FederationDetailPage() {
           </div>
         </TabsContent>
       </Tabs>
-
-      {/* ============ Club dialog ============ */}
-      <Dialog open={clubOpen} onOpenChange={setClubOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <form onSubmit={submitClub}>
-            <DialogHeader>
-              <DialogTitle>{editingClub ? "Modifier le club" : "Ajouter un club"}</DialogTitle>
-              <DialogDescription>
-                Le club sera rattaché à la fédération {fed.acronym}.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="fcname">Nom *</Label>
-                <Input
-                  id="fcname"
-                  value={clubForm.name}
-                  onChange={(e) => setClubForm({ ...clubForm, name: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="fcstreet">Adresse (numéro + rue)</Label>
-                <AddressSearch
-                  id="fcstreet"
-                  value={clubForm.street}
-                  onChange={(v) => setClubForm({ ...clubForm, street: v })}
-                  onSelect={(r) =>
-                    setClubForm((f) => ({
-                      ...f,
-                      street: r.street || f.street,
-                      city: r.city || f.city,
-                      postcode: r.postcode || f.postcode,
-                      country: r.country || f.country,
-                    }))
-                  }
-                  placeholder="Rue, ville, pays…"
-                />
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="fcpostcode">Code postal</Label>
-                  <Input
-                    id="fcpostcode"
-                    value={clubForm.postcode}
-                    onChange={(e) => setClubForm({ ...clubForm, postcode: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="fccity2">Ville</Label>
-                  <Input
-                    id="fccity2"
-                    value={clubForm.city}
-                    onChange={(e) => setClubForm({ ...clubForm, city: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="fccountry">Pays</Label>
-                  <Input
-                    id="fccountry"
-                    value={clubForm.country}
-                    onChange={(e) => setClubForm({ ...clubForm, country: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="fcphone">Téléphone</Label>
-                  <Input
-                    id="fcphone"
-                    value={clubForm.phone}
-                    onChange={(e) => setClubForm({ ...clubForm, phone: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="fcemail">Email</Label>
-                  <Input
-                    id="fcemail"
-                    type="email"
-                    value={clubForm.email}
-                    onChange={(e) => setClubForm({ ...clubForm, email: e.target.value })}
-                  />
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setClubOpen(false)}
-                disabled={clubSaving}
-              >
-                Annuler
-              </Button>
-              <Button
-                type="submit"
-                disabled={clubSaving}
-                className="bg-primary hover:bg-[var(--cosl-red-dark)]"
-              >
-                {clubSaving ? "Enregistrement…" : editingClub ? "Enregistrer" : "Ajouter"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
 
       {/* ============ Member dialog (edit only) ============ */}
       <Dialog open={memberOpen} onOpenChange={setMemberOpen}>

@@ -32,10 +32,9 @@ type Props = {
   title?: string;
   onChanged?: (personId: string) => void;
   presetFederationId?: string;
-  presetClubId?: string;
 };
 
-export function AddPersonButton({ role, label, title, onChanged, presetFederationId, presetClubId }: Props) {
+export function AddPersonButton({ role, label, title, onChanged, presetFederationId }: Props) {
   const [open, setOpen] = useState(false);
   const [persons, setPersons] = useState<PersonLite[]>([]);
   const [selectedId, setSelectedId] = useState("");
@@ -156,7 +155,6 @@ export function AddPersonButton({ role, label, title, onChanged, presetFederatio
             onChanged?.(id);
           }}
           presetFederationId={presetFederationId}
-          presetClubId={presetClubId}
         />
       )}
     </>

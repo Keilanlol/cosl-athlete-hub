@@ -11,7 +11,6 @@ import {
   personFullName,
   defaultPersonGeneral,
   type AthleteProfile,
-  type ClubMemberProfile,
   type CoachProfile,
   type FederationMemberProfile,
   type Person,
@@ -46,7 +45,6 @@ type PersonBundle = {
   athlete_profile: AthleteProfile | null;
   coach_profiles: CoachProfile[];
   federation_member_profiles: FederationMemberProfile[];
-  club_member_profiles: ClubMemberProfile[];
   clubs: Record<string, string>;
   federations: Record<string, string>;
 };
@@ -68,7 +66,7 @@ function PersonDetailPage() {
   const [editIsActive, setEditIsActive] = useState(true);
 
   const load = async () => {
-    const [pRes, rRes, apRes, cpRes, fmRes, cmRes] = await Promise.all([
+    const [pRes, rRes, apRes, cpRes, fmRes] = await Promise.all([
       supabase.from("persons").select("*").eq("id", personId).maybeSingle(),
       supabase
         .from("person_roles")
@@ -85,7 +83,6 @@ function PersonDetailPage() {
         .from("federation_member_profiles")
         .select("*")
         .eq("person_id", personId),
-      supabase.from("club_member_profiles").select("*").eq("person_id", personId),
     ]);
 
     if (pRes.error || !pRes.data) {
@@ -96,17 +93,7 @@ function PersonDetailPage() {
     const athleteProfile = (apRes.data as AthleteProfile | null) ?? null;
     const coachProfiles = (cpRes.data ?? []) as CoachProfile[];
     const fmProfiles = (fmRes.data ?? []) as FederationMemberProfile[];
-    const cmProfiles = (cmRes.data ?? []) as ClubMemberProfile[];
 
-    const clubIds = Array.from(
-      new Set(
-        [
-          athleteProfile?.current_club_id,
-          ...coachProfiles.map((c) => c.club_id),
-          ...cmProfiles.map((c) => c.club_id),
-        ].filter((x): x is string => !!x),
-      ),
-    );
     const fedIds = Array.from(
       new Set(
         [
@@ -117,17 +104,11 @@ function PersonDetailPage() {
       ),
     );
 
-    const [clubsRes, fedsRes] = await Promise.all([
-      clubIds.length
-        ? supabase.from("clubs").select("id,name").in("id", clubIds)
-        : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+    const [fedsRes] = await Promise.all([
       fedIds.length
         ? supabase.from("federations").select("id,name").in("id", fedIds)
         : Promise.resolve({ data: [] as { id: string; name: string }[] }),
     ]);
-    const clubsMap = Object.fromEntries(
-      ((clubsRes.data ?? []) as { id: string; name: string }[]).map((c) => [c.id, c.name]),
-    );
     const fedsMap = Object.fromEntries(
       ((fedsRes.data ?? []) as { id: string; name: string }[]).map((f) => [f.id, f.name]),
     );
@@ -138,8 +119,7 @@ function PersonDetailPage() {
       athlete_profile: athleteProfile,
       coach_profiles: coachProfiles,
       federation_member_profiles: fmProfiles,
-      club_member_profiles: cmProfiles,
-      clubs: clubsMap,
+      clubs: {},
       federations: fedsMap,
     });
   };
@@ -286,26 +266,6 @@ function PersonDetailPage() {
           .delete()
           .eq("person_id", personId);
         if (fpe) throw fpe;
-      } else if (r === "club_member") {
-        const { data: cms } = await supabase
-          .from("club_member_profiles")
-          .select("legacy_club_member_id")
-          .eq("person_id", personId);
-        const ids = ((cms ?? []) as { legacy_club_member_id?: string }[])
-          .map((x) => x.legacy_club_member_id)
-          .filter((x): x is string => !!x);
-        if (ids.length > 0) {
-          const { error: de } = await supabase
-            .from("club_members")
-            .delete()
-            .in("id", ids);
-          if (de) throw de;
-        }
-        const { error: cpe } = await supabase
-          .from("club_member_profiles")
-          .delete()
-          .eq("person_id", personId);
-        if (cpe) throw cpe;
       }
 
       const { error: pre } = await supabase
@@ -482,15 +442,13 @@ function PersonDetailPage() {
                 icon={<Trophy className="h-4 w-4" />}
                 role="athlete"
                 title={
-                  bundle.athlete_profile.current_club_id
-                    ? bundle.clubs[bundle.athlete_profile.current_club_id] ?? "Club inconnu"
+                  bundle.athlete_profile.primary_federation_id
+                    ? bundle.federations[bundle.athlete_profile.primary_federation_id] ?? "Athlète"
                     : "Athlète indépendant"
                 }
                 subtitle={[
                   bundle.athlete_profile.status,
                   bundle.athlete_profile.level && `Niveau ${bundle.athlete_profile.level}`,
-                  bundle.athlete_profile.license_number &&
-                    `Licence ${bundle.athlete_profile.license_number}`,
                   bundle.athlete_profile.primary_federation_id &&
                     bundle.federations[bundle.athlete_profile.primary_federation_id],
                 ]
@@ -510,13 +468,11 @@ function PersonDetailPage() {
                 icon={<Shield className="h-4 w-4" />}
                 role="coach"
                 title={
-                  (p.club_id && bundle.clubs[p.club_id]) ||
                   (p.federation_id && bundle.federations[p.federation_id]) ||
                   "Encadrant"
                 }
                 subtitle={[
                   p.role,
-                  p.club_id && bundle.clubs[p.club_id] ? `Club : ${bundle.clubs[p.club_id]}` : null,
                   p.federation_id && bundle.federations[p.federation_id]
                     ? `Fédération : ${bundle.federations[p.federation_id]}`
                     : null,
@@ -553,33 +509,6 @@ function PersonDetailPage() {
                     ? {
                         to: "/federations/members/$memberId",
                         params: { memberId: p.legacy_federation_member_id },
-                      }
-                    : null
-                }
-              />
-            ))}
-
-            {bundle.club_member_profiles.map((p) => (
-              <RoleListItem
-                key={p.id}
-                icon={<Users className="h-4 w-4" />}
-                role="club_member"
-                title={bundle.clubs[p.club_id] ?? "Club"}
-                subtitle={[
-                  p.role,
-                  p.start_date &&
-                    `Depuis ${new Date(p.start_date).toLocaleDateString("fr-FR")}`,
-                  p.end_date &&
-                    `Jusqu'au ${new Date(p.end_date).toLocaleDateString("fr-FR")}`,
-                  p.is_active ? "Actif" : "Inactif",
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-                to={
-                  p.legacy_club_member_id
-                    ? {
-                        to: "/clubs/members/$memberId",
-                        params: { memberId: p.legacy_club_member_id },
                       }
                     : null
                 }

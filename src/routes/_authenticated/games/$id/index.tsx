@@ -388,7 +388,6 @@ function GameOverviewPage() {
       <TabsList>
         <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
         <TabsTrigger value="sports">Sports & Disciplines</TabsTrigger>
-        <TabsTrigger value="quotas">Quotas</TabsTrigger>
       </TabsList>
 
       {/* Overview */}
@@ -406,7 +405,6 @@ function GameOverviewPage() {
             <Info label="Organisateur" value={game.organizer} />
             <Info label="Pays hôte" value={game.host_country} />
             <Info label="Ville hôte" value={game.host_city} />
-            <Info label="Préparation depuis" value={game.preparation_start} />
             <Info label="Clôture" value={game.closing_date} />
             <Info label="Fuseau" value={game.timezone} />
             <Info label="Édition" value={String(game.edition_year)} />

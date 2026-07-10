@@ -466,11 +466,7 @@ function GamesListPage() {
                   <Input id="organizer" value={form.organizer} onChange={(e) => setForm({ ...form, organizer: e.target.value })} />
                 </div>
               </div>
-              <div className="grid grid-cols-4 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="preparation_start">Préparation</Label>
-                  <Input id="preparation_start" type="date" value={form.preparation_start} onChange={(e) => setForm({ ...form, preparation_start: e.target.value })} />
-                </div>
+              <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="competition_start">Début compét. *</Label>
                   <Input id="competition_start" type="date" value={form.competition_start} onChange={(e) => setForm({ ...form, competition_start: e.target.value })} required />

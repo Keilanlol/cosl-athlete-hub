@@ -11,13 +11,11 @@ import {
   defaultAthleteProfile,
   defaultCoachProfile,
   defaultFedMemberProfile,
-  defaultClubMemberProfile,
   type PersonRoleType,
   type PersonGeneralFields,
   type AthleteProfileFields,
   type CoachProfileFields,
   type FedMemberProfileFields,
-  type ClubMemberProfileFields,
 } from "@/lib/persons";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -50,7 +48,6 @@ const ROLE_DESCRIPTIONS: Record<PersonRoleType, string> = {
   athlete: "Compétitions, sélections, accréditations",
   coach: "Encadrement technique, médical, logistique",
   federation_member: "Bureau fédéral, gouvernance",
-  club_member: "Dirigeant de club",
   official: "Officiel fédéral / international",
   volunteer: "Bénévole sur événements",
   staff: "Personnel COSL",
@@ -63,10 +60,8 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
   const [athlete, setAthlete] = useState<AthleteProfileFields>({ ...defaultAthleteProfile });
   const [coach, setCoach] = useState<CoachProfileFields>({ ...defaultCoachProfile });
   const [fedMember, setFedMember] = useState<FedMemberProfileFields>({ ...defaultFedMemberProfile });
-  const [clubMember, setClubMember] = useState<ClubMemberProfileFields>({ ...defaultClubMemberProfile });
   const [sports, setSports] = useState<{ id: string; name: string }[]>([]);
   const [federations, setFederations] = useState<{ id: string; name: string; acronym: string | null }[]>([]);
-  const [clubs, setClubs] = useState<{ id: string; name: string; federation_id: string | null }[]>([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -77,15 +72,12 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
       setAthlete({ ...defaultAthleteProfile });
       setCoach({ ...defaultCoachProfile });
       setFedMember({ ...defaultFedMemberProfile });
-      setClubMember({ ...defaultClubMemberProfile });
       return;
     }
     supabase.from("sports").select("id, name").order("name")
       .then(({ data }) => setSports((data ?? []) as typeof sports));
     supabase.from("federations").select("id, name, acronym").order("acronym")
       .then(({ data }) => setFederations((data ?? []) as typeof federations));
-    supabase.from("clubs").select("id, name, federation_id").order("name")
-      .then(({ data }) => setClubs((data ?? []) as typeof clubs));
   }, [open]);
 
   const patchGeneral = (patch: Partial<PersonGeneralFields>) =>
@@ -96,8 +88,6 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
     setCoach((c) => ({ ...c, ...patch }));
   const patchFedMember = (patch: Partial<FedMemberProfileFields>) =>
     setFedMember((f) => ({ ...f, ...patch }));
-  const patchClubMember = (patch: Partial<ClubMemberProfileFields>) =>
-    setClubMember((c) => ({ ...c, ...patch }));
 
   const toggleRole = (r: PersonRoleType) =>
     setSelectedRoles((prev) =>
@@ -171,8 +161,6 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
             level: athlete.level || null,
             primary_sport_id: athlete.primary_sport_id || null,
             primary_federation_id: athlete.primary_federation_id || null,
-            current_club_id: athlete.current_club_id || null,
-            license_number: athlete.license_number || null,
             passport_number: athlete.passport_number || null,
             passport_expiry: athlete.passport_expiry || null,
             person_id: personId,
@@ -187,10 +175,8 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
           cosl_id,
           primary_sport_id: athlete.primary_sport_id || null,
           primary_federation_id: athlete.primary_federation_id || null,
-          current_club_id: athlete.current_club_id || null,
           status: athlete.status,
           level: athlete.level || null,
-          license_number: athlete.license_number || null,
           passport_number: athlete.passport_number || null,
           passport_expiry: athlete.passport_expiry || null,
         });
@@ -209,7 +195,6 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
             phone: general.phone.trim() || null,
             role: coach.role,
             federation_id: coach.federation_id || null,
-            club_id: coach.club_id || null,
             is_active: true,
             person_id: personId,
           })
@@ -222,7 +207,6 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
           legacy_coach_id: legCoach.id,
           role: coach.role,
           federation_id: coach.federation_id || null,
-          club_id: coach.club_id || null,
           is_active: true,
         });
       }
@@ -239,6 +223,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
             phone: general.phone.trim() || null,
             role: fedMember.role,
             start_date: fedMember.start_date || null,
+            notes: fedMember.notes || null,
             is_active: true,
             person_id: personId,
           })
@@ -252,35 +237,7 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
           federation_id: fedMember.federation_id,
           role: fedMember.role,
           start_date: fedMember.start_date || null,
-          is_active: true,
-        });
-      }
-
-      // 6. Club member dual-write
-      if (selectedRoles.includes("club_member") && clubMember.club_id) {
-        const { data: legCm, error: lcme } = await supabase
-          .from("club_members")
-          .insert({
-            club_id: clubMember.club_id,
-            first_name: general.first_name.trim(),
-            last_name: general.last_name.trim(),
-            email: general.email.trim() || null,
-            phone: general.phone.trim() || null,
-            role: clubMember.role,
-            start_date: clubMember.start_date || null,
-            is_active: true,
-            person_id: personId,
-          })
-          .select("id")
-          .single();
-        if (lcme || !legCm) throw lcme ?? new Error("Membre club legacy KO");
-
-        await supabase.from("club_member_profiles").insert({
-          person_id: personId,
-          legacy_club_member_id: legCm.id,
-          club_id: clubMember.club_id,
-          role: clubMember.role,
-          start_date: clubMember.start_date || null,
+          notes: fedMember.notes || null,
           is_active: true,
         });
       }
@@ -357,15 +314,12 @@ export function PersonCreateDialog({ open, onOpenChange, onCreated, initialRoles
                 role={role}
                 sports={sports}
                 federations={federations}
-                clubs={clubs}
                 athlete={athlete}
                 coach={coach}
                 fedMember={fedMember}
-                clubMember={clubMember}
                 onAthlete={patchAthlete}
                 onCoach={patchCoach}
                 onFedMember={patchFedMember}
-                onClubMember={patchClubMember}
               />
             ))}
           </div>

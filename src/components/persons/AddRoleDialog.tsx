@@ -8,12 +8,10 @@ import {
   defaultAthleteProfile,
   defaultCoachProfile,
   defaultFedMemberProfile,
-  defaultClubMemberProfile,
   type PersonRoleType,
   type AthleteProfileFields,
   type CoachProfileFields,
   type FedMemberProfileFields,
-  type ClubMemberProfileFields,
 } from "@/lib/persons";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -52,19 +50,16 @@ type Props = {
   role: PersonRoleType;
   onAdded: () => void;
   presetFederationId?: string;
-  presetClubId?: string;
 };
 
-export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAdded, presetFederationId, presetClubId }: Props) {
+export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAdded, presetFederationId }: Props) {
   const [sports, setSports] = useState<{ id: string; name: string }[]>([]);
   const [federations, setFederations] = useState<{ id: string; name: string; acronym: string | null }[]>([]);
-  const [clubs, setClubs] = useState<{ id: string; name: string; federation_id: string | null }[]>([]);
   const [saving, setSaving] = useState(false);
 
   const [athlete, setAthlete] = useState<AthleteProfileFields>({ ...defaultAthleteProfile });
   const [coach, setCoach] = useState<CoachProfileFields>({ ...defaultCoachProfile });
   const [fedMember, setFedMember] = useState<FedMemberProfileFields>({ ...defaultFedMemberProfile });
-  const [clubMember, setClubMember] = useState<ClubMemberProfileFields>({ ...defaultClubMemberProfile });
 
   // Local editable copies of person fields needed for athlete creation
   const [birthDate, setBirthDate] = useState(person.birth_date ?? "");
@@ -75,10 +70,9 @@ export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAd
 
   useEffect(() => {
     if (!open) return;
-    setAthlete({ ...defaultAthleteProfile, current_club_id: presetClubId ?? "" });
+    setAthlete({ ...defaultAthleteProfile });
     setCoach({ ...defaultCoachProfile, federation_id: presetFederationId ?? "" });
     setFedMember({ ...defaultFedMemberProfile, federation_id: presetFederationId ?? "" });
-    setClubMember({ ...defaultClubMemberProfile, club_id: presetClubId ?? "" });
     setBirthDate(person.birth_date ?? "");
     setGender(person.gender ?? "");
     // Freeze which fields are missing at open time
@@ -89,8 +83,6 @@ export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAd
       .then(({ data }) => setSports((data ?? []) as typeof sports));
     supabase.from("federations").select("id, name, acronym").order("acronym")
       .then(({ data }) => setFederations((data ?? []) as typeof federations));
-    supabase.from("clubs").select("id, name, federation_id").order("name")
-      .then(({ data }) => setClubs((data ?? []) as typeof clubs));
   }, [open]);
 
   const patchAthlete = (patch: Partial<AthleteProfileFields>) =>
@@ -99,8 +91,6 @@ export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAd
     setCoach((c) => ({ ...c, ...patch }));
   const patchFedMember = (patch: Partial<FedMemberProfileFields>) =>
     setFedMember((f) => ({ ...f, ...patch }));
-  const patchClubMember = (patch: Partial<ClubMemberProfileFields>) =>
-    setClubMember((c) => ({ ...c, ...patch }));
 
   const missingBirthDate = showBirthDate && !birthDate;
   const missingGender = showGender && !gender;
@@ -119,15 +109,15 @@ export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAd
           .maybeSingle();
 
         if (existingAp?.legacy_athlete_id) {
-          // Already an athlete — just update current_club_id
-          const { error: updErr } = await supabase
-            .from("athletes")
-            .update({ current_club_id: athlete.current_club_id || null })
-            .eq("id", existingAp.legacy_athlete_id);
-          if (updErr) throw updErr;
+          // Already an athlete — just update profile fields
           const { error: apErr } = await supabase
             .from("athlete_profiles")
-            .update({ current_club_id: athlete.current_club_id || null })
+            .update({
+              status: athlete.status,
+              level: athlete.level || null,
+              primary_sport_id: athlete.primary_sport_id || null,
+              primary_federation_id: athlete.primary_federation_id || null,
+            })
             .eq("person_id", personId);
           if (apErr) throw apErr;
         } else {
@@ -160,8 +150,6 @@ export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAd
               is_active: true, status: athlete.status, level: athlete.level || null,
               primary_sport_id: athlete.primary_sport_id || null,
               primary_federation_id: athlete.primary_federation_id || null,
-              current_club_id: athlete.current_club_id || null,
-              license_number: athlete.license_number || null,
               passport_number: athlete.passport_number || null,
               passport_expiry: athlete.passport_expiry || null,
               person_id: personId,
@@ -173,9 +161,7 @@ export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAd
             person_id: personId, legacy_athlete_id: legAth.id, cosl_id,
             primary_sport_id: athlete.primary_sport_id || null,
             primary_federation_id: athlete.primary_federation_id || null,
-            current_club_id: athlete.current_club_id || null,
             status: athlete.status, level: athlete.level || null,
-            license_number: athlete.license_number || null,
             passport_number: athlete.passport_number || null,
             passport_expiry: athlete.passport_expiry || null,
           });
@@ -191,7 +177,6 @@ export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAd
             email: person.email ?? null, phone: person.phone ?? null,
             role: coach.role,
             federation_id: coach.federation_id || null,
-            club_id: coach.club_id || null,
             is_active: true, person_id: personId,
           })
           .select("id").single();
@@ -201,7 +186,6 @@ export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAd
           person_id: personId, legacy_coach_id: legCoach.id,
           role: coach.role,
           federation_id: coach.federation_id || null,
-          club_id: coach.club_id || null,
           is_active: true,
         });
         if (cpe) throw cpe;
@@ -215,6 +199,7 @@ export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAd
             email: person.email ?? null, phone: person.phone ?? null,
             role: fedMember.role,
             start_date: fedMember.start_date || null,
+            notes: fedMember.notes || null,
             is_active: true, person_id: personId,
           })
           .select("id").single();
@@ -223,27 +208,9 @@ export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAd
         await supabase.from("federation_member_profiles").insert({
           person_id: personId, legacy_federation_member_id: legFm.id,
           federation_id: fedMember.federation_id, role: fedMember.role,
-          start_date: fedMember.start_date || null, is_active: true,
-        });
-      } else if (role === "club_member") {
-        if (!clubMember.club_id) throw new Error("Club requis");
-        const { data: legCm, error: lce } = await supabase
-          .from("club_members")
-          .insert({
-            club_id: clubMember.club_id,
-            first_name: person.first_name, last_name: person.last_name,
-            email: person.email ?? null, phone: person.phone ?? null,
-            role: clubMember.role,
-            start_date: clubMember.start_date || null,
-            is_active: true, person_id: personId,
-          })
-          .select("id").single();
-        if (lce || !legCm) throw lce ?? new Error("Membre club legacy KO");
-
-        await supabase.from("club_member_profiles").insert({
-          person_id: personId, legacy_club_member_id: legCm.id,
-          club_id: clubMember.club_id, role: clubMember.role,
-          start_date: clubMember.start_date || null, is_active: true,
+          start_date: fedMember.start_date || null,
+          notes: fedMember.notes || null,
+          is_active: true,
         });
       }
 
@@ -314,17 +281,13 @@ export function AddRoleDialog({ open, onOpenChange, personId, person, role, onAd
             role={role}
             sports={sports}
             federations={federations}
-            clubs={clubs}
             athlete={athlete}
             coach={coach}
             fedMember={fedMember}
-            clubMember={clubMember}
             onAthlete={patchAthlete}
             onCoach={patchCoach}
             onFedMember={patchFedMember}
-            onClubMember={patchClubMember}
             presetFederationId={presetFederationId}
-            presetClubId={presetClubId}
           />
         </div>
 

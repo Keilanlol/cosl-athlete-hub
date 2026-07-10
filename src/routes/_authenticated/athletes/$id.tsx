@@ -328,10 +328,9 @@ function AthleteDetailPage() {
   useEffect(() => {
     loadAll();
     (async () => {
-      const [sp, fd, cl, co, gm, gc] = await Promise.all([
+      const [sp, fd, co, gm, gc] = await Promise.all([
         supabase.from("sports").select("*").order("name"),
         supabase.from("federations").select("*").order("acronym"),
-        supabase.from("clubs").select("*").order("name"),
         supabase.from("coaches").select("*").eq("is_active", true).order("last_name"),
         supabase.from("games").select("*").order("competition_start", { ascending: false }),
         supabase.from("game_competitions").select("*"),
@@ -339,7 +338,6 @@ function AthleteDetailPage() {
       setRefs({
         sports: (sp.data ?? []) as Sport[],
         feds: (fd.data ?? []) as Federation[],
-        clubs: (cl.data ?? []) as Club[],
       });
       setCoaches((co.data ?? []) as Coach[]);
       setGames((gm.data ?? []) as Game[]);
@@ -667,14 +665,6 @@ function AthleteDetailPage() {
   const fieldErr = (k: string) =>
     errors[k] ? <p className="text-xs text-red-600">{errors[k]}</p> : null;
 
-  const clubsForFed = useMemo(
-    () =>
-      form?.primary_federation_id
-        ? refs.clubs.filter((c) => c.federation_id === form.primary_federation_id)
-        : refs.clubs,
-    [refs.clubs, form?.primary_federation_id],
-  );
-
   if (loading) {
     return <div className="rounded-lg border border-border bg-card"><TableSkeleton cols={4} /></div>;
   }
@@ -692,6 +682,7 @@ function AthleteDetailPage() {
   }
 
   const lvl = levels.find((l) => l.code === athlete.level);
+  const isElite = athlete.level === "elite" || athlete.level === "promotion";
   const globalKyc = kyc?.global_status ?? "red";
 
   return (
@@ -1410,7 +1401,6 @@ function AthleteDetailPage() {
                         setForm({
                           ...form,
                           primary_federation_id: v === ALL ? "" : v,
-                          current_club_id: "",
                         })
                       }
                     >
@@ -1419,23 +1409,6 @@ function AthleteDetailPage() {
                         <SelectItem value={ALL}>—</SelectItem>
                         {refs.feds.map((f) => (
                           <SelectItem key={f.id} value={f.id}>{f.acronym}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Club</Label>
-                    <Select
-                      value={form.current_club_id || ALL}
-                      onValueChange={(v) =>
-                        setForm({ ...form, current_club_id: v === ALL ? "" : v })
-                      }
-                    >
-                      <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={ALL}>—</SelectItem>
-                        {clubsForFed.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -1975,7 +1948,7 @@ function KycTabContent({
               Conformité KYC globale — {athlete.first_name} {athlete.last_name}
             </p>
             <p className="text-sm text-muted-foreground">
-              {nbValid}/6 axes validés
+              {nbValid}/5 axes validés
               {kyc?.kyc_reviewed_at &&
                 ` · Vérifié le ${new Date(kyc.kyc_reviewed_at).toLocaleDateString("fr-FR")}`}
               {reviewerName && ` par ${reviewerName}`}
@@ -2066,64 +2039,8 @@ function KycTabContent({
         </div>
       </KycAxis>
 
-      {/* AXE 2 — Nationalité */}
-      <KycAxis
-        title="Nationalité sportive & éligibilité internationale"
-        description="Vérification de l'éligibilité à représenter le Luxembourg"
-        status={kyc?.nationality_verified ? "green" : "red"}
-        required
-      >
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1">
-            <Label>Nationalité sportive déclarée</Label>
-            <Input
-              defaultValue={kyc?.sport_nationality ?? athlete.sport_nationality ?? ""}
-              onBlur={(e) => {
-                const v = e.target.value.toUpperCase();
-                if (v !== (kyc?.sport_nationality ?? "")) updateKyc({ sport_nationality: v || null }, "nationality");
-              }}
-              placeholder="ex: LUX"
-            />
-          </div>
-          <div className="space-y-1">
-            <Label>Fédération internationale de référence</Label>
-            <Input
-              defaultValue={kyc?.eligibility_federation ?? ""}
-              onBlur={(e) => {
-                if (e.target.value !== (kyc?.eligibility_federation ?? ""))
-                  updateKyc({ eligibility_federation: e.target.value || null }, "nationality");
-              }}
-              placeholder="ex: World Athletics, FIFA, FIS…"
-            />
-          </div>
-        </div>
-        <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
-          <div>
-            <Label className="text-sm">Nationalité sportive vérifiée</Label>
-            {kyc?.eligibility_verified_at && (
-              <p className="text-xs text-muted-foreground">
-                Vérifié le {new Date(kyc.eligibility_verified_at).toLocaleDateString("fr-FR")}
-              </p>
-            )}
-          </div>
-          <Switch
-            checked={!!kyc?.nationality_verified}
-            onCheckedChange={(v) =>
-              updateKyc(
-                {
-                  nationality_verified: v,
-                  eligibility_verified_at: v ? new Date().toISOString() : null,
-                  eligibility_verified_by: v ? currentUserId : null,
-                },
-                "nationality",
-              )
-            }
-          />
-        </div>
-      </KycAxis>
-
-
-      {/* AXE 4 — Antidopage */}
+      {/* AXE 4 — Antidopage (visible uniquement pour les athlètes cadres) */}
+      {(athlete.level === "elite" || athlete.level === "promotion") && (
       <KycAxis
         title="Statut antidopage"
         description="Statut AMA/ADAMS — whereabouts, contrôles, suspensions"
@@ -2140,7 +2057,7 @@ function KycTabContent({
           <div className="space-y-1">
             <Label>Numéro ADAMS</Label>
             <Input
-              defaultValue={kyc?.adams_number ?? athlete.ada_number ?? ""}
+              defaultValue={kyc?.adams_number ?? ""}
               onBlur={(e) => {
                 if (e.target.value !== (kyc?.adams_number ?? ""))
                   updateKyc({ adams_number: e.target.value || null }, "antidoping");
@@ -2186,6 +2103,7 @@ function KycTabContent({
           </Select>
         </div>
       </KycAxis>
+      )}
 
       {/* AXE 5 — E-learning */}
       <KycAxis
