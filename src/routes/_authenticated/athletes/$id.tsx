@@ -134,10 +134,10 @@ function AthleteDetailPage() {
   const { items: docTypes, add: addDocType, remove: removeDocType } = useDocumentTypes();
   const [athlete, setAthlete] = useState<Athlete | null>(null);
   const [personId, setPersonId] = useState<string | null>(null);
-  useEffect(() => {
-    supabase.from("athletes").select("person_id").eq("id", id).maybeSingle()
-      .then(({ data }) => setPersonId(((data as { person_id?: string | null } | null)?.person_id) ?? null));
-  }, [id]);
+  const [personData, setPersonData] = useState<{
+    street: string | null; postcode: string | null; city: string | null; country: string | null;
+    emergency_contact_name: string | null; emergency_contact_phone: string | null;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [sport, setSport] = useState<Sport | null>(null);
   const [federation, setFederation] = useState<Federation | null>(null);
@@ -249,6 +249,20 @@ function AthleteDetailPage() {
     setLoading(false);
 
     const a = data as Athlete;
+
+    // Load person data (address, emergency contact) — persons is the source of truth
+    const { data: pidRow } = await supabase
+      .from("athletes").select("person_id").eq("id", id).maybeSingle();
+    const pid = (pidRow as { person_id?: string | null } | null)?.person_id ?? null;
+    setPersonId(pid);
+    if (pid) {
+      const { data: pd } = await supabase
+        .from("persons")
+        .select("street,postcode,city,country,emergency_contact_name,emergency_contact_phone")
+        .eq("id", pid).maybeSingle();
+      setPersonData((pd ?? null) as typeof personData | null);
+    }
+
     if (a.primary_sport_id) {
       const { data: d } = await supabase
         .from("sports")
@@ -359,13 +373,13 @@ function AthleteDetailPage() {
       nationality: athlete.nationality,
       email: athlete.email ?? "",
       phone: athlete.phone ?? "",
-      address: athlete.address ?? "",
-      street: athlete.street ?? "",
-      postcode: athlete.postcode ?? "",
-      city: athlete.city ?? "",
-      country: athlete.country ?? "",
-      emergency_contact_name: athlete.emergency_contact_name ?? "",
-      emergency_contact_phone: athlete.emergency_contact_phone ?? "",
+      address: [personData?.street, personData?.postcode, personData?.city, personData?.country].filter(Boolean).join(", ") || "",
+      street: personData?.street ?? "",
+      postcode: personData?.postcode ?? "",
+      city: personData?.city ?? "",
+      country: personData?.country ?? "",
+      emergency_contact_name: personData?.emergency_contact_name ?? "",
+      emergency_contact_phone: personData?.emergency_contact_phone ?? "",
       photo_url: athlete.photo_url ?? "",
       primary_sport_id: athlete.primary_sport_id ?? "",
       primary_federation_id: athlete.primary_federation_id ?? "",
@@ -845,9 +859,9 @@ function AthleteDetailPage() {
             <Field label="Nationalité" value={athlete.nationality} />
             <Field label="Email" value={athlete.email} />
             <Field label="Téléphone" value={athlete.phone} />
-            <Field label="Adresse" value={athlete.address} />
-            <Field label="Contact urgence" value={athlete.emergency_contact_name} />
-            <Field label="Téléphone urgence" value={athlete.emergency_contact_phone} />
+            <Field label="Adresse" value={[personData?.street, personData?.postcode, personData?.city, personData?.country].filter(Boolean).join(", ") || null} />
+            <Field label="Contact urgence" value={personData?.emergency_contact_name} />
+            <Field label="Téléphone urgence" value={personData?.emergency_contact_phone} />
             <Field label="Taille vêtement" value={athlete.size_clothing} />
             <Field label="Pointure" value={athlete.size_shoes} />
             <Field label="Taille gants" value={athlete.size_gloves} />

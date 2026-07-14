@@ -19,6 +19,11 @@ import { EditableSelect } from "@/components/EditableSelect";
 import { AthletePhotoUpload } from "@/components/AthletePhotoUpload";
 import { findPersonIdForLegacy } from "@/lib/person-photo-sync";
 import { syncLegacyToPerson } from "@/lib/person-sync";
+
+type PersonAddr = {
+  street: string | null; postcode: string | null; city: string | null; country: string | null;
+  emergency_contact_name: string | null; emergency_contact_phone: string | null;
+};
 import { AddPersonButton } from "@/components/persons/AddPersonButton";
 import { CsvImportDialog } from "@/components/CsvImportDialog";
 import { athletesImportConfig } from "@/lib/csv-import-configs";
@@ -297,11 +302,21 @@ function AthletesPage() {
     setOpen(true);
   };
 
-  const openEdit = (a: Athlete) => {
+  const openEdit = async (a: Athlete) => {
     setEditing(a);
     setErrors({});
     setPendingPhotoFile(null);
     setPendingPhotoPreview(null);
+    // Load person address data — persons is source of truth
+    let pAddr: PersonAddr | null = null;
+    const pid = await findPersonIdForLegacy("athlete_profiles", "legacy_athlete_id", a.id);
+    if (pid) {
+      const { data: pd } = await supabase
+        .from("persons")
+        .select("street,postcode,city,country,emergency_contact_name,emergency_contact_phone")
+        .eq("id", pid).maybeSingle();
+      pAddr = (pd ?? null) as PersonAddr | null;
+    }
     setForm({
       cosl_id: a.cosl_id,
       first_name: a.first_name,
@@ -312,13 +327,13 @@ function AthletesPage() {
       nationality: a.nationality,
       email: a.email ?? "",
       phone: a.phone ?? "",
-      address: a.address ?? "",
-      street: a.street ?? "",
-      postcode: a.postcode ?? "",
-      city: a.city ?? "",
-      country: a.country ?? "",
-      emergency_contact_name: a.emergency_contact_name ?? "",
-      emergency_contact_phone: a.emergency_contact_phone ?? "",
+      address: [pAddr?.street, pAddr?.postcode, pAddr?.city, pAddr?.country].filter(Boolean).join(", ") || "",
+      street: pAddr?.street ?? "",
+      postcode: pAddr?.postcode ?? "",
+      city: pAddr?.city ?? "",
+      country: pAddr?.country ?? "",
+      emergency_contact_name: pAddr?.emergency_contact_name ?? "",
+      emergency_contact_phone: pAddr?.emergency_contact_phone ?? "",
       photo_url: a.photo_url ?? "",
       primary_sport_id: a.primary_sport_id ?? "",
       primary_federation_id: a.primary_federation_id ?? "",
