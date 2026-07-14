@@ -4,7 +4,7 @@ import tsconfigPaths from "vite-tsconfig-paths";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 
-const PHOTON_TOKEN = process.env.PHOTON_TOKEN ?? "ZCbEtPZfZGRxEhKziCi5u7yPJ3RBKAA8nnMEFQVqixFW4uL2wMoywEA7YyyKaPQkfk6ow";
+const PHOTON_TOKEN = process.env.PHOTON_TOKEN ?? "";
 
 export default defineConfig({
   plugins: [
