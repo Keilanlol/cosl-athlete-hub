@@ -45,18 +45,26 @@ export function useAccreditationRequirements(gameId: string | undefined) {
 
   const upsert = useCallback(
     async (input: AccreditationRequirementInput) => {
-      // Try update first (match unique constraint)
-      const query = supabase
+      // Find existing row matching (game_id, role_code, doc_type_code, selection_stage)
+      // Use .is() for null selection_stage, .eq() for non-null
+      let findQuery = supabase
         .from("accreditation_requirements")
         .select("id")
         .eq("game_id", input.game_id)
         .eq("role_code", input.role_code)
-        .eq("doc_type_code", input.doc_type_code)
-        .eq("selection_stage", input.selection_stage ?? "");
-      const { data: existing } = await query.maybeSingle();
+        .eq("doc_type_code", input.doc_type_code);
+
+      if (input.selection_stage === null) {
+        findQuery = findQuery.is("selection_stage", null);
+      } else {
+        findQuery = findQuery.eq("selection_stage", input.selection_stage);
+      }
+
+      const { data: existing } = await findQuery.maybeSingle();
       const existingRow = existing as { id?: string } | null;
 
       if (existingRow?.id) {
+        // Update the required flag
         const { error } = await supabase
           .from("accreditation_requirements")
           .update({ required: input.required })
@@ -66,33 +74,13 @@ export function useAccreditationRequirements(gameId: string | undefined) {
           return false;
         }
       } else {
+        // Insert a new row
         const { error } = await supabase
           .from("accreditation_requirements")
           .insert(input);
         if (error) {
-          // Maybe the selection_stage null vs "" mismatch — try with IS NULL
-          const { data: existing2 } = await supabase
-            .from("accreditation_requirements")
-            .select("id")
-            .eq("game_id", input.game_id)
-            .eq("role_code", input.role_code)
-            .eq("doc_type_code", input.doc_type_code)
-            .is("selection_stage", input.selection_stage)
-            .maybeSingle();
-          const row2 = existing2 as { id?: string } | null;
-          if (row2?.id) {
-            const { error: err2 } = await supabase
-              .from("accreditation_requirements")
-              .update({ required: input.required })
-              .eq("id", row2.id);
-            if (err2) {
-              toast.error("Erreur", { description: friendlyError(err2) });
-              return false;
-            }
-          } else {
-            toast.error("Erreur", { description: friendlyError(error) });
-            return false;
-          }
+          toast.error("Erreur", { description: friendlyError(error) });
+          return false;
         }
       }
 
