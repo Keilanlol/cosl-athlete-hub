@@ -19,14 +19,9 @@ import {
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { TableSkeleton, EmptyState } from "@/components/DataTableShell";
-import {
-  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
-} from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { COACH_ROLES } from "@/lib/types";
-import { coachRoleLabel } from "@/lib/role-labels";
+import { coachRoleLabel, federationMemberRoleLabel } from "@/lib/role-labels";
 import { PersonCombobox } from "@/components/PersonCombobox";
 
 export const Route = createFileRoute("/_authenticated/games/$id/delegation")({
@@ -38,10 +33,6 @@ type Athlete = {
   cosl_id: string; birth_date: string;
   primary_sport_id: string | null;
 };
-type Coach = {
-  id: string; first_name: string; last_name: string; role: string;
-  federation_id: string | null;
-};
 type UserProfile = { id: string; full_name: string; username: string };
 type Sport = { id: string; name: string };
 type Delegation = {
@@ -52,9 +43,10 @@ type Delegation = {
 };
 type Member = {
   id: string; delegation_id: string;
-  athlete_id: string | null; coach_id: string | null;
-  member_role: string; member_function: string | null;
-  athlete: Athlete | null; coach: Coach | null;
+  athlete_id: string | null; coach_id: string | null; person_id: string | null;
+  member_role: string | null; member_function: string | null;
+  athlete: Athlete | null;
+  person: { id: string; first_name: string; last_name: string; email: string | null } | null;
 };
 
 type PersonLite = {
@@ -64,15 +56,23 @@ type PersonLite = {
   email: string | null;
 };
 
+type CoachProfileLite = {
+  id: string;
+  person_id: string;
+  role: string;
+  is_active: boolean;
+};
+
 function DelegationPage() {
   const { id: gameId } = Route.useParams();
   const [delegation, setDelegation] = useState<Delegation | null>(null);
   const [members, setMembers] = useState<Member[] | null>(null);
-  const [coaches, setCoaches] = useState<Coach[]>([]);
-  const [users, setUsers] = useState<UserProfile[]>([]);
   const [athletes, setAthletes] = useState<Athlete[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]);
   const [sports, setSports] = useState<Sport[]>([]);
   const [persons, setPersons] = useState<PersonLite[]>([]);
+  const [coachProfiles, setCoachProfiles] = useState<CoachProfileLite[]>([]);
+  const [fedMemberProfiles, setFedMemberProfiles] = useState<{ person_id: string; role: string }[]>([]);
   const [game, setGame] = useState<{ name: string; short_name: string | null; edition_year: number } | null>(null);
 
   const [typeFilter, setTypeFilter] = useState("all");
@@ -87,15 +87,9 @@ function DelegationPage() {
 
   // Member dialog
   const [memberOpen, setMemberOpen] = useState(false);
-  const [memberType, setMemberType] = useState<"athlete" | "coach">("athlete");
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [memberForm, setMemberForm] = useState({ entity_id: "", member_role: "", member_function: "" });
+  const [memberPersonId, setMemberPersonId] = useState("");
+  const [selectedRoleCode, setSelectedRoleCode] = useState("");
   const [saving, setSaving] = useState(false);
-
-  // Sub-dialog: create new encadrant
-  const [coachOpen, setCoachOpen] = useState(false);
-  const [coachForm, setCoachForm] = useState({ first_name: "", last_name: "", email: "", phone: "", role: "coach" });
-  const [coachSaving, setCoachSaving] = useState(false);
 
   const ensureDelegation = async (): Promise<Delegation | null> => {
     const { data: existing } = await supabase.from("delegations").select("*").eq("game_id", gameId).maybeSingle();
@@ -113,24 +107,26 @@ function DelegationPage() {
     const del = await ensureDelegation();
     if (!del) return;
     setDelegation(del);
-    const [mRes, cRes, uRes, aRes, sRes, gRes, pRes] = await Promise.all([
+    const [mRes, uRes, aRes, sRes, gRes, pRes, cpRes, fmRes] = await Promise.all([
       supabase.from("delegation_members")
-        .select("*, athlete:athletes(id,first_name,last_name,gender,cosl_id,birth_date,primary_sport_id), coach:coaches(id,first_name,last_name,role,federation_id)")
+        .select("*, athlete:athletes(id,first_name,last_name,gender,cosl_id,birth_date,primary_sport_id), person:persons(id,first_name,last_name,email)")
         .eq("delegation_id", del.id),
-      supabase.from("coaches").select("id,first_name,last_name,role,federation_id").eq("is_active", true).order("last_name"),
       supabase.from("user_profiles").select("id,full_name,username").order("full_name"),
       supabase.from("athletes").select("id,first_name,last_name,gender,cosl_id,birth_date,primary_sport_id").eq("is_active", true).order("last_name"),
       supabase.from("sports").select("id,name").order("name"),
       supabase.from("games").select("name,short_name,edition_year").eq("id", gameId).maybeSingle(),
       supabase.from("persons").select("id,first_name,last_name,email").eq("is_active", true).order("last_name"),
+      supabase.from("coach_profiles").select("id,person_id,role,is_active").eq("is_active", true),
+      supabase.from("federation_member_profiles").select("person_id,role").eq("is_active", true),
     ]);
     setMembers(((mRes.data ?? []) as unknown) as Member[]);
-    setCoaches((cRes.data ?? []) as Coach[]);
     setUsers((uRes.data ?? []) as UserProfile[]);
     setAthletes((aRes.data ?? []) as Athlete[]);
     setSports((sRes.data ?? []) as Sport[]);
     setGame((gRes.data ?? null) as { name: string; short_name: string | null; edition_year: number } | null);
     setPersons((pRes.data ?? []) as PersonLite[]);
+    setCoachProfiles((cpRes.data ?? []) as CoachProfileLite[]);
+    setFedMemberProfiles((fmRes.data ?? []) as { person_id: string; role: string }[]);
     setChiefId(del.chief_of_mission_id ?? "");
     setMgrId(del.games_manager_id ?? "");
   };
@@ -149,11 +145,38 @@ function DelegationPage() {
     [persons],
   );
 
+  // Get all roles for the selected person (from coach_profiles + fed_member_profiles)
+  const selectedPersonRoles = useMemo(() => {
+    if (!memberPersonId) return [];
+    const coachRoles = coachProfiles
+      .filter((c) => c.person_id === memberPersonId)
+      .map((c) => ({ code: c.role, label: coachRoleLabel(c.role), source: "coach" as const }));
+    const fedRoles = fedMemberProfiles
+      .filter((f) => f.person_id === memberPersonId)
+      .map((f) => ({ code: f.role, label: federationMemberRoleLabel(f.role), source: "federation_member" as const }));
+    return [...coachRoles, ...fedRoles];
+  }, [memberPersonId, coachProfiles, fedMemberProfiles]);
+
+  // Get role label for a member in the table
+  const getMemberRoleLabel = (m: Member): string => {
+    if (m.athlete_id && m.athlete) {
+      return "Athlète";
+    }
+    if (m.person_id) {
+      const coach = coachProfiles.find((c) => c.person_id === m.person_id);
+      if (coach) return coachRoleLabel(coach.role);
+      const fm = fedMemberProfiles.find((f) => f.person_id === m.person_id);
+      if (fm) return federationMemberRoleLabel(fm.role);
+      return m.member_role ?? "Membre";
+    }
+    return m.member_role ?? "—";
+  };
+
   const filtered = useMemo(() => {
     if (!members) return [];
     const q = search.trim().toLowerCase();
     return members.filter((m) => {
-      const t = m.athlete_id ? "athlete" : "coach";
+      const t = m.athlete_id ? "athlete" : "person";
       if (typeFilter !== "all" && t !== typeFilter) return false;
       if (sportFilter !== "all") {
         const sid = m.athlete?.primary_sport_id ?? null;
@@ -162,7 +185,9 @@ function DelegationPage() {
       if (q) {
         const name = m.athlete
           ? `${m.athlete.first_name} ${m.athlete.last_name}`
-          : `${m.coach?.first_name ?? ""} ${m.coach?.last_name ?? ""}`;
+          : m.person
+          ? `${m.person.first_name} ${m.person.last_name}`
+          : "";
         if (!name.toLowerCase().includes(q)) return false;
       }
       return true;
@@ -187,53 +212,42 @@ function DelegationPage() {
 
   const submitMember = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!delegation || !memberForm.entity_id || !memberForm.member_role.trim()) {
-      toast.error("Membre et rôle requis"); return;
+    if (!delegation || !memberPersonId) {
+      toast.error("Veuillez sélectionner une personne");
+      return;
     }
+    // For athletes, use athlete_id; for others, use person_id
+    const person = persons.find((p) => p.id === memberPersonId);
+    if (!person) return;
+
+    // Check if this person is an athlete (has athlete_profile)
+    const { data: ap } = await supabase
+      .from("athlete_profiles")
+      .select("legacy_athlete_id")
+      .eq("person_id", memberPersonId)
+      .maybeSingle();
+    const legacyAthleteId = (ap as { legacy_athlete_id?: string } | null)?.legacy_athlete_id ?? null;
+
     setSaving(true);
     const payload = {
       delegation_id: delegation.id,
-      athlete_id: memberType === "athlete" ? memberForm.entity_id : null,
-      coach_id: memberType === "coach" ? memberForm.entity_id : null,
-      member_role: memberForm.member_role.trim(),
-      member_function: memberForm.member_function.trim() || null,
+      athlete_id: legacyAthleteId ?? null,
+      coach_id: null,
+      person_id: !legacyAthleteId ? memberPersonId : null,
+      member_role: selectedRoleCode || null,
+      member_function: null,
     };
     const { error } = await supabase.from("delegation_members").insert(payload);
     setSaving(false);
     if (error) {
-      toast.error("Échec", { description: friendlyError(error) }); return;
-    }
-    toast.success("Membre ajouté");
-    setMemberOpen(false);
-    setMemberForm({ entity_id: "", member_role: "", member_function: "" });
-    load();
-  };
-
-  const submitCoach = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const fn = coachForm.first_name.trim();
-    const ln = coachForm.last_name.trim();
-    if (!fn || !ln) { toast.error("Prénom et nom requis"); return; }
-    setCoachSaving(true);
-    const { data, error } = await supabase.from("coaches").insert({
-      first_name: fn,
-      last_name: ln,
-      email: coachForm.email.trim() || null,
-      phone: coachForm.phone.trim() || null,
-      role: coachForm.role,
-      is_active: true,
-    }).select().single();
-    setCoachSaving(false);
-    if (error || !data) {
-      toast.error("Échec création", { description: friendlyError(error!) });
+      toast.error("Échec", { description: friendlyError(error) });
       return;
     }
-    toast.success("Encadrant créé");
-    const created = data as Coach;
-    setCoaches((prev) => [...prev, created].sort((a, b) => a.last_name.localeCompare(b.last_name)));
-    setMemberForm((f) => ({ ...f, entity_id: created.id }));
-    setCoachOpen(false);
-    setCoachForm({ first_name: "", last_name: "", email: "", phone: "", role: "coach" });
+    toast.success("Membre ajouté à la délégation");
+    setMemberOpen(false);
+    setMemberPersonId("");
+    setSelectedRoleCode("");
+    load();
   };
 
   const removeMember = async (m: Member) => {
@@ -247,24 +261,24 @@ function DelegationPage() {
     if (!members || !game) return;
     const header = [
       "Type", "COSL ID", "Nom", "Prénom", "Genre",
-      "Date de naissance", "Sport", "Rôle", "Fonction",
+      "Date de naissance", "Sport", "Rôle",
     ];
     const lines = members.map((m) => {
       if (m.athlete) {
         return [
           "Athlète", m.athlete.cosl_id, m.athlete.last_name, m.athlete.first_name,
           m.athlete.gender, m.athlete.birth_date, sportName(m.athlete.primary_sport_id),
-          m.member_role, m.member_function ?? "",
+          "Athlète",
         ];
       }
       return [
-        "Encadrant", "", m.coach?.last_name ?? "", m.coach?.first_name ?? "",
-        "", "", "", m.member_role, m.member_function ?? m.coach?.role ?? "",
+        "Personne", "", m.person?.last_name ?? "", m.person?.first_name ?? "",
+        "", "", "", getMemberRoleLabel(m),
       ];
     });
     if (chief) {
       lines.unshift([
-        "Chef de Mission", "", chief.last_name, chief.first_name, "", "", "", "Chef de Mission", chief.email ?? "",
+        "Chef de Mission", "", chief.last_name, chief.first_name, "", "", "", "Chef de Mission",
       ]);
     }
     const csv = [header, ...lines]
@@ -283,9 +297,12 @@ function DelegationPage() {
   const initials = (a: { first_name: string; last_name: string } | null | undefined) =>
     `${a?.first_name?.[0] ?? ""}${a?.last_name?.[0] ?? ""}`;
 
-  const selectedEntity = memberType === "athlete"
-    ? athletes.find((a) => a.id === memberForm.entity_id)
-    : coaches.find((c) => c.id === memberForm.entity_id);
+  // Get the name of a member
+  const getMemberName = (m: Member): string => {
+    if (m.athlete) return `${m.athlete.first_name} ${m.athlete.last_name}`;
+    if (m.person) return `${m.person.first_name} ${m.person.last_name}`;
+    return "—";
+  };
 
   return (
     <div className="space-y-6">
@@ -337,7 +354,7 @@ function DelegationPage() {
           <SelectContent>
             <SelectItem value="all">Tous types</SelectItem>
             <SelectItem value="athlete">Athlètes</SelectItem>
-            <SelectItem value="coach">Encadrants</SelectItem>
+            <SelectItem value="person">Encadrants / Membres</SelectItem>
           </SelectContent>
         </Select>
         <Select value={sportFilter} onValueChange={setSportFilter}>
@@ -352,7 +369,7 @@ function DelegationPage() {
           <Button variant="outline" onClick={exportCsv}>
             <Download className="mr-2 h-4 w-4" /> Exporter liste officielle CSV
           </Button>
-          <Button onClick={() => setMemberOpen(true)} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
+          <Button onClick={() => { setMemberPersonId(""); setSelectedRoleCode(""); setMemberOpen(true); }} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
             <Plus className="mr-2 h-4 w-4" /> Ajouter un membre
           </Button>
         </div>
@@ -360,7 +377,7 @@ function DelegationPage() {
 
       <div className="rounded-lg border border-border bg-card">
         {members === null ? (
-          <TableSkeleton cols={6} />
+          <TableSkeleton cols={5} />
         ) : filtered.length === 0 ? (
           <div className="p-6"><EmptyState message="Aucun membre dans la délégation." /></div>
         ) : (
@@ -370,7 +387,6 @@ function DelegationPage() {
                 <TableHead>Type</TableHead>
                 <TableHead>Nom</TableHead>
                 <TableHead>Rôle</TableHead>
-                <TableHead>Fonction</TableHead>
                 <TableHead>Sport</TableHead>
                 <TableHead className="w-28 text-right">Actions</TableHead>
               </TableRow>
@@ -378,19 +394,15 @@ function DelegationPage() {
             <TableBody>
               {filtered.map((m) => {
                 const isAth = !!m.athlete_id;
-                const person = m.athlete ?? m.coach;
                 return (
                   <TableRow key={m.id}>
                     <TableCell>
                       <Badge className={isAth ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" : "bg-[var(--cosl-red-light)] text-primary hover:bg-[var(--cosl-red-light)]"}>
-                        {isAth ? "Athlète" : "Encadrant"}
+                        {isAth ? "Athlète" : "Encadrant / Membre"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="font-medium">
-                      {person ? `${person.first_name} ${person.last_name}` : "—"}
-                    </TableCell>
-                    <TableCell>{coachRoleLabel(m.member_role) === "—" ? m.member_role : coachRoleLabel(m.member_role)}</TableCell>
-                    <TableCell className="text-muted-foreground">{m.member_function ?? coachRoleLabel(m.coach?.role ?? null)}</TableCell>
+                    <TableCell className="font-medium">{getMemberName(m)}</TableCell>
+                    <TableCell>{getMemberRoleLabel(m)}</TableCell>
                     <TableCell className="text-muted-foreground">
                       {isAth ? sportName(m.athlete?.primary_sport_id ?? null) : "—"}
                     </TableCell>
@@ -402,9 +414,9 @@ function DelegationPage() {
                           </Link>
                         </Button>
                       )}
-                      {!isAth && m.coach && (
-                        <Button asChild variant="ghost" size="icon" aria-label="Voir la fiche encadrant">
-                          <Link to="/coaches/$id" params={{ id: m.coach.id }}>
+                      {!isAth && m.person_id && (
+                        <Button asChild variant="ghost" size="icon" aria-label="Voir la fiche personne">
+                          <Link to="/persons/$personId" params={{ personId: m.person_id }}>
                             <ExternalLink className="h-4 w-4" />
                           </Link>
                         </Button>
@@ -477,131 +489,57 @@ function DelegationPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Member dialog */}
+      {/* Member dialog — simplified: choose a person, role is auto-detected */}
       <Dialog open={memberOpen} onOpenChange={setMemberOpen}>
         <DialogContent>
           <form onSubmit={submitMember}>
             <DialogHeader>
               <DialogTitle>Ajouter un membre</DialogTitle>
-              <DialogDescription>Athlète ou encadrant à ajouter à la délégation.</DialogDescription>
+              <DialogDescription>
+                Choisissez une personne. Son rôle sera automatiquement détecté depuis son profil d'encadrant ou de membre de fédération.
+              </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              <RadioGroup value={memberType} onValueChange={(v) => { setMemberType(v as "athlete" | "coach"); setMemberForm({ ...memberForm, entity_id: "" }); }} className="flex gap-6">
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem id="t-ath" value="athlete" />
-                  <Label htmlFor="t-ath">Athlète</Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem id="t-co" value="coach" />
-                  <Label htmlFor="t-co">Encadrant</Label>
-                </div>
-              </RadioGroup>
               <div className="space-y-1.5">
                 <Label>Personne *</Label>
-                <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
-                  <PopoverTrigger asChild>
-                    <Button type="button" variant="outline" className="w-full justify-between">
-                      {selectedEntity
-                        ? `${selectedEntity.first_name} ${selectedEntity.last_name}`
-                        : "Choisir…"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="p-0 w-[400px]" align="start">
-                    <Command>
-                      <CommandInput placeholder="Rechercher…" />
-                      <CommandList>
-                        <CommandEmpty>Aucun résultat.</CommandEmpty>
-                        {memberType === "coach" && (
-                          <CommandGroup>
-                            <CommandItem
-                              value="__new_coach__"
-                              onSelect={() => { setPickerOpen(false); setCoachOpen(true); }}
-                              className="font-medium text-primary"
-                            >
-                              <Plus className="mr-2 h-4 w-4" /> Créer une nouvelle personne
-                            </CommandItem>
-                          </CommandGroup>
-                        )}
-                        <CommandGroup>
-                          {(memberType === "athlete" ? athletes : coaches).slice(0, 200).map((p) => (
-                            <CommandItem
-                              key={p.id}
-                              value={`${p.first_name} ${p.last_name}`}
-                              onSelect={() => { setMemberForm({ ...memberForm, entity_id: p.id }); setPickerOpen(false); }}
-                            >
-                              {p.first_name} {p.last_name}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
+                <PersonCombobox
+                  value={memberPersonId}
+                  onChange={(id) => { setMemberPersonId(id); setSelectedRoleCode(""); }}
+                  options={personOptions}
+                  placeholder="Choisir une personne…"
+                  searchPlaceholder="Rechercher une personne…"
+                  emptyMessage="Aucune personne trouvée."
+                />
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="m-role">Rôle * (ex : Athlète, Coach principal, Médecin…)</Label>
-                <Input id="m-role" value={memberForm.member_role} onChange={(e) => setMemberForm({ ...memberForm, member_role: e.target.value })} required />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="m-fn">Fonction</Label>
-                <Input id="m-fn" value={memberForm.member_function} onChange={(e) => setMemberForm({ ...memberForm, member_function: e.target.value })} />
-              </div>
+              {memberPersonId && selectedPersonRoles.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label>Rôle détecté {selectedPersonRoles.length > 1 ? "— choisir parmi les rôles" : ""}</Label>
+                  {selectedPersonRoles.length === 1 ? (
+                    <div className="rounded-md border border-border p-3 text-sm">
+                      {selectedPersonRoles[0].label}
+                    </div>
+                  ) : (
+                    <Select value={selectedRoleCode} onValueChange={setSelectedRoleCode}>
+                      <SelectTrigger><SelectValue placeholder="Choisir un rôle…" /></SelectTrigger>
+                      <SelectContent>
+                        {selectedPersonRoles.map((r) => (
+                          <SelectItem key={`${r.source}-${r.code}`} value={r.code}>{r.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+              )}
+              {memberPersonId && selectedPersonRoles.length === 0 && (
+                <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                  ⚠️ Cette personne n'a aucun rôle d'encadrant ou de membre de fédération. Si c'est un athlète, il sera ajouté avec son rôle d'athlète.
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setMemberOpen(false)}>Annuler</Button>
-              <Button type="submit" disabled={saving} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
+              <Button type="submit" disabled={saving || !memberPersonId} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
                 {saving ? "Enregistrement…" : "Ajouter"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Create encadrant sub-dialog */}
-      <Dialog open={coachOpen} onOpenChange={setCoachOpen}>
-        <DialogContent>
-          <form onSubmit={submitCoach}>
-            <DialogHeader>
-              <DialogTitle>Nouvel encadrant</DialogTitle>
-              <DialogDescription>Créer un encadrant et l'utiliser directement comme membre.</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="c-fn">Prénom *</Label>
-                  <Input id="c-fn" value={coachForm.first_name} onChange={(e) => setCoachForm({ ...coachForm, first_name: e.target.value })} required />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="c-ln">Nom *</Label>
-                  <Input id="c-ln" value={coachForm.last_name} onChange={(e) => setCoachForm({ ...coachForm, last_name: e.target.value })} required />
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="c-role">Rôle *</Label>
-                <Select value={coachForm.role} onValueChange={(v) => setCoachForm({ ...coachForm, role: v })}>
-                  <SelectTrigger id="c-role"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {COACH_ROLES.map((r) => (
-                      <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="c-em">Email</Label>
-                  <Input id="c-em" type="email" value={coachForm.email} onChange={(e) => setCoachForm({ ...coachForm, email: e.target.value })} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="c-ph">Téléphone</Label>
-                  <Input id="c-ph" value={coachForm.phone} onChange={(e) => setCoachForm({ ...coachForm, phone: e.target.value })} />
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setCoachOpen(false)}>Annuler</Button>
-              <Button type="submit" disabled={coachSaving} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
-                {coachSaving ? "Création…" : "Créer"}
               </Button>
             </DialogFooter>
           </form>
