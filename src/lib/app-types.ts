@@ -39,6 +39,7 @@ export const APP_TYPE_GROUPS: AppTypeGroupMeta[] = [
   { key: "game_statuses",              label: "Statuts des jeux",            description: "État d'avancement d'une édition" },
   { key: "accreditation_categories",   label: "Catégories d'accréditation", description: "Catégories de personnes accréditées" },
   { key: "accreditation_statuses",     label: "Statuts d'accréditation",     description: "Cycle de validation des accréditations" },
+  { key: "document_types",             label: "Types de documents",         description: "Types de documents pour accréditations (passeport, convention, etc.)" },
   { key: "document_categories",        label: "Catégories de documents",    description: "Classification des documents athlètes" },
   { key: "document_statuses",          label: "Statuts de documents",       description: "État d'un document (valide, expiré, etc.)" },
   { key: "travel_statuses",            label: "Statuts de voyage",           description: "État d'un plan de voyage" },

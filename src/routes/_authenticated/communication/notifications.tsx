@@ -23,10 +23,12 @@ export const Route = createFileRoute("/_authenticated/communication/notification
 
 type AthleteRef = { id: string; first_name: string; last_name: string };
 type GameRef = { id: string; name: string };
+type PersonRef = { id: string; first_name: string; last_name: string };
 
 function NotificationsPage() {
   const [notifs, setNotifs] = useState<Notification[]>([]);
   const [athletes, setAthletes] = useState<Record<string, AthleteRef>>({});
+  const [persons, setPersons] = useState<Record<string, PersonRef>>({});
   const [games, setGames] = useState<Record<string, GameRef>>({});
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -47,20 +49,27 @@ function NotificationsPage() {
     setNotifs(list);
 
     const aIds = Array.from(new Set(list.map((n) => n.related_athlete_id).filter(Boolean) as string[]));
+    const pIds = Array.from(new Set(list.map((n) => n.related_person_id).filter(Boolean) as string[]));
     const gIds = Array.from(new Set(list.map((n) => n.related_game_id).filter(Boolean) as string[]));
-    const [{ data: aRows }, { data: gRows }] = await Promise.all([
+    const [{ data: aRows }, { data: pRows }, { data: gRows }] = await Promise.all([
       aIds.length
         ? supabase.from("athletes").select("id, first_name, last_name").in("id", aIds)
         : Promise.resolve({ data: [] as AthleteRef[] }),
+      pIds.length
+        ? supabase.from("persons").select("id, first_name, last_name").in("id", pIds)
+        : Promise.resolve({ data: [] as PersonRef[] }),
       gIds.length
         ? supabase.from("games").select("id, name").in("id", gIds)
         : Promise.resolve({ data: [] as GameRef[] }),
     ]);
     const aMap: Record<string, AthleteRef> = {};
     (aRows ?? []).forEach((a) => { aMap[a.id] = a as AthleteRef; });
+    const pMap: Record<string, PersonRef> = {};
+    (pRows ?? []).forEach((p) => { pMap[p.id] = p as PersonRef; });
     const gMap: Record<string, GameRef> = {};
     (gRows ?? []).forEach((g) => { gMap[g.id] = g as GameRef; });
     setAthletes(aMap);
+    setPersons(pMap);
     setGames(gMap);
     setLoading(false);
   };
@@ -178,6 +187,7 @@ function NotificationsPage() {
             <TableBody>
               {paged.map((n) => {
                 const a = n.related_athlete_id ? athletes[n.related_athlete_id] : null;
+                const p = n.related_person_id ? persons[n.related_person_id] : null;
                 const g = n.related_game_id ? games[n.related_game_id] : null;
                 return (
                   <TableRow key={n.id} className={n.is_read ? "" : "bg-amber-50/40"}>
@@ -186,9 +196,11 @@ function NotificationsPage() {
                     </TableCell>
                     <TableCell className="max-w-md">{n.message}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">
-                      {a && <div>👤 {a.first_name} {a.last_name}</div>}
+                      {p && <div>👤 {p.first_name} {p.last_name}</div>}
+                      {a && !p && <div>👤 {a.first_name} {a.last_name}</div>}
                       {g && <div>🏟 {g.name}</div>}
-                      {!a && !g && "—"}
+                      {n.related_doc_type && <div>📄 {n.related_doc_type}</div>}
+                      {!a && !p && !g && !n.related_doc_type && "—"}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{fmt(n.created_at)}</TableCell>
                     <TableCell className="text-right">

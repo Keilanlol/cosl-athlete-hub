@@ -5,6 +5,7 @@ import { Plus, Search, Lock, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { computeAge, checkAgeEligibility } from "@/lib/kyc-utils";
+import { createConformityNotification, getPersonIdForAthlete } from "@/lib/conformity-utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -224,6 +225,13 @@ function SelectionsPage() {
     setOpen(false);
     setEditingId(null);
     setForm({ athlete_id: "", sport_id: "", discipline_id: "", game_competition_id: "" });
+    // Trigger conformity notification for new selections
+    if (!editingId) {
+      const personId = await getPersonIdForAthlete(form.athlete_id);
+      if (personId) {
+        await createConformityNotification(personId, gameId, "athlete", "pre_selected");
+      }
+    }
     load();
   };
 
@@ -288,7 +296,17 @@ function SelectionsPage() {
     if (["selected", "reserve", "rejected"].includes(newStatus)) patch.decided_at = new Date().toISOString();
     const { error } = await supabase.from("selections").update(patch).eq("id", sel.id);
     if (error) toast.error("Échec", { description: friendlyError(error) });
-    else { toast.success("Statut mis à jour"); load(); }
+    else {
+      toast.success("Statut mis à jour");
+      // Trigger conformity notification when selection stage changes (for athlete selections)
+      if (["pre_selected", "selected", "reserve"].includes(newStatus)) {
+        const personId = await getPersonIdForAthlete(sel.athlete_id);
+        if (personId) {
+          await createConformityNotification(personId, gameId, "athlete", newStatus);
+        }
+      }
+      load();
+    }
   };
 
   const selectedAthlete = athletes.find((a) => a.id === form.athlete_id);

@@ -178,6 +178,31 @@ export type AthleteDocument = {
   created_at: string;
 };
 
+export type PersonDocument = {
+  id: string;
+  person_id: string;
+  category: string | null;
+  doc_type: string;
+  file_name: string;
+  file_url: string | null;
+  issued_date: string | null;
+  expiry_date: string | null;
+  status: string;
+  uploaded_by: string | null;
+  requires_action: boolean | null;
+  created_at: string;
+};
+
+export type AccreditationRequirement = {
+  id: string;
+  game_id: string;
+  role_code: string;
+  doc_type_code: string;
+  selection_stage: string | null;
+  required: boolean;
+  created_at: string;
+};
+
 export type AthleteKyc = {
   id: string;
   athlete_id: string;
@@ -602,6 +627,9 @@ export type Notification = {
   target_user_id: string | null;
   related_athlete_id: string | null;
   related_game_id: string | null;
+  related_doc_id: string | null;
+  related_person_id: string | null;
+  related_doc_type: string | null;
   is_read: boolean | null;
   created_at: string;
 };

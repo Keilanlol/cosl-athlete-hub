@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Mail, Phone, MapPin, Pencil, Trash2, Plus, X, ArrowRight, Building2, Trophy, Users, Shield } from "lucide-react";
+import { ArrowLeft, Mail, Phone, MapPin, Pencil, Trash2, Plus, X, ArrowRight, Building2, Trophy, Users, Shield, Upload, FileText, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { friendlyError } from "@/lib/error-messages";
@@ -31,10 +31,50 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { EntityImageUpload } from "@/components/EntityImageUpload";
+import { FileUpload, pathFromSignedUrl } from "@/components/FileUpload";
+import { EditableSelect } from "@/components/EditableSelect";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { syncPhotoFromPerson } from "@/lib/person-photo-sync";
 import { syncPersonToLegacy } from "@/lib/person-sync";
-
+import { useDocumentTypes } from "@/hooks/useReferenceData";
+import { useAuth } from "@/hooks/useAuth";
+import { useHashTab } from "@/hooks/useHashTab";
+import { DOCUMENT_STATUSES, type PersonDocument } from "@/lib/types";
+import { computeMissingDocs, type MissingDoc } from "@/lib/conformity-utils";
+import { EmptyState, TableSkeleton } from "@/components/DataTableShell";
 
 export const Route = createFileRoute("/_authenticated/persons/$personId")({
   component: PersonDetailPage,
@@ -50,6 +90,12 @@ type PersonBundle = {
   federations: Record<string, string>;
 };
 
+type RequiredDocsByGame = {
+  game: { id: string; name: string; edition_year: number };
+  roleCode: string;
+  selectionStage: string | null;
+  missing: MissingDoc[];
+};
 
 function initials(p: Pick<Person, "first_name" | "last_name">) {
   return `${p.first_name?.[0] ?? ""}${p.last_name?.[0] ?? ""}`.toUpperCase();
@@ -58,6 +104,10 @@ function initials(p: Pick<Person, "first_name" | "last_name">) {
 function PersonDetailPage() {
   const { personId } = Route.useParams();
   const navigate = useNavigate();
+  const { role } = useAuth();
+  const isAdmin = role === "admin";
+  const [tab, setTab] = useHashTab("informations");
+  const { items: docTypes, add: addDocType, remove: removeDocType } = useDocumentTypes();
   const [bundle, setBundle] = useState<PersonBundle | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [rolesOpen, setRolesOpen] = useState(false);
@@ -65,6 +115,21 @@ function PersonDetailPage() {
   const [saving, setSaving] = useState(false);
   const [editForm, setEditForm] = useState<PersonGeneralFields>({ ...defaultPersonGeneral });
   const [editIsActive, setEditIsActive] = useState(true);
+
+  // Documents state
+  const [docs, setDocs] = useState<PersonDocument[]>([]);
+  const [docsLoading, setDocsLoading] = useState(true);
+  const [docOpen, setDocOpen] = useState(false);
+  const [docForm, setDocForm] = useState({
+    doc_type: "",
+    status: "pending",
+    file_name: "",
+    file_url: "",
+    issued_date: "",
+    expiry_date: "",
+  });
+  const [docDeleteId, setDocDeleteId] = useState<string | null>(null);
+  const [requiredByGames, setRequiredByGames] = useState<RequiredDocsByGame[]>([]);
 
   const load = async () => {
     const [pRes, rRes, apRes, cpRes, fmRes] = await Promise.all([
@@ -125,10 +190,75 @@ function PersonDetailPage() {
     });
   };
 
+  // Load documents for this person
+  const loadDocs = async () => {
+    setDocsLoading(true);
+    const { data, error } = await supabase
+      .from("person_documents")
+      .select("*")
+      .eq("person_id", personId)
+      .order("created_at", { ascending: false });
+    if (error) {
+      toast.error("Erreur documents", { description: friendlyError(error) });
+      setDocs([]);
+      setDocsLoading(false);
+      return;
+    }
+    setDocs((data ?? []) as PersonDocument[]);
+    setDocsLoading(false);
+  };
+
+  // Load required docs by Games (if person is selected for any Games)
+  const loadRequiredByGames = async () => {
+    if (!bundle?.athlete_profile?.legacy_athlete_id) {
+      setRequiredByGames([]);
+      return;
+    }
+    const athleteId = bundle.athlete_profile.legacy_athlete_id;
+    // Get selections for this athlete
+    const { data: sels } = await supabase
+      .from("selections")
+      .select("game_id, status, game:games(id, name, edition_year)")
+      .eq("athlete_id", athleteId)
+      .in("status", ["pre_selected", "selected", "reserve"]);
+    const selections = (sels ?? []) as unknown as Array<{
+      game_id: string;
+      status: string;
+      game: { id: string; name: string; edition_year: number } | null;
+    }>;
+    if (selections.length === 0) {
+      setRequiredByGames([]);
+      return;
+    }
+    const results: RequiredDocsByGame[] = [];
+    for (const sel of selections) {
+      if (!sel.game) continue;
+      const { missing } = await computeMissingDocs(
+        personId,
+        sel.game.id,
+        "athlete",
+        sel.status,
+      );
+      results.push({
+        game: sel.game,
+        roleCode: "athlete",
+        selectionStage: sel.status,
+        missing,
+      });
+    }
+    setRequiredByGames(results);
+  };
+
   useEffect(() => {
     load();
+    loadDocs();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [personId]);
+
+  useEffect(() => {
+    if (bundle) loadRequiredByGames();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bundle, docs]);
 
   const activeRoles: PersonRoleType[] = useMemo(
     () =>
@@ -186,7 +316,6 @@ function PersonDetailPage() {
       toast.error("Échec", { description: friendlyError(error) });
       return;
     }
-    // Sync email/phone to legacy athlete and coach rows
     await syncPersonToLegacy(personId, {
       email: editForm.email?.trim() || null,
       phone: editForm.phone?.trim() || null,
@@ -308,12 +437,110 @@ function PersonDetailPage() {
     navigate({ to: "/persons" });
   };
 
+  // ── Document CRUD ──────────────────────────────────────────────────────
+
+  const submitDoc = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!docForm.doc_type.trim() || !docForm.file_name.trim()) {
+      toast.error("Type et nom de fichier requis");
+      return;
+    }
+    const isCOSLDoc = ["convention", "olympic_contract", "code_of_conduct", "medical_form"].includes(docForm.doc_type);
+    const dt = docTypes.find((t) => t.code === docForm.doc_type);
+    const { data: insertedDoc, error } = await supabase
+      .from("person_documents")
+      .insert({
+        person_id: personId,
+        category: dt?.category ?? "admin",
+        doc_type: docForm.doc_type.trim(),
+        file_name: docForm.file_name.trim(),
+        file_url: docForm.file_url.trim() || null,
+        issued_date: docForm.issued_date || null,
+        expiry_date: docForm.expiry_date || null,
+        status: docForm.status,
+        uploaded_by: null,
+        requires_action: isCOSLDoc,
+      })
+      .select("id")
+      .single();
+
+    if (error) {
+      toast.error("Échec", { description: friendlyError(error) });
+      return;
+    }
+
+    // Notify for COSL docs requiring action
+    if (insertedDoc && isCOSLDoc) {
+      const typeLabel = dt?.label ?? docForm.doc_type;
+      await supabase.from("notifications").insert({
+        notification_type: "document_action_required",
+        message: `Nouveau document à examiner : ${typeLabel}`,
+        related_person_id: personId,
+        related_doc_id: insertedDoc.id,
+        is_read: false,
+      });
+    }
+
+    toast.success("Document ajouté");
+    setDocOpen(false);
+    setDocForm({
+      doc_type: "",
+      status: "pending",
+      file_name: "",
+      file_url: "",
+      issued_date: "",
+      expiry_date: "",
+    });
+    loadDocs();
+  };
+
+  const deleteDoc = async () => {
+    if (!docDeleteId) return;
+    const target = docs.find((d) => d.id === docDeleteId);
+    if (target?.file_url) {
+      const storagePath = pathFromSignedUrl(target.file_url, "documents");
+      if (storagePath) {
+        await supabase.storage.from("documents").remove([storagePath]);
+      }
+    }
+    const { error } = await supabase
+      .from("person_documents")
+      .delete()
+      .eq("id", docDeleteId);
+    setDocDeleteId(null);
+    if (error) {
+      toast.error("Suppression impossible", { description: friendlyError(error) });
+      return;
+    }
+    toast.success("Document supprimé");
+    loadDocs();
+  };
+
+  const updateDocStatus = async (docId: string, nextStatus: string) => {
+    const { error } = await supabase
+      .from("person_documents")
+      .update({ status: nextStatus })
+      .eq("id", docId);
+    if (error) {
+      toast.error("Mise à jour impossible", { description: friendlyError(error) });
+      return;
+    }
+    toast.success("Statut mis à jour");
+    setDocs((prev) =>
+      prev.map((d) => (d.id === docId ? { ...d, status: nextStatus } : d)),
+    );
+  };
+
   if (!bundle) {
     return <div className="p-6 text-muted-foreground">Chargement…</div>;
   }
 
   const { person } = bundle;
 
+  const docStatusBadge = (s: string) => {
+    const m = DOCUMENT_STATUSES.find((x) => x.value === s);
+    return <Badge className={`${m?.cls ?? ""} hover:${m?.cls ?? ""}`}>{m?.label ?? s}</Badge>;
+  };
 
   return (
     <div className="space-y-6">
@@ -373,7 +600,6 @@ function PersonDetailPage() {
               });
               load();
             }}
-
           />
           <div className="flex-1 min-w-[240px] space-y-3">
             <div>
@@ -429,114 +655,385 @@ function PersonDetailPage() {
         </div>
       </div>
 
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-foreground">Rôles</h2>
-          <Button size="sm" variant="outline" onClick={() => setRolesOpen(true)}>
-            <Plus className="mr-1 h-4 w-4" /> Ajouter un rôle
-          </Button>
-        </div>
+      <Tabs value={tab} onValueChange={setTab} className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="informations">Informations</TabsTrigger>
+          <TabsTrigger value="documents">Documents</TabsTrigger>
+        </TabsList>
 
-        {activeRoles.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border bg-card p-6 text-sm text-muted-foreground">
-            Aucun rôle assigné. Clique sur « Ajouter un rôle » pour en attribuer un.
+        {/* ══════════════════════════════════════════════════════════════ */}
+        {/* Onglet INFORMATIONS                                          */}
+        {/* ══════════════════════════════════════════════════════════════ */}
+        <TabsContent value="informations" className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-foreground">Rôles</h2>
+            <Button size="sm" variant="outline" onClick={() => setRolesOpen(true)}>
+              <Plus className="mr-1 h-4 w-4" /> Ajouter un rôle
+            </Button>
           </div>
-        ) : (
-          <ul className="space-y-2">
-            {activeRoles.includes("athlete") && bundle.athlete_profile && (
-              <RoleListItem
-                icon={<Trophy className="h-4 w-4" />}
-                role="athlete"
-                title={
-                  bundle.athlete_profile.primary_federation_id
-                    ? bundle.federations[bundle.athlete_profile.primary_federation_id] ?? "Athlète"
-                    : "Athlète indépendant"
-                }
-                subtitle={[
-                  bundle.athlete_profile.status,
-                  bundle.athlete_profile.level && `Niveau ${bundle.athlete_profile.level}`,
-                  bundle.athlete_profile.primary_federation_id &&
-                    bundle.federations[bundle.athlete_profile.primary_federation_id],
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-                to={
-                  bundle.athlete_profile.legacy_athlete_id
-                    ? { to: "/athletes/$id", params: { id: bundle.athlete_profile.legacy_athlete_id } }
-                    : null
-                }
-              />
-            )}
 
-            {bundle.coach_profiles.map((p) => (
-              <RoleListItem
-                key={p.id}
-                icon={<Shield className="h-4 w-4" />}
-                role="coach"
-                title={
-                  (p.federation_id && bundle.federations[p.federation_id]) ||
-                  "Encadrant"
-                }
-                subtitle={[
-                  p.role,
-                  p.federation_id && bundle.federations[p.federation_id]
-                    ? `Fédération : ${bundle.federations[p.federation_id]}`
-                    : null,
-                  p.is_active ? "Actif" : "Inactif",
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-                to={
-                  p.legacy_coach_id
-                    ? { to: "/coaches/$id", params: { id: p.legacy_coach_id } }
-                    : null
-                }
-              />
-            ))}
-
-            {bundle.federation_member_profiles.map((p) => (
-              <RoleListItem
-                key={p.id}
-                icon={<Building2 className="h-4 w-4" />}
-                role="federation_member"
-                title={bundle.federations[p.federation_id] ?? "Fédération"}
-                subtitle={[
-                  p.role,
-                  p.start_date &&
-                    `Depuis ${new Date(p.start_date).toLocaleDateString("fr-FR")}`,
-                  p.end_date &&
-                    `Jusqu'au ${new Date(p.end_date).toLocaleDateString("fr-FR")}`,
-                  p.is_active ? "Actif" : "Inactif",
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-                to={
-                  p.legacy_federation_member_id
-                    ? {
-                        to: "/federations/members/$memberId",
-                        params: { memberId: p.legacy_federation_member_id },
-                      }
-                    : null
-                }
-              />
-            ))}
-
-            {(["official", "volunteer", "staff"] as PersonRoleType[])
-              .filter((r) => activeRoles.includes(r))
-              .map((r) => (
+          {activeRoles.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-border bg-card p-6 text-sm text-muted-foreground">
+              Aucun rôle assigné. Clique sur « Ajouter un rôle » pour en attribuer un.
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {activeRoles.includes("athlete") && bundle.athlete_profile && (
                 <RoleListItem
-                  key={r}
-                  icon={<Users className="h-4 w-4" />}
-                  role={r}
-                  title={ROLE_LABELS[r]}
-                  subtitle="Pas de profil détaillé"
-                  to={null}
+                  icon={<Trophy className="h-4 w-4" />}
+                  role="athlete"
+                  title={
+                    bundle.athlete_profile.primary_federation_id
+                      ? bundle.federations[bundle.athlete_profile.primary_federation_id] ?? "Athlète"
+                      : "Athlète indépendant"
+                  }
+                  subtitle={[
+                    bundle.athlete_profile.status,
+                    bundle.athlete_profile.level && `Niveau ${bundle.athlete_profile.level}`,
+                    bundle.athlete_profile.primary_federation_id &&
+                      bundle.federations[bundle.athlete_profile.primary_federation_id],
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                  to={
+                    bundle.athlete_profile.legacy_athlete_id
+                      ? { to: "/athletes/$id", params: { id: bundle.athlete_profile.legacy_athlete_id } }
+                      : null
+                  }
+                />
+              )}
+
+              {bundle.coach_profiles.map((p) => (
+                <RoleListItem
+                  key={p.id}
+                  icon={<Shield className="h-4 w-4" />}
+                  role="coach"
+                  title={
+                    (p.federation_id && bundle.federations[p.federation_id]) ||
+                    "Encadrant"
+                  }
+                  subtitle={[
+                    p.role,
+                    p.federation_id && bundle.federations[p.federation_id]
+                      ? `Fédération : ${bundle.federations[p.federation_id]}`
+                      : null,
+                    p.is_active ? "Actif" : "Inactif",
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                  to={
+                    p.legacy_coach_id
+                      ? { to: "/coaches/$id", params: { id: p.legacy_coach_id } }
+                      : null
+                  }
                 />
               ))}
-          </ul>
-        )}
-      </div>
 
+              {bundle.federation_member_profiles.map((p) => (
+                <RoleListItem
+                  key={p.id}
+                  icon={<Building2 className="h-4 w-4" />}
+                  role="federation_member"
+                  title={bundle.federations[p.federation_id] ?? "Fédération"}
+                  subtitle={[
+                    p.role,
+                    p.start_date &&
+                      `Depuis ${new Date(p.start_date).toLocaleDateString("fr-FR")}`,
+                    p.end_date &&
+                      `Jusqu'au ${new Date(p.end_date).toLocaleDateString("fr-FR")}`,
+                    p.is_active ? "Actif" : "Inactif",
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                  to={
+                    p.legacy_federation_member_id
+                      ? {
+                          to: "/federations/members/$memberId",
+                          params: { memberId: p.legacy_federation_member_id },
+                        }
+                      : null
+                  }
+                />
+              ))}
+
+              {(["official", "volunteer", "staff"] as PersonRoleType[])
+                .filter((r) => activeRoles.includes(r))
+                .map((r) => (
+                  <RoleListItem
+                    key={r}
+                    icon={<Users className="h-4 w-4" />}
+                    role={r}
+                    title={ROLE_LABELS[r]}
+                    subtitle="Pas de profil détaillé"
+                    to={null}
+                  />
+                ))}
+            </ul>
+          )}
+        </TabsContent>
+
+        {/* ══════════════════════════════════════════════════════════════ */}
+        {/* Onglet DOCUMENTS                                             */}
+        {/* ══════════════════════════════════════════════════════════════ */}
+        <TabsContent value="documents" className="space-y-4">
+          {/* Encart Photo officielle */}
+          <div className="rounded-lg border border-border bg-card p-4">
+            <h3 className="text-sm font-semibold text-foreground mb-3">Photo officielle</h3>
+            <div className="flex items-center gap-4">
+              <EntityImageUpload
+                entityId={person.id}
+                entityType="person"
+                currentImageUrl={person.photo_url}
+                currentStoragePath={person.photo_storage_path}
+                shape="circle"
+                size="sm"
+                label="Photo"
+                placeholder={initials(person)}
+                onUploaded={async (url, path) => {
+                  await supabase
+                    .from("persons")
+                    .update({ photo_url: url, photo_storage_path: path })
+                    .eq("id", person.id);
+                  await syncPhotoFromPerson(person.id, {
+                    photo_url: url,
+                    photo_storage_path: path,
+                  });
+                  load();
+                }}
+                onDeleted={async () => {
+                  await supabase
+                    .from("persons")
+                    .update({ photo_url: null, photo_storage_path: null })
+                    .eq("id", person.id);
+                  await syncPhotoFromPerson(person.id, {
+                    photo_url: null,
+                    photo_storage_path: null,
+                  });
+                  load();
+                }}
+              />
+              <div className="text-sm text-muted-foreground">
+                {person.photo_url ? (
+                  <p className="text-emerald-600">✓ Photo uploadée</p>
+                ) : (
+                  <p>Aucune photo — cliquez pour ajouter</p>
+                )}
+                <p className="text-xs mt-1">JPG, PNG ou WebP · max 5 MB</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Section "Documents requis" (si sélectionné pour un Games) */}
+          {requiredByGames.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold text-foreground">Documents requis</h3>
+              {requiredByGames.map((rg) => {
+                const stageLabel =
+                  rg.selectionStage === "pre_selected"
+                    ? "Long List"
+                    : rg.selectionStage === "selected"
+                    ? "Short List"
+                    : rg.selectionStage === "reserve"
+                    ? "Réserve"
+                    : rg.selectionStage;
+                const allGood = rg.missing.length === 0;
+                return (
+                  <div key={rg.game.id} className="rounded-lg border border-border bg-card p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">
+                          {rg.game.name} {rg.game.edition_year}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Rôle : Athlète · Étape : {stageLabel}
+                        </p>
+                      </div>
+                      <Badge
+                        className={
+                          allGood
+                            ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
+                            : rg.missing.length > 2
+                            ? "bg-red-100 text-red-700 hover:bg-red-100"
+                            : "bg-amber-100 text-amber-700 hover:bg-amber-100"
+                        }
+                      >
+                        {allGood
+                          ? "Conforme"
+                          : `${rg.missing.length} manquant(s)`}
+                      </Badge>
+                    </div>
+                    {allGood ? (
+                      <p className="text-sm text-emerald-600">✓ Tous les documents requis sont fournis</p>
+                    ) : (
+                      <ul className="space-y-1">
+                        {rg.missing.map((m) => (
+                          <li key={m.doc_type_code} className="flex items-center gap-2 text-sm">
+                            <AlertTriangle className="h-4 w-4 text-amber-500" />
+                            <span className="text-muted-foreground">{m.label}</span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="ml-auto"
+                              onClick={() => {
+                                setDocForm({
+                                  doc_type: m.doc_type_code,
+                                  status: "pending",
+                                  file_name: "",
+                                  file_url: "",
+                                  issued_date: "",
+                                  expiry_date: "",
+                                });
+                                setDocOpen(true);
+                              }}
+                            >
+                              <Upload className="mr-1 h-3 w-3" /> Fournir
+                            </Button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Section "Tous les documents" */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-foreground">Tous les documents</h3>
+              <Button
+                onClick={() => {
+                  setDocForm({
+                    doc_type: "",
+                    status: "pending",
+                    file_name: "",
+                    file_url: "",
+                    issued_date: "",
+                    expiry_date: "",
+                  });
+                  setDocOpen(true);
+                }}
+                className="bg-primary hover:bg-[var(--cosl-red-dark)]"
+              >
+                <Upload className="mr-2 h-4 w-4" /> Ajouter un document
+              </Button>
+            </div>
+            <div className="rounded-lg border border-border bg-card">
+              {docsLoading ? (
+                <TableSkeleton cols={6} />
+              ) : docs.length === 0 ? (
+                <div className="p-6"><EmptyState message="Aucun document." /></div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Nom du fichier</TableHead>
+                      <TableHead>Émission</TableHead>
+                      <TableHead>Expiration</TableHead>
+                      <TableHead>Statut</TableHead>
+                      <TableHead>Requis pour</TableHead>
+                      <TableHead className="w-12 text-right"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {docs.map((d) => {
+                      const reqGame = requiredByGames.find((rg) =>
+                        rg.missing.some((m) => m.doc_type_code === d.doc_type) ||
+                        rg.missing.length === 0 &&
+                        // Check if this doc_type is required for this game
+                        true,
+                      );
+                      return (
+                        <TableRow key={d.id}>
+                          <TableCell>
+                            {docTypes.find((t) => t.code === d.doc_type)?.label ?? d.doc_type}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {d.file_url && /\.(png|jpe?g|webp|gif)(\?|$)/i.test(d.file_url) && (
+                                <img
+                                  src={d.file_url}
+                                  alt=""
+                                  className="h-10 w-10 rounded object-cover border border-border"
+                                />
+                              )}
+                              {d.file_url ? (
+                                <a
+                                  href={d.file_url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-[var(--lux-blue)] hover:underline"
+                                >
+                                  {d.file_name}
+                                </a>
+                              ) : (
+                                d.file_name
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>{d.issued_date ?? "—"}</TableCell>
+                          <TableCell>{d.expiry_date ?? "—"}</TableCell>
+                          <TableCell>
+                            {isAdmin ? (
+                              <Select
+                                value={d.status}
+                                onValueChange={(v) => updateDocStatus(d.id, v)}
+                              >
+                                <SelectTrigger className="h-8 w-40">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {DOCUMENT_STATUSES.map((s) => (
+                                    <SelectItem key={s.value} value={s.value}>
+                                      {s.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              docStatusBadge(d.status)
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {requiredByGames
+                              .filter((rg) =>
+                                rg.missing.some((m) => m.doc_type_code === d.doc_type) === false &&
+                                rg.missing.length === 0,
+                              )
+                              .map((rg) => (
+                                <Badge key={rg.game.id} variant="outline" className="text-xs">
+                                  {rg.game.name}
+                                </Badge>
+                              ))}
+                            {requiredByGames.some((rg) =>
+                              rg.missing.some((m) => m.doc_type_code === d.doc_type),
+                            ) && (
+                              <Badge variant="outline" className="text-xs text-amber-700 border-amber-200">
+                                Requis (fourni)
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setDocDeleteId(d.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-600" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
 
       {/* Edit dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
@@ -630,6 +1127,125 @@ function PersonDetailPage() {
           }}
         />
       )}
+
+      {/* Document add dialog */}
+      <Dialog open={docOpen} onOpenChange={setDocOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <form onSubmit={submitDoc}>
+            <DialogHeader>
+              <DialogTitle>Ajouter un document</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-3 py-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Type *</Label>
+                  <EditableSelect
+                    value={docForm.doc_type}
+                    onValueChange={(v) => {
+                      const dt = docTypes.find((t) => t.code === v);
+                      setDocForm({ ...docForm, doc_type: v });
+                    }}
+                    options={docTypes.map((t) => ({ value: t.code, label: t.label }))}
+                    emptyLabel="—"
+                    onAdd={(label) => addDocType(label, "admin")}
+                    onDelete={removeDocType}
+                    addLabel="+ Ajouter un type…"
+                    manageTitle="Types de documents"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Statut</Label>
+                  <Select
+                    value={docForm.status}
+                    onValueChange={(v) => setDocForm({ ...docForm, status: v })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {DOCUMENT_STATUSES.map((s) => (
+                        <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Nom du fichier</Label>
+                <Input
+                  value={docForm.file_name}
+                  onChange={(e) => setDocForm({ ...docForm, file_name: e.target.value })}
+                  placeholder="Auto-généré : Type_Prénom_Nom"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Fichier</Label>
+                <FileUpload
+                  bucket="documents"
+                  path={`persons/${personId}/${docForm.doc_type || "doc"}/${Date.now()}_`}
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
+                  currentUrl={docForm.file_url || null}
+                  currentName={docForm.file_name || null}
+                  overrideFileName={
+                    docForm.doc_type
+                      ? `${docForm.doc_type}_${person.first_name}_${person.last_name}`
+                      : undefined
+                  }
+                  onUploaded={(url, fileName) => {
+                    setDocForm((prev) => ({
+                      ...prev,
+                      file_url: url,
+                      file_name: prev.file_name || fileName,
+                    }));
+                  }}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Date d'émission</Label>
+                  <Input
+                    type="date"
+                    value={docForm.issued_date}
+                    onChange={(e) => setDocForm({ ...docForm, issued_date: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Date d'expiration</Label>
+                  <Input
+                    type="date"
+                    value={docForm.expiry_date}
+                    onChange={(e) => setDocForm({ ...docForm, expiry_date: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setDocOpen(false)}>
+                Annuler
+              </Button>
+              <Button type="submit" className="bg-primary hover:bg-[var(--cosl-red-dark)]">
+                Ajouter
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Document delete confirmation */}
+      <AlertDialog open={!!docDeleteId} onOpenChange={(o) => !o && setDocDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer ce document ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={deleteDoc} className="bg-red-600 hover:bg-red-700">
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
