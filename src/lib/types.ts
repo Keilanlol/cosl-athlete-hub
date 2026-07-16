@@ -32,11 +32,11 @@ export type Coach = {
 export const COACH_ROLES = [
   { value: "coach", label: "Coach" },
   { value: "mechanic", label: "Mécano" },
-  { value: "medical", label: "Medical" },
-  { value: "press", label: "Press" },
-  { value: "chief_of_mission", label: "Chief of Mission" },
+  { value: "medical", label: "Encadrant médical" },
   { value: "physio_v2", label: "Kiné" },
   { value: "team_manager", label: "Team Manager" },
+  { value: "chief_of_mission", label: "Chief of Mission" },
+  { value: "press", label: "Press" },
   { value: "judge", label: "Juge" },
   { value: "other", label: "Autre" },
 ] as const;

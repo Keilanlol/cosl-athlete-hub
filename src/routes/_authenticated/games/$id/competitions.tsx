@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, Download, Pencil } from "lucide-react";
+import { Plus, Trash2, Download, Pencil, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import {
@@ -19,7 +19,6 @@ import { AddressSearch } from "@/components/AddressSearch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -33,6 +32,10 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+} from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { EmptyState, TableSkeleton } from "@/components/DataTableShell";
 
 export const Route = createFileRoute("/_authenticated/games/$id/competitions")({
@@ -41,11 +44,15 @@ export const Route = createFileRoute("/_authenticated/games/$id/competitions")({
 
 const ALL = "__all";
 
-type ResultRow = AthleteResult & {
-  athlete: { first_name: string; last_name: string; cosl_id: string } | null;
+type ParticipantRow = AthleteResult & {
+  athlete: { id: string; first_name: string; last_name: string; cosl_id: string; gender: string } | null;
   game_competition: { name: string } | null;
   sport: { name: string } | null;
   discipline: { name: string } | null;
+};
+
+type AthleteLite = {
+  id: string; first_name: string; last_name: string; cosl_id: string; gender: string;
 };
 
 function medalBadge(m: AthleteResult["medal"]) {
@@ -57,35 +64,30 @@ function medalBadge(m: AthleteResult["medal"]) {
 function CompetitionsPage() {
   const { id } = Route.useParams();
   const [comps, setComps] = useState<GameCompetition[] | null>(null);
-  const [results, setResults] = useState<ResultRow[] | null>(null);
+  const [results, setResults] = useState<ParticipantRow[] | null>(null);
   const [sports, setSports] = useState<Sport[]>([]);
   const [disciplines, setDisciplines] = useState<Discipline[]>([]);
+  const [athletes, setAthletes] = useState<AthleteLite[]>([]);
   const [allowedSportIds, setAllowedSportIds] = useState<Set<string>>(new Set());
   const [allowedDisciplineIdsBySport, setAllowedDisciplineIdsBySport] = useState<Record<string, Set<string>>>({});
 
   const [compOpen, setCompOpen] = useState(false);
   const [compForm, setCompForm] = useState({
-    sport_id: "",
-    discipline_id: "",
-    name: "",
-    round: "",
-    gender: "mixed",
-    category: "",
-    competition_date: "",
-    venue: "",
-    postcode: "",
-    city: "",
-    country: "",
-    min_age: "",
-    max_age: "",
-    notes: "",
+    sport_id: "", discipline_id: "", name: "", round: "", gender: "mixed",
+    category: "", competition_date: "", venue: "", postcode: "", city: "",
+    country: "", min_age: "", max_age: "", notes: "",
   });
   const [delComp, setDelComp] = useState<GameCompetition | null>(null);
   const [editingComp, setEditingComp] = useState<GameCompetition | null>(null);
+
+  // Detail dialog
   const [viewComp, setViewComp] = useState<GameCompetition | null>(null);
-  const [selRows, setSelRows] = useState<Array<{ athlete_id: string; athlete: { first_name: string; last_name: string; cosl_id: string; gender: string } | null }>>([]);
-  const [resultDlgOpen, setResultDlgOpen] = useState(false);
-  const [resultForm, setResultForm] = useState({ athlete_id: "", rank: "", medal: "", score: "", unit: "", is_national_record: false, is_personal_best: false });
+  const [compParticipants, setCompParticipants] = useState<ParticipantRow[]>([]);
+  const [addAthleteOpen, setAddAthleteOpen] = useState(false);
+  const [athletePickerOpen, setAthletePickerOpen] = useState(false);
+
+  // Inline editing state: resultId → { field: value }
+  const [editingResult, setEditingResult] = useState<Record<string, Record<string, string>>>({});
 
   const [fSport, setFSport] = useState(ALL);
   const [fMedal, setFMedal] = useState(ALL);
@@ -93,7 +95,7 @@ function CompetitionsPage() {
   const load = async () => {
     setComps(null);
     setResults(null);
-    const [{ data: c }, { data: r }, { data: sp }, { data: di }, { data: gs }] = await Promise.all([
+    const [{ data: c }, { data: r }, { data: sp }, { data: di }, { data: gs }, { data: ath }] = await Promise.all([
       supabase
         .from("game_competitions")
         .select("*")
@@ -102,7 +104,7 @@ function CompetitionsPage() {
       supabase
         .from("athlete_results")
         .select(
-          "*, athlete:athletes(first_name,last_name,cosl_id), game_competition:game_competitions(name), sport:sports(name), discipline:disciplines(name)",
+          "*, athlete:athletes(id,first_name,last_name,cosl_id,gender), game_competition:game_competitions(name), sport:sports(name), discipline:disciplines(name)",
         )
         .eq("game_id", id)
         .order("rank", { ascending: true, nullsFirst: false }),
@@ -112,11 +114,13 @@ function CompetitionsPage() {
         .from("game_sports")
         .select("id, sport_id, is_active, game_sport_disciplines(discipline_id)")
         .eq("game_id", id),
+      supabase.from("athletes").select("id,first_name,last_name,cosl_id,gender").eq("is_active", true).order("last_name"),
     ]);
     setComps((c ?? []) as GameCompetition[]);
-    setResults((r ?? []) as ResultRow[]);
+    setResults((r ?? []) as ParticipantRow[]);
     setSports((sp ?? []) as Sport[]);
     setDisciplines((di ?? []) as Discipline[]);
+    setAthletes((ath ?? []) as AthleteLite[]);
     const allowed = new Set<string>();
     const byS: Record<string, Set<string>> = {};
     ((gs ?? []) as Array<{ sport_id: string; is_active: boolean | null; game_sport_disciplines: Array<{ discipline_id: string }> }>).forEach((row) => {
@@ -190,48 +194,116 @@ function CompetitionsPage() {
     setDelComp(null);
   };
 
+  // Open detail dialog — load participants for this competition
   const openComp = async (c: GameCompetition) => {
     setViewComp(c);
-    setSelRows([]);
-    let query = supabase
-      .from("selections")
-      .select("athlete_id, athlete:athletes(first_name,last_name,cosl_id,gender)")
-      .eq("game_id", id)
-      .eq("sport_id", c.sport_id)
-      .in("status", ["selected", "reserve"]);
-    if (c.discipline_id) query = query.eq("discipline_id", c.discipline_id);
-    const { data } = await query;
-    setSelRows(((data ?? []) as unknown) as typeof selRows);
+    const { data } = await supabase
+      .from("athlete_results")
+      .select("*, athlete:athletes(id,first_name,last_name,cosl_id,gender)")
+      .eq("game_competition_id", c.id)
+      .order("rank", { ascending: true, nullsFirst: true });
+    setCompParticipants((data ?? []) as ParticipantRow[]);
+    setEditingResult({});
   };
 
-  const compResults = useMemo(
-    () => (results ?? []).filter((r) => r.game_competition_id === viewComp?.id)
-      .sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999)),
-    [results, viewComp],
-  );
-
-  const submitResult = async () => {
-    if (!viewComp || !resultForm.athlete_id) return toast.error("Athlète requis");
+  // Add an athlete to a competition (creates an athlete_result with rank=null)
+  const addAthleteToComp = async (athleteId: string) => {
+    if (!viewComp) return;
+    // Check if already exists
+    const existing = compParticipants.find((p) => p.athlete_id === athleteId);
+    if (existing) {
+      toast.info("Cet athlète est déjà dans l'épreuve");
+      return;
+    }
     const { error } = await supabase.from("athlete_results").insert({
-      athlete_id: resultForm.athlete_id,
+      athlete_id: athleteId,
       game_id: id,
       game_competition_id: viewComp.id,
       sport_id: viewComp.sport_id,
       discipline_id: viewComp.discipline_id,
       result_date: viewComp.competition_date,
-      rank: resultForm.rank ? Number(resultForm.rank) : null,
-      medal: resultForm.medal || null,
-      score: resultForm.score || null,
-      unit: resultForm.unit || null,
-      is_national_record: resultForm.is_national_record,
-      is_personal_best: resultForm.is_personal_best,
+      rank: null,
+      medal: null,
+      score: null,
+      unit: null,
+      is_national_record: false,
+      is_personal_best: false,
     });
-    if (error) return toast.error("Échec", { description: friendlyError(error) });
-    toast.success("Résultat enregistré");
-    setResultDlgOpen(false);
-    setResultForm({ athlete_id: "", rank: "", medal: "", score: "", unit: "", is_national_record: false, is_personal_best: false });
-    await load();
+    if (error) {
+      toast.error("Échec", { description: friendlyError(error) });
+      return;
+    }
+    toast.success("Athlète ajouté à l'épreuve");
+    setAddAthleteOpen(false);
+    // Refresh participants
+    const { data } = await supabase
+      .from("athlete_results")
+      .select("*, athlete:athletes(id,first_name,last_name,cosl_id,gender)")
+      .eq("game_competition_id", viewComp.id)
+      .order("rank", { ascending: true, nullsFirst: true });
+    setCompParticipants((data ?? []) as ParticipantRow[]);
+    load();
   };
+
+  // Remove an athlete from a competition
+  const removeParticipant = async (resultId: string) => {
+    const { error } = await supabase.from("athlete_results").delete().eq("id", resultId);
+    if (error) toast.error("Échec", { description: friendlyError(error) });
+    else {
+      toast.success("Athlète retiré de l'épreuve");
+      if (viewComp) {
+        const { data } = await supabase
+          .from("athlete_results")
+          .select("*, athlete:athletes(id,first_name,last_name,cosl_id,gender)")
+          .eq("game_competition_id", viewComp.id)
+          .order("rank", { ascending: true, nullsFirst: true });
+        setCompParticipants((data ?? []) as ParticipantRow[]);
+      }
+      load();
+    }
+  };
+
+  // Save inline result edit
+  const saveResult = async (resultId: string) => {
+    const edits = editingResult[resultId];
+    if (!edits) return;
+    const patch: Record<string, unknown> = {};
+    if (edits.rank !== undefined) patch.rank = edits.rank ? Number(edits.rank) : null;
+    if (edits.medal !== undefined) patch.medal = edits.medal || null;
+    if (edits.score !== undefined) patch.score = edits.score || null;
+    if (edits.unit !== undefined) patch.unit = edits.unit || null;
+    if (edits.is_national_record !== undefined) patch.is_national_record = edits.is_national_record === "true";
+    if (edits.is_personal_best !== undefined) patch.is_personal_best = edits.is_personal_best === "true";
+
+    const { error } = await supabase.from("athlete_results").update(patch).eq("id", resultId);
+    if (error) {
+      toast.error("Échec", { description: friendlyError(error) });
+      return;
+    }
+    toast.success("Résultat enregistré");
+    setEditingResult((prev) => {
+      const next = { ...prev };
+      delete next[resultId];
+      return next;
+    });
+    // Refresh
+    if (viewComp) {
+      const { data } = await supabase
+        .from("athlete_results")
+        .select("*, athlete:athletes(id,first_name,last_name,cosl_id,gender)")
+        .eq("game_competition_id", viewComp.id)
+        .order("rank", { ascending: true, nullsFirst: true });
+      setCompParticipants((data ?? []) as ParticipantRow[]);
+    }
+    load();
+  };
+
+  // Available athletes for the picker (not already in the competition)
+  const availableAthletes = useMemo(() => {
+    if (!viewComp) return [];
+    const inComp = new Set(compParticipants.map((p) => p.athlete_id));
+    return athletes.filter((a) => !inComp.has(a.id)).slice(0, 200);
+  }, [athletes, compParticipants, viewComp]);
 
   const filteredResults = useMemo(() => {
     if (!results) return [];
@@ -284,6 +356,11 @@ function CompetitionsPage() {
       : false,
   );
 
+  // Get the participant count for a competition
+  const getParticipantCount = (compId: string): number => {
+    return (results ?? []).filter((r) => r.game_competition_id === compId).length;
+  };
+
   return (
     <div className="space-y-8">
       {/* Section A — Épreuves */}
@@ -291,7 +368,7 @@ function CompetitionsPage() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-foreground">Épreuves du Games</h2>
-            <p className="text-sm text-muted-foreground">Définissez les épreuves spécifiques (rounds, catégories…).</p>
+            <p className="text-sm text-muted-foreground">Définissez les épreuves puis ajoutez-y les athlètes et leurs résultats.</p>
           </div>
           <Button onClick={() => setCompOpen(true)} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
             <Plus className="mr-2 h-4 w-4" /> Ajouter une épreuve
@@ -299,7 +376,7 @@ function CompetitionsPage() {
         </div>
         <div className="rounded-lg border border-border bg-card">
           {comps === null ? (
-            <TableSkeleton cols={8} />
+            <TableSkeleton cols={9} />
           ) : comps.length === 0 ? (
             <div className="p-6"><EmptyState message="Aucune épreuve définie." /></div>
           ) : (
@@ -312,8 +389,7 @@ function CompetitionsPage() {
                   <TableHead>Round</TableHead>
                   <TableHead>Genre</TableHead>
                   <TableHead>Date</TableHead>
-                  <TableHead>Lieu</TableHead>
-                  <TableHead>Âge</TableHead>
+                  <TableHead>Athlètes</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -326,15 +402,8 @@ function CompetitionsPage() {
                     <TableCell>{c.round ?? "—"}</TableCell>
                     <TableCell>{GENDERS.find((g) => g.value === c.gender)?.label ?? "—"}</TableCell>
                     <TableCell>{c.competition_date ?? "—"}</TableCell>
-                    <TableCell>{c.venue ?? "—"}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {c.min_age != null && c.max_age != null
-                        ? `${c.min_age}–${c.max_age} ans`
-                        : c.min_age != null
-                        ? `≥ ${c.min_age} ans`
-                        : c.max_age != null
-                        ? `≤ ${c.max_age} ans`
-                        : "—"}
+                    <TableCell>
+                      <Badge variant="outline">{getParticipantCount(c.id)}</Badge>
                     </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <Button variant="ghost" size="icon" onClick={() => openEditComp(c)} aria-label="Modifier">
@@ -352,7 +421,7 @@ function CompetitionsPage() {
         </div>
       </section>
 
-      {/* Section B — Résultats */}
+      {/* Section B — Résultats (palmarès global) */}
       <section className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
@@ -510,25 +579,11 @@ function CompetitionsPage() {
             </div>
             <div className="space-y-1">
               <Label>Âge minimum</Label>
-              <Input
-                type="number"
-                min={0}
-                max={120}
-                value={compForm.min_age}
-                onChange={(e) => setCompForm({ ...compForm, min_age: e.target.value })}
-                placeholder="ex: 16"
-              />
+              <Input type="number" min={0} max={120} value={compForm.min_age} onChange={(e) => setCompForm({ ...compForm, min_age: e.target.value })} placeholder="ex: 16" />
             </div>
             <div className="space-y-1">
               <Label>Âge maximum</Label>
-              <Input
-                type="number"
-                min={0}
-                max={120}
-                value={compForm.max_age}
-                onChange={(e) => setCompForm({ ...compForm, max_age: e.target.value })}
-                placeholder="ex: 23"
-              />
+              <Input type="number" min={0} max={120} value={compForm.max_age} onChange={(e) => setCompForm({ ...compForm, max_age: e.target.value })} placeholder="ex: 23" />
             </div>
             <div className="sm:col-span-2 space-y-1">
               <Label>Notes</Label>
@@ -542,7 +597,7 @@ function CompetitionsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Détail d'une épreuve */}
+      {/* Détail d'une épreuve — athlètes + résultats inline */}
       <Dialog open={!!viewComp} onOpenChange={(o) => !o && setViewComp(null)}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
@@ -554,74 +609,117 @@ function CompetitionsPage() {
                 <div><div className="text-xs text-muted-foreground">Sport</div><div>{sports.find((s) => s.id === viewComp.sport_id)?.name ?? "—"}</div></div>
                 <div><div className="text-xs text-muted-foreground">Discipline</div><div>{disciplines.find((d) => d.id === viewComp.discipline_id)?.name ?? "—"}</div></div>
                 <div><div className="text-xs text-muted-foreground">Round</div><div>{viewComp.round ?? "—"}</div></div>
-                <div><div className="text-xs text-muted-foreground">Genre</div><div>{GENDERS.find((g) => g.value === viewComp.gender)?.label ?? "—"}</div></div>
                 <div><div className="text-xs text-muted-foreground">Date</div><div>{viewComp.competition_date ?? "—"}</div></div>
-                <div><div className="text-xs text-muted-foreground">Lieu</div><div>{viewComp.venue ?? "—"}</div></div>
-                <div><div className="text-xs text-muted-foreground">Catégorie</div><div>{viewComp.category ?? "—"}</div></div>
               </div>
 
+              {/* Athlètes & résultats */}
               <section>
                 <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-sm font-semibold">Classement & médailles</h4>
-                  <Button size="sm" onClick={() => setResultDlgOpen(true)} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
-                    <Plus className="mr-1 h-3 w-3" /> Ajouter résultat
+                  <h4 className="text-sm font-semibold">
+                    Athlètes & résultats ({compParticipants.length})
+                  </h4>
+                  <Button size="sm" onClick={() => setAddAthleteOpen(true)} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
+                    <Plus className="mr-1 h-3 w-3" /> Ajouter un athlète
                   </Button>
                 </div>
                 <div className="rounded-md border border-border">
-                  {compResults.length === 0 ? (
-                    <p className="p-4 text-sm text-muted-foreground">Aucun résultat enregistré pour cette épreuve.</p>
+                  {compParticipants.length === 0 ? (
+                    <p className="p-4 text-sm text-muted-foreground">
+                      Aucun athlète dans cette épreuve. Cliquez sur « Ajouter un athlète » pour commencer.
+                    </p>
                   ) : (
                     <Table>
                       <TableHeader>
                         <TableRow>
                           <TableHead className="w-16">Rang</TableHead>
                           <TableHead>Athlète</TableHead>
-                          <TableHead>Médaille</TableHead>
-                          <TableHead>Score</TableHead>
-                          <TableHead>RN/PB</TableHead>
+                          <TableHead className="w-28">Médaille</TableHead>
+                          <TableHead className="w-24">Score</TableHead>
+                          <TableHead className="w-20 text-right"></TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {compResults.map((r) => (
-                          <TableRow key={r.id} className={r.medal === "gold" ? "bg-amber-50" : ""}>
-                            <TableCell className="font-semibold">{r.rank ?? "—"}</TableCell>
-                            <TableCell>{r.athlete ? `${r.athlete.last_name} ${r.athlete.first_name}` : "—"} <span className="text-xs text-muted-foreground ml-1">{r.athlete?.cosl_id}</span></TableCell>
-                            <TableCell>{medalBadge(r.medal)}</TableCell>
-                            <TableCell>{r.score ? `${r.score}${r.unit ? " " + r.unit : ""}` : "—"}</TableCell>
-                            <TableCell className="space-x-1">
-                              {r.is_national_record && <Badge className="bg-[var(--cosl-red-light)] text-primary hover:bg-[var(--cosl-red-light)]">RN</Badge>}
-                              {r.is_personal_best && <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">PB</Badge>}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  )}
-                </div>
-              </section>
-
-              <section>
-                <h4 className="text-sm font-semibold mb-2">Participants sélectionnés ({selRows.length})</h4>
-                <div className="rounded-md border border-border max-h-56 overflow-auto">
-                  {selRows.length === 0 ? (
-                    <p className="p-4 text-sm text-muted-foreground">Aucune sélection liée à ce sport/discipline.</p>
-                  ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Athlète</TableHead>
-                          <TableHead>COSL ID</TableHead>
-                          <TableHead>Genre</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {selRows.map((s) => (
-                          <TableRow key={s.athlete_id}>
-                            <TableCell>{s.athlete ? `${s.athlete.last_name} ${s.athlete.first_name}` : "—"}</TableCell>
-                            <TableCell className="font-mono text-xs">{s.athlete?.cosl_id ?? "—"}</TableCell>
-                            <TableCell><Badge variant="outline">{s.athlete?.gender}</Badge></TableCell>
-                          </TableRow>
-                        ))}
+                        {compParticipants.map((r) => {
+                          const isEditing = !!editingResult[r.id];
+                          const edits = editingResult[r.id] ?? {};
+                          return (
+                            <TableRow key={r.id}>
+                              <TableCell>
+                                {isEditing ? (
+                                  <Input
+                                    type="number"
+                                    className="h-8 w-16"
+                                    value={edits.rank ?? r.rank ?? ""}
+                                    onChange={(e) => setEditingResult((prev) => ({ ...prev, [r.id]: { ...prev[r.id], rank: e.target.value } }))}
+                                  />
+                                ) : (
+                                  <span className="font-semibold">{r.rank ?? "—"}</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {r.athlete ? `${r.athlete.last_name} ${r.athlete.first_name}` : "—"}
+                                <span className="text-xs text-muted-foreground ml-1">{r.athlete?.cosl_id}</span>
+                              </TableCell>
+                              <TableCell>
+                                {isEditing ? (
+                                  <Select
+                                    value={edits.medal ?? r.medal ?? "none"}
+                                    onValueChange={(v) => setEditingResult((prev) => ({ ...prev, [r.id]: { ...prev[r.id], medal: v === "none" ? "" : v } }))}
+                                  >
+                                    <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="none">—</SelectItem>
+                                      {MEDAL_LABELS.map((m) => (<SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>))}
+                                    </SelectContent>
+                                  </Select>
+                                ) : (
+                                  medalBadge(r.medal)
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {isEditing ? (
+                                  <div className="flex gap-1">
+                                    <Input
+                                      className="h-8 w-16"
+                                      value={edits.score ?? r.score ?? ""}
+                                      onChange={(e) => setEditingResult((prev) => ({ ...prev, [r.id]: { ...prev[r.id], score: e.target.value } }))}
+                                      placeholder="10.18"
+                                    />
+                                    <Input
+                                      className="h-8 w-12"
+                                      value={edits.unit ?? r.unit ?? ""}
+                                      onChange={(e) => setEditingResult((prev) => ({ ...prev, [r.id]: { ...prev[r.id], unit: e.target.value } }))}
+                                      placeholder="s"
+                                    />
+                                  </div>
+                                ) : (
+                                  <span>{r.score ? `${r.score}${r.unit ? " " + r.unit : ""}` : "—"}</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {isEditing ? (
+                                  <div className="flex items-center justify-end gap-1">
+                                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => saveResult(r.id)} aria-label="Enregistrer">
+                                      <Check className="h-4 w-4 text-emerald-600" />
+                                    </Button>
+                                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingResult((prev) => { const next = { ...prev }; delete next[r.id]; return next; })} aria-label="Annuler">
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center justify-end gap-1">
+                                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingResult((prev) => ({ ...prev, [r.id]: {} }))} aria-label="Modifier">
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => removeParticipant(r.id)} aria-label="Retirer">
+                                      <Trash2 className="h-4 w-4 text-red-600" />
+                                    </Button>
+                                  </div>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   )}
@@ -632,59 +730,41 @@ function CompetitionsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Ajout résultat dans le détail d'une épreuve */}
-      <Dialog open={resultDlgOpen} onOpenChange={setResultDlgOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Ajouter un résultat</DialogTitle></DialogHeader>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="sm:col-span-2 space-y-1">
-              <Label>Athlète *</Label>
-              <Select value={resultForm.athlete_id} onValueChange={(v) => setResultForm({ ...resultForm, athlete_id: v })}>
-                <SelectTrigger><SelectValue placeholder="Choisir parmi les sélectionnés" /></SelectTrigger>
-                <SelectContent>
-                  {selRows.map((s) => (
-                    <SelectItem key={s.athlete_id} value={s.athlete_id}>
-                      {s.athlete ? `${s.athlete.last_name} ${s.athlete.first_name}` : s.athlete_id}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label>Rang</Label>
-              <Input type="number" min={1} value={resultForm.rank} onChange={(e) => setResultForm({ ...resultForm, rank: e.target.value })} />
-            </div>
-            <div className="space-y-1">
-              <Label>Médaille</Label>
-              <Select value={resultForm.medal || "none"} onValueChange={(v) => setResultForm({ ...resultForm, medal: v === "none" ? "" : v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">—</SelectItem>
-                  {MEDAL_LABELS.map((m) => (<SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label>Score</Label>
-              <Input value={resultForm.score} onChange={(e) => setResultForm({ ...resultForm, score: e.target.value })} placeholder="10.18" />
-            </div>
-            <div className="space-y-1">
-              <Label>Unité</Label>
-              <Input value={resultForm.unit} onChange={(e) => setResultForm({ ...resultForm, unit: e.target.value })} placeholder="s, m, pts…" />
-            </div>
-            <label className="flex items-center gap-2 text-sm">
-              <Checkbox checked={resultForm.is_national_record} onCheckedChange={(v) => setResultForm({ ...resultForm, is_national_record: !!v })} />
-              Record national
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <Checkbox checked={resultForm.is_personal_best} onCheckedChange={(v) => setResultForm({ ...resultForm, is_personal_best: !!v })} />
-              Record personnel
-            </label>
+      {/* Add athlete to competition dialog */}
+      <Dialog open={addAthleteOpen} onOpenChange={setAddAthleteOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Ajouter un athlète à l'épreuve</DialogTitle>
+          </DialogHeader>
+          <div className="py-2">
+            <Popover open={athletePickerOpen} onOpenChange={setAthletePickerOpen}>
+              <PopoverTrigger asChild>
+                <Button type="button" variant="outline" className="w-full justify-between">
+                  Choisir un athlète…
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="p-0 w-[400px]" align="start">
+                <Command>
+                  <CommandInput placeholder="Rechercher par nom…" />
+                  <CommandList>
+                    <CommandEmpty>Aucun athlète trouvé.</CommandEmpty>
+                    <CommandGroup>
+                      {availableAthletes.map((a) => (
+                        <CommandItem
+                          key={a.id}
+                          value={`${a.first_name} ${a.last_name}`}
+                          onSelect={() => addAthleteToComp(a.id)}
+                        >
+                          {a.first_name} {a.last_name}
+                          <span className="ml-auto text-xs text-muted-foreground">{a.gender}</span>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setResultDlgOpen(false)}>Annuler</Button>
-            <Button onClick={submitResult} className="bg-primary hover:bg-[var(--cosl-red-dark)]">Enregistrer</Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 

@@ -1,12 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, Download, FileText, Check, X, Search, Settings } from "lucide-react";
+import { Trash2, Download, FileText, Check, X, Search, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -21,12 +20,8 @@ import {
 } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { TableSkeleton, EmptyState } from "@/components/DataTableShell";
-import {
-  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
-} from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { FileUpload } from "@/components/FileUpload";
-import { computeRequiredDocs, getSelectionStageForAthlete, getPersonIdForAthlete } from "@/lib/conformity-utils";
+import { computeRequiredDocs } from "@/lib/conformity-utils";
 import type { PersonDocument } from "@/lib/types";
 
 export const Route = createFileRoute("/_authenticated/games/$id/accreditations")({
@@ -48,26 +43,23 @@ const DOC_STATUSES: Record<string, { label: string; cls: string }> = {
   rejected: { label: "Rejeté", cls: "bg-red-100 text-red-700" },
 };
 
-type Person = { id: string; first_name: string; last_name: string; email: string | null; phone: string | null };
 type AccDoc = {
   id: string; accreditation_id: string; doc_type: string;
   file_name: string; file_url: string | null; status: string; uploaded_at: string;
 };
 type Accreditation = {
   id: string; game_id: string; accreditation_type_id: string | null;
+  person_id: string | null;
   athlete_id: string | null; coach_id: string | null;
   full_name: string; function_label: string | null;
   status: string; rejection_reason: string | null; notes: string | null;
   role_code: string | null;
-  athlete: { id: string; cosl_id: string; email: string | null; phone: string | null } | null;
-  coach: { id: string; role: string; email: string | null; phone: string | null } | null;
   docs: AccDoc[];
 };
 
 function GameAccreditationsPage() {
   const { id: gameId } = Route.useParams();
   const [accreds, setAccreds] = useState<Accreditation[] | null>(null);
-  const [persons, setPersons] = useState<Person[]>([]);
   const [game, setGame] = useState<{ name: string; short_name: string | null } | null>(null);
   const [roles, setRoles] = useState<{ code: string; label: string }[]>([]);
   const [docTypes, setDocTypes] = useState<{ code: string; label: string }[]>([]);
@@ -76,36 +68,26 @@ function GameAccreditationsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
 
-  // Accred create dialog
-  const [accOpen, setAccOpen] = useState(false);
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [accForm, setAccForm] = useState({ person_id: "", role_code: "", function_label: "" });
-  const [requiredDocs, setRequiredDocs] = useState<string[]>([]);
-
   // Drawer
   const [openId, setOpenId] = useState<string | null>(null);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [drawerPersonDocs, setDrawerPersonDocs] = useState<PersonDocument[]>([]);
   const [drawerPersonId, setDrawerPersonId] = useState<string | null>(null);
+  const [drawerRequiredDocs, setDrawerRequiredDocs] = useState<string[]>([]);
 
   const load = async () => {
     setAccreds(null);
-    const [aRes, pRes, gRes, rolesRes, dtRes] = await Promise.all([
+    const [aRes, gRes, rolesRes, dtRes] = await Promise.all([
       supabase.from("accreditations")
-        .select("*, athlete:athletes(id,cosl_id,email,phone), coach:coaches(id,role,email,phone), docs:accreditation_documents(*)")
+        .select("*, docs:accreditation_documents(*)")
         .eq("game_id", gameId)
         .order("created_at", { ascending: false }),
-      supabase.from("persons")
-        .select("id,first_name,last_name,email,phone")
-        .eq("is_active", true)
-        .order("last_name"),
       supabase.from("games").select("name,short_name").eq("id", gameId).maybeSingle(),
       supabase.from("app_type_items").select("code,label").eq("group_key", "accreditation_categories").order("sort_order"),
       supabase.from("app_type_items").select("code,label").eq("group_key", "document_types").order("sort_order"),
     ]);
     setAccreds(((aRes.data ?? []) as unknown) as Accreditation[]);
-    setPersons((pRes.data ?? []) as Person[]);
     setGame((gRes.data ?? null) as { name: string; short_name: string | null } | null);
     setRoles((rolesRes.data ?? []) as { code: string; label: string }[]);
     setDocTypes((dtRes.data ?? []) as { code: string; label: string }[]);
@@ -113,22 +95,7 @@ function GameAccreditationsPage() {
 
   useEffect(() => { load(); }, [gameId]);
 
-  // Compute required docs when role changes in the create dialog
-  useEffect(() => {
-    if (accForm.role_code) {
-      computeRequiredDocs(gameId, accForm.role_code).then((docs) => {
-        setRequiredDocs(docs.map((d) => d.doc_type_code));
-      });
-    } else {
-      setRequiredDocs([]);
-    }
-  }, [accForm.role_code, gameId]);
-
   const completeness = (a: Accreditation) => {
-    // Compute from role_code + selection stage
-    const roleCode = a.role_code ?? "athlete";
-    // For athletes, determine required docs from selection stage
-    // For now, use accreditation_documents as before
     const total = a.docs.length;
     if (total === 0) return 0;
     const valid = a.docs.filter((d) => d.status === "valid").length;
@@ -157,39 +124,13 @@ function GameAccreditationsPage() {
     });
   }, [accreds, statusFilter, search]);
 
-  // ==== Accreditation create ====
-  const submitAccred = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!accForm.person_id || !accForm.role_code) {
-      toast.error("Personne et rôle requis");
-      return;
-    }
-    const person = persons.find((p) => p.id === accForm.person_id);
-    if (!person) return;
-    const payload = {
-      game_id: gameId,
-      athlete_id: accForm.role_code === "athlete" ? accForm.person_id : null,
-      coach_id: accForm.role_code !== "athlete" ? accForm.person_id : null,
-      full_name: `${person.first_name} ${person.last_name}`,
-      function_label: accForm.function_label.trim() || null,
-      status: "draft",
-      role_code: accForm.role_code,
-    };
-    const { error } = await supabase.from("accreditations").insert(payload);
-    if (error) { toast.error("Échec", { description: friendlyError(error) }); return; }
-    toast.success("Accréditation créée");
-    setAccOpen(false);
-    setAccForm({ person_id: "", role_code: "", function_label: "" });
-    load();
-  };
-
   // ==== Drawer actions ====
   const current = (accreds ?? []).find((a) => a.id === openId) ?? null;
 
-  // Load person documents for the drawer
+  // Load person documents + required docs for the drawer
   useEffect(() => {
     if (current) {
-      const pid = current.athlete_id ?? current.coach_id;
+      const pid = current.person_id ?? current.athlete_id ?? current.coach_id;
       if (pid) {
         setDrawerPersonId(pid);
         supabase
@@ -203,6 +144,14 @@ function GameAccreditationsPage() {
       } else {
         setDrawerPersonId(null);
         setDrawerPersonDocs([]);
+      }
+      // Load required docs for this role
+      if (current.role_code) {
+        computeRequiredDocs(gameId, current.role_code).then((docs) => {
+          setDrawerRequiredDocs(docs.map((d) => d.doc_type_code));
+        });
+      } else {
+        setDrawerRequiredDocs([]);
       }
     }
   }, [openId]);
@@ -237,7 +186,6 @@ function GameAccreditationsPage() {
       status: "pending",
     });
     toast.success("Document ajouté à la fiche personne");
-    // Refresh person docs
     const { data } = await supabase
       .from("person_documents")
       .select("*")
@@ -265,22 +213,13 @@ function GameAccreditationsPage() {
   // Export
   const exportCsv = () => {
     if (!accreds || !game) return;
-    const header = ["Rôle", "Nom complet", "Fonction", "Statut", "Complétude %"];
+    const header = ["Rôle", "Nom complet", "Statut", "Complétude %"];
     const rows = accreds.map((a) => [
-      a.role_code ?? "", a.full_name, a.function_label ?? "", a.status, String(completeness(a)),
+      a.role_code ?? "", a.full_name, a.status, String(completeness(a)),
     ]);
     const csv = [header, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
     download(`accreditations_${(game.short_name ?? game.name).replace(/\W+/g, "_")}.csv`, "text/csv", "\ufeff" + csv);
   };
-
-  const selectedPerson = persons.find((p) => p.id === accForm.person_id);
-
-  // Compute required docs for the drawer based on role + selection stage
-  const drawerRequiredDocs = useMemo(() => {
-    if (!current) return [];
-    const roleCode = current.role_code ?? "athlete";
-    return requiredDocs.length > 0 ? requiredDocs : [];
-  }, [current, requiredDocs]);
 
   return (
     <div className="space-y-6">
@@ -303,6 +242,10 @@ function GameAccreditationsPage() {
         </div>
       </div>
 
+      <p className="text-sm text-muted-foreground">
+        Les accréditations sont créées automatiquement lorsqu'une personne est ajoutée aux sélections.
+      </p>
+
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative max-w-xs flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -320,16 +263,13 @@ function GameAccreditationsPage() {
             {STATUSES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Button onClick={() => setAccOpen(true)} className="ml-auto bg-primary hover:bg-[var(--cosl-red-dark)]">
-          <Plus className="mr-2 h-4 w-4" /> Créer accréditation
-        </Button>
       </div>
 
       <div className="rounded-lg border border-border bg-card">
         {accreds === null ? (
           <TableSkeleton cols={5} />
         ) : filteredAccreds.length === 0 ? (
-          <div className="p-6"><EmptyState message="Aucune accréditation." /></div>
+          <div className="p-6"><EmptyState message="Aucune accréditation. Les accréditations sont créées automatiquement depuis les sélections." /></div>
         ) : (
           <Table>
             <TableHeader>
@@ -369,76 +309,6 @@ function GameAccreditationsPage() {
         )}
       </div>
 
-      {/* Accred create dialog */}
-      <Dialog open={accOpen} onOpenChange={setAccOpen}>
-        <DialogContent>
-          <form onSubmit={submitAccred}>
-            <DialogHeader>
-              <DialogTitle>Créer une accréditation</DialogTitle>
-              <DialogDescription>Statut initial : Brouillon.</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-1.5">
-                <Label>Rôle *</Label>
-                <Select value={accForm.role_code} onValueChange={(v) => setAccForm({ ...accForm, role_code: v })}>
-                  <SelectTrigger><SelectValue placeholder="Choisir un rôle…" /></SelectTrigger>
-                  <SelectContent>
-                    {roles.map((r) => (
-                      <SelectItem key={r.code} value={r.code}>{r.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Personne *</Label>
-                <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
-                  <PopoverTrigger asChild>
-                    <Button type="button" variant="outline" className="w-full justify-between">
-                      {selectedPerson ? `${selectedPerson.first_name} ${selectedPerson.last_name}` : "Choisir…"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="p-0 w-[400px]" align="start">
-                    <Command>
-                      <CommandInput placeholder="Rechercher…" />
-                      <CommandList>
-                        <CommandEmpty>Aucun résultat.</CommandEmpty>
-                        <CommandGroup>
-                          {persons.slice(0, 200).map((p) => (
-                            <CommandItem key={p.id} value={`${p.first_name} ${p.last_name}`}
-                              onSelect={() => { setAccForm({ ...accForm, person_id: p.id }); setPickerOpen(false); }}>
-                              {p.first_name} {p.last_name}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="fl">Fonction</Label>
-                <Input id="fl" value={accForm.function_label} onChange={(e) => setAccForm({ ...accForm, function_label: e.target.value })} />
-              </div>
-              {requiredDocs.length > 0 && (
-                <div className="rounded-md border border-border p-3 text-sm text-muted-foreground">
-                  <p className="font-medium text-foreground mb-1">Documents requis pour ce rôle :</p>
-                  <div className="flex flex-wrap gap-1">
-                    {requiredDocs.map((dt) => {
-                      const label = docTypes.find((t) => t.code === dt)?.label ?? dt;
-                      return <Badge key={dt} variant="outline" className="text-xs">{label}</Badge>;
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setAccOpen(false)}>Annuler</Button>
-              <Button type="submit" className="bg-primary hover:bg-[var(--cosl-red-dark)]">Créer</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
       {/* Drawer */}
       <Sheet open={!!openId} onOpenChange={(o) => { if (!o) setOpenId(null); }}>
         <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
@@ -452,6 +322,7 @@ function GameAccreditationsPage() {
                   accreditation={current}
                   completeness={completeness(current)}
                   docTypes={docTypes}
+                  requiredDocCodes={drawerRequiredDocs}
                   personDocs={drawerPersonDocs}
                   onUpload={uploadDoc}
                   onUploadPersonDoc={uploadPersonDoc}
@@ -492,13 +363,14 @@ function GameAccreditationsPage() {
 }
 
 function AccredDrawerBody({
-  accreditation, completeness, docTypes, personDocs,
+  accreditation, completeness, docTypes, requiredDocCodes, personDocs,
   onUpload, onUploadPersonDoc, onDocStatus,
   onSubmit, onValidate, onReject,
 }: {
   accreditation: Accreditation;
   completeness: number;
   docTypes: { code: string; label: string }[];
+  requiredDocCodes: string[];
   personDocs: PersonDocument[];
   onUpload: (docType: string, url: string, fileName: string) => void;
   onUploadPersonDoc: (docType: string, url: string, fileName: string) => void;
@@ -508,15 +380,13 @@ function AccredDrawerBody({
   onReject: () => void;
 }) {
   const a = accreditation;
-  const person = a.athlete ?? a.coach;
 
-  // Map of accreditation docs by doc_type
   const accDocMap = new Map(a.docs.map((d) => [d.doc_type, d]));
-  // Map of person docs by doc_type
   const personDocMap = new Map(personDocs.map((d) => [d.doc_type, d]));
 
-  // All relevant doc types: from accreditation docs + person docs
-  const allDocTypes = Array.from(new Set([
+  // All relevant doc types: required docs + already uploaded docs
+  const allDocCodes = Array.from(new Set([
+    ...requiredDocCodes,
     ...a.docs.map((d) => d.doc_type),
     ...personDocs.map((d) => d.doc_type),
   ]));
@@ -527,11 +397,7 @@ function AccredDrawerBody({
         <h3 className="text-sm font-semibold mb-2 text-foreground">Personne</h3>
         <dl className="grid grid-cols-2 gap-2 text-sm">
           <div><dt className="text-xs text-muted-foreground">Rôle</dt><dd>{a.role_code ?? "—"}</dd></div>
-          <div><dt className="text-xs text-muted-foreground">Fonction</dt><dd>{a.function_label ?? "—"}</dd></div>
-          {a.athlete?.cosl_id && <div><dt className="text-xs text-muted-foreground">COSL ID</dt><dd className="font-mono text-xs">{a.athlete.cosl_id}</dd></div>}
-          {a.coach?.role && <div><dt className="text-xs text-muted-foreground">Rôle coach</dt><dd>{a.coach.role}</dd></div>}
-          <div><dt className="text-xs text-muted-foreground">Email</dt><dd>{person?.email ?? "—"}</dd></div>
-          <div><dt className="text-xs text-muted-foreground">Téléphone</dt><dd>{person?.phone ?? "—"}</dd></div>
+          <div><dt className="text-xs text-muted-foreground">Statut</dt><dd>{a.status}</dd></div>
         </dl>
       </section>
 
@@ -545,21 +411,27 @@ function AccredDrawerBody({
 
       <section className="rounded-lg border border-border p-4">
         <h3 className="text-sm font-semibold mb-3 text-foreground">Documents</h3>
-        {allDocTypes.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Aucun document pour cette accréditation.</p>
+        {allDocCodes.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Aucun document requis pour ce rôle. Configurez les requirements dans la page de configuration.
+          </p>
         ) : (
           <ul className="space-y-2">
-            {allDocTypes.map((dt) => {
+            {allDocCodes.map((dt) => {
               const accDoc = accDocMap.get(dt);
               const personDoc = personDocMap.get(dt);
               const label = docTypes.find((t) => t.code === dt)?.label ?? dt;
+              const isRequired = requiredDocCodes.includes(dt);
               const sb = accDoc ? DOC_STATUSES[accDoc.status] : DOC_STATUSES.missing;
               return (
                 <li key={dt} className="flex flex-col gap-2 rounded border border-border p-3 sm:flex-row sm:items-start">
                   <FileText className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
                   <div className="flex-1 min-w-0 space-y-2">
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium flex-1">{label}</p>
+                      <p className="text-sm font-medium flex-1">
+                        {label}
+                        {isRequired && <span className="ml-1 text-xs text-red-600">*</span>}
+                      </p>
                       {accDoc ? (
                         <>
                           <Badge className={`${sb.cls} hover:${sb.cls}`}>{sb.label}</Badge>
@@ -576,7 +448,6 @@ function AccredDrawerBody({
                         <Badge className="bg-slate-200 text-foreground hover:bg-slate-200">Manquant</Badge>
                       )}
                     </div>
-                    {/* Show person doc link if available */}
                     {personDoc && (
                       <div className="text-xs text-muted-foreground">
                         📄 {personDoc.file_name}
@@ -585,7 +456,6 @@ function AccredDrawerBody({
                         )}
                       </div>
                     )}
-                    {/* Upload to accreditation_documents */}
                     <FileUpload
                       bucket="documents"
                       path={`accreditations/${a.id}/${dt}/${Date.now()}_`}
@@ -594,13 +464,12 @@ function AccredDrawerBody({
                       currentName={accDoc?.file_name ?? null}
                       onUploaded={(url, fileName) => onUpload(dt, url, fileName)}
                     />
-                    {/* Also allow uploading to person_documents */}
                     {!personDoc && (
                       <div className="pt-1">
                         <p className="text-xs text-muted-foreground mb-1">Ajouter à la fiche personne :</p>
                         <FileUpload
                           bucket="documents"
-                          path={`persons/${a.athlete_id ?? a.coach_id}/${dt}/${Date.now()}_`}
+                          path={`persons/${a.person_id ?? a.athlete_id ?? a.coach_id}/${dt}/${Date.now()}_`}
                           accept="image/jpeg,image/png,image/webp,application/pdf"
                           onUploaded={(url, fileName) => onUploadPersonDoc(dt, url, fileName)}
                         />

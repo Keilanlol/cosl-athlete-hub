@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, Pencil, Download, UserCircle, Search, ExternalLink } from "lucide-react";
+import { Plus, Trash2, Pencil, Download, UserCircle, Search, ExternalLink, Check, ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { confirmAction } from "@/components/ConfirmDialog";
@@ -20,19 +20,16 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { TableSkeleton, EmptyState } from "@/components/DataTableShell";
-import { COACH_ROLES } from "@/lib/types";
 import { coachRoleLabel, federationMemberRoleLabel } from "@/lib/role-labels";
-import { PersonCombobox } from "@/components/PersonCombobox";
+import {
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+} from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 export const Route = createFileRoute("/_authenticated/games/$id/delegation")({
   component: DelegationPage,
 });
 
-type Athlete = {
-  id: string; first_name: string; last_name: string; gender: string;
-  cosl_id: string; birth_date: string;
-  primary_sport_id: string | null;
-};
 type UserProfile = { id: string; full_name: string; username: string };
 type Sport = { id: string; name: string };
 type Delegation = {
@@ -43,9 +40,9 @@ type Delegation = {
 };
 type Member = {
   id: string; delegation_id: string;
-  athlete_id: string | null; coach_id: string | null; person_id: string | null;
-  member_role: string | null; member_function: string | null;
-  athlete: Athlete | null;
+  person_id: string | null;
+  athlete_id: string | null; coach_id: string | null;
+  member_role: string | null;
   person: { id: string; first_name: string; last_name: string; email: string | null } | null;
 };
 
@@ -67,16 +64,12 @@ function DelegationPage() {
   const { id: gameId } = Route.useParams();
   const [delegation, setDelegation] = useState<Delegation | null>(null);
   const [members, setMembers] = useState<Member[] | null>(null);
-  const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
-  const [sports, setSports] = useState<Sport[]>([]);
   const [persons, setPersons] = useState<PersonLite[]>([]);
   const [coachProfiles, setCoachProfiles] = useState<CoachProfileLite[]>([]);
   const [fedMemberProfiles, setFedMemberProfiles] = useState<{ person_id: string; role: string }[]>([]);
   const [game, setGame] = useState<{ name: string; short_name: string | null; edition_year: number } | null>(null);
 
-  const [typeFilter, setTypeFilter] = useState("all");
-  const [sportFilter, setSportFilter] = useState("all");
   const [search, setSearch] = useState("");
 
   // Chief / Manager dialogs
@@ -107,13 +100,11 @@ function DelegationPage() {
     const del = await ensureDelegation();
     if (!del) return;
     setDelegation(del);
-    const [mRes, uRes, aRes, sRes, gRes, pRes, cpRes, fmRes] = await Promise.all([
+    const [mRes, uRes, gRes, pRes, cpRes, fmRes] = await Promise.all([
       supabase.from("delegation_members")
-        .select("*, athlete:athletes(id,first_name,last_name,gender,cosl_id,birth_date,primary_sport_id), person:persons(id,first_name,last_name,email)")
+        .select("*, person:persons(id,first_name,last_name,email)")
         .eq("delegation_id", del.id),
       supabase.from("user_profiles").select("id,full_name,username").order("full_name"),
-      supabase.from("athletes").select("id,first_name,last_name,gender,cosl_id,birth_date,primary_sport_id").eq("is_active", true).order("last_name"),
-      supabase.from("sports").select("id,name").order("name"),
       supabase.from("games").select("name,short_name,edition_year").eq("id", gameId).maybeSingle(),
       supabase.from("persons").select("id,first_name,last_name,email").eq("is_active", true).order("last_name"),
       supabase.from("coach_profiles").select("id,person_id,role,is_active").eq("is_active", true),
@@ -121,8 +112,6 @@ function DelegationPage() {
     ]);
     setMembers(((mRes.data ?? []) as unknown) as Member[]);
     setUsers((uRes.data ?? []) as UserProfile[]);
-    setAthletes((aRes.data ?? []) as Athlete[]);
-    setSports((sRes.data ?? []) as Sport[]);
     setGame((gRes.data ?? null) as { name: string; short_name: string | null; edition_year: number } | null);
     setPersons((pRes.data ?? []) as PersonLite[]);
     setCoachProfiles((cpRes.data ?? []) as CoachProfileLite[]);
@@ -133,66 +122,67 @@ function DelegationPage() {
 
   useEffect(() => { load(); }, [gameId]);
 
-  const sportName = (sid: string | null) => sid ? sports.find((s) => s.id === sid)?.name ?? "—" : "—";
   const chief = persons.find((p) => p.id === delegation?.chief_of_mission_id);
   const manager = users.find((u) => u.id === delegation?.games_manager_id);
 
-  const personOptions = useMemo(
-    () => persons.map((p) => ({
-      id: p.id,
-      label: `${p.first_name} ${p.last_name}${p.email ? ` — ${p.email}` : ""}`,
-    })),
-    [persons],
-  );
+  // Build person options: ONLY persons who have at least one coach_profile (encadrants)
+  // Each option shows the role(s) next to the name
+  const personOptions = useMemo(() => {
+    const coachPersonIds = new Set(coachProfiles.map((c) => c.person_id));
+    return persons
+      .filter((p) => coachPersonIds.has(p.id))
+      .map((p) => {
+        const roles = coachProfiles
+          .filter((c) => c.person_id === p.id)
+          .map((c) => coachRoleLabel(c.role));
+        const fedRoles = fedMemberProfiles
+          .filter((f) => f.person_id === p.id)
+          .map((f) => federationMemberRoleLabel(f.role));
+        const allRoles = [...roles, ...fedRoles];
+        return {
+          id: p.id,
+          label: `${p.first_name} ${p.last_name}${allRoles.length > 0 ? ` (${allRoles.join(", ")})` : ""}`,
+        };
+      });
+  }, [persons, coachProfiles, fedMemberProfiles]);
 
   // Get all roles for the selected person (from coach_profiles + fed_member_profiles)
   const selectedPersonRoles = useMemo(() => {
     if (!memberPersonId) return [];
     const coachRoles = coachProfiles
       .filter((c) => c.person_id === memberPersonId)
-      .map((c) => ({ code: c.role, label: coachRoleLabel(c.role), source: "coach" as const }));
+      .map((c) => ({ code: c.role, label: coachRoleLabel(c.role) }));
     const fedRoles = fedMemberProfiles
       .filter((f) => f.person_id === memberPersonId)
-      .map((f) => ({ code: f.role, label: federationMemberRoleLabel(f.role), source: "federation_member" as const }));
+      .map((f) => ({ code: f.role, label: federationMemberRoleLabel(f.role) }));
     return [...coachRoles, ...fedRoles];
   }, [memberPersonId, coachProfiles, fedMemberProfiles]);
 
   // Get role label for a member in the table
   const getMemberRoleLabel = (m: Member): string => {
-    if (m.athlete_id && m.athlete) {
-      return "Athlète";
-    }
+    if (m.member_role) return m.member_role;
     if (m.person_id) {
       const coach = coachProfiles.find((c) => c.person_id === m.person_id);
       if (coach) return coachRoleLabel(coach.role);
       const fm = fedMemberProfiles.find((f) => f.person_id === m.person_id);
       if (fm) return federationMemberRoleLabel(fm.role);
-      return m.member_role ?? "Membre";
     }
-    return m.member_role ?? "—";
+    return "—";
   };
 
   const filtered = useMemo(() => {
     if (!members) return [];
     const q = search.trim().toLowerCase();
     return members.filter((m) => {
-      const t = m.athlete_id ? "athlete" : "person";
-      if (typeFilter !== "all" && t !== typeFilter) return false;
-      if (sportFilter !== "all") {
-        const sid = m.athlete?.primary_sport_id ?? null;
-        if (sid !== sportFilter) return false;
-      }
       if (q) {
-        const name = m.athlete
-          ? `${m.athlete.first_name} ${m.athlete.last_name}`
-          : m.person
+        const name = m.person
           ? `${m.person.first_name} ${m.person.last_name}`
           : "";
         if (!name.toLowerCase().includes(q)) return false;
       }
       return true;
     });
-  }, [members, typeFilter, sportFilter, search]);
+  }, [members, search]);
 
   const saveChief = async () => {
     if (!delegation) return;
@@ -216,26 +206,16 @@ function DelegationPage() {
       toast.error("Veuillez sélectionner une personne");
       return;
     }
-    // For athletes, use athlete_id; for others, use person_id
     const person = persons.find((p) => p.id === memberPersonId);
     if (!person) return;
-
-    // Check if this person is an athlete (has athlete_profile)
-    const { data: ap } = await supabase
-      .from("athlete_profiles")
-      .select("legacy_athlete_id")
-      .eq("person_id", memberPersonId)
-      .maybeSingle();
-    const legacyAthleteId = (ap as { legacy_athlete_id?: string } | null)?.legacy_athlete_id ?? null;
 
     setSaving(true);
     const payload = {
       delegation_id: delegation.id,
-      athlete_id: legacyAthleteId ?? null,
+      person_id: memberPersonId,
+      athlete_id: null,
       coach_id: null,
-      person_id: !legacyAthleteId ? memberPersonId : null,
-      member_role: selectedRoleCode || null,
-      member_function: null,
+      member_role: selectedRoleCode || (selectedPersonRoles.length === 1 ? selectedPersonRoles[0].code : null),
     };
     const { error } = await supabase.from("delegation_members").insert(payload);
     setSaving(false);
@@ -259,27 +239,17 @@ function DelegationPage() {
 
   const exportCsv = () => {
     if (!members || !game) return;
-    const header = [
-      "Type", "COSL ID", "Nom", "Prénom", "Genre",
-      "Date de naissance", "Sport", "Rôle",
-    ];
+    const header = ["Nom", "Prénom", "Rôle", "Email"];
     const lines = members.map((m) => {
-      if (m.athlete) {
-        return [
-          "Athlète", m.athlete.cosl_id, m.athlete.last_name, m.athlete.first_name,
-          m.athlete.gender, m.athlete.birth_date, sportName(m.athlete.primary_sport_id),
-          "Athlète",
-        ];
-      }
       return [
-        "Personne", "", m.person?.last_name ?? "", m.person?.first_name ?? "",
-        "", "", "", getMemberRoleLabel(m),
+        m.person?.last_name ?? "",
+        m.person?.first_name ?? "",
+        getMemberRoleLabel(m),
+        m.person?.email ?? "",
       ];
     });
     if (chief) {
-      lines.unshift([
-        "Chef de Mission", "", chief.last_name, chief.first_name, "", "", "", "Chef de Mission",
-      ]);
+      lines.unshift(["Chef de Mission", chief.last_name, chief.first_name, chief.email ?? ""]);
     }
     const csv = [header, ...lines]
       .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
@@ -297,9 +267,7 @@ function DelegationPage() {
   const initials = (a: { first_name: string; last_name: string } | null | undefined) =>
     `${a?.first_name?.[0] ?? ""}${a?.last_name?.[0] ?? ""}`;
 
-  // Get the name of a member
   const getMemberName = (m: Member): string => {
-    if (m.athlete) return `${m.athlete.first_name} ${m.athlete.last_name}`;
     if (m.person) return `${m.person.first_name} ${m.person.last_name}`;
     return "—";
   };
@@ -349,85 +317,56 @@ function DelegationPage() {
             className="pl-9"
           />
         </div>
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-40"><SelectValue placeholder="Type" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tous types</SelectItem>
-            <SelectItem value="athlete">Athlètes</SelectItem>
-            <SelectItem value="person">Encadrants / Membres</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={sportFilter} onValueChange={setSportFilter}>
-          <SelectTrigger className="w-44"><SelectValue placeholder="Sport" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tous sports</SelectItem>
-            {sports.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
         <span className="text-sm text-muted-foreground">{filtered.length} membre(s)</span>
         <div className="ml-auto flex gap-2">
           <Button variant="outline" onClick={exportCsv}>
             <Download className="mr-2 h-4 w-4" /> Exporter liste officielle CSV
           </Button>
-          <Button onClick={() => { setMemberPersonId(""); setSelectedRoleCode(""); setMemberOpen(true); }} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
-            <Plus className="mr-2 h-4 w-4" /> Ajouter un membre
+          <Button
+            onClick={() => { setMemberPersonId(""); setSelectedRoleCode(""); setMemberOpen(true); }}
+            className="bg-primary hover:bg-[var(--cosl-red-dark)]"
+            disabled={personOptions.length === 0}
+          >
+            <Plus className="mr-2 h-4 w-4" /> Ajouter un encadrant
           </Button>
         </div>
       </div>
 
       <div className="rounded-lg border border-border bg-card">
         {members === null ? (
-          <TableSkeleton cols={5} />
+          <TableSkeleton cols={4} />
         ) : filtered.length === 0 ? (
-          <div className="p-6"><EmptyState message="Aucun membre dans la délégation." /></div>
+          <div className="p-6"><EmptyState message="Aucun encadrant dans la délégation." /></div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Type</TableHead>
                 <TableHead>Nom</TableHead>
                 <TableHead>Rôle</TableHead>
-                <TableHead>Sport</TableHead>
+                <TableHead>Email</TableHead>
                 <TableHead className="w-28 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((m) => {
-                const isAth = !!m.athlete_id;
-                return (
-                  <TableRow key={m.id}>
-                    <TableCell>
-                      <Badge className={isAth ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" : "bg-[var(--cosl-red-light)] text-primary hover:bg-[var(--cosl-red-light)]"}>
-                        {isAth ? "Athlète" : "Encadrant / Membre"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="font-medium">{getMemberName(m)}</TableCell>
-                    <TableCell>{getMemberRoleLabel(m)}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {isAth ? sportName(m.athlete?.primary_sport_id ?? null) : "—"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {isAth && m.athlete && (
-                        <Button asChild variant="ghost" size="icon" aria-label="Voir la fiche athlète">
-                          <Link to="/athletes/$id" params={{ id: m.athlete.id }}>
-                            <ExternalLink className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                      )}
-                      {!isAth && m.person_id && (
-                        <Button asChild variant="ghost" size="icon" aria-label="Voir la fiche personne">
-                          <Link to="/persons/$personId" params={{ personId: m.person_id }}>
-                            <ExternalLink className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                      )}
-                      <Button variant="ghost" size="icon" onClick={() => removeMember(m)} aria-label="Retirer">
-                        <Trash2 className="h-4 w-4 text-red-600" />
+              {filtered.map((m) => (
+                <TableRow key={m.id}>
+                  <TableCell className="font-medium">{getMemberName(m)}</TableCell>
+                  <TableCell>{getMemberRoleLabel(m)}</TableCell>
+                  <TableCell className="text-muted-foreground">{m.person?.email ?? "—"}</TableCell>
+                  <TableCell className="text-right">
+                    {m.person_id && (
+                      <Button asChild variant="ghost" size="icon" aria-label="Voir la fiche personne">
+                        <Link to="/persons/$personId" params={{ personId: m.person_id }}>
+                          <ExternalLink className="h-4 w-4" />
+                        </Link>
                       </Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+                    )}
+                    <Button variant="ghost" size="icon" onClick={() => removeMember(m)} aria-label="Retirer">
+                      <Trash2 className="h-4 w-4 text-red-600" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         )}
@@ -438,16 +377,13 @@ function DelegationPage() {
         <DialogContent className="sm:max-w-lg overflow-hidden">
           <DialogHeader>
             <DialogTitle>Chef de Mission</DialogTitle>
-            <DialogDescription>Sélectionner n'importe quelle personne comme Chef de Mission.</DialogDescription>
+            <DialogDescription>Sélectionner une personne comme Chef de Mission.</DialogDescription>
           </DialogHeader>
           <div className="py-2">
-            <PersonCombobox
+            <PersonRoleCombobox
               value={chiefId}
               onChange={setChiefId}
               options={personOptions}
-              placeholder="— Aucun —"
-              searchPlaceholder="Rechercher une personne…"
-              emptyMessage="Aucune personne."
             />
             {chiefId && (
               <button
@@ -489,26 +425,23 @@ function DelegationPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Member dialog — simplified: choose a person, role is auto-detected */}
+      {/* Member dialog — encadrants only, role shown in dropdown */}
       <Dialog open={memberOpen} onOpenChange={setMemberOpen}>
         <DialogContent>
           <form onSubmit={submitMember}>
             <DialogHeader>
-              <DialogTitle>Ajouter un membre</DialogTitle>
+              <DialogTitle>Ajouter un encadrant à la délégation</DialogTitle>
               <DialogDescription>
-                Choisissez une personne. Son rôle sera automatiquement détecté depuis son profil d'encadrant ou de membre de fédération.
+                Seuls les encadrants peuvent être ajoutés à la délégation. Le rôle est détecté automatiquement depuis le profil.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="space-y-1.5">
-                <Label>Personne *</Label>
-                <PersonCombobox
+                <Label>Encadrant *</Label>
+                <PersonRoleCombobox
                   value={memberPersonId}
                   onChange={(id) => { setMemberPersonId(id); setSelectedRoleCode(""); }}
                   options={personOptions}
-                  placeholder="Choisir une personne…"
-                  searchPlaceholder="Rechercher une personne…"
-                  emptyMessage="Aucune personne trouvée."
                 />
               </div>
               {memberPersonId && selectedPersonRoles.length > 0 && (
@@ -523,16 +456,11 @@ function DelegationPage() {
                       <SelectTrigger><SelectValue placeholder="Choisir un rôle…" /></SelectTrigger>
                       <SelectContent>
                         {selectedPersonRoles.map((r) => (
-                          <SelectItem key={`${r.source}-${r.code}`} value={r.code}>{r.label}</SelectItem>
+                          <SelectItem key={r.code} value={r.code}>{r.label}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   )}
-                </div>
-              )}
-              {memberPersonId && selectedPersonRoles.length === 0 && (
-                <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                  ⚠️ Cette personne n'a aucun rôle d'encadrant ou de membre de fédération. Si c'est un athlète, il sera ajouté avec son rôle d'athlète.
                 </div>
               )}
             </div>
@@ -546,5 +474,72 @@ function DelegationPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+// Inline combobox that shows role labels next to person names
+function PersonRoleCombobox({
+  value,
+  onChange,
+  options,
+  placeholder = "Choisir…",
+}: {
+  value: string;
+  onChange: (id: string) => void;
+  options: { id: string; label: string }[];
+  placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find((o) => o.id === value);
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={setOpen}
+    >
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between font-normal overflow-hidden"
+        >
+          <span className={`truncate text-left min-w-0 flex-1 block ${!selected && "text-muted-foreground"}`}>
+            {selected ? selected.label : placeholder}
+          </span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-[--radix-popover-trigger-width] min-w-[min(400px,calc(100vw-2rem))] max-w-[min(640px,calc(100vw-2rem))] overflow-x-hidden p-0"
+        align="start"
+        sideOffset={4}
+      >
+        <Command>
+          <CommandInput placeholder="Rechercher…" />
+          <CommandList className="max-h-[300px] overflow-y-auto overscroll-contain">
+            <CommandEmpty>Aucun encadrant trouvé.</CommandEmpty>
+            <CommandGroup>
+              {options.slice(0, 300).map((o) => (
+                <CommandItem
+                  key={o.id}
+                  value={`${o.label} ${o.id}`}
+                  onSelect={() => {
+                    onChange(o.id);
+                    setOpen(false);
+                  }}
+                >
+                  <Check
+                    className={`mr-2 h-4 w-4 shrink-0 ${value === o.id ? "opacity-100" : "opacity-0"}`}
+                  />
+                  <span className="min-w-0 truncate">{o.label}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }
