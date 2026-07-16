@@ -68,6 +68,7 @@ function DelegationPage() {
   const [persons, setPersons] = useState<PersonLite[]>([]);
   const [coachProfiles, setCoachProfiles] = useState<CoachProfileLite[]>([]);
   const [fedMemberProfiles, setFedMemberProfiles] = useState<{ person_id: string; role: string }[]>([]);
+  const [athletePersonIds, setAthletePersonIds] = useState<Set<string>>(new Set());
   const [game, setGame] = useState<{ name: string; short_name: string | null; edition_year: number } | null>(null);
 
   const [search, setSearch] = useState("");
@@ -100,7 +101,7 @@ function DelegationPage() {
     const del = await ensureDelegation();
     if (!del) return;
     setDelegation(del);
-    const [mRes, uRes, gRes, pRes, cpRes, fmRes] = await Promise.all([
+    const [mRes, uRes, gRes, pRes, cpRes, fmRes, apRes] = await Promise.all([
       supabase.from("delegation_members")
         .select("*, person:persons(id,first_name,last_name,email)")
         .eq("delegation_id", del.id),
@@ -109,6 +110,7 @@ function DelegationPage() {
       supabase.from("persons").select("id,first_name,last_name,email").eq("is_active", true).order("last_name"),
       supabase.from("coach_profiles").select("id,person_id,role,is_active").eq("is_active", true),
       supabase.from("federation_member_profiles").select("person_id,role").eq("is_active", true),
+      supabase.from("athlete_profiles").select("person_id").eq("is_active", true),
     ]);
     setMembers(((mRes.data ?? []) as unknown) as Member[]);
     setUsers((uRes.data ?? []) as UserProfile[]);
@@ -116,6 +118,7 @@ function DelegationPage() {
     setPersons((pRes.data ?? []) as PersonLite[]);
     setCoachProfiles((cpRes.data ?? []) as CoachProfileLite[]);
     setFedMemberProfiles((fmRes.data ?? []) as { person_id: string; role: string }[]);
+    setAthletePersonIds(new Set(((apRes.data ?? []) as { person_id: string }[]).map((a) => a.person_id)));
     setChiefId(del.chief_of_mission_id ?? "");
     setMgrId(del.games_manager_id ?? "");
   };
@@ -125,47 +128,51 @@ function DelegationPage() {
   const chief = persons.find((p) => p.id === delegation?.chief_of_mission_id);
   const manager = users.find((u) => u.id === delegation?.games_manager_id);
 
-  // Build person options: ONLY persons who have at least one coach_profile (encadrants)
-  // Each option shows the role(s) next to the name
+  // Build person options: ALL active persons with their role(s) shown next to name
   const personOptions = useMemo(() => {
-    const coachPersonIds = new Set(coachProfiles.map((c) => c.person_id));
     return persons
-      .filter((p) => coachPersonIds.has(p.id))
       .map((p) => {
-        const roles = coachProfiles
+        const roles: string[] = [];
+        if (athletePersonIds.has(p.id)) roles.push("Athlète");
+        const coachRoles = coachProfiles
           .filter((c) => c.person_id === p.id)
           .map((c) => coachRoleLabel(c.role));
         const fedRoles = fedMemberProfiles
           .filter((f) => f.person_id === p.id)
           .map((f) => federationMemberRoleLabel(f.role));
-        const allRoles = [...roles, ...fedRoles];
+        roles.push(...coachRoles, ...fedRoles);
         return {
           id: p.id,
-          label: `${p.first_name} ${p.last_name}${allRoles.length > 0 ? ` (${allRoles.join(", ")})` : ""}`,
+          label: `${p.first_name} ${p.last_name}${roles.length > 0 ? ` (${roles.join(", ")})` : ""}`,
         };
       });
-  }, [persons, coachProfiles, fedMemberProfiles]);
+  }, [persons, coachProfiles, fedMemberProfiles, athletePersonIds]);
 
-  // Get all roles for the selected person (from coach_profiles + fed_member_profiles)
+  // Get all roles for the selected person (athlete + coach + fed_member)
   const selectedPersonRoles = useMemo(() => {
     if (!memberPersonId) return [];
-    const coachRoles = coachProfiles
+    const roles: { code: string; label: string }[] = [];
+    if (athletePersonIds.has(memberPersonId)) roles.push({ code: "athlete", label: "Athlète" });
+    coachProfiles
       .filter((c) => c.person_id === memberPersonId)
-      .map((c) => ({ code: c.role, label: coachRoleLabel(c.role) }));
-    const fedRoles = fedMemberProfiles
+      .forEach((c) => roles.push({ code: c.role, label: coachRoleLabel(c.role) }));
+    fedMemberProfiles
       .filter((f) => f.person_id === memberPersonId)
-      .map((f) => ({ code: f.role, label: federationMemberRoleLabel(f.role) }));
-    return [...coachRoles, ...fedRoles];
-  }, [memberPersonId, coachProfiles, fedMemberProfiles]);
+      .forEach((f) => roles.push({ code: f.role, label: federationMemberRoleLabel(f.role) }));
+    return roles;
+  }, [memberPersonId, coachProfiles, fedMemberProfiles, athletePersonIds]);
 
   // Get role label for a member in the table
   const getMemberRoleLabel = (m: Member): string => {
     if (m.member_role) return m.member_role;
     if (m.person_id) {
+      const roles: string[] = [];
+      if (athletePersonIds.has(m.person_id)) roles.push("Athlète");
       const coach = coachProfiles.find((c) => c.person_id === m.person_id);
-      if (coach) return coachRoleLabel(coach.role);
+      if (coach) roles.push(coachRoleLabel(coach.role));
       const fm = fedMemberProfiles.find((f) => f.person_id === m.person_id);
-      if (fm) return federationMemberRoleLabel(fm.role);
+      if (fm) roles.push(federationMemberRoleLabel(fm.role));
+      return roles.length > 0 ? roles.join(", ") : "—";
     }
     return "—";
   };
@@ -249,7 +256,7 @@ function DelegationPage() {
       ];
     });
     if (chief) {
-      lines.unshift(["Chef de Mission", chief.last_name, chief.first_name, chief.email ?? ""]);
+      lines.unshift([chief.last_name, chief.first_name, "Chef de Mission", chief.email ?? ""]);
     }
     const csv = [header, ...lines]
       .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
@@ -325,9 +332,8 @@ function DelegationPage() {
           <Button
             onClick={() => { setMemberPersonId(""); setSelectedRoleCode(""); setMemberOpen(true); }}
             className="bg-primary hover:bg-[var(--cosl-red-dark)]"
-            disabled={personOptions.length === 0}
           >
-            <Plus className="mr-2 h-4 w-4" /> Ajouter un encadrant
+            <Plus className="mr-2 h-4 w-4" /> Ajouter un membre
           </Button>
         </div>
       </div>
@@ -336,7 +342,7 @@ function DelegationPage() {
         {members === null ? (
           <TableSkeleton cols={4} />
         ) : filtered.length === 0 ? (
-          <div className="p-6"><EmptyState message="Aucun encadrant dans la délégation." /></div>
+          <div className="p-6"><EmptyState message="Aucun membre dans la délégation." /></div>
         ) : (
           <Table>
             <TableHeader>
@@ -430,14 +436,14 @@ function DelegationPage() {
         <DialogContent>
           <form onSubmit={submitMember}>
             <DialogHeader>
-              <DialogTitle>Ajouter un encadrant à la délégation</DialogTitle>
+              <DialogTitle>Ajouter un membre à la délégation</DialogTitle>
               <DialogDescription>
-                Seuls les encadrants peuvent être ajoutés à la délégation. Le rôle est détecté automatiquement depuis le profil.
+                La délégation est la liste officielle des personnes validées et présentes au Games. Le rôle est détecté automatiquement depuis le profil.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="space-y-1.5">
-                <Label>Encadrant *</Label>
+                <Label>Personne *</Label>
                 <PersonRoleCombobox
                   value={memberPersonId}
                   onChange={(id) => { setMemberPersonId(id); setSelectedRoleCode(""); }}
