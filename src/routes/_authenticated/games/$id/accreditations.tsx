@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
-import { Trash2, Download, FileText, Check, X, Search, Settings } from "lucide-react";
+import { Trash2, Download, FileText, Check, X, Search, Settings, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,10 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { TableSkeleton, EmptyState } from "@/components/DataTableShell";
 import { FileUpload } from "@/components/FileUpload";
+import {
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+} from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { computeRequiredDocs } from "@/lib/conformity-utils";
 import { useTypeGroup, clsForCode } from "@/hooks/useTypeItems";
 import type { PersonDocument } from "@/lib/types";
@@ -236,7 +240,7 @@ function GameAccreditationsPage() {
   // ==== Drawer actions ====
   const current = (accreds ?? []).find((a) => a.id === openId) ?? null;
 
-  // Load person documents + required docs for the drawer, then auto-link
+  // Load person documents + required docs for the drawer
   useEffect(() => {
     if (!current) return;
 
@@ -244,15 +248,12 @@ function GameAccreditationsPage() {
       // Determine person_id: try direct, then fallback via athlete_profiles
       let pid = current.person_id;
       if (!pid && current.athlete_id) {
-        // Fallback: look up person_id from athlete_profiles
         const { data: ap } = await supabase
           .from("athlete_profiles")
           .select("person_id")
           .eq("legacy_athlete_id", current.athlete_id)
           .maybeSingle();
         pid = (ap as { person_id?: string | null } | null)?.person_id ?? null;
-
-        // If found, update the accreditation to set person_id for future use
         if (pid) {
           await supabase.from("accreditations").update({ person_id: pid }).eq("id", current.id);
         }
@@ -267,7 +268,6 @@ function GameAccreditationsPage() {
 
       setDrawerPersonId(pid);
 
-      // Load required docs + person docs in parallel
       const reqPromise = current.role_code
         ? computeRequiredDocs(gameId, current.role_code)
         : Promise.resolve([]);
@@ -279,105 +279,12 @@ function GameAccreditationsPage() {
         .order("created_at", { ascending: false });
 
       const [reqDocs, docsRes] = await Promise.all([reqPromise, docsPromise]);
-      const reqCodes = reqDocs.map((d) => d.doc_type_code);
-      setDrawerRequiredDocs(reqCodes);
-
-      const personDocs = (docsRes.data ?? []) as PersonDocument[];
-      setDrawerPersonDocs(personDocs);
-
-      // Auto-link: for each required doc that the person already has but
-      // is not yet in accreditation_documents, create the link automatically
-      const existingAccDocTypes = new Set(current.docs.map((d) => d.doc_type));
-      const personDocTypes = new Set(personDocs.map((d) => d.doc_type));
-      const toLink = reqCodes.filter(
-        (code) => !existingAccDocTypes.has(code) && personDocTypes.has(code),
-      );
-
-      if (toLink.length > 0) {
-        const inserts = toLink.map((docType) => {
-          const pd = personDocs.find((d) => d.doc_type === docType);
-          if (!pd) return null;
-          return {
-            accreditation_id: current.id,
-            doc_type: docType,
-            file_name: pd.file_name,
-            file_url: pd.file_url,
-            status: pd.status === "valid" ? "valid" : "pending",
-            uploaded_at: new Date().toISOString(),
-          };
-        }).filter((x): x is NonNullable<typeof x> => x !== null);
-
-        if (inserts.length > 0) {
-          await supabase.from("accreditation_documents").insert(inserts);
-          load();
-        }
-      }
+      setDrawerRequiredDocs(reqDocs.map((d) => d.doc_type_code));
+      setDrawerPersonDocs((docsRes.data ?? []) as PersonDocument[]);
     };
 
     run();
   }, [openId]);
-
-  const uploadDoc = async (docType: string, url: string, fileName: string) => {
-    if (!current) return;
-    const existing = current.docs.find((d) => d.doc_type === docType);
-    const payload = {
-      accreditation_id: current.id,
-      doc_type: docType,
-      file_name: fileName,
-      file_url: url,
-      status: "pending",
-      uploaded_at: new Date().toISOString(),
-    };
-    if (existing) {
-      await supabase.from("accreditation_documents").update(payload).eq("id", existing.id);
-    } else {
-      await supabase.from("accreditation_documents").insert(payload);
-    }
-    toast.success("Document enregistré");
-    load();
-  };
-
-  // Link a person_document to this accreditation (creates an accreditation_document
-  // referencing the existing file from the person's documents)
-  const linkPersonDoc = async (docType: string) => {
-    if (!current) return;
-    const personDoc = drawerPersonDocs.find((d) => d.doc_type === docType);
-    if (!personDoc) return;
-    const existing = current.docs.find((d) => d.doc_type === docType);
-    const payload = {
-      accreditation_id: current.id,
-      doc_type: docType,
-      file_name: personDoc.file_name,
-      file_url: personDoc.file_url,
-      status: personDoc.status === "valid" ? "valid" : "pending",
-      uploaded_at: new Date().toISOString(),
-    };
-    if (existing) {
-      await supabase.from("accreditation_documents").update(payload).eq("id", existing.id);
-    } else {
-      await supabase.from("accreditation_documents").insert(payload);
-    }
-    toast.success("Document de la personne lié à l'accréditation");
-    load();
-  };
-
-  const uploadPersonDoc = async (docType: string, url: string, fileName: string) => {
-    if (!drawerPersonId) return;
-    await supabase.from("person_documents").insert({
-      person_id: drawerPersonId,
-      doc_type: docType,
-      file_name: fileName,
-      file_url: url,
-      status: "pending",
-    });
-    toast.success("Document ajouté à la fiche personne");
-    const { data } = await supabase
-      .from("person_documents")
-      .select("*")
-      .eq("person_id", drawerPersonId)
-      .order("created_at", { ascending: false });
-    setDrawerPersonDocs((data ?? []) as PersonDocument[]);
-  };
 
   const setDocStatus = async (doc: AccDoc, status: string) => {
     const { error } = await supabase.from("accreditation_documents").update({ status }).eq("id", doc.id);
@@ -513,10 +420,10 @@ function GameAccreditationsPage() {
                   docTypes={docTypes}
                   requiredDocCodes={drawerRequiredDocs}
                   personDocs={drawerPersonDocs}
+                  personId={drawerPersonId}
+                  gameId={gameId}
                   getDocStatusLabel={docStatusesHook.getLabel}
-                  onUpload={uploadDoc}
-                  onUploadPersonDoc={uploadPersonDoc}
-                  onLinkPersonDoc={linkPersonDoc}
+                  onReload={() => load()}
                   onDocStatus={setDocStatus}
                   onSubmit={() => setAccredStatus(current, "submitted")}
                   onValidate={() => setAccredStatus(current, "validated")}
@@ -554,9 +461,9 @@ function GameAccreditationsPage() {
 }
 
 function AccredDrawerBody({
-  accreditation, completeness, docTypes, requiredDocCodes, personDocs,
+  accreditation, completeness, docTypes, requiredDocCodes, personDocs, personId, gameId,
   getDocStatusLabel,
-  onUpload, onUploadPersonDoc, onLinkPersonDoc, onDocStatus,
+  onReload, onDocStatus,
   onSubmit, onValidate, onReject,
 }: {
   accreditation: Accreditation;
@@ -564,10 +471,10 @@ function AccredDrawerBody({
   docTypes: { code: string; label: string }[];
   requiredDocCodes: string[];
   personDocs: PersonDocument[];
+  personId: string | null;
+  gameId: string;
   getDocStatusLabel: (code: string | null | undefined) => string;
-  onUpload: (docType: string, url: string, fileName: string) => void;
-  onUploadPersonDoc: (docType: string, url: string, fileName: string) => void;
-  onLinkPersonDoc: (docType: string) => void;
+  onReload: () => void;
   onDocStatus: (doc: AccDoc, status: string) => void;
   onSubmit: () => void;
   onValidate: () => void;
@@ -575,15 +482,49 @@ function AccredDrawerBody({
 }) {
   const a = accreditation;
 
-  const accDocMap = new Map(a.docs.map((d) => [d.doc_type, d]));
-  const personDocMap = new Map(personDocs.map((d) => [d.doc_type, d]));
+  // Map of accreditation docs by doc_type (keep most recent if multiple)
+  const accDocMap = new Map<string, AccDoc>();
+  a.docs.forEach((d) => {
+    const existing = accDocMap.get(d.doc_type);
+    if (!existing || d.uploaded_at > existing.uploaded_at) {
+      accDocMap.set(d.doc_type, d);
+    }
+  });
 
-  // All relevant doc types: required docs + already uploaded docs
+  // Group person docs by doc_type
+  const personDocsByType = new Map<string, PersonDocument[]>();
+  personDocs.forEach((d) => {
+    if (!personDocsByType.has(d.doc_type)) personDocsByType.set(d.doc_type, []);
+    personDocsByType.get(d.doc_type)!.push(d);
+  });
+
+  // All doc codes to display: required docs + any existing acc docs
   const allDocCodes = Array.from(new Set([
     ...requiredDocCodes,
     ...a.docs.map((d) => d.doc_type),
-    ...personDocs.map((d) => d.doc_type),
   ]));
+
+  // Handle selecting a person document for an accreditation doc type
+  const selectPersonDoc = async (docType: string, personDocId: string) => {
+    const pd = personDocs.find((d) => d.id === personDocId);
+    if (!pd) return;
+    const existing = accDocMap.get(docType);
+    const payload = {
+      accreditation_id: a.id,
+      doc_type: docType,
+      file_name: pd.file_name,
+      file_url: pd.file_url,
+      status: pd.status === "valid" ? "valid" : "pending",
+      uploaded_at: new Date().toISOString(),
+    };
+    if (existing) {
+      await supabase.from("accreditation_documents").update(payload).eq("id", existing.id);
+    } else {
+      await supabase.from("accreditation_documents").insert(payload);
+    }
+    toast.success("Document lié à l'accréditation");
+    onReload();
+  };
 
   return (
     <>
@@ -610,91 +551,59 @@ function AccredDrawerBody({
             Aucun document requis pour ce rôle. Configurez les requirements dans la page de configuration.
           </p>
         ) : (
-          <ul className="space-y-2">
-            {allDocCodes.map((dt) => {
-              const accDoc = accDocMap.get(dt);
-              const personDoc = personDocMap.get(dt);
-              const label = docTypes.find((t) => t.code === dt)?.label ?? dt;
-              const isRequired = requiredDocCodes.includes(dt);
-              const personDocCls = personDoc ? clsForCode(personDoc.status) : "";
+          <div className="space-y-3">
+            {allDocCodes.map((docType) => {
+              const accDoc = accDocMap.get(docType);
+              const candidates = personDocsByType.get(docType) ?? [];
+              const label = docTypes.find((t) => t.code === docType)?.label ?? docType;
+              const isRequired = requiredDocCodes.includes(docType);
+              const docStatus = accDoc
+                ? getDocStatusLabel(accDoc.status)
+                : candidates.length > 0
+                ? getDocStatusLabel(candidates[0].status)
+                : "Manquant";
+              const statusCls = accDoc
+                ? clsForCode(accDoc.status)
+                : candidates.length > 0
+                ? clsForCode(candidates[0].status)
+                : "bg-slate-200 text-foreground";
+
               return (
-                <li key={dt} className="flex flex-col gap-2 rounded border border-border p-3 sm:flex-row sm:items-start">
-                  <FileText className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
-                  <div className="flex-1 min-w-0 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium flex-1">
-                        {label}
-                        {isRequired && <span className="ml-1 text-xs text-red-600">*</span>}
-                      </p>
-                      {accDoc ? (
-                        <>
-                          <Badge className={`${clsForCode(accDoc.status)} hover:${clsForCode(accDoc.status)}`}>
-                            {getDocStatusLabel(accDoc.status)}
-                          </Badge>
-                          {accDoc.status !== "valid" && (
-                            <Button size="icon" variant="ghost" onClick={() => onDocStatus(accDoc, "valid")} aria-label="Valider"><Check className="h-4 w-4 text-emerald-600" /></Button>
-                          )}
-                          {accDoc.status !== "rejected" && (
-                            <Button size="icon" variant="ghost" onClick={() => onDocStatus(accDoc, "rejected")} aria-label="Rejeter"><X className="h-4 w-4 text-red-600" /></Button>
-                          )}
-                        </>
-                      ) : personDoc ? (
-                        <>
-                          <Badge className={`${personDocCls} hover:${personDocCls}`}>
-                            {getDocStatusLabel(personDoc.status)}
-                          </Badge>
-                          <span className="text-xs text-sky-700 font-medium">Fourni par la personne</span>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 text-xs"
-                            onClick={() => onLinkPersonDoc(dt)}
-                          >
-                            Lier à l'accréditation
-                          </Button>
-                        </>
-                      ) : (
-                        <Badge className="bg-slate-200 text-foreground hover:bg-slate-200">Manquant</Badge>
-                      )}
-                    </div>
-                    {/* Show person doc info */}
-                    {personDoc && (
-                      <div className="text-xs text-muted-foreground">
-                        📄 {personDoc.file_name}
-                        {personDoc.file_url && (
-                          <a href={personDoc.file_url} target="_blank" rel="noreferrer" className="ml-2 text-[var(--lux-blue)] hover:underline">Voir</a>
-                        )}
-                        <span className="ml-2">
-                          ({getDocStatusLabel(personDoc.status)})
-                        </span>
-                      </div>
-                    )}
-                    {/* Upload to accreditation_documents */}
-                    <FileUpload
-                      bucket="documents"
-                      path={`accreditations/${a.id}/${dt}/${Date.now()}_`}
-                      accept="image/jpeg,image/png,image/webp,application/pdf"
-                      currentUrl={accDoc?.file_url ?? null}
-                      currentName={accDoc?.file_name ?? null}
-                      onUploaded={(url, fileName) => onUpload(dt, url, fileName)}
-                    />
-                    {/* Also allow uploading to person_documents if not already present */}
-                    {!personDoc && (
-                      <div className="pt-1">
-                        <p className="text-xs text-muted-foreground mb-1">Ajouter à la fiche personne :</p>
-                        <FileUpload
-                          bucket="documents"
-                          path={`persons/${a.person_id ?? a.athlete_id ?? a.coach_id}/${dt}/${Date.now()}_`}
-                          accept="image/jpeg,image/png,image/webp,application/pdf"
-                          onUploaded={(url, fileName) => onUploadPersonDoc(dt, url, fileName)}
-                        />
-                      </div>
-                    )}
-                  </div>
-                </li>
+                <DocTypeRow
+                  key={docType}
+                  docType={docType}
+                  label={label}
+                  isRequired={isRequired}
+                  accDoc={accDoc}
+                  candidates={candidates}
+                  docStatus={docStatus}
+                  statusCls={statusCls}
+                  personId={personId}
+                  getDocStatusLabel={getDocStatusLabel}
+                  onSelectPersonDoc={(pid) => selectPersonDoc(docType, pid)}
+                  onDocStatus={(s) => accDoc && onDocStatus(accDoc, s)}
+                  onUpload={async (url, fileName) => {
+                    if (!personId) return;
+                    // Upload creates a person_document, then links it
+                    const { data: inserted } = await supabase.from("person_documents").insert({
+                      person_id: personId,
+                      doc_type: docType,
+                      file_name: fileName,
+                      file_url: url,
+                      status: "pending",
+                    }).select("id").single();
+
+                    const newDocId = (inserted as { id?: string } | null)?.id;
+                    if (newDocId) {
+                      await selectPersonDoc(docType, newDocId);
+                    } else {
+                      onReload();
+                    }
+                  }}
+                />
               );
             })}
-          </ul>
+          </div>
         )}
       </section>
 
@@ -710,6 +619,163 @@ function AccredDrawerBody({
         <Button onClick={onReject} variant="outline" className="border-red-300 text-red-700 hover:bg-red-50">Rejeter</Button>
       </div>
     </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DocTypeRow — une ligne par type de document requis
+// ─────────────────────────────────────────────────────────────────────────────
+
+function DocTypeRow({
+  label, isRequired, accDoc, candidates, docStatus, statusCls, personId,
+  getDocStatusLabel, onSelectPersonDoc, onDocStatus, onUpload,
+}: {
+  docType: string;
+  label: string;
+  isRequired: boolean;
+  accDoc: AccDoc | undefined;
+  candidates: PersonDocument[];
+  docStatus: string;
+  statusCls: string;
+  personId: string | null;
+  getDocStatusLabel: (code: string | null | undefined) => string;
+  onSelectPersonDoc: (personDocId: string) => void;
+  onDocStatus: (status: string) => void;
+  onUpload: (url: string, fileName: string) => void;
+}) {
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [showUpload, setShowUpload] = useState(false);
+
+  // The "selected" document is the accDoc if it exists, or the most recent person doc
+  const selectedDoc: PersonDocument | undefined = accDoc
+    ? { id: accDoc.id, doc_type: accDoc.doc_type, file_name: accDoc.file_name, file_url: accDoc.file_url, status: accDoc.status, person_id: "", category: null, issued_date: null, expiry_date: null, uploaded_by: null, requires_action: null, created_at: accDoc.uploaded_at }
+    : candidates[0];
+
+  const isImage = (url: string | null | undefined) =>
+    !!url && /\.(png|jpe?g|webp|gif)(\?|$)/i.test(url);
+
+  return (
+    <div className="rounded-md border border-border p-3 space-y-2">
+      <div className="flex items-center gap-2">
+        <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+        <p className="text-sm font-medium flex-1">
+          {label}
+          {isRequired && <span className="ml-1 text-xs text-red-600">*</span>}
+        </p>
+        <Badge className={`${statusCls} hover:${statusCls}`}>{docStatus}</Badge>
+        {accDoc && accDoc.status !== "valid" && (
+          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onDocStatus("valid")} aria-label="Valider">
+            <Check className="h-4 w-4 text-emerald-600" />
+          </Button>
+        )}
+        {accDoc && accDoc.status !== "rejected" && (
+          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onDocStatus("rejected")} aria-label="Rejeter">
+            <X className="h-4 w-4 text-red-600" />
+          </Button>
+        )}
+      </div>
+
+      {/* Selected document preview */}
+      {selectedDoc && (
+        <div className="flex items-center gap-2 rounded-md bg-muted/40 p-2">
+          {selectedDoc.file_url && isImage(selectedDoc.file_url) ? (
+            <img src={selectedDoc.file_url} alt="" className="h-10 w-10 rounded object-cover border border-border" />
+          ) : (
+            <FileText className="h-8 w-8 text-muted-foreground" />
+          )}
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">{selectedDoc.file_name}</p>
+            <p className="text-xs text-muted-foreground">{getDocStatusLabel(selectedDoc.status)}</p>
+          </div>
+          {selectedDoc.file_url && (
+            <a href={selectedDoc.file_url} target="_blank" rel="noreferrer" className="text-xs text-[var(--lux-blue)] hover:underline">
+              Voir
+            </a>
+          )}
+        </div>
+      )}
+
+      {/* Dropdown to choose / add document */}
+      {personId !== null && (
+        <Popover open={dropdownOpen} onOpenChange={setDropdownOpen}>
+          <PopoverTrigger asChild>
+            <Button type="button" variant="outline" size="sm" className="w-full text-xs">
+              {candidates.length > 0 || accDoc ? "Changer de document" : "Ajouter un document"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="p-0 w-[350px]" align="start">
+            <Command>
+              <CommandList>
+                <CommandEmpty>Aucun document trouvé.</CommandEmpty>
+
+                {/* Existing person documents of this type */}
+                {candidates.length > 0 && (
+                  <CommandGroup heading="Documents de la personne">
+                    {candidates.map((pd) => (
+                      <CommandItem
+                        key={pd.id}
+                        value={`${pd.file_name} ${pd.id}`}
+                        onSelect={() => { onSelectPersonDoc(pd.id); setDropdownOpen(false); }}
+                      >
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          {pd.file_url && isImage(pd.file_url) ? (
+                            <img src={pd.file_url} alt="" className="h-8 w-8 rounded object-cover border border-border shrink-0" />
+                          ) : (
+                            <FileText className="h-6 w-6 text-muted-foreground shrink-0" />
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm truncate">{pd.file_name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {getDocStatusLabel(pd.status)}
+                              {pd.issued_date && ` · ${new Date(pd.issued_date).toLocaleDateString("fr-FR")}`}
+                            </p>
+                          </div>
+                          {pd.file_url && (
+                            <a
+                              href={pd.file_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-xs text-[var(--lux-blue)] hover:underline shrink-0"
+                            >
+                              Voir
+                            </a>
+                          )}
+                        </div>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                )}
+
+                {/* Upload new document */}
+                <CommandGroup>
+                  <CommandItem
+                    value="__upload_new__"
+                    onSelect={() => { setShowUpload(true); setDropdownOpen(false); }}
+                    className="font-medium text-primary"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Uploader un nouveau document
+                  </CommandItem>
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+      )}
+
+      {/* Inline upload */}
+      {showUpload && (
+        <div className="pt-1">
+          <FileUpload
+            bucket="documents"
+            path={`persons/${personId ?? ""}/${label}/${Date.now()}_`}
+            accept="image/jpeg,image/png,image/webp,application/pdf"
+            onUploaded={(url, fileName) => { onUpload(url, fileName); setShowUpload(false); }}
+          />
+        </div>
+      )}
+    </div>
   );
 }
 
