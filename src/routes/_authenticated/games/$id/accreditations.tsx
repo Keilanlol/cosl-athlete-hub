@@ -84,10 +84,27 @@ function GameAccreditationsPage() {
   useEffect(() => { load(); }, [gameId]);
 
   const completeness = (a: Accreditation) => {
-    const total = a.docs.length;
+    // Count required docs that are satisfied (either by accreditation_documents
+    // or by person_documents with a valid/pending status)
+    if (drawerRequiredDocs.length === 0 && a.docs.length === 0) return 0;
+    const total = drawerRequiredDocs.length > 0 ? drawerRequiredDocs.length : a.docs.length;
     if (total === 0) return 0;
-    const valid = a.docs.filter((d) => d.status === "valid").length;
-    return Math.round((valid / total) * 100);
+    // Valid accreditations docs
+    const validAccDocs = new Set(
+      a.docs.filter((d) => d.status === "valid").map((d) => d.doc_type)
+    );
+    // Valid/pending person docs (count as provided)
+    const providedPersonDocs = new Set(
+      drawerPersonDocs
+        .filter((d) => d.status === "valid" || d.status === "pending")
+        .map((d) => d.doc_type)
+    );
+    // Count satisfied required docs
+    const requiredCodes = drawerRequiredDocs.length > 0 ? drawerRequiredDocs : a.docs.map((d) => d.doc_type);
+    const satisfied = requiredCodes.filter(
+      (code) => validAccDocs.has(code) || providedPersonDocs.has(code)
+    ).length;
+    return Math.round((satisfied / total) * 100);
   };
 
   const kpi = useMemo(() => {
@@ -161,6 +178,30 @@ function GameAccreditationsPage() {
       await supabase.from("accreditation_documents").insert(payload);
     }
     toast.success("Document enregistré");
+    load();
+  };
+
+  // Link a person_document to this accreditation (creates an accreditation_document
+  // referencing the existing file from the person's documents)
+  const linkPersonDoc = async (docType: string) => {
+    if (!current) return;
+    const personDoc = drawerPersonDocs.find((d) => d.doc_type === docType);
+    if (!personDoc) return;
+    const existing = current.docs.find((d) => d.doc_type === docType);
+    const payload = {
+      accreditation_id: current.id,
+      doc_type: docType,
+      file_name: personDoc.file_name,
+      file_url: personDoc.file_url,
+      status: personDoc.status === "valid" ? "valid" : "pending",
+      uploaded_at: new Date().toISOString(),
+    };
+    if (existing) {
+      await supabase.from("accreditation_documents").update(payload).eq("id", existing.id);
+    } else {
+      await supabase.from("accreditation_documents").insert(payload);
+    }
+    toast.success("Document de la personne lié à l'accréditation");
     load();
   };
 
@@ -315,6 +356,7 @@ function GameAccreditationsPage() {
                   getDocStatusLabel={docStatusesHook.getLabel}
                   onUpload={uploadDoc}
                   onUploadPersonDoc={uploadPersonDoc}
+                  onLinkPersonDoc={linkPersonDoc}
                   onDocStatus={setDocStatus}
                   onSubmit={() => setAccredStatus(current, "submitted")}
                   onValidate={() => setAccredStatus(current, "validated")}
@@ -354,7 +396,7 @@ function GameAccreditationsPage() {
 function AccredDrawerBody({
   accreditation, completeness, docTypes, requiredDocCodes, personDocs,
   getDocStatusLabel,
-  onUpload, onUploadPersonDoc, onDocStatus,
+  onUpload, onUploadPersonDoc, onLinkPersonDoc, onDocStatus,
   onSubmit, onValidate, onReject,
 }: {
   accreditation: Accreditation;
@@ -365,6 +407,7 @@ function AccredDrawerBody({
   getDocStatusLabel: (code: string | null | undefined) => string;
   onUpload: (docType: string, url: string, fileName: string) => void;
   onUploadPersonDoc: (docType: string, url: string, fileName: string) => void;
+  onLinkPersonDoc: (docType: string) => void;
   onDocStatus: (doc: AccDoc, status: string) => void;
   onSubmit: () => void;
   onValidate: () => void;
@@ -413,10 +456,7 @@ function AccredDrawerBody({
               const personDoc = personDocMap.get(dt);
               const label = docTypes.find((t) => t.code === dt)?.label ?? dt;
               const isRequired = requiredDocCodes.includes(dt);
-              const docStatusLabel = accDoc
-                ? getDocStatusLabel(accDoc.status)
-                : getDocStatusLabel("missing");
-              const docStatusCls = clsForCode(accDoc?.status ?? "missing");
+              const personDocCls = personDoc ? clsForCode(personDoc.status) : "";
               return (
                 <li key={dt} className="flex flex-col gap-2 rounded border border-border p-3 sm:flex-row sm:items-start">
                   <FileText className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
@@ -428,7 +468,9 @@ function AccredDrawerBody({
                       </p>
                       {accDoc ? (
                         <>
-                          <Badge className={`${docStatusCls} hover:${docStatusCls}`}>{docStatusLabel}</Badge>
+                          <Badge className={`${clsForCode(accDoc.status)} hover:${clsForCode(accDoc.status)}`}>
+                            {getDocStatusLabel(accDoc.status)}
+                          </Badge>
                           {accDoc.status !== "valid" && (
                             <Button size="icon" variant="ghost" onClick={() => onDocStatus(accDoc, "valid")} aria-label="Valider"><Check className="h-4 w-4 text-emerald-600" /></Button>
                           )}
@@ -437,19 +479,37 @@ function AccredDrawerBody({
                           )}
                         </>
                       ) : personDoc ? (
-                        <Badge className="bg-sky-100 text-sky-700 hover:bg-sky-100">Fourni (personne)</Badge>
+                        <>
+                          <Badge className={`${personDocCls} hover:${personDocCls}`}>
+                            {getDocStatusLabel(personDoc.status)}
+                          </Badge>
+                          <span className="text-xs text-sky-700 font-medium">Fourni par la personne</span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                            onClick={() => onLinkPersonDoc(dt)}
+                          >
+                            Lier à l'accréditation
+                          </Button>
+                        </>
                       ) : (
                         <Badge className="bg-slate-200 text-foreground hover:bg-slate-200">Manquant</Badge>
                       )}
                     </div>
+                    {/* Show person doc info */}
                     {personDoc && (
                       <div className="text-xs text-muted-foreground">
                         📄 {personDoc.file_name}
                         {personDoc.file_url && (
                           <a href={personDoc.file_url} target="_blank" rel="noreferrer" className="ml-2 text-[var(--lux-blue)] hover:underline">Voir</a>
                         )}
+                        <span className="ml-2">
+                          ({getDocStatusLabel(personDoc.status)})
+                        </span>
                       </div>
                     )}
+                    {/* Upload to accreditation_documents */}
                     <FileUpload
                       bucket="documents"
                       path={`accreditations/${a.id}/${dt}/${Date.now()}_`}
@@ -458,6 +518,7 @@ function AccredDrawerBody({
                       currentName={accDoc?.file_name ?? null}
                       onUploaded={(url, fileName) => onUpload(dt, url, fileName)}
                     />
+                    {/* Also allow uploading to person_documents if not already present */}
                     {!personDoc && (
                       <div className="pt-1">
                         <p className="text-xs text-muted-foreground mb-1">Ajouter à la fiche personne :</p>
