@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Search, Lock, Pencil, ExternalLink } from "lucide-react";
+import { Plus, Search, Lock, Pencil, Trash2, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { computeAge, checkAgeEligibility } from "@/lib/kyc-utils";
@@ -116,7 +116,8 @@ function SelectionsPage() {
       supabase.from("selections")
         .select("*, athlete:athletes(id,first_name,last_name,gender,photo_url,primary_sport_id,birth_date), person:persons(id,first_name,last_name,photo_url,email), sport:sports(id,name), discipline:disciplines(id,sport_id,name,gender), game_competition:game_competitions(id,game_id,sport_id,discipline_id,name,competition_date,min_age,max_age)")
         .eq("game_id", gameId)
-        .order("created_at", { ascending: false }),
+        .order("created_at", { ascending: false })
+        .or("athlete_id.is.not.null,person_id.is.not.null"),
       supabase.from("athletes").select("id,first_name,last_name,gender,photo_url,primary_sport_id,birth_date").eq("is_active", true).order("last_name"),
       supabase.from("persons").select("id,first_name,last_name,photo_url,email").eq("is_active", true).order("last_name"),
       supabase.from("coach_profiles").select("id,person_id,legacy_coach_id,role,is_active").eq("is_active", true),
@@ -370,6 +371,113 @@ function SelectionsPage() {
     setOpen(true);
   };
 
+  // Add a person to the delegation for this game
+  const addToDelegation = async (personId: string, sel: SelectionRow) => {
+    // Ensure delegation exists
+    const { data: existing } = await supabase
+      .from("delegations")
+      .select("id")
+      .eq("game_id", gameId)
+      .maybeSingle();
+
+    let delId = (existing as { id?: string } | null)?.id;
+    if (!delId) {
+      const { data: created } = await supabase
+        .from("delegations")
+        .insert({ game_id: gameId })
+        .select("id")
+        .single();
+      delId = (created as { id?: string } | null)?.id;
+    }
+    if (!delId) return;
+
+    // Check if already in delegation
+    const { data: existingMember } = await supabase
+      .from("delegation_members")
+      .select("id")
+      .eq("delegation_id", delId)
+      .eq("person_id", personId)
+      .maybeSingle();
+
+    if (existingMember) return; // Already in delegation
+
+    // Determine role
+    const roleCode = sel.athlete_id ? "athlete" : getPersonRoleCode(personId);
+
+    await supabase.from("delegation_members").insert({
+      delegation_id: delId,
+      person_id: personId,
+      athlete_id: null,
+      coach_id: null,
+      member_role: roleCode,
+    });
+  };
+
+  // Remove a person from the delegation
+  const removeFromDelegation = async (personId: string) => {
+    const { data: del } = await supabase
+      .from("delegations")
+      .select("id")
+      .eq("game_id", gameId)
+      .maybeSingle();
+    const delId = (del as { id?: string } | null)?.id;
+    if (!delId) return;
+
+    await supabase.from("delegation_members")
+      .delete()
+      .eq("delegation_id", delId)
+      .eq("person_id", personId);
+  };
+
+  const deleteSelection = async (sel: SelectionRow) => {
+    if (sel.is_locked) { toast.error("Sélection verrouillée"); return; }
+    if (!confirm("Supprimer cette sélection ? L'accréditation associée sera également supprimée.")) return;
+
+    // Determine person_id for cleaning up accreditation
+    let pid = sel.person_id;
+    if (!pid && sel.athlete_id) {
+      const { data: ap } = await supabase
+        .from("athlete_profiles")
+        .select("person_id")
+        .eq("legacy_athlete_id", sel.athlete_id)
+        .maybeSingle();
+      pid = (ap as { person_id?: string | null } | null)?.person_id ?? null;
+    }
+
+    // Delete the selection
+    const { error } = await supabase.from("selections").delete().eq("id", sel.id);
+    if (error) {
+      toast.error("Échec", { description: friendlyError(error) });
+      return;
+    }
+
+    // Delete the accreditation for this person in this game
+    if (pid) {
+      await supabase.from("accreditations")
+        .delete()
+        .eq("game_id", gameId)
+        .eq("person_id", pid);
+    }
+
+    // Remove from delegation if present
+    if (pid) {
+      const { data: del } = await supabase
+        .from("delegations")
+        .select("id")
+        .eq("game_id", gameId)
+        .maybeSingle();
+      if (del) {
+        await supabase.from("delegation_members")
+          .delete()
+          .eq("delegation_id", (del as { id: string }).id)
+          .eq("person_id", pid);
+      }
+    }
+
+    toast.success("Sélection supprimée");
+    load();
+  };
+
   const changeStatus = async (sel: SelectionRow, newStatus: string) => {
     if (sel.is_locked) {
       toast.error("Sélection verrouillée");
@@ -396,19 +504,30 @@ function SelectionsPage() {
     if (error) toast.error("Échec", { description: friendlyError(error) });
     else {
       toast.success("Statut mis à jour");
-      // Trigger conformity notification when selection stage changes
-      if (["pre_selected", "selected", "reserve"].includes(newStatus)) {
-        const type = getRowType(sel);
-        if (type === "athlete" && sel.athlete_id) {
-          const personId = await getPersonIdForAthlete(sel.athlete_id);
-          if (personId) {
-            await createConformityNotification(personId, gameId, "athlete", newStatus);
-          }
-        } else if (type === "person" && sel.person_id) {
-          const roleCode = getPersonRoleCode(sel.person_id);
-          await createConformityNotification(sel.person_id, gameId, roleCode, newStatus);
-        }
+
+      // Determine person_id
+      let pid = sel.person_id;
+      if (!pid && sel.athlete_id) {
+        pid = await getPersonIdForAthlete(sel.athlete_id);
       }
+
+      // If selected → add to delegation automatically
+      if (newStatus === "selected" && pid) {
+        await addToDelegation(pid, sel);
+      }
+
+      // If rejected → remove from delegation
+      if (newStatus === "rejected" && pid) {
+        await removeFromDelegation(pid);
+      }
+
+      // Trigger conformity notification when selection stage changes
+      if (["pre_selected", "selected", "reserve"].includes(newStatus) && pid) {
+        const type = getRowType(sel);
+        const roleCode = type === "athlete" ? "athlete" : getPersonRoleCode(pid);
+        await createConformityNotification(pid, gameId, roleCode, newStatus);
+      }
+
       load();
     }
   };
@@ -537,6 +656,9 @@ function SelectionsPage() {
                           </Select>
                           <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(r)} title="Modifier">
                             <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => deleteSelection(r)} title="Supprimer">
+                            <Trash2 className="h-4 w-4 text-red-600" />
                           </Button>
                         </div>
                       )}

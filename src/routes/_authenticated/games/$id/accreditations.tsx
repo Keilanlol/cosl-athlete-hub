@@ -70,7 +70,7 @@ function GameAccreditationsPage() {
     // 1. Fetch all selections for this game (athletes + persons)
     const [selRes, gRes, rolesRes, dtRes] = await Promise.all([
       supabase.from("selections")
-        .select("athlete_id, person_id, status, athlete:athletes!inner(id,first_name,last_name)")
+        .select("athlete_id, person_id, status")
         .eq("game_id", gameId)
         .in("status", ["pre_selected", "selected", "reserve"]),
       supabase.from("games").select("name,short_name").eq("id", gameId).maybeSingle(),
@@ -94,7 +94,6 @@ function GameAccreditationsPage() {
       athlete_id: string | null;
       person_id: string | null;
       status: string;
-      athlete: { id: string; first_name: string; last_name: string } | null;
     }>;
 
     const toCreate: { game_id: string; person_id: string; full_name: string; status: string; role_code: string }[] = [];
@@ -104,18 +103,16 @@ function GameAccreditationsPage() {
       let fullName = "";
       let roleCode = "athlete";
 
-      if (sel.athlete_id && sel.athlete) {
-        fullName = `${sel.athlete.first_name} ${sel.athlete.last_name}`;
-        // Try to get person_id from athlete_profiles
-        if (!pid) {
-          const { data: ap } = await supabase
-            .from("athlete_profiles")
-            .select("person_id")
-            .eq("legacy_athlete_id", sel.athlete_id)
-            .maybeSingle();
-          pid = (ap as { person_id?: string | null } | null)?.person_id ?? null;
-        }
-        // Try athletes table as fallback
+      if (sel.athlete_id) {
+        // Athlete selection — get person_id + name
+        const { data: ap } = await supabase
+          .from("athlete_profiles")
+          .select("person_id")
+          .eq("legacy_athlete_id", sel.athlete_id)
+          .maybeSingle();
+        pid = (ap as { person_id?: string | null } | null)?.person_id ?? null;
+
+        // Fallback: athletes table
         if (!pid) {
           const { data: ath } = await supabase
             .from("athletes")
@@ -123,12 +120,22 @@ function GameAccreditationsPage() {
             .eq("id", sel.athlete_id)
             .maybeSingle();
           pid = (ath as { person_id?: string | null } | null)?.person_id ?? null;
-          if (ath && !fullName) {
-            fullName = `${(ath as { first_name: string }).first_name} ${(ath as { last_name: string }).last_name}`;
+        }
+
+        // Get name from persons
+        if (pid) {
+          const { data: p } = await supabase
+            .from("persons")
+            .select("first_name, last_name")
+            .eq("id", pid)
+            .maybeSingle();
+          if (p) {
+            fullName = `${(p as { first_name: string }).first_name} ${(p as { last_name: string }).last_name}`;
           }
         }
       } else if (sel.person_id) {
-        // Person-based selection (coach/fed member) — get name from persons
+        // Person-based selection (coach/fed member)
+        pid = sel.person_id;
         const { data: p } = await supabase
           .from("persons")
           .select("first_name, last_name")
