@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { ExternalLink } from "lucide-react";
 import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
 import { Trash2, Download, FileText, Check, X, Search, Settings, Plus } from "lucide-react";
@@ -411,7 +412,16 @@ function GameAccreditationsPage() {
           {current && (
             <>
               <SheetHeader>
-                <SheetTitle>{current.full_name}</SheetTitle>
+                <div className="flex items-center justify-between">
+                  <SheetTitle>{current.full_name}</SheetTitle>
+                  {current.person_id && (
+                    <Button asChild size="sm" variant="outline">
+                      <Link to="/persons/$personId" params={{ personId: current.person_id }}>
+                        <ExternalLink className="mr-1 h-3 w-3" /> Fiche personne
+                      </Link>
+                    </Button>
+                  )}
+                </div>
               </SheetHeader>
               <div className="mt-6 space-y-6">
                 <AccredDrawerBody
