@@ -584,10 +584,18 @@ function AccredDrawerBody({
                   onDocStatus={(s) => accDoc && onDocStatus(accDoc, s)}
                   onUpload={async (url, fileName) => {
                     if (!personId) return;
+                    // Fetch the category from document_types for this doc_type
+                    const { data: dtRow } = await supabase
+                      .from("document_types")
+                      .select("category")
+                      .eq("code", docType)
+                      .maybeSingle();
+                    const category = (dtRow as { category?: string } | null)?.category ?? "admin";
                     // Upload creates a person_document, then links it
                     const { data: inserted } = await supabase.from("person_documents").insert({
                       person_id: personId,
                       doc_type: docType,
+                      category,
                       file_name: fileName,
                       file_url: url,
                       status: "pending",
@@ -627,7 +635,7 @@ function AccredDrawerBody({
 // ─────────────────────────────────────────────────────────────────────────────
 
 function DocTypeRow({
-  label, isRequired, accDoc, candidates, docStatus, statusCls, personId,
+  docType, label, isRequired, accDoc, candidates, docStatus, statusCls, personId,
   getDocStatusLabel, onSelectPersonDoc, onDocStatus, onUpload,
 }: {
   docType: string;
@@ -769,7 +777,7 @@ function DocTypeRow({
         <div className="pt-1">
           <FileUpload
             bucket="documents"
-            path={`persons/${personId ?? ""}/${label}/${Date.now()}_`}
+            path={`persons/${personId ?? ""}/${docType}/${Date.now()}_`}
             accept="image/jpeg,image/png,image/webp,application/pdf"
             onUploaded={(url, fileName) => { onUpload(url, fileName); setShowUpload(false); }}
           />
