@@ -116,8 +116,7 @@ function SelectionsPage() {
       supabase.from("selections")
         .select("*, athlete:athletes(id,first_name,last_name,gender,photo_url,primary_sport_id,birth_date), person:persons(id,first_name,last_name,photo_url,email), sport:sports(id,name), discipline:disciplines(id,sport_id,name,gender), game_competition:game_competitions(id,game_id,sport_id,discipline_id,name,competition_date,min_age,max_age)")
         .eq("game_id", gameId)
-        .order("created_at", { ascending: false })
-        .or("athlete_id.is.not.null,person_id.is.not.null"),
+        .order("created_at", { ascending: false }),
       supabase.from("athletes").select("id,first_name,last_name,gender,photo_url,primary_sport_id,birth_date").eq("is_active", true).order("last_name"),
       supabase.from("persons").select("id,first_name,last_name,photo_url,email").eq("is_active", true).order("last_name"),
       supabase.from("coach_profiles").select("id,person_id,legacy_coach_id,role,is_active").eq("is_active", true),
