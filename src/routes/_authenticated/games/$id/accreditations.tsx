@@ -481,7 +481,11 @@ function GameAccreditationsPage() {
                     <TableCell><Badge variant="outline">{roleLabel}</Badge></TableCell>
                     <TableCell>{sb && <Badge className={`${clsForCode(a.status)} hover:${clsForCode(a.status)}`}>{sb.label}</Badge>}</TableCell>
                     <TableCell>
-                      <span className="text-sm">{valid}/{a.docs.length}</span>
+                      {a.docs.length > 0 ? (
+                        <span className="text-sm">{valid}/{a.docs.length}</span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setOpenId(a.id); }}>Ouvrir</Button>

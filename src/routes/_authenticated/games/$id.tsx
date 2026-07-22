@@ -6,9 +6,8 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import {
   type Game,
-  GAME_STATUSES,
-  GAME_TYPES,
 } from "@/lib/types";
+import { useTypeGroup, clsForCode } from "@/hooks/useTypeItems";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -18,13 +17,16 @@ export const Route = createFileRoute("/_authenticated/games/$id")({
   component: GameLayout,
 });
 
-const TABS: Array<{ to: "/games/$id" | "/games/$id/selections" | "/games/$id/delegation" | "/games/$id/competitions" | "/games/$id/accreditations" | "/games/$id/logistics"; label: string; exact?: boolean }> = [
+const TABS: Array<{ to: string; label: string; exact?: boolean }> = [
   { to: "/games/$id", label: "Vue d'ensemble", exact: true },
   { to: "/games/$id/selections", label: "Sélections" },
   { to: "/games/$id/competitions", label: "Compétitions" },
   { to: "/games/$id/delegation", label: "Délégation" },
   { to: "/games/$id/accreditations", label: "Accréditations" },
   { to: "/games/$id/logistics", label: "Logistique" },
+  { to: "/games/$id/sponsors", label: "Sponsors" },
+  { to: "/games/$id/partners", label: "Partenaires" },
+  { to: "/games/$id/volunteers", label: "Bénévoles" },
 ];
 
 
@@ -32,6 +34,8 @@ function GameLayout() {
   const { id } = Route.useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const gameTypesHook = useTypeGroup("game_types");
+  const gameStatusesHook = useTypeGroup("game_statuses");
   const [game, setGame] = useState<Game | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -59,7 +63,7 @@ function GameLayout() {
     if (!game) return;
     const { data, error } = await supabase
       .from("selections")
-      .select("status, athlete:athletes(cosl_id, first_name, last_name, gender, birth_date), sport:sports(name), discipline:disciplines(name, gender)")
+      .select("status, athlete:athletes(cosl_id, first_name, last_name, gender, birth_date), person:persons(first_name, last_name), sport:sports(name), discipline:disciplines(name, gender)")
       .eq("game_id", game.id)
       .in("status", ["selected", "reserve"]);
     if (error) {
@@ -69,17 +73,21 @@ function GameLayout() {
     const rows = (data ?? []) as unknown as Array<{
       status: string;
       athlete: { cosl_id: string; first_name: string; last_name: string; gender: string; birth_date: string } | null;
+      person: { first_name: string; last_name: string } | null;
       sport: { name: string } | null;
       discipline: { name: string; gender: string } | null;
     }>;
     const header = ["COSL ID", "Nom", "Prénom", "Genre", "Naissance", "Sport", "Discipline", "Statut sélection"];
     const csv = [header.join(",")]
       .concat(
-        rows.map((r) =>
-          [
+        rows.map((r) => {
+          const isAthlete = !!r.athlete;
+          const firstName = r.athlete?.first_name ?? r.person?.first_name ?? "";
+          const lastName = r.athlete?.last_name ?? r.person?.last_name ?? "";
+          return [
             r.athlete?.cosl_id ?? "",
-            r.athlete?.last_name ?? "",
-            r.athlete?.first_name ?? "",
+            lastName,
+            firstName,
             r.athlete?.gender ?? "",
             r.athlete?.birth_date ?? "",
             r.sport?.name ?? "",
@@ -87,8 +95,8 @@ function GameLayout() {
             r.status,
           ]
             .map((v) => `"${String(v).replace(/"/g, '""')}"`)
-            .join(","),
-        ),
+            .join(",");
+        }),
       )
       .join("\n");
     const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
@@ -122,8 +130,8 @@ function GameLayout() {
     );
   }
 
-  const t = GAME_TYPES.find((x) => x.value === game.game_type);
-  const s = GAME_STATUSES.find((x) => x.value === game.status);
+  const t = gameTypesHook.findItem(game.game_type);
+  const s = gameStatusesHook.findItem(game.status);
   const fmt = (d: string | null) => (d ? new Date(d).toLocaleDateString("fr-FR") : "—");
 
   return (
@@ -156,8 +164,8 @@ function GameLayout() {
             />
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                {t && <Badge className={`${t.cls} hover:${t.cls}`}>{t.label}</Badge>}
-                {s && <Badge className={`${s.cls} hover:${s.cls}`}>{s.label}</Badge>}
+                {t && <Badge className={`${clsForCode(game.game_type)} hover:${clsForCode(game.game_type)}`}>{t.label}</Badge>}
+                {s && <Badge className={`${clsForCode(game.status)} hover:${clsForCode(game.status)}`}>{s.label}</Badge>}
                 <span className="text-sm text-muted-foreground">Édition {game.edition_year}</span>
               </div>
               <h1 className="text-2xl font-semibold text-foreground">{game.name}</h1>

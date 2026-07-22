@@ -481,67 +481,7 @@ function GameOverviewPage() {
         </div>
       </TabsContent>
 
-      {/* Quotas */}
-      <TabsContent value="quotas" className="space-y-4">
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">{quotas.length} quota(s) définis</p>
-          <Button size="sm" onClick={() => setQuotaDlgOpen(true)} className="bg-primary hover:bg-[var(--cosl-red-dark)]">
-            <Plus className="mr-2 h-4 w-4" /> Ajouter un quota
-          </Button>
-        </div>
-        <div className="rounded-lg border border-border bg-card">
-          {quotas.length === 0 ? (
-            <p className="p-6 text-sm text-muted-foreground">Aucun quota défini.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Sport</TableHead>
-                  <TableHead>Discipline</TableHead>
-                  <TableHead>Genre</TableHead>
-                  <TableHead>Quota</TableHead>
-                  <TableHead>Remplissage</TableHead>
-                  <TableHead>Échéance qual.</TableHead>
-                  <TableHead className="w-20 text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {quotas.map((q) => {
-                  const filled = fills[q.id] ?? 0;
-                  const pct = q.quota_max ? Math.min(100, (filled / q.quota_max) * 100) : 0;
-                  const remaining = Math.max(0, q.quota_max - filled);
-                  const tone = filled >= q.quota_max ? "text-red-600" : remaining <= 1 ? "text-amber-600" : "text-emerald-600";
-                  return (
-                    <TableRow key={q.id}>
-                      <TableCell className="font-medium">{sportName(q.sport_id)}</TableCell>
-                      <TableCell>{discName(q.discipline_id)}</TableCell>
-                      <TableCell><Badge variant="outline">{q.gender}</Badge></TableCell>
-                      <TableCell>{q.quota_max}</TableCell>
-                      <TableCell className="min-w-[180px]">
-                        <div className="flex items-center gap-2">
-                          <Progress value={pct} className="h-2 flex-1" />
-                          <span className={`text-xs font-medium ${tone}`}>{filled}/{q.quota_max}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {q.qualification_deadline ? new Date(q.qualification_deadline).toLocaleDateString("fr-FR") : "—"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => openDetails(q)} aria-label="Détails">
-                          <Eye className="h-4 w-4 text-[var(--lux-blue)]" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => removeQuota(q)} aria-label="Supprimer">
-                          <Trash2 className="h-4 w-4 text-red-600" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </div>
-      </TabsContent>
+      {/* Quotas removed — now managed via selections */}
 
       {/* Add Sport Dialog */}
       <Dialog open={sportDlgOpen} onOpenChange={(o) => { setSportDlgOpen(o); if (!o) { setNewSportId(""); setNewSportDiscIds([]); } }}>
