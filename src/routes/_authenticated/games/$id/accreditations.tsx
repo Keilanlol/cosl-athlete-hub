@@ -132,33 +132,85 @@ function GameAccreditationsPage() {
   // ==== Drawer actions ====
   const current = (accreds ?? []).find((a) => a.id === openId) ?? null;
 
-  // Load person documents + required docs for the drawer
+  // Load person documents + required docs for the drawer, then auto-link
   useEffect(() => {
-    if (current) {
-      const pid = current.person_id ?? current.athlete_id ?? current.coach_id;
-      if (pid) {
-        setDrawerPersonId(pid);
-        supabase
-          .from("person_documents")
-          .select("*")
-          .eq("person_id", pid)
-          .order("created_at", { ascending: false })
-          .then(({ data }) => {
-            setDrawerPersonDocs((data ?? []) as PersonDocument[]);
-          });
-      } else {
+    if (!current) return;
+
+    const run = async () => {
+      // Determine person_id: try direct, then fallback via athlete_profiles
+      let pid = current.person_id;
+      if (!pid && current.athlete_id) {
+        // Fallback: look up person_id from athlete_profiles
+        const { data: ap } = await supabase
+          .from("athlete_profiles")
+          .select("person_id")
+          .eq("legacy_athlete_id", current.athlete_id)
+          .maybeSingle();
+        pid = (ap as { person_id?: string | null } | null)?.person_id ?? null;
+
+        // If found, update the accreditation to set person_id for future use
+        if (pid) {
+          await supabase.from("accreditations").update({ person_id: pid }).eq("id", current.id);
+        }
+      }
+
+      if (!pid) {
         setDrawerPersonId(null);
         setDrawerPersonDocs([]);
-      }
-      // Load required docs for this role
-      if (current.role_code) {
-        computeRequiredDocs(gameId, current.role_code).then((docs) => {
-          setDrawerRequiredDocs(docs.map((d) => d.doc_type_code));
-        });
-      } else {
         setDrawerRequiredDocs([]);
+        return;
       }
-    }
+
+      setDrawerPersonId(pid);
+
+      // Load required docs + person docs in parallel
+      const reqPromise = current.role_code
+        ? computeRequiredDocs(gameId, current.role_code)
+        : Promise.resolve([]);
+
+      const docsPromise = supabase
+        .from("person_documents")
+        .select("*")
+        .eq("person_id", pid)
+        .order("created_at", { ascending: false });
+
+      const [reqDocs, docsRes] = await Promise.all([reqPromise, docsPromise]);
+      const reqCodes = reqDocs.map((d) => d.doc_type_code);
+      setDrawerRequiredDocs(reqCodes);
+
+      const personDocs = (docsRes.data ?? []) as PersonDocument[];
+      setDrawerPersonDocs(personDocs);
+
+      // Auto-link: for each required doc that the person already has but
+      // is not yet in accreditation_documents, create the link automatically
+      const existingAccDocTypes = new Set(current.docs.map((d) => d.doc_type));
+      const personDocTypes = new Set(personDocs.map((d) => d.doc_type));
+      const toLink = reqCodes.filter(
+        (code) => !existingAccDocTypes.has(code) && personDocTypes.has(code),
+      );
+
+      if (toLink.length > 0) {
+        const inserts = toLink.map((docType) => {
+          const pd = personDocs.find((d) => d.doc_type === docType);
+          if (!pd) return null;
+          return {
+            accreditation_id: current.id,
+            doc_type: docType,
+            file_name: pd.file_name,
+            file_url: pd.file_url,
+            status: pd.status === "valid" ? "valid" : "pending",
+            uploaded_at: new Date().toISOString(),
+          };
+        }).filter((x): x is NonNullable<typeof x> => x !== null);
+
+        if (inserts.length > 0) {
+          await supabase.from("accreditation_documents").insert(inserts);
+          load();
+        }
+      }
+    };
+
+    run();
   }, [openId]);
 
   const uploadDoc = async (docType: string, url: string, fileName: string) => {

@@ -217,6 +217,16 @@ export async function getSelectionStageForAthlete(
 export async function getPersonIdForAthlete(
   athleteId: string,
 ): Promise<string | null> {
+  // First try athlete_profiles (which has legacy_athlete_id → person_id)
+  const { data: ap } = await supabase
+    .from("athlete_profiles")
+    .select("person_id")
+    .eq("legacy_athlete_id", athleteId)
+    .maybeSingle();
+  const pid = (ap as { person_id?: string | null } | null)?.person_id;
+  if (pid) return pid;
+
+  // Fallback: try the athletes table directly (legacy)
   const { data } = await supabase
     .from("athletes")
     .select("person_id")
