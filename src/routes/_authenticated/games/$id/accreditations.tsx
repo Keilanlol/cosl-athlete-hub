@@ -66,16 +66,113 @@ function GameAccreditationsPage() {
 
   const load = async () => {
     setAccreds(null);
-    const [aRes, gRes, rolesRes, dtRes] = await Promise.all([
-      supabase.from("accreditations")
-        .select("*, docs:accreditation_documents(*)")
+
+    // 1. Fetch all selections for this game (athletes + persons)
+    const [selRes, gRes, rolesRes, dtRes] = await Promise.all([
+      supabase.from("selections")
+        .select("athlete_id, person_id, status, athlete:athletes!inner(id,first_name,last_name)")
         .eq("game_id", gameId)
-        .order("created_at", { ascending: false }),
+        .in("status", ["pre_selected", "selected", "reserve"]),
       supabase.from("games").select("name,short_name").eq("id", gameId).maybeSingle(),
       supabase.from("app_type_items").select("code,label").eq("group_key", "accreditation_categories").order("sort_order"),
       supabase.from("app_type_items").select("code,label").eq("group_key", "document_types").order("sort_order"),
     ]);
-    setAccreds(((aRes.data ?? []) as unknown) as Accreditation[]);
+
+    // 2. Fetch existing accreditations
+    const aRes = await supabase.from("accreditations")
+      .select("*, docs:accreditation_documents(*)")
+      .eq("game_id", gameId)
+      .order("created_at", { ascending: false });
+
+    // 3. Build a set of existing person_ids in accreditations
+    const existingPids = new Set(
+      ((aRes.data ?? []) as Accreditation[]).map((a) => a.person_id).filter(Boolean) as string[],
+    );
+
+    // 4. For each selection, ensure an accreditation exists
+    const selections = (selRes.data ?? []) as unknown as Array<{
+      athlete_id: string | null;
+      person_id: string | null;
+      status: string;
+      athlete: { id: string; first_name: string; last_name: string } | null;
+    }>;
+
+    const toCreate: { game_id: string; person_id: string; full_name: string; status: string; role_code: string }[] = [];
+
+    for (const sel of selections) {
+      let pid = sel.person_id;
+      let fullName = "";
+      let roleCode = "athlete";
+
+      if (sel.athlete_id && sel.athlete) {
+        fullName = `${sel.athlete.first_name} ${sel.athlete.last_name}`;
+        // Try to get person_id from athlete_profiles
+        if (!pid) {
+          const { data: ap } = await supabase
+            .from("athlete_profiles")
+            .select("person_id")
+            .eq("legacy_athlete_id", sel.athlete_id)
+            .maybeSingle();
+          pid = (ap as { person_id?: string | null } | null)?.person_id ?? null;
+        }
+        // Try athletes table as fallback
+        if (!pid) {
+          const { data: ath } = await supabase
+            .from("athletes")
+            .select("person_id, first_name, last_name")
+            .eq("id", sel.athlete_id)
+            .maybeSingle();
+          pid = (ath as { person_id?: string | null } | null)?.person_id ?? null;
+          if (ath && !fullName) {
+            fullName = `${(ath as { first_name: string }).first_name} ${(ath as { last_name: string }).last_name}`;
+          }
+        }
+      } else if (sel.person_id) {
+        // Person-based selection (coach/fed member) — get name from persons
+        const { data: p } = await supabase
+          .from("persons")
+          .select("first_name, last_name")
+          .eq("id", sel.person_id)
+          .maybeSingle();
+        if (p) {
+          fullName = `${(p as { first_name: string }).first_name} ${(p as { last_name: string }).last_name}`;
+        }
+        // Determine role from coach_profiles
+        const { data: cp } = await supabase
+          .from("coach_profiles")
+          .select("role")
+          .eq("person_id", sel.person_id)
+          .eq("is_active", true)
+          .maybeSingle();
+        if (cp) {
+          roleCode = (cp as { role: string }).role;
+        }
+      }
+
+      if (pid && fullName && !existingPids.has(pid)) {
+        toCreate.push({
+          game_id: gameId,
+          person_id: pid,
+          full_name: fullName,
+          status: "draft",
+          role_code: roleCode,
+        });
+      }
+    }
+
+    // 5. Insert missing accreditations
+    if (toCreate.length > 0) {
+      await supabase.from("accreditations").insert(toCreate);
+      // Reload to get the fresh data
+      const aRes2 = await supabase.from("accreditations")
+        .select("*, docs:accreditation_documents(*)")
+        .eq("game_id", gameId)
+        .order("created_at", { ascending: false });
+      setAccreds(((aRes2.data ?? []) as unknown) as Accreditation[]);
+    } else {
+      setAccreds(((aRes.data ?? []) as unknown) as Accreditation[]);
+    }
+
     setGame((gRes.data ?? null) as { name: string; short_name: string | null } | null);
     setRoles((rolesRes.data ?? []) as { code: string; label: string }[]);
     setDocTypes((dtRes.data ?? []) as { code: string; label: string }[]);
