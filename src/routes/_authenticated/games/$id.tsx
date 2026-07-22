@@ -24,9 +24,6 @@ const TABS: Array<{ to: string; label: string; exact?: boolean }> = [
   { to: "/games/$id/delegation", label: "Délégation" },
   { to: "/games/$id/accreditations", label: "Accréditations" },
   { to: "/games/$id/logistics", label: "Logistique" },
-  { to: "/games/$id/sponsors", label: "Sponsors" },
-  { to: "/games/$id/partners", label: "Partenaires" },
-  { to: "/games/$id/volunteers", label: "Bénévoles" },
 ];
 
 
