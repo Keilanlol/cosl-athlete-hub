@@ -9,8 +9,6 @@ import { supabase } from "@/lib/supabase";
 import { coachRoleLabel } from "@/lib/role-labels";
 import { confirmAction } from "@/components/ConfirmDialog";
 import {
-  ATHLETE_STATUSES,
-  COACH_ROLES,
   GENDERS,
   MEDAL_LABELS,
   athleteSchema,
@@ -26,6 +24,7 @@ import {
   type Selection,
   type Sport,
 } from "@/lib/types";
+import { useTypeGroup, clsForCode } from "@/hooks/useTypeItems";
 import { EditableSelect } from "@/components/EditableSelect";
 import { AthletePhotoUpload } from "@/components/AthletePhotoUpload";
 import { findPersonIdForLegacy, syncPhotoFromLegacy } from "@/lib/person-photo-sync";
@@ -96,8 +95,8 @@ export const Route = createFileRoute("/_authenticated/athletes/$id")({
 const ALL = "__all";
 
 function statusBadge(s: string) {
-  const m = ATHLETE_STATUSES.find((x) => x.value === s);
-  return <Badge className={`${m?.cls ?? ""} hover:${m?.cls ?? ""}`}>{m?.label ?? s}</Badge>;
+  const cls = clsForCode(s);
+  return <Badge className={`${cls} hover:${cls}`}>{s}</Badge>;
 }
 
 function AthleteDetailPage() {
@@ -108,6 +107,9 @@ function AthleteDetailPage() {
   const [tab, setTab] = useHashTab("profil");
   const { items: levels, add: addLevel, remove: removeLevel } = useAthleteLevels();
   const { items: sportsRef, add: addSport, remove: removeSport } = useSports();
+  const athleteStatusesHook = useTypeGroup("athlete_statuses");
+  const athleteLevelsHook = useTypeGroup("athlete_levels");
+  const coachRolesHook = useTypeGroup("coach_roles");
   const [athlete, setAthlete] = useState<Athlete | null>(null);
   const [personId, setPersonId] = useState<string | null>(null);
   const [personData, setPersonData] = useState<{
@@ -536,7 +538,7 @@ function AthleteDetailPage() {
     );
   }
 
-  const lvl = levels.find((l) => l.code === athlete.level);
+  const lvl = athleteLevelsHook.findItem(athlete.level);
   const isElite = athlete.level === "elite" || athlete.level === "promotion";
 
   return (
@@ -695,7 +697,7 @@ function AthleteDetailPage() {
             <Field label="Fédération" value={federation ? `${federation.acronym} — ${federation.name}` : null} />
             <Field
               label="Statut"
-              value={ATHLETE_STATUSES.find((s) => s.value === athlete.status)?.label}
+              value={athleteStatusesHook.getLabel(athlete.status)}
             />
             <Field label="Niveau" value={lvl?.label} />
             {(athlete.level === "elite" || athlete.level === "promotion") && (
@@ -739,8 +741,7 @@ function AthleteDetailPage() {
                             : "—"}
                         </TableCell>
                         <TableCell>
-                          {COACH_ROLES.find((c) => c.value === r.relation_role)?.label ??
-                            r.relation_role}
+                          {coachRoleLabel(r.relation_role)}
                         </TableCell>
                         <TableCell>{r.start_date}</TableCell>
                         <TableCell>{r.end_date ?? "—"}</TableCell>
@@ -1125,8 +1126,8 @@ function AthleteDetailPage() {
                     >
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {ATHLETE_STATUSES.map((s) => (
-                          <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                        {athleteStatusesHook.items.map((s) => (
+                          <SelectItem key={s.code} value={s.code}>{s.label}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -1138,7 +1139,7 @@ function AthleteDetailPage() {
                       onValueChange={(v) =>
                         setForm({ ...form, level: v as AthleteForm["level"] })
                       }
-                      options={levels.map((l) => ({ value: l.code, label: l.label }))}
+                      options={athleteLevelsHook.items.map((l) => ({ value: l.code, label: l.label }))}
                       emptyLabel="—"
                       onAdd={addLevel}
                       onDelete={removeLevel}
@@ -1245,8 +1246,8 @@ function AthleteDetailPage() {
                 >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {COACH_ROLES.map((c) => (
-                      <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                    {coachRolesHook.items.map((c) => (
+                      <SelectItem key={c.code} value={c.code}>{c.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

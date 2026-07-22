@@ -22,26 +22,12 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { TableSkeleton, EmptyState } from "@/components/DataTableShell";
 import { FileUpload } from "@/components/FileUpload";
 import { computeRequiredDocs } from "@/lib/conformity-utils";
+import { useTypeGroup, clsForCode } from "@/hooks/useTypeItems";
 import type { PersonDocument } from "@/lib/types";
 
 export const Route = createFileRoute("/_authenticated/games/$id/accreditations")({
   component: GameAccreditationsPage,
 });
-
-const STATUSES: { value: string; label: string; cls: string }[] = [
-  { value: "draft", label: "Brouillon", cls: "bg-slate-200 text-foreground" },
-  { value: "submitted", label: "Soumise", cls: "bg-amber-100 text-amber-700" },
-  { value: "validated", label: "Validée", cls: "bg-emerald-100 text-emerald-700" },
-  { value: "rejected", label: "Rejetée", cls: "bg-red-100 text-red-700" },
-];
-
-const DOC_STATUSES: Record<string, { label: string; cls: string }> = {
-  missing: { label: "Manquant", cls: "bg-slate-200 text-foreground" },
-  pending: { label: "En attente", cls: "bg-amber-100 text-amber-700" },
-  valid: { label: "Valide", cls: "bg-emerald-100 text-emerald-700" },
-  expired: { label: "Expiré", cls: "bg-red-100 text-red-700" },
-  rejected: { label: "Rejeté", cls: "bg-red-100 text-red-700" },
-};
 
 type AccDoc = {
   id: string; accreditation_id: string; doc_type: string;
@@ -59,6 +45,8 @@ type Accreditation = {
 
 function GameAccreditationsPage() {
   const { id: gameId } = Route.useParams();
+  const accredStatusesHook = useTypeGroup("accreditation_statuses");
+  const docStatusesHook = useTypeGroup("document_statuses");
   const [accreds, setAccreds] = useState<Accreditation[] | null>(null);
   const [game, setGame] = useState<{ name: string; short_name: string | null } | null>(null);
   const [roles, setRoles] = useState<{ code: string; label: string }[]>([]);
@@ -260,7 +248,7 @@ function GameAccreditationsPage() {
           <SelectTrigger className="w-40"><SelectValue placeholder="Statut" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tous statuts</SelectItem>
-            {STATUSES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+            {accredStatusesHook.items.map((s) => <SelectItem key={s.code} value={s.code}>{s.label}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
@@ -283,7 +271,7 @@ function GameAccreditationsPage() {
             </TableHeader>
             <TableBody>
               {filteredAccreds.map((a) => {
-                const sb = STATUSES.find((s) => s.value === a.status);
+                const sb = accredStatusesHook.findItem(a.status);
                 const roleLabel = roles.find((r) => r.code === a.role_code)?.label ?? a.role_code ?? "—";
                 const valid = a.docs.filter((d) => d.status === "valid").length;
                 return (
@@ -294,7 +282,7 @@ function GameAccreditationsPage() {
                   >
                     <TableCell className="font-medium">{a.full_name}</TableCell>
                     <TableCell><Badge variant="outline">{roleLabel}</Badge></TableCell>
-                    <TableCell>{sb && <Badge className={`${sb.cls} hover:${sb.cls}`}>{sb.label}</Badge>}</TableCell>
+                    <TableCell>{sb && <Badge className={`${clsForCode(a.status)} hover:${clsForCode(a.status)}`}>{sb.label}</Badge>}</TableCell>
                     <TableCell>
                       <span className="text-sm">{valid}/{a.docs.length}</span>
                     </TableCell>
@@ -324,6 +312,7 @@ function GameAccreditationsPage() {
                   docTypes={docTypes}
                   requiredDocCodes={drawerRequiredDocs}
                   personDocs={drawerPersonDocs}
+                  getDocStatusLabel={docStatusesHook.getLabel}
                   onUpload={uploadDoc}
                   onUploadPersonDoc={uploadPersonDoc}
                   onDocStatus={setDocStatus}
@@ -364,6 +353,7 @@ function GameAccreditationsPage() {
 
 function AccredDrawerBody({
   accreditation, completeness, docTypes, requiredDocCodes, personDocs,
+  getDocStatusLabel,
   onUpload, onUploadPersonDoc, onDocStatus,
   onSubmit, onValidate, onReject,
 }: {
@@ -372,6 +362,7 @@ function AccredDrawerBody({
   docTypes: { code: string; label: string }[];
   requiredDocCodes: string[];
   personDocs: PersonDocument[];
+  getDocStatusLabel: (code: string | null | undefined) => string;
   onUpload: (docType: string, url: string, fileName: string) => void;
   onUploadPersonDoc: (docType: string, url: string, fileName: string) => void;
   onDocStatus: (doc: AccDoc, status: string) => void;
@@ -422,7 +413,10 @@ function AccredDrawerBody({
               const personDoc = personDocMap.get(dt);
               const label = docTypes.find((t) => t.code === dt)?.label ?? dt;
               const isRequired = requiredDocCodes.includes(dt);
-              const sb = accDoc ? DOC_STATUSES[accDoc.status] : DOC_STATUSES.missing;
+              const docStatusLabel = accDoc
+                ? getDocStatusLabel(accDoc.status)
+                : getDocStatusLabel("missing");
+              const docStatusCls = clsForCode(accDoc?.status ?? "missing");
               return (
                 <li key={dt} className="flex flex-col gap-2 rounded border border-border p-3 sm:flex-row sm:items-start">
                   <FileText className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
@@ -434,7 +428,7 @@ function AccredDrawerBody({
                       </p>
                       {accDoc ? (
                         <>
-                          <Badge className={`${sb.cls} hover:${sb.cls}`}>{sb.label}</Badge>
+                          <Badge className={`${docStatusCls} hover:${docStatusCls}`}>{docStatusLabel}</Badge>
                           {accDoc.status !== "valid" && (
                             <Button size="icon" variant="ghost" onClick={() => onDocStatus(accDoc, "valid")} aria-label="Valider"><Check className="h-4 w-4 text-emerald-600" /></Button>
                           )}

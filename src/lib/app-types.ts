@@ -49,6 +49,9 @@ export const APP_TYPE_GROUPS: AppTypeGroupMeta[] = [
   { key: "federation_member_roles",    label: "Rôles des membres de fédération", description: "Rôles des membres d'une fédération" },
   { key: "club_member_roles",          label: "Rôles des membres de club",  description: "Rôles des membres d'un club" },
   { key: "person_role_types",          label: "Types de rôle personne",     description: "Types de rôles pour la super-classe Personne" },
+  { key: "competition_rounds",         label: "Rounds de compétition",      description: "Finale, demi-finale, quart, séries, etc." },
+  { key: "transport_types",            label: "Types de transport",         description: "Navette, bus, train, etc. (logistique locale)" },
+  { key: "accommodation_types",        label: "Types d'hébergement",         description: "Hôtel, résidence, village, etc." },
 ];
 
 export const APP_TYPE_GROUP_KEYS = APP_TYPE_GROUPS.map((g) => g.key);

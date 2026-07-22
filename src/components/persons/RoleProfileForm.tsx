@@ -8,11 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  ATHLETE_STATUSES,
-  COACH_ROLES,
-  FEDERATION_MEMBER_ROLES,
-} from "@/lib/types";
+import { useTypeGroup } from "@/hooks/useTypeItems";
 import type { PersonRoleType } from "@/lib/persons";
 import type {
   AthleteProfileFields,
@@ -33,14 +29,9 @@ type Props = {
   onAthlete: (patch: Partial<AthleteProfileFields>) => void;
   onCoach: (patch: Partial<CoachProfileFields>) => void;
   onFedMember: (patch: Partial<FedMemberProfileFields>) => void;
-  /** If set, the federation selector is hidden for fed member / coach sections. */
   presetFederationId?: string;
 };
 
-/**
- * Shared role-specific profile sections used by both
- * PersonCreateDialog (step "details") and AddRoleDialog.
- */
 export function RoleProfileForm({
   role,
   sports,
@@ -53,6 +44,11 @@ export function RoleProfileForm({
   onFedMember,
   presetFederationId,
 }: Props) {
+  const athleteStatuses = useTypeGroup("athlete_statuses");
+  const athleteLevels = useTypeGroup("athlete_levels");
+  const coachRoles = useTypeGroup("coach_roles");
+  const fedMemberRoles = useTypeGroup("federation_member_roles");
+
   if (role === "athlete") {
     return (
       <section className="space-y-3 rounded-md border border-border p-3">
@@ -108,8 +104,8 @@ export function RoleProfileForm({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {ATHLETE_STATUSES.map((s) => (
-                  <SelectItem key={s.value} value={s.value}>
+                {athleteStatuses.items.map((s) => (
+                  <SelectItem key={s.code} value={s.code}>
                     {s.label}
                   </SelectItem>
                 ))}
@@ -118,10 +114,21 @@ export function RoleProfileForm({
           </div>
           <div className="space-y-1.5">
             <Label>Niveau</Label>
-            <Input
+            <Select
               value={athlete.level}
-              onChange={(e) => onAthlete({ level: e.target.value })}
-            />
+              onValueChange={(v) => onAthlete({ level: v })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="—" />
+              </SelectTrigger>
+              <SelectContent>
+                {athleteLevels.items.map((l) => (
+                  <SelectItem key={l.code} value={l.code}>
+                    {l.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -162,8 +169,8 @@ export function RoleProfileForm({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {COACH_ROLES.map((r) => (
-                <SelectItem key={r.value} value={r.value}>
+              {coachRoles.items.map((r) => (
+                <SelectItem key={r.code} value={r.code}>
                   {r.label}
                 </SelectItem>
               ))}
@@ -248,8 +255,8 @@ export function RoleProfileForm({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {FEDERATION_MEMBER_ROLES.map((r) => (
-                  <SelectItem key={r.value} value={r.value}>
+                {fedMemberRoles.items.map((r) => (
+                  <SelectItem key={r.code} value={r.code}>
                     {r.label}
                   </SelectItem>
                 ))}

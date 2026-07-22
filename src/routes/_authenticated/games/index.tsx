@@ -8,9 +8,8 @@ import {
   type Game,
   type GameStatus,
   type GameType,
-  GAME_STATUSES,
-  GAME_TYPES,
 } from "@/lib/types";
+import { useTypeGroup, clsForCode } from "@/hooks/useTypeItems";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AddressSearch } from "@/components/AddressSearch";
@@ -84,6 +83,8 @@ type SortKey = "name" | "game_type" | "edition_year" | "host_country" | "host_ci
 
 function GamesListPage() {
   const navigate = useNavigate();
+  const gameTypesHook = useTypeGroup("game_types");
+  const gameStatusesHook = useTypeGroup("game_statuses");
   const [rows, setRows] = useState<Game[] | null>(null);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
@@ -286,8 +287,8 @@ function GamesListPage() {
           <SelectTrigger className="w-44"><SelectValue placeholder="Type" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tous types</SelectItem>
-            {GAME_TYPES.map((t) => (
-              <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+            {gameTypesHook.items.map((t) => (
+              <SelectItem key={t.code} value={t.code}>{t.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -295,8 +296,8 @@ function GamesListPage() {
           <SelectTrigger className="w-40"><SelectValue placeholder="Statut" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tous statuts</SelectItem>
-            {GAME_STATUSES.map((s) => (
-              <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+            {gameStatusesHook.items.map((s) => (
+              <SelectItem key={s.code} value={s.code}>{s.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -338,8 +339,8 @@ function GamesListPage() {
             </TableHeader>
             <TableBody>
               {visible.map((g) => {
-                const t = GAME_TYPES.find((x) => x.value === g.game_type);
-                const s = GAME_STATUSES.find((x) => x.value === g.status);
+                const t = gameTypesHook.findItem(g.game_type);
+                const s = gameStatusesHook.findItem(g.status);
                 return (
                   <TableRow
                     key={g.id}
@@ -364,7 +365,7 @@ function GamesListPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {t && <Badge className={`${t.cls} hover:${t.cls}`}>{t.label}</Badge>}
+                      {t && <Badge className={`${clsForCode(g.game_type)} hover:${clsForCode(g.game_type)}`}>{t.label}</Badge>}
                     </TableCell>
                     <TableCell>{g.edition_year}</TableCell>
                     <TableCell className="text-muted-foreground">{g.host_country ?? "—"}</TableCell>
@@ -372,7 +373,7 @@ function GamesListPage() {
                     <TableCell>{fmtDate(g.competition_start)}</TableCell>
                     <TableCell>{fmtDate(g.competition_end)}</TableCell>
                     <TableCell>
-                      {s && <Badge className={`${s.cls} hover:${s.cls}`}>{s.label}</Badge>}
+                      {s && <Badge className={`${clsForCode(g.status)} hover:${clsForCode(g.status)}`}>{s.label}</Badge>}
                     </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <Button variant="ghost" size="icon" onClick={() => openEdit(g)} aria-label="Modifier">
@@ -419,8 +420,8 @@ function GamesListPage() {
                   <Select value={form.game_type} onValueChange={(v) => setForm({ ...form, game_type: v as GameType })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {GAME_TYPES.map((t) => (
-                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                      {gameTypesHook.items.map((t) => (
+                        <SelectItem key={t.code} value={t.code}>{t.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -434,8 +435,8 @@ function GamesListPage() {
                   <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as GameStatus })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {GAME_STATUSES.map((s) => (
-                        <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                      {gameStatusesHook.items.map((s) => (
+                        <SelectItem key={s.code} value={s.code}>{s.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

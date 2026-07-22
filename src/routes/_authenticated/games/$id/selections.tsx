@@ -25,18 +25,18 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TableSkeleton, EmptyState } from "@/components/DataTableShell";
-import { COACH_ROLES, FEDERATION_MEMBER_ROLES } from "@/lib/types";
 import { coachRoleLabel, federationMemberRoleLabel } from "@/lib/role-labels";
+import { useTypeGroup, clsForCode } from "@/hooks/useTypeItems";
 
 export const Route = createFileRoute("/_authenticated/games/$id/selections")({
   component: SelectionsPage,
 });
 
-const SELECTION_STATUSES: { value: string; label: string; cls: string }[] = [
-  { value: "pre_selected", label: "Long List", cls: "bg-amber-100 text-amber-700" },
-  { value: "selected", label: "Short List", cls: "bg-emerald-100 text-emerald-700" },
-  { value: "reserve", label: "Réserve", cls: "bg-sky-100 text-sky-700" },
-  { value: "rejected", label: "Refusé", cls: "bg-red-100 text-red-700" },
+const SELECTION_STATUSES_FALLBACK: { code: string; label: string }[] = [
+  { code: "pre_selected", label: "Long List" },
+  { code: "selected", label: "Short List" },
+  { code: "reserve", label: "Réserve" },
+  { code: "rejected", label: "Refusé" },
 ];
 
 type Athlete = {
@@ -84,6 +84,10 @@ type EntityType = (typeof ENTITY_TYPES)[number]["value"];
 
 function SelectionsPage() {
   const { id: gameId } = Route.useParams();
+  const selectionStatusesHook = useTypeGroup("selection_statuses");
+  const selStatuses = selectionStatusesHook.items.length > 0
+    ? selectionStatusesHook.items
+    : SELECTION_STATUSES_FALLBACK;
   const [rows, setRows] = useState<SelectionRow[] | null>(null);
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [persons, setPersons] = useState<Person[]>([]);
@@ -438,7 +442,7 @@ function SelectionsPage() {
           <SelectTrigger className="w-44"><SelectValue placeholder="Statut" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tous statuts</SelectItem>
-            {SELECTION_STATUSES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+            {selStatuses.map((s) => <SelectItem key={s.code} value={s.code}>{s.label}</SelectItem>)}
           </SelectContent>
         </Select>
         <Button onClick={() => { setEditingId(null); setEntityType("athlete"); setForm({ entity_id: "", person_id: "", sport_id: "", discipline_id: "", game_competition_id: "" }); setOpen(true); }} className="ml-auto bg-primary hover:bg-[var(--cosl-red-dark)]">
@@ -468,7 +472,7 @@ function SelectionsPage() {
             <TableBody>
               {filtered.map((r) => {
                 const type = getRowType(r);
-                const sb = SELECTION_STATUSES.find((s) => s.value === r.status);
+                const sb = selStatuses.find((s) => s.code === r.status);
                 return (
                   <TableRow key={r.id}>
                     <TableCell>
@@ -515,7 +519,7 @@ function SelectionsPage() {
                         );
                       })()}
                     </TableCell>
-                    <TableCell>{sb && <Badge className={`${sb.cls} hover:${sb.cls}`}>{sb.label}</Badge>}</TableCell>
+                    <TableCell>{sb && <Badge className={`${clsForCode(r.status)} hover:${clsForCode(r.status)}`}>{sb.label}</Badge>}</TableCell>
                     <TableCell className="text-right">
                       {r.is_locked ? (
                         <span className="inline-flex items-center text-xs text-muted-foreground">
@@ -526,8 +530,8 @@ function SelectionsPage() {
                           <Select value={r.status} onValueChange={(v) => changeStatus(r, v)}>
                             <SelectTrigger className="h-8 w-40"><SelectValue /></SelectTrigger>
                             <SelectContent>
-                              {SELECTION_STATUSES.map((s) => (
-                                <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                              {selStatuses.map((s) => (
+                                <SelectItem key={s.code} value={s.code}>{s.label}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>

@@ -7,12 +7,12 @@ import { supabase } from "@/lib/supabase";
 import {
   GENDERS,
   MEDAL_LABELS,
-  ROUND_OPTIONS,
   type AthleteResult,
   type Discipline,
   type GameCompetition,
   type Sport,
 } from "@/lib/types";
+import { useTypeGroup } from "@/hooks/useTypeItems";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AddressSearch } from "@/components/AddressSearch";
@@ -63,6 +63,7 @@ function medalBadge(m: AthleteResult["medal"]) {
 
 function CompetitionsPage() {
   const { id } = Route.useParams();
+  const roundsHook = useTypeGroup("competition_rounds");
   const [comps, setComps] = useState<GameCompetition[] | null>(null);
   const [results, setResults] = useState<ParticipantRow[] | null>(null);
   const [sports, setSports] = useState<Sport[]>([]);
@@ -529,7 +530,7 @@ function CompetitionsPage() {
                 <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value={ALL}>—</SelectItem>
-                  {ROUND_OPTIONS.map((r) => (<SelectItem key={r} value={r}>{r}</SelectItem>))}
+                  {roundsHook.items.map((r) => (<SelectItem key={r.code} value={r.code}>{r.label}</SelectItem>))}
                 </SelectContent>
               </Select>
             </div>

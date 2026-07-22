@@ -5,7 +5,8 @@ import { Plus, ShieldAlert, Search, UserCog, Copy, Check, KeyRound } from "lucid
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
-import { type UserProfile, USER_ROLES } from "@/lib/types";
+import { type UserProfile } from "@/lib/types";
+import { useTypeGroup, clsForCode } from "@/hooks/useTypeItems";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -172,6 +173,7 @@ function ShowOnceModal({
 
 function AdminUsersPage() {
   const { user, role, loading: authLoading } = useAuth();
+  const userRolesHook = useTypeGroup("user_roles");
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -381,8 +383,8 @@ function AdminUsersPage() {
           <SelectTrigger className="sm:w-56"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tous les rôles</SelectItem>
-            {USER_ROLES.map((r) => (
-              <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+            {userRolesHook.items.map((r) => (
+              <SelectItem key={r.code} value={r.code}>{r.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -409,14 +411,14 @@ function AdminUsersPage() {
             </TableHeader>
             <TableBody>
               {paged.map((u) => {
-                const r = USER_ROLES.find((x) => x.value === u.role);
+                const r = userRolesHook.findItem(u.role);
                 return (
                   <TableRow key={u.id}>
                     <TableCell className="font-mono font-medium">{u.username}</TableCell>
                     <TableCell>{u.full_name}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{u.email}</TableCell>
                     <TableCell>
-                      {r && <Badge className={`${r.cls} hover:${r.cls}`}>{r.label}</Badge>}
+                      {r && <Badge className={`${clsForCode(u.role)} hover:${clsForCode(u.role)}`}>{r.label}</Badge>}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{fmt(u.created_at)}</TableCell>
                     <TableCell className="text-right">
@@ -442,8 +444,8 @@ function AdminUsersPage() {
                         >
                           <SelectTrigger className="w-40 h-8"><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            {USER_ROLES.map((x) => (
-                              <SelectItem key={x.value} value={x.value}>{x.label}</SelectItem>
+                            {userRolesHook.items.map((x) => (
+                              <SelectItem key={x.code} value={x.code}>{x.label}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -531,8 +533,8 @@ function AdminUsersPage() {
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {USER_ROLES.map((r) => (
-                    <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                  {userRolesHook.items.map((r) => (
+                    <SelectItem key={r.code} value={r.code}>{r.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
