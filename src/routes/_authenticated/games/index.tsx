@@ -194,6 +194,16 @@ function GamesListPage() {
       return;
     }
     setSaving(true);
+    // Normaliser les dates en format ISO (YYYY-MM-DD)
+    const toISODate = (v: string): string | null => {
+      if (!v) return null;
+      // Si déjà au format ISO, retourner tel quel
+      if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+      // Tenter de parser une date localisée (ex: 01/01/2000)
+      const d = new Date(v);
+      if (isNaN(d.getTime())) return null;
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    };
     const payload = {
       name: form.name.trim(),
       short_name: form.short_name.trim() || null,
@@ -202,10 +212,10 @@ function GamesListPage() {
       host_country: form.host_country.trim() || null,
       host_city: form.host_city.trim() || null,
       organizer: form.organizer.trim() || null,
-      preparation_start: form.preparation_start || null,
-      competition_start: form.competition_start,
-      competition_end: form.competition_end,
-      closing_date: form.closing_date || null,
+      preparation_start: toISODate(form.preparation_start),
+      competition_start: toISODate(form.competition_start),
+      competition_end: toISODate(form.competition_end),
+      closing_date: toISODate(form.closing_date),
       description: form.description.trim() || null,
       status: form.status,
     };
