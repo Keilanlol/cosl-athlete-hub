@@ -419,23 +419,79 @@ function PersonDetailPage() {
     }
   };
 
-  const remove = async () => {
-    const ok = await confirmAction({
-      title: "Supprimer cette personne ?",
-      description:
-        "Cette action supprime la personne et ses profils liés (les enregistrements legacy ne sont pas supprimés).",
-      confirmLabel: "Supprimer",
-      destructive: true,
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteDeps, setDeleteDeps] = useState<{
+    documents: number;
+    selections: number;
+    accreditations: number;
+    delegation_members: number;
+  } | null>(null);
+  const [deleteConfirmName, setDeleteConfirmName] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  const openDeleteDialog = async () => {
+    setDeleteConfirmName("");
+    setDeleteDeps(null);
+    setDeleteOpen(true);
+
+    // Compter les dépendances qui bloquent la suppression (RESTRICT)
+    const [docsRes, selsRes, accredsRes, delRes] = await Promise.all([
+      supabase.from("person_documents").select("id", { count: "exact", head: true }).eq("person_id", personId),
+      supabase.from("selections").select("id", { count: "exact", head: true }).eq("person_id", personId),
+      supabase.from("accreditations").select("id", { count: "exact", head: true }).eq("person_id", personId),
+      supabase.from("delegation_members").select("id", { count: "exact", head: true }).eq("person_id", personId),
+    ]);
+
+    setDeleteDeps({
+      documents: docsRes.count ?? 0,
+      selections: selsRes.count ?? 0,
+      accreditations: accredsRes.count ?? 0,
+      delegation_members: delRes.count ?? 0,
     });
-    if (!ok) return;
-    const { error } = await supabase.from("persons").delete().eq("id", personId);
+  };
+
+  const softDelete = async () => {
+    setDeleting(true);
+    const { error } = await supabase
+      .from("persons")
+      .update({ is_active: false })
+      .eq("id", personId);
+    setDeleting(false);
     if (error) {
-      toast.error("Suppression impossible", { description: friendlyError(error) });
+      toast.error("Échec", { description: friendlyError(error) });
       return;
     }
-    toast.success("Personne supprimée");
+    toast.success("Personne désactivée");
+    setDeleteOpen(false);
+    load();
+  };
+
+  const hardDelete = async () => {
+    if (!bundle) return;
+    const fullName = `${bundle.person.first_name} ${bundle.person.last_name}`;
+    if (deleteConfirmName.trim() !== fullName) {
+      toast.error("Le nom saisi ne correspond pas");
+      return;
+    }
+    setDeleting(true);
+    const { error } = await supabase.from("persons").delete().eq("id", personId);
+    setDeleting(false);
+    if (error) {
+      // RESTRICT : la FK bloque — afficher un message clair
+      toast.error("Suppression impossible", {
+        description:
+          "Des enregistrements liés (documents, sélections, accréditations ou délégations) empêchent la suppression. " +
+          "Désactivez la personne ou supprimez d'abord ces dépendances.",
+        duration: 8000,
+      });
+      return;
+    }
+    toast.success("Personne supprimée définitivement");
+    setDeleteOpen(false);
     navigate({ to: "/persons" });
   };
+
+  const remove = openDeleteDialog;
 
   // ── Document CRUD ──────────────────────────────────────────────────────
 
@@ -1246,6 +1302,80 @@ function PersonDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Person delete dialog — soft-delete + hard delete with name confirmation */}
+      <Dialog open={deleteOpen} onOpenChange={(o) => !o && setDeleteOpen(false)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Supprimer cette personne ?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">
+              <strong className="text-foreground">Désactiver</strong> la personne est recommandé :
+              elle devient invisible des listes actives mais conserve tout son historique
+              (sélections, accréditations, documents). Aucune donnée n'est perdue.
+            </p>
+
+            {deleteDeps && (
+              <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm">
+                <p className="font-medium text-amber-900">Dépendances liées à cette personne :</p>
+                <ul className="mt-1 space-y-0.5 text-amber-800">
+                  <li>{deleteDeps.documents} document(s)</li>
+                  <li>{deleteDeps.selections} sélection(s)</li>
+                  <li>{deleteDeps.accreditations} accréditation(s)</li>
+                  <li>{deleteDeps.delegation_members} appartenance(s) à délégation</li>
+                </ul>
+                <p className="mt-2 text-xs text-amber-700">
+                  La suppression définitive est bloquée tant que ces dépendances existent.
+                </p>
+              </div>
+            )}
+
+            {!deleteDeps && (
+              <p className="text-sm text-muted-foreground">Comptage des dépendances…</p>
+            )}
+
+            <div className="space-y-2 border-t pt-3">
+              <p className="text-sm font-medium text-foreground">
+                Suppression définitive (admin uniquement)
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Saisissez le nom complet « {bundle?.person.first_name} {bundle?.person.last_name} » pour confirmer.
+                Les fichiers du storage ne sont pas supprimés automatiquement.
+              </p>
+              <Input
+                value={deleteConfirmName}
+                onChange={(e) => setDeleteConfirmName(e.target.value)}
+                placeholder="Nom complet"
+                className="text-sm"
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex-col gap-2 sm:flex-col">
+            <Button
+              onClick={softDelete}
+              disabled={deleting}
+              className="w-full bg-primary hover:bg-[var(--cosl-red-dark)]"
+            >
+              {deleting ? "Désactivation…" : "Désactiver la personne"}
+            </Button>
+            {isAdmin && (
+              <Button
+                onClick={hardDelete}
+                disabled={
+                  deleting ||
+                  deleteConfirmName.trim() !==
+                    `${bundle?.person.first_name ?? ""} ${bundle?.person.last_name ?? ""}`
+                }
+                variant="outline"
+                className="w-full border-red-300 text-red-700 hover:bg-red-50"
+              >
+                {deleting ? "Suppression…" : "Supprimer définitivement"}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

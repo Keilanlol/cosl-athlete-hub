@@ -98,7 +98,6 @@ Chaque endroit du code où un `code` technique est rendu directement dans le JSX
 | `games/$id/delegation.tsx` | `getMemberRoleLabel()` → `if (m.member_role) return m.member_role;` | `member_role` (ex. `press_v2`, `member_ca`, `chief_of_mission`) | **Exporté tel quel dans le CSV « liste officielle »** destiné à l'extérieur |
 | `games/$id/competitions.tsx` | Tableau `<TableCell>{c.round ?? "—"}</TableCell>` | `round` (ex. `demi_finale`) | Affiche le code au lieu du libellé « Demi-finale » |
 | `games/$id/competitions.tsx` | Dialogue détail `<div>{viewComp.round ?? "—"}</div>` | `round` | Idem dans le dialogue |
-| `games/$id/competitions.tsx` | Export CSV | `r.medal` (`gold`, `silver`, `bronze`) au lieu du libellé `MEDAL_LABELS` | Export brut |
 | `persons/$personId.tsx` | `RoleListItem` subtitle pour athlète | `bundle.athlete_profile.status` (ex. `active`, `injured`) | Affiché brut au lieu du libellé `athlete_statuses` |
 | `persons/$personId.tsx` | `RoleListItem` subtitle pour athlète | `bundle.athlete_profile.level` (ex. `elite`) | Affiché brut au lieu du libellé `athlete_levels` |
 | `persons/$personId.tsx` | `RoleListItem` subtitle pour coach | `p.role` (ex. `physio_v2`, `chief_of_mission`) | Affiché brut au lieu du libellé `coach_roles` |
@@ -413,9 +412,13 @@ La colonne `full_name` est écrite une fois à la création de l'accréditation 
 
 La contrainte `UNIQUE(game_id, role_code, doc_type_code, selection_stage)` ne protège pas les rôles non-athlètes car `selection_stage` est `NULL` pour eux, et `NULL <> NULL` en Postgres. Deux lignes identiques avec `selection_stage = NULL` peuvent coexister.
 
-### K. `accreditations.role_code` — vocabulaire croisé
+### K. `accreditations.role_code` — bug latent de vocabulaire croisé
 
-C'est le défaut central : `accreditations.tsx` écrit `role_code` avec les codes de `coach_profiles.role` (vocabulaire `coach_roles`), tandis que `accreditations/$gameId.tsx` configure les requirements avec les codes `accreditation_categories`. Les deux ne se croisent jamais : un kiné (`physio_v2` dans `coach_roles`) ne trouvera jamais les requirements configurés pour `coach` (dans `accreditation_categories`).
+**Bug latent, sans impact en base à ce jour.** Le code `load()` dans `accreditations.tsx` écrit `role_code` avec les codes de `coach_profiles.role` (vocabulaire `coach_roles`), tandis que `accreditations/$gameId.tsx` configure les requirements avec les codes `accreditation_categories`. En pratique, 23 des 24 accréditations existantes sont des athlètes (`roleCode = "athlete"` par défaut) et le cas ne s'est pas encore déclenché. À corriger avant montée en volume : un kiné (`physio_v2` dans `coach_roles`) ne trouverait jamais les requirements configurés pour `coach` (dans `accreditation_categories`).
+
+### K-bis. Cas de corruption sémantique actif : `medical`
+
+L'unique accréditation avec `role_code = 'medical'` est un faux positif du diagnostic d'orphelins : le code `medical` existe bien dans `accreditation_categories`. Mais il y est libellé « Dignitaires », tandis que dans `coach_roles` il est libellé « Medical ». Cette personne, encadrant médical, reçoit donc les exigences documentaires des dignitaires — **c'est le seul cas de corruption sémantique réellement actif en base aujourd'hui.**
 
 ### L. Tables RLS permissives (`USING (true)`)
 
@@ -437,7 +440,7 @@ Les tables `persons`, `athlete_documents`, `user_profiles` (et sa colonne `plain
 
 1. **Deux référentiels de types de documents** (`document_types` + `app_type_items`) qui ne se croisent jamais.
 2. **Quatre vocabulaires de rôles** (`coach_roles`, `federation_member_roles`, `person_role_types`, `accreditation_categories`) comparés par chaînes de caractères sans table de correspondance.
-3. **`accreditations.role_code`** écrit dans le vocabulaire `coach_roles` au lieu de `accreditation_categories` — les requirements ne matchent jamais.
+3. **`accreditations.role_code` — bug latent** : le code écrit dans le vocabulaire `coach_roles` au lieu de `accreditation_categories`. Aucune donnée corrompue aujourd'hui (23/24 athlètes), mais le défaut se déclenchera au premier encadrant accrédité. **Un cas de corruption sémantique active existe malgré tout** : l'accréditation `role_code = 'medical'` reçoit les exigences des « Dignitaires » au lieu de l'encadrement médical.
 4. **`accreditation_documents` recopie** les champs de `person_documents` au lieu de le référencer.
 5. **Constantes TypeScript périmées** (`COACH_ROLES`, `FEDERATION_MEMBER_ROLES`, etc.) désynchronisées de `app_type_items`.
 6. **Codes affichés bruts** dans le JSX (rôles, statuts, rounds, types de notification) sans résolveur de libellé.
@@ -445,6 +448,28 @@ Les tables `persons`, `athlete_documents`, `user_profiles` (et sa colonne `plain
 8. **Complétude fausse** : lit l'état du drawer, compte des documents non liés, ignore `status` et `expiry_date`.
 9. **Référentiels seedés mais inutilisés** (`transport_types`, `accommodation_types`) — la logistique reste en texte libre.
 10. **RLS permissive** sur les tables sensibles (`person_documents`, `accreditation_requirements`).
+11. **Cascades de suppression destructrices** : les FK `person_id` en `ON DELETE CASCADE` sur `person_documents`, `selections`, `accreditations`, `delegation_members` effacent l'historique en cascade lors de la suppression d'une personne.
+
+---
+
+## Résultats des requêtes de diagnostic (exécutés en base)
+
+| Diagnostic | Résultat | Conséquence |
+|---|---|---|
+| `doc_type` orphelins dans `person_documents` | **2** | Phase B |
+| `doc_type` orphelins dans `accreditation_documents` | **4** | Phase B |
+| `doc_type_code` orphelins dans `accreditation_requirements` | **5** | **Bug actif** : 5 exigences impossibles à satisfaire |
+| Codes `document_types` absents d'`app_type_items` | **9** | Phase B — divergence confirmée |
+| `accreditations.role_code` hors `accreditation_categories` | **0** | **Aucune donnée corrompue** |
+| `coach_profiles.role` orphelins | **2** | Phase C (petit volume) |
+| `coaches.role` orphelins | **0** | RAS |
+| Couples `(game_id, person_id)` en doublon | **3** | Phase F (allégée) |
+| Accréditations `athlete_id` sans `person_id` | **15** | Cause mécanique des doublons |
+| Doublons `accreditation_requirements` (stage NULL) | **0** | Contrainte à poser, pas de nettoyage |
+| `game_competitions.round` hors référentiel | **2** | Phase I |
+| `accreditations.full_name` désynchronisé | **0** | Préventif, priorité basse |
+
+**Répartition réelle des `role_code`** (24 accréditations au total) : `athlete` = 23, `medical` = 1. Les deux sont formellement valides dans `accreditation_categories`, mais le cas `medical` est une collision sémantique (voir §K-bis).
 
 ---
 
