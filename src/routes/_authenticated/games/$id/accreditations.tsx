@@ -410,7 +410,7 @@ function GameAccreditationsPage() {
                     <TableCell>{sb && <Badge className={`${clsForCode("accreditation_statuses", a.status)} hover:${clsForCode("accreditation_statuses", a.status)}`}>{sb.label}</Badge>}</TableCell>
                     <TableCell>
                       {a.docs.length > 0 ? (
-                        <span className="text-sm">{valid}/{a.docs.length}</span>
+                        <span className="text-sm">{valid}/{a.docs.length} lié(s)</span>
                       ) : (
                         <span className="text-xs text-muted-foreground">—</span>
                       )}
@@ -556,6 +556,16 @@ function AccredDrawerBody({
     onReload();
   };
 
+  // Délier un document de l'accréditation (supprime la ligne accreditation_documents,
+  // le person_documents reste intact)
+  const unlinkDoc = async (docType: string) => {
+    const existing = accDocMap.get(docType);
+    if (!existing) return;
+    await supabase.from("accreditation_documents").delete().eq("id", existing.id);
+    toast.success("Document détaché de l'accréditation");
+    onReload();
+  };
+
   return (
     <>
       <section className="rounded-lg border border-border p-4">
@@ -611,6 +621,7 @@ function AccredDrawerBody({
                   personId={personId}
                   getDocStatusLabel={getDocStatusLabel}
                   onSelectPersonDoc={(pid) => selectPersonDoc(docType, pid)}
+                  onUnlink={() => unlinkDoc(docType)}
                   onDocStatus={(s) => accDoc && onDocStatus(accDoc, s)}
                   onUpload={async (url, fileName) => {
                     if (!personId) return;
@@ -667,7 +678,7 @@ function AccredDrawerBody({
 
 function DocTypeRow({
   docType, label, isRequired, accDoc, candidates, docStatus, statusCls, personId,
-  getDocStatusLabel, onSelectPersonDoc, onDocStatus, onUpload,
+  getDocStatusLabel, onSelectPersonDoc, onUnlink, onDocStatus, onUpload,
 }: {
   docType: string;
   label: string;
@@ -679,6 +690,7 @@ function DocTypeRow({
   personId: string | null;
   getDocStatusLabel: (code: string | null | undefined) => string;
   onSelectPersonDoc: (personDocId: string) => void;
+  onUnlink: () => void;
   onDocStatus: (status: string) => void;
   onUpload: (url: string, fileName: string) => void;
 }) {
@@ -736,6 +748,15 @@ function DocTypeRow({
             <a href={displayDoc.file_url} target="_blank" rel="noreferrer" className="text-xs text-[var(--lux-blue)] hover:underline">
               Voir
             </a>
+          )}
+          {isLinked && (
+            <button
+              type="button"
+              onClick={onUnlink}
+              className="text-xs text-red-600 hover:underline"
+            >
+              Délier
+            </button>
           )}
         </div>
       )}
