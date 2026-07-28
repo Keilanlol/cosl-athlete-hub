@@ -70,6 +70,7 @@ function GameAccreditationsPage() {
   const [drawerPersonDocs, setDrawerPersonDocs] = useState<PersonDocument[]>([]);
   const [drawerPersonId, setDrawerPersonId] = useState<string | null>(null);
   const [drawerRequiredDocs, setDrawerRequiredDocs] = useState<string[]>([]);
+  const [drawerReloadKey, setDrawerReloadKey] = useState(0);
 
   const load = async () => {
     setAccreds(null);
@@ -304,7 +305,7 @@ function GameAccreditationsPage() {
     };
 
     run();
-  }, [openId]);
+  }, [openId, drawerReloadKey]);
 
   const setDocStatus = async (doc: AccDoc, status: string) => {
     const { error } = await supabase.from("accreditation_documents").update({ status }).eq("id", doc.id);
@@ -452,7 +453,7 @@ function GameAccreditationsPage() {
                   personId={drawerPersonId}
                   gameId={gameId}
                   getDocStatusLabel={docStatusesHook.getLabel}
-                  onReload={() => load()}
+                  onReload={() => { load(); setDrawerReloadKey((k) => k + 1); }}
                   onDocStatus={setDocStatus}
                   onSubmit={() => setAccredStatus(current, "submitted")}
                   onValidate={() => setAccredStatus(current, "validated")}
