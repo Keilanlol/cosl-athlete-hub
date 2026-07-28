@@ -37,7 +37,8 @@ export const Route = createFileRoute("/_authenticated/games/$id/accreditations")
 
 type AccDoc = {
   id: string; accreditation_id: string; doc_type: string;
-  file_name: string; file_url: string | null; status: string; uploaded_at: string;
+  person_document_id: string | null;
+  file_name: string | null; file_url: string | null; status: string; uploaded_at: string;
 };
 type Accreditation = {
   id: string; game_id: string; accreditation_type_id: string | null;
@@ -533,6 +534,7 @@ function AccredDrawerBody({
   ]));
 
   // Handle selecting a person document for an accreditation doc type
+  // Écrit person_document_id — plus de recopie de file_name/file_url
   const selectPersonDoc = async (docType: string, personDocId: string) => {
     const pd = personDocs.find((d) => d.id === personDocId);
     if (!pd) return;
@@ -540,8 +542,7 @@ function AccredDrawerBody({
     const payload = {
       accreditation_id: a.id,
       doc_type: docType,
-      file_name: pd.file_name,
-      file_url: pd.file_url,
+      person_document_id: personDocId,
       status: pd.status === "valid" ? "valid" : "pending",
       uploaded_at: new Date().toISOString(),
     };
@@ -683,10 +684,14 @@ function DocTypeRow({
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
 
-  // The "selected" document is the accDoc if it exists, or the most recent person doc
-  const selectedDoc: PersonDocument | undefined = accDoc
-    ? { id: accDoc.id, doc_type: accDoc.doc_type, file_name: accDoc.file_name, file_url: accDoc.file_url, status: accDoc.status, person_id: "", category: null, issued_date: null, expiry_date: null, uploaded_by: null, requires_action: null, created_at: accDoc.uploaded_at }
-    : candidates[0];
+  // Le document lié est le person_document référencé par accDoc.person_document_id
+  const linkedPersonDoc = accDoc?.person_document_id
+    ? candidates.find((c) => c.id === accDoc.person_document_id)
+    : undefined;
+
+  // Le document affiché : le lié s'il existe, sinon le premier candidat (proposé, non lié)
+  const displayDoc = linkedPersonDoc ?? candidates[0];
+  const isLinked = !!linkedPersonDoc;
 
   const isImage = (url: string | null | undefined) =>
     !!url && /\.(png|jpe?g|webp|gif)(\?|$)/i.test(url);
@@ -712,20 +717,22 @@ function DocTypeRow({
         )}
       </div>
 
-      {/* Selected document preview */}
-      {selectedDoc && (
-        <div className="flex items-center gap-2 rounded-md bg-muted/40 p-2">
-          {selectedDoc.file_url && isImage(selectedDoc.file_url) ? (
-            <img src={selectedDoc.file_url} alt="" className="h-10 w-10 rounded object-cover border border-border" />
+      {/* Document preview — lié (rattaché) ou proposé (non lié) */}
+      {displayDoc && (
+        <div className={`flex items-center gap-2 rounded-md p-2 ${isLinked ? "bg-emerald-50 border border-emerald-200" : "bg-muted/40 border border-dashed border-border"}`}>
+          {displayDoc.file_url && isImage(displayDoc.file_url) ? (
+            <img src={displayDoc.file_url} alt="" className="h-10 w-10 rounded object-cover border border-border" />
           ) : (
             <FileText className="h-8 w-8 text-muted-foreground" />
           )}
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{selectedDoc.file_name}</p>
-            <p className="text-xs text-muted-foreground">{getDocStatusLabel(selectedDoc.status)}</p>
+            <p className="text-sm font-medium truncate">{displayDoc.file_name}</p>
+            <p className="text-xs text-muted-foreground">
+              {isLinked ? "✓ Rattaché" : "Proposé (non lié)"} · {getDocStatusLabel(displayDoc.status)}
+            </p>
           </div>
-          {selectedDoc.file_url && (
-            <a href={selectedDoc.file_url} target="_blank" rel="noreferrer" className="text-xs text-[var(--lux-blue)] hover:underline">
+          {displayDoc.file_url && (
+            <a href={displayDoc.file_url} target="_blank" rel="noreferrer" className="text-xs text-[var(--lux-blue)] hover:underline">
               Voir
             </a>
           )}
@@ -737,7 +744,7 @@ function DocTypeRow({
         <Popover open={dropdownOpen} onOpenChange={setDropdownOpen}>
           <PopoverTrigger asChild>
             <Button type="button" variant="outline" size="sm" className="w-full text-xs">
-              {candidates.length > 0 || accDoc ? "Changer de document" : "Ajouter un document"}
+              {isLinked ? "Changer de document" : candidates.length > 0 ? "Lier un document" : "Ajouter un document"}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="p-0 w-[350px]" align="start">

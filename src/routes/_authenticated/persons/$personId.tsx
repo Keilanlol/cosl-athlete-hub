@@ -599,6 +599,19 @@ function PersonDetailPage() {
 
   const deleteDoc = async () => {
     if (!docDeleteId) return;
+    // Vérifier si ce document est référencé par une accréditation
+    const { data: linkedAccreds } = await supabase
+      .from("accreditation_documents")
+      .select("id, accreditation_id")
+      .eq("person_document_id", docDeleteId);
+    if (linkedAccreds && linkedAccreds.length > 0) {
+      toast.error("Suppression impossible", {
+        description: `Ce document est lié à ${linkedAccreds.length} accréditation(s). Détachez-le d'abord depuis l'onglet Accréditations du Games concerné.`,
+        duration: 8000,
+      });
+      setDocDeleteId(null);
+      return;
+    }
     const target = docs.find((d) => d.id === docDeleteId);
     if (target?.file_url) {
       const storagePath = pathFromSignedUrl(target.file_url, "documents");
@@ -1331,7 +1344,7 @@ function PersonDetailPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Supprimer ce document ?</AlertDialogTitle>
             <AlertDialogDescription>
-              Cette action est irréversible.
+              Cette action est irréversible. Si ce document est lié à une accréditation, la suppression sera bloquée.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
