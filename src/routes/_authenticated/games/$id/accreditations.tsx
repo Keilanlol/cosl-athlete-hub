@@ -594,14 +594,15 @@ function AccredDrawerBody({
                   onDocStatus={(s) => accDoc && onDocStatus(accDoc, s)}
                   onUpload={async (url, fileName) => {
                     if (!personId) return;
-                    // Fetch the category from document_types for this doc_type
-                    const { data: dtRow } = await supabase
-                      .from("document_types")
+                    // Lire la catégorie depuis app_type_items (groupe document_types)
+                    const { data: atiRow } = await supabase
+                      .from("app_type_items")
                       .select("category")
+                      .eq("group_key", "document_types")
                       .eq("code", docType)
                       .maybeSingle();
-                    const category = (dtRow as { category?: string } | null)?.category ?? "admin";
-                    // Upload creates a person_document, then links it
+                    const category = (atiRow as { category?: string } | null)?.category ?? "admin";
+                    // Upload crée un person_document, puis le lie à l'accréditation
                     const { data: inserted } = await supabase.from("person_documents").insert({
                       person_id: personId,
                       doc_type: docType,

@@ -69,7 +69,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { syncPhotoFromPerson } from "@/lib/person-photo-sync";
 import { syncPersonToLegacy } from "@/lib/person-sync";
-import { useDocumentTypes } from "@/hooks/useReferenceData";
+import { useTypeItems, useTypeGroup } from "@/hooks/useTypeItems";
 import { useAuth } from "@/hooks/useAuth";
 import { useHashTab } from "@/hooks/useHashTab";
 import { DOCUMENT_STATUSES, type PersonDocument } from "@/lib/types";
@@ -107,7 +107,8 @@ function PersonDetailPage() {
   const { role } = useAuth();
   const isAdmin = role === "admin";
   const [tab, setTab] = useHashTab("informations");
-  const { items: docTypes, add: addDocType, remove: removeDocType } = useDocumentTypes();
+  const docTypesHook = useTypeGroup("document_types");
+  const { refresh: refreshTypes } = useTypeItems();
   const [bundle, setBundle] = useState<PersonBundle | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [rolesOpen, setRolesOpen] = useState(false);
@@ -130,6 +131,39 @@ function PersonDetailPage() {
   });
   const [docDeleteId, setDocDeleteId] = useState<string | null>(null);
   const [requiredByGames, setRequiredByGames] = useState<RequiredDocsByGame[]>([]);
+
+  // ── Document type helpers (écriture dans app_type_items) ─────────────────
+  // Même slugify que l'admin (app-types.ts), sans préfixe de catégorie
+  const slugifyCode = (s: string) =>
+    s.trim().toLowerCase().replace(/[^a-z0-9_]+/g, "_").replace(/^_+|_+$/g, "") || `item_${Date.now()}`;
+
+  const addDocType = async (label: string, category: string) => {
+    const code = slugifyCode(label);
+    if (!code) { toast.error("Le code est requis"); return; }
+    const maxSort = docTypesHook.items.reduce((m, i) => Math.max(m, i.sort_order), 0);
+    const { error } = await supabase.from("app_type_items").insert({
+      group_key: "document_types",
+      code,
+      label: label.trim(),
+      sort_order: maxSort + 1,
+      is_system: false,
+      category,
+    });
+    if (error) { toast.error("Erreur lors de l'ajout", { description: friendlyError(error) }); return; }
+    toast.success("Type de document ajouté");
+    await refreshTypes();
+  };
+
+  const removeDocType = async (code: string) => {
+    const { error } = await supabase
+      .from("app_type_items")
+      .delete()
+      .eq("group_key", "document_types")
+      .eq("code", code);
+    if (error) { toast.error("Erreur lors de la suppression", { description: friendlyError(error) }); return; }
+    toast.success("Type supprimé");
+    await refreshTypes();
+  };
 
   const load = async () => {
     const [pRes, rRes, apRes, cpRes, fmRes] = await Promise.all([
@@ -502,12 +536,23 @@ function PersonDetailPage() {
       return;
     }
     const isCOSLDoc = ["convention", "olympic_contract", "code_of_conduct", "medical_form"].includes(docForm.doc_type);
-    const dt = docTypes.find((t) => t.code === docForm.doc_type);
+    const dt = docTypesHook.items.find((t) => t.code === docForm.doc_type);
+    // Lire la catégorie depuis app_type_items (ajoutée par la migration 0048)
+    let category = "admin";
+    if (dt) {
+      const { data: atiRow } = await supabase
+        .from("app_type_items")
+        .select("category")
+        .eq("group_key", "document_types")
+        .eq("code", dt.code)
+        .maybeSingle();
+      category = (atiRow as { category?: string } | null)?.category ?? "admin";
+    }
     const { data: insertedDoc, error } = await supabase
       .from("person_documents")
       .insert({
         person_id: personId,
-        category: dt?.category ?? "admin",
+        category,
         doc_type: docForm.doc_type.trim(),
         file_name: docForm.file_name.trim(),
         file_url: docForm.file_url.trim() || null,
@@ -1004,7 +1049,7 @@ function PersonDetailPage() {
                       return (
                         <TableRow key={d.id}>
                           <TableCell>
-                            {docTypes.find((t) => t.code === d.doc_type)?.label ?? d.doc_type}
+                            {docTypesHook.items.find((t) => t.code === d.doc_type)?.label ?? d.doc_type}
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
@@ -1198,10 +1243,9 @@ function PersonDetailPage() {
                   <EditableSelect
                     value={docForm.doc_type}
                     onValueChange={(v) => {
-                      const dt = docTypes.find((t) => t.code === v);
                       setDocForm({ ...docForm, doc_type: v });
                     }}
-                    options={docTypes.map((t) => ({ value: t.code, label: t.label }))}
+                    options={docTypesHook.items.map((t) => ({ value: t.code, label: t.label }))}
                     emptyLabel="—"
                     onAdd={(label) => addDocType(label, "admin")}
                     onDelete={removeDocType}

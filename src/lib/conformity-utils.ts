@@ -163,7 +163,7 @@ async function fetchDocTypeLabels(
   codes: string[],
 ): Promise<Record<string, string>> {
   if (codes.length === 0) return {};
-  // Try app_type_items first (document_types group)
+  // Source unique : app_type_items (groupe document_types)
   const { data: ati } = await supabase
     .from("app_type_items")
     .select("code, label")
@@ -174,19 +174,6 @@ async function fetchDocTypeLabels(
     const row = r as { code: string; label: string };
     map[row.code] = row.label;
   });
-
-  // Fallback to document_types table
-  const missing = codes.filter((c) => !map[c]);
-  if (missing.length > 0) {
-    const { data: dt } = await supabase
-      .from("document_types")
-      .select("code, label")
-      .in("code", missing);
-    (dt ?? []).forEach((r) => {
-      const row = r as { code: string; label: string };
-      map[row.code] = row.label;
-    });
-  }
 
   return map;
 }
