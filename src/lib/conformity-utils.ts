@@ -29,14 +29,14 @@ export type ConformityResult = {
 
 export async function computeRequiredDocs(
   gameId: string,
-  roleCode: string,
+  accreditationCategory: string,
   selectionStage?: string | null,
 ): Promise<RequiredDoc[]> {
   let query = supabase
     .from("accreditation_requirements")
     .select("doc_type_code, selection_stage, required")
     .eq("game_id", gameId)
-    .eq("role_code", roleCode)
+    .eq("role_code", accreditationCategory)
     .eq("required", true);
 
   if (selectionStage !== undefined) {
@@ -63,11 +63,11 @@ export async function computeRequiredDocs(
 export async function computeMissingDocs(
   personId: string,
   gameId: string,
-  roleCode: string,
+  accreditationCategory: string,
   selectionStage?: string | null,
 ): Promise<ConformityResult> {
   const [required, docsRes] = await Promise.all([
-    computeRequiredDocs(gameId, roleCode, selectionStage),
+    computeRequiredDocs(gameId, accreditationCategory, selectionStage),
     supabase
       .from("person_documents")
       .select("*")
@@ -101,13 +101,13 @@ export async function computeMissingDocs(
 export async function createConformityNotification(
   personId: string,
   gameId: string,
-  roleCode: string,
+  accreditationCategory: string,
   selectionStage: string,
 ): Promise<void> {
   const result = await computeMissingDocs(
     personId,
     gameId,
-    roleCode,
+    accreditationCategory,
     selectionStage,
   );
 
@@ -144,7 +144,7 @@ export async function createConformityNotification(
   }
 
   const missingList = result.missing.map((m) => m.label).join(", ");
-  const message = `Documents requis pour ${gameName} — ${roleCode} — ${stageLabel} (${personName}) : ${missingList}`;
+  const message = `Documents requis pour ${gameName} — ${accreditationCategory} — ${stageLabel} (${personName}) : ${missingList}`;
 
   await supabase.from("notifications").insert({
     notification_type: "selection_documents_required",

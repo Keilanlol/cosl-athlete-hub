@@ -28,6 +28,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { computeRequiredDocs } from "@/lib/conformity-utils";
 import { useTypeGroup, clsForCode } from "@/hooks/useTypeItems";
+import { resolveAccreditationCategory } from "@/lib/role-mapping";
 import type { PersonDocument } from "@/lib/types";
 
 export const Route = createFileRoute("/_authenticated/games/$id/accreditations")({
@@ -149,15 +150,32 @@ function GameAccreditationsPage() {
         if (p) {
           fullName = `${(p as { first_name: string }).first_name} ${(p as { last_name: string }).last_name}`;
         }
-        // Determine role from coach_profiles
-        const { data: cp } = await supabase
+        // Résoudre le rôle via role_accreditation_mapping :
+        // 1. Essayer coach_profiles (utiliser .limit(1) au lieu de .maybeSingle()
+        //    pour gérer le cas de plusieurs profils actifs)
+        const { data: cpRows } = await supabase
           .from("coach_profiles")
           .select("role")
           .eq("person_id", sel.person_id)
           .eq("is_active", true)
-          .maybeSingle();
-        if (cp) {
-          roleCode = (cp as { role: string }).role;
+          .limit(1);
+        if (cpRows && cpRows.length > 0) {
+          const coachRole = (cpRows[0] as { role: string }).role;
+          const resolved = await resolveAccreditationCategory("coach_roles", coachRole);
+          roleCode = resolved ?? "coach";
+        } else {
+          // 2. Essayer federation_member_profiles
+          const { data: fmRows } = await supabase
+            .from("federation_member_profiles")
+            .select("role")
+            .eq("person_id", sel.person_id)
+            .eq("is_active", true)
+            .limit(1);
+          if (fmRows && fmRows.length > 0) {
+            const fmRole = (fmRows[0] as { role: string }).role;
+            const resolved = await resolveAccreditationCategory("federation_member_roles", fmRole);
+            roleCode = resolved ?? "official";
+          }
         }
       }
 
