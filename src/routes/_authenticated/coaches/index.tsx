@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Pencil, Trash2, Search, GraduationCap, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import { COACH_ROLES, type Coach, type Federation } from "@/lib/types";
+import { type Coach, type Federation } from "@/lib/types";
+import { useTypeGroup } from "@/hooks/useTypeItems";
 import { EntityImageUpload } from "@/components/EntityImageUpload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -72,12 +73,10 @@ const empty = {
   is_active: true,
 };
 
-function roleLabel(v: string) {
-  return COACH_ROLES.find((r) => r.value === v)?.label ?? v;
-}
-
 function CoachesPage() {
   const navigate = useNavigate();
+  const coachRolesHook = useTypeGroup("coach_roles");
+  const roleLabel = (v: string) => coachRolesHook.getLabel(v);
   const [rows, setRows] = useState<Coach[] | null>(null);
   const [feds, setFeds] = useState<Federation[]>([]);
   const [games, setGames] = useState<{ id: string; name: string; short_name: string | null }[]>([]);
@@ -293,8 +292,8 @@ function CoachesPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tous les rôles</SelectItem>
-            {COACH_ROLES.map((r) => (
-              <SelectItem key={r.value} value={r.value}>
+            {coachRolesHook.items.map((r) => (
+              <SelectItem key={r.code} value={r.code}>
                 {r.label}
               </SelectItem>
             ))}
@@ -533,8 +532,8 @@ function CoachesPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {COACH_ROLES.map((r) => (
-                      <SelectItem key={r.value} value={r.value}>
+                    {coachRolesHook.items.map((r) => (
+                      <SelectItem key={r.code} value={r.code}>
                         {r.label}
                       </SelectItem>
                     ))}

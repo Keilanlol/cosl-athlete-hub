@@ -25,7 +25,6 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TableSkeleton, EmptyState } from "@/components/DataTableShell";
-import { coachRoleLabel, federationMemberRoleLabel } from "@/lib/role-labels";
 import { useTypeGroup, clsForCode } from "@/hooks/useTypeItems";
 
 export const Route = createFileRoute("/_authenticated/games/$id/selections")({
@@ -85,6 +84,8 @@ type EntityType = (typeof ENTITY_TYPES)[number]["value"];
 function SelectionsPage() {
   const { id: gameId } = Route.useParams();
   const selectionStatusesHook = useTypeGroup("selection_statuses");
+  const coachRolesHook = useTypeGroup("coach_roles");
+  const fedMemberRolesHook = useTypeGroup("federation_member_roles");
   const selStatuses = selectionStatusesHook.items.length > 0
     ? selectionStatusesHook.items
     : SELECTION_STATUSES_FALLBACK;
@@ -146,9 +147,9 @@ function SelectionsPage() {
   // Get role label for a person based on their profiles
   const getPersonRoleLabel = (personId: string): string => {
     const coach = coachProfiles.find((c) => c.person_id === personId);
-    if (coach) return coachRoleLabel(coach.role);
+    if (coach) return coachRolesHook.getLabel(coach.role);
     const fm = fedMemberProfiles.find((f) => f.person_id === personId);
-    if (fm) return federationMemberRoleLabel(fm.role);
+    if (fm) return fedMemberRolesHook.getLabel(fm.role);
     return "—";
   };
 
@@ -637,7 +638,7 @@ function SelectionsPage() {
                         );
                       })()}
                     </TableCell>
-                    <TableCell>{sb && <Badge className={`${clsForCode(r.status)} hover:${clsForCode(r.status)}`}>{sb.label}</Badge>}</TableCell>
+                    <TableCell>{sb && <Badge className={`${clsForCode("selection_statuses", r.status)} hover:${clsForCode("selection_statuses", r.status)}`}>{sb.label}</Badge>}</TableCell>
                     <TableCell className="text-right">
                       {r.is_locked ? (
                         <span className="inline-flex items-center text-xs text-muted-foreground">

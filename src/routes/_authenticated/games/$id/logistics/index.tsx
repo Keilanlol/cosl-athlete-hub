@@ -58,7 +58,7 @@ const empty: Form = {
   return_date: "",
   departure_point: "",
   arrival_point: "",
-  status: "planned",
+  status: "planned" as TravelStatus,
   notes: "",
 };
 
@@ -211,7 +211,7 @@ function TravelPlansPage() {
                     <TableCell>{fmt(p.departure_date)}</TableCell>
                     <TableCell>{fmt(p.return_date)}</TableCell>
                     <TableCell>
-                      {st && <Badge className={`${clsForCode(p.status)} hover:${clsForCode(p.status)}`}>{st.label}</Badge>}
+                      {st && <Badge className={`${clsForCode("travel_statuses", p.status)} hover:${clsForCode("travel_statuses", p.status)}`}>{st.label}</Badge>}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="icon" onClick={() => openEdit(p)}>

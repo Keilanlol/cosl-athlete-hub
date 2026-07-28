@@ -17,7 +17,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import type { Athlete, Coach, Federation, FederationMember, Sport } from "@/lib/types";
-import { ATHLETE_STATUSES, COACH_ROLES, FEDERATION_MEMBER_ROLES } from "@/lib/types";
+import { useTypeGroup, clsForCode } from "@/hooks/useTypeItems";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,14 +62,6 @@ export const Route = createFileRoute("/_authenticated/federations/$id")({
 type AthleteRow = Athlete & {
   primary_sport?: { name: string } | null;
 };
-function statusBadge(s: string) {
-  const m = ATHLETE_STATUSES.find((x) => x.value === s);
-  return <Badge className={`${m?.cls ?? ""} hover:${m?.cls ?? ""}`}>{m?.label ?? s}</Badge>;
-}
-
-function memberRoleLabel(role: string) {
-  return FEDERATION_MEMBER_ROLES.find((r) => r.value === role)?.label ?? role;
-}
 
 function StatPill({
   icon: Icon,
@@ -119,6 +111,19 @@ const emptyMember = {
 function FederationDetailPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
+  const athleteStatusesHook = useTypeGroup("athlete_statuses");
+  const coachRolesHook = useTypeGroup("coach_roles");
+  const fedMemberRolesHook = useTypeGroup("federation_member_roles");
+
+  const statusBadge = (s: string) => {
+    const m = athleteStatusesHook.findItem(s);
+    const cls = m ? clsForCode("athlete_statuses", s) : "";
+    return <Badge className={`${cls} hover:${cls}`}>{m?.label ?? s}</Badge>;
+  };
+
+  const memberRoleLabel = (role: string) => fedMemberRolesHook.getLabel(role);
+  const coachRoleLabel = (role: string) => coachRolesHook.getLabel(role);
+
   const [fed, setFed] = useState<Federation | null>(null);
   const [coaches, setCoaches] = useState<Coach[]>([]);
   const [athletes, setAthletes] = useState<AthleteRow[]>([]);
@@ -226,7 +231,7 @@ function FederationDetailPage() {
     const q = coachSearch.trim().toLowerCase();
     if (!q) return coaches;
     return coaches.filter((c) => {
-      const role = COACH_ROLES.find((r) => r.value === c.role)?.label ?? c.role;
+      const role = coachRoleLabel(c.role);
       return `${c.first_name} ${c.last_name} ${c.email ?? ""} ${c.phone ?? ""} ${role}`
         .toLowerCase()
         .includes(q);
@@ -661,7 +666,7 @@ function FederationDetailPage() {
                 </TableHeader>
                 <TableBody>
                   {visibleCoaches.map((c) => {
-                    const role = COACH_ROLES.find((r) => r.value === c.role)?.label ?? c.role;
+                    const role = coachRoleLabel(c.role);
                     return (
                       <TableRow
                         key={c.id}
@@ -771,8 +776,8 @@ function FederationDetailPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {FEDERATION_MEMBER_ROLES.map((r) => (
-                      <SelectItem key={r.value} value={r.value}>
+                    {fedMemberRolesHook.items.map((r) => (
+                      <SelectItem key={r.code} value={r.code}>
                         {r.label}
                       </SelectItem>
                     ))}

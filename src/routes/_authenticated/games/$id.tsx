@@ -161,8 +161,8 @@ function GameLayout() {
             />
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                {t && <Badge className={`${clsForCode(game.game_type)} hover:${clsForCode(game.game_type)}`}>{t.label}</Badge>}
-                {s && <Badge className={`${clsForCode(game.status)} hover:${clsForCode(game.status)}`}>{s.label}</Badge>}
+                {t && <Badge className={`${clsForCode("game_types", game.game_type)} hover:${clsForCode("game_types", game.game_type)}`}>{t.label}</Badge>}
+                {s && <Badge className={`${clsForCode("game_statuses", game.status)} hover:${clsForCode("game_statuses", game.status)}`}>{s.label}</Badge>}
                 <span className="text-sm text-muted-foreground">Édition {game.edition_year}</span>
               </div>
               <h1 className="text-2xl font-semibold text-foreground">{game.name}</h1>

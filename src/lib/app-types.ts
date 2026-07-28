@@ -1,11 +1,9 @@
-import { useEffect, useState, useCallback } from "react";
-import { supabase } from "@/lib/supabase";
-import { friendlyError } from "@/lib/error-messages";
-import { toast } from "sonner";
-
 // ─────────────────────────────────────────────────────────────────────────────
-// Type
+// Types et métadonnées des groupes app_type_items
 // ─────────────────────────────────────────────────────────────────────────────
+// Le hook useAppTypes est désormais dans src/hooks/useTypeItems.ts
+// (fusionné avec useTypeItems pour un cache partagé React Query).
+// Ce fichier ne contient que les types et métadonnées statiques.
 
 export type AppTypeItem = {
   id: string;
@@ -56,115 +54,5 @@ export const APP_TYPE_GROUPS: AppTypeGroupMeta[] = [
 
 export const APP_TYPE_GROUP_KEYS = APP_TYPE_GROUPS.map((g) => g.key);
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Hook : useAppTypes
-// ─────────────────────────────────────────────────────────────────────────────
-
-export function useAppTypes() {
-  const [groups, setGroups] = useState<AppTypeGroup[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("app_type_items")
-      .select("*")
-      .order("group_key", { ascending: true })
-      .order("sort_order", { ascending: true });
-
-    if (error) {
-      toast.error("Erreur de chargement", { description: friendlyError(error) });
-      setLoading(false);
-      return;
-    }
-
-    const rows = (data ?? []) as AppTypeItem[];
-    const built = APP_TYPE_GROUPS.map((meta) => ({
-      ...meta,
-      items: rows.filter((r) => r.group_key === meta.key),
-    }));
-    setGroups(built);
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  const addItem = useCallback(
-    async (groupKey: string, code: string, label: string) => {
-      const codeSlug = code.trim().toLowerCase().replace(/[^a-z0-9_]+/g, "_");
-      if (!codeSlug) {
-        toast.error("Le code est requis");
-        return false;
-      }
-      if (!label.trim()) {
-        toast.error("Le libellé est requis");
-        return false;
-      }
-
-      // Détermine le sort_order max du groupe
-      const group = groups.find((g) => g.key === groupKey);
-      const maxSort = group?.items.reduce((m, i) => Math.max(m, i.sort_order), 0) ?? 0;
-
-      const { error } = await supabase.from("app_type_items").insert({
-        group_key: groupKey,
-        code: codeSlug,
-        label: label.trim(),
-        sort_order: maxSort + 1,
-        is_system: false,
-      });
-
-      if (error) {
-        toast.error("Erreur lors de l'ajout", { description: friendlyError(error) });
-        return false;
-      }
-
-      toast.success("Type ajouté");
-      await load();
-      return true;
-    },
-    [groups, load],
-  );
-
-  const updateItem = useCallback(
-    async (item: AppTypeItem, label: string) => {
-      if (!label.trim()) {
-        toast.error("Le libellé est requis");
-        return false;
-      }
-      const { error } = await supabase
-        .from("app_type_items")
-        .update({ label: label.trim() })
-        .eq("id", item.id);
-
-      if (error) {
-        toast.error("Erreur lors de la modification", { description: friendlyError(error) });
-        return false;
-      }
-
-      toast.success("Type modifié");
-      await load();
-      return true;
-    },
-    [load],
-  );
-
-  const deleteItem = useCallback(
-    async (item: AppTypeItem) => {
-      const { error } = await supabase.from("app_type_items").delete().eq("id", item.id);
-
-      if (error) {
-        toast.error("Erreur lors de la suppression", { description: friendlyError(error) });
-        return false;
-      }
-
-      toast.success("Type supprimé");
-      await load();
-      return true;
-    },
-    [load],
-  );
-
-  return { groups, loading, load, addItem, updateItem, deleteItem };
-}
+// Re-export du hook fusionné
+export { useAppTypes } from "@/hooks/useTypeItems";

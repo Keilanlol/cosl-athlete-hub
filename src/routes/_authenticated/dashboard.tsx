@@ -27,7 +27,8 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { useAuth } from "@/hooks/useAuth";
-import { GAME_TYPES, type GameType, type GameStatus } from "@/lib/types";
+import { useTypeGroup, clsForCode } from "@/hooks/useTypeItems";
+import type { GameType, GameStatus } from "@/lib/types";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: DashboardPage,
@@ -66,6 +67,7 @@ type RecentChange = {
 
 function DashboardPage() {
   const { full_name, role } = useAuth();
+  const gameTypesHook = useTypeGroup("game_types");
   const [loading, setLoading] = useState(true);
   const [kpis, setKpis] = useState({
     athletes: 0,
@@ -470,7 +472,8 @@ function DashboardPage() {
               const daysUntil = Math.ceil(
                 (new Date(g.competition_start).getTime() - Date.now()) / (1000 * 60 * 60 * 24),
               );
-              const t = GAME_TYPES.find((x) => x.value === g.game_type);
+              const t = gameTypesHook.findItem(g.game_type);
+              const tCls = t ? clsForCode("game_types", g.game_type) : "";
               return (
                 <Link
                   key={g.id}
@@ -493,7 +496,7 @@ function DashboardPage() {
                       </div>
                     </div>
                     {t && (
-                      <Badge className={`${t.cls} hover:${t.cls} shrink-0`}>
+                      <Badge className={`${tCls} hover:${tCls} shrink-0`}>
                         {t.label}
                       </Badge>
                     )}

@@ -19,22 +19,24 @@ import {
 import { EmptyState, TableSkeleton } from "@/components/DataTableShell";
 import { useAccreditationRequirements } from "@/hooks/useAccreditationRequirements";
 import { useAppTypes, type AppTypeItem } from "@/lib/app-types";
+import { useTypeGroup } from "@/hooks/useTypeItems";
 import { confirmAction } from "@/components/ConfirmDialog";
 
 export const Route = createFileRoute("/_authenticated/accreditations/$gameId")({
   component: AccreditationConfigPage,
 });
 
-const SELECTION_STAGES = [
-  { value: "pre_selected", label: "Long List" },
-  { value: "selected", label: "Short List" },
-  { value: "reserve", label: "Réserve" },
-] as const;
-
 function AccreditationConfigPage() {
   const { gameId } = Route.useParams();
   const [game, setGame] = useState<{ name: string; short_name: string | null; edition_year: number } | null>(null);
   const { groups, loading: typesLoading } = useAppTypes();
+  const selectionStatusesHook = useTypeGroup("selection_statuses");
+
+  // Étapes de sélection depuis le référentiel app_type_items
+  // On filtre sur les 3 étapes pertinentes (pre_selected, selected, reserve)
+  const SELECTION_STAGES = selectionStatusesHook.items
+    .filter((s) => ["pre_selected", "selected", "reserve"].includes(s.code))
+    .map((s) => ({ value: s.code, label: s.label }));
   const { rows, loading: reqLoading, upsert, remove } = useAccreditationRequirements(gameId);
   const [activeRole, setActiveRole] = useState<string | null>(null);
   const [addDocOpen, setAddDocOpen] = useState(false);

@@ -11,7 +11,8 @@ import {
 } from "@/components/ui/table";
 import { ListPageHeader } from "@/components/list-table";
 import { EmptyState, TableSkeleton } from "@/components/DataTableShell";
-import { GAME_STATUSES, type Game } from "@/lib/types";
+import { useTypeGroup, clsForCode } from "@/hooks/useTypeItems";
+import type { Game } from "@/lib/types";
 
 export const Route = createFileRoute("/_authenticated/accreditations/")({
   component: GlobalAccreditationsPage,
@@ -19,6 +20,7 @@ export const Route = createFileRoute("/_authenticated/accreditations/")({
 
 function GlobalAccreditationsPage() {
   const navigate = useNavigate();
+  const gameStatusesHook = useTypeGroup("game_statuses");
   const [games, setGames] = useState<Game[] | null>(null);
 
   const load = async () => {
@@ -62,7 +64,8 @@ function GlobalAccreditationsPage() {
             </TableHeader>
             <TableBody>
               {games.map((g) => {
-                const sb = GAME_STATUSES.find((s) => s.value === g.status);
+                const sb = gameStatusesHook.findItem(g.status);
+                const sbCls = sb ? clsForCode("game_statuses", g.status) : "";
                 return (
                   <TableRow
                     key={g.id}
@@ -72,7 +75,7 @@ function GlobalAccreditationsPage() {
                     <TableCell className="font-medium">{g.name}</TableCell>
                     <TableCell>{g.edition_year}</TableCell>
                     <TableCell>
-                      {sb && <Badge className={`${sb.cls} hover:${sb.cls}`}>{sb.label}</Badge>}
+                      {sb && <Badge className={`${sbCls} hover:${sbCls}`}>{sb.label}</Badge>}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">

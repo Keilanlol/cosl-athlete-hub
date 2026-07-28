@@ -3,10 +3,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Search, UserRound, Building2, Upload, Filter } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import {
-  FEDERATION_MEMBER_ROLES,
   type Federation,
   type FederationMember,
 } from "@/lib/types";
+import { useTypeGroup } from "@/hooks/useTypeItems";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +38,7 @@ type Row = { kind: "fed"; data: FederationMember; orgId: string; orgLabel: strin
 
 function MembersPage() {
   const navigate = useNavigate();
+  const fedMemberRolesHook = useTypeGroup("federation_member_roles");
   const [feds, setFeds] = useState<Federation[]>([]);
   const [fedMembers, setFedMembers] = useState<FederationMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -142,8 +143,8 @@ function MembersPage() {
           <SelectTrigger className="w-[200px]"><SelectValue placeholder="Toutes les fonctions" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Toutes les fonctions</SelectItem>
-            {FEDERATION_MEMBER_ROLES.map((r) => (
-              <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+            {fedMemberRolesHook.items.map((r) => (
+              <SelectItem key={r.code} value={r.code}>{r.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -209,7 +210,7 @@ function MembersPage() {
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">
-                        {FEDERATION_MEMBER_ROLES.find((rl) => rl.value === m.role)?.label ?? m.role}
+                        {fedMemberRolesHook.getLabel(m.role)}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground">

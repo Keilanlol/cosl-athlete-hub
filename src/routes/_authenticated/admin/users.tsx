@@ -418,7 +418,7 @@ function AdminUsersPage() {
                     <TableCell>{u.full_name}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{u.email}</TableCell>
                     <TableCell>
-                      {r && <Badge className={`${clsForCode(u.role)} hover:${clsForCode(u.role)}`}>{r.label}</Badge>}
+                      {r && <Badge className={`${clsForCode("user_roles", u.role)} hover:${clsForCode("user_roles", u.role)}`}>{r.label}</Badge>}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{fmt(u.created_at)}</TableCell>
                     <TableCell className="text-right">

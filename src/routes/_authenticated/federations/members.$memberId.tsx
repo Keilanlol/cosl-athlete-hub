@@ -6,10 +6,10 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { confirmAction } from "@/components/ConfirmDialog";
 import {
-  FEDERATION_MEMBER_ROLES,
   type Federation,
   type FederationMember,
 } from "@/lib/types";
+import { useTypeGroup } from "@/hooks/useTypeItems";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,13 +61,11 @@ function initials(m: { first_name: string; last_name: string }) {
   return `${m.first_name?.[0] ?? ""}${m.last_name?.[0] ?? ""}`.toUpperCase();
 }
 
-function roleLabel(v: string) {
-  return FEDERATION_MEMBER_ROLES.find((r) => r.value === v)?.label ?? v;
-}
-
 function FedMemberDetailPage() {
   const { memberId } = Route.useParams();
   const navigate = useNavigate();
+  const fedMemberRolesHook = useTypeGroup("federation_member_roles");
+  const roleLabel = (v: string) => fedMemberRolesHook.getLabel(v);
   const [member, setMember] = useState<FederationMember | null>(null);
   const [fed, setFed] = useState<Federation | null>(null);
   const [personId, setPersonId] = useState<string | null>(null);
@@ -433,8 +431,8 @@ function FedMemberDetailPage() {
                 <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {FEDERATION_MEMBER_ROLES.map((r) => (
-                      <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                    {fedMemberRolesHook.items.map((r) => (
+                      <SelectItem key={r.code} value={r.code}>{r.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

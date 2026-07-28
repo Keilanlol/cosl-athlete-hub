@@ -405,7 +405,7 @@ function GameAccreditationsPage() {
                   >
                     <TableCell className="font-medium">{a.full_name}</TableCell>
                     <TableCell><Badge variant="outline">{roleLabel}</Badge></TableCell>
-                    <TableCell>{sb && <Badge className={`${clsForCode(a.status)} hover:${clsForCode(a.status)}`}>{sb.label}</Badge>}</TableCell>
+                    <TableCell>{sb && <Badge className={`${clsForCode("accreditation_statuses", a.status)} hover:${clsForCode("accreditation_statuses", a.status)}`}>{sb.label}</Badge>}</TableCell>
                     <TableCell>
                       {a.docs.length > 0 ? (
                         <span className="text-sm">{valid}/{a.docs.length}</span>
@@ -591,9 +591,9 @@ function AccredDrawerBody({
                 ? getDocStatusLabel(candidates[0].status)
                 : "Manquant";
               const statusCls = accDoc
-                ? clsForCode(accDoc.status)
+                ? clsForCode("document_statuses", accDoc.status)
                 : candidates.length > 0
-                ? clsForCode(candidates[0].status)
+                ? clsForCode("document_statuses", candidates[0].status)
                 : "bg-slate-200 text-foreground";
 
               return (

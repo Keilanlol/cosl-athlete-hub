@@ -6,7 +6,6 @@ import { KycStatusBadge } from "@/components/KycStatusBadge";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import {
-  ATHLETE_STATUSES,
   GENDERS,
   athleteSchema,
   generateCoslId,
@@ -15,6 +14,7 @@ import {
   type Discipline,
   type Federation,
 } from "@/lib/types";
+import { useTypeGroup, clsForCode } from "@/hooks/useTypeItems";
 import { EditableSelect } from "@/components/EditableSelect";
 import { AthletePhotoUpload } from "@/components/AthletePhotoUpload";
 import { findPersonIdForLegacy } from "@/lib/person-photo-sync";
@@ -114,10 +114,11 @@ const emptyForm: AthleteForm = {
   last_medical_check: "",
 };
 
-function statusBadge(s: string) {
-  const m = ATHLETE_STATUSES.find((x) => x.value === s);
+function statusBadge(s: string, statusesHook: ReturnType<typeof useTypeGroup>) {
+  const m = statusesHook.findItem(s);
+  const cls = m ? clsForCode("athlete_statuses", s) : "";
   return (
-    <Badge className={`${m?.cls ?? ""} hover:${m?.cls ?? ""}`} variant="secondary">
+    <Badge className={`${cls} hover:${cls}`} variant="secondary">
       {m?.label ?? s}
     </Badge>
   );
@@ -137,6 +138,7 @@ type SortKey = "cosl_id" | "first_name" | "last_name" | "primary_sport" | "prima
 
 function AthletesPage() {
   const navigate = useNavigate();
+  const athleteStatusesHook = useTypeGroup("athlete_statuses");
   const [rows, setRows] = useState<AthleteRow[] | null>(null);
   const { items: sports, add: addSport, remove: removeSport } = useSports();
   const { items: levels, add: addLevel, remove: removeLevel } = useAthleteLevels();
@@ -584,8 +586,8 @@ function AthletesPage() {
           <SelectTrigger className="w-[150px]"><SelectValue placeholder="Statut" /></SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL}>Tous les statuts</SelectItem>
-            {ATHLETE_STATUSES.map((s) => (
-              <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+            {athleteStatusesHook.items.map((s) => (
+              <SelectItem key={s.code} value={s.code}>{s.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -686,7 +688,7 @@ function AthletesPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      {statusBadge(a.status)}
+                      {statusBadge(a.status, athleteStatusesHook)}
                       {a.is_active === false && (
                         <Badge variant="outline" className="ml-2 border-border text-muted-foreground">Inactif</Badge>
                       )}
@@ -880,8 +882,8 @@ function AthletesPage() {
                     >
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {ATHLETE_STATUSES.map((s) => (
-                          <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                        {athleteStatusesHook.items.map((s) => (
+                          <SelectItem key={s.code} value={s.code}>{s.label}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>

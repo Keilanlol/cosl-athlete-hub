@@ -20,7 +20,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { TableSkeleton, EmptyState } from "@/components/DataTableShell";
-import { coachRoleLabel, federationMemberRoleLabel } from "@/lib/role-labels";
+import { useTypeGroup } from "@/hooks/useTypeItems";
 import {
   Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
 } from "@/components/ui/command";
@@ -62,6 +62,8 @@ type CoachProfileLite = {
 
 function DelegationPage() {
   const { id: gameId } = Route.useParams();
+  const coachRolesHook = useTypeGroup("coach_roles");
+  const fedMemberRolesHook = useTypeGroup("federation_member_roles");
   const [delegation, setDelegation] = useState<Delegation | null>(null);
   const [members, setMembers] = useState<Member[] | null>(null);
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -136,10 +138,10 @@ function DelegationPage() {
         if (athletePersonIds.has(p.id)) roles.push("Athlète");
         const coachRoles = coachProfiles
           .filter((c) => c.person_id === p.id)
-          .map((c) => coachRoleLabel(c.role));
+          .map((c) => coachRolesHook.getLabel(c.role));
         const fedRoles = fedMemberProfiles
           .filter((f) => f.person_id === p.id)
-          .map((f) => federationMemberRoleLabel(f.role));
+          .map((f) => fedMemberRolesHook.getLabel(f.role));
         roles.push(...coachRoles, ...fedRoles);
         return {
           id: p.id,
@@ -155,10 +157,10 @@ function DelegationPage() {
     if (athletePersonIds.has(memberPersonId)) roles.push({ code: "athlete", label: "Athlète" });
     coachProfiles
       .filter((c) => c.person_id === memberPersonId)
-      .forEach((c) => roles.push({ code: c.role, label: coachRoleLabel(c.role) }));
+      .forEach((c) => roles.push({ code: c.role, label: coachRolesHook.getLabel(c.role) }));
     fedMemberProfiles
       .filter((f) => f.person_id === memberPersonId)
-      .forEach((f) => roles.push({ code: f.role, label: federationMemberRoleLabel(f.role) }));
+      .forEach((f) => roles.push({ code: f.role, label: fedMemberRolesHook.getLabel(f.role) }));
     return roles;
   }, [memberPersonId, coachProfiles, fedMemberProfiles, athletePersonIds]);
 
@@ -169,9 +171,9 @@ function DelegationPage() {
       const roles: string[] = [];
       if (athletePersonIds.has(m.person_id)) roles.push("Athlète");
       const coach = coachProfiles.find((c) => c.person_id === m.person_id);
-      if (coach) roles.push(coachRoleLabel(coach.role));
+      if (coach) roles.push(coachRolesHook.getLabel(coach.role));
       const fm = fedMemberProfiles.find((f) => f.person_id === m.person_id);
-      if (fm) roles.push(federationMemberRoleLabel(fm.role));
+      if (fm) roles.push(fedMemberRolesHook.getLabel(fm.role));
       return roles.length > 0 ? roles.join(", ") : "—";
     }
     return "—";

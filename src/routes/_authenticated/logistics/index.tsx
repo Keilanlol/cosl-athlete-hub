@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { Plane, MapPin, AlertTriangle, ArrowRight, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import { type Game, GAME_STATUSES, GAME_TYPES } from "@/lib/types";
+import { type Game } from "@/lib/types";
+import { useTypeGroup, clsForCode } from "@/hooks/useTypeItems";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/DataTableShell";
@@ -21,6 +22,8 @@ type Row = {
 };
 
 function LogisticsGlobal() {
+  const gameTypesHook = useTypeGroup("game_types");
+  const gameStatusesHook = useTypeGroup("game_statuses");
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -138,8 +141,10 @@ function LogisticsGlobal() {
       ) : (
         <div className="space-y-3">
           {rows.map(({ game, plansCount, travellers, alerts }) => {
-            const t = GAME_TYPES.find((x) => x.value === game.game_type);
-            const s = GAME_STATUSES.find((x) => x.value === game.status);
+            const t = gameTypesHook.findItem(game.game_type);
+            const s = gameStatusesHook.findItem(game.status);
+            const tCls = t ? clsForCode("game_types", game.game_type) : "";
+            const sCls = s ? clsForCode("game_statuses", game.status) : "";
             return (
               <Link
                 key={game.id}
@@ -149,8 +154,8 @@ function LogisticsGlobal() {
               >
                 <div className="space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    {t && <Badge className={`${t.cls} hover:${t.cls}`}>{t.label}</Badge>}
-                    {s && <Badge className={`${s.cls} hover:${s.cls}`}>{s.label}</Badge>}
+                    {t && <Badge className={`${tCls} hover:${tCls}`}>{t.label}</Badge>}
+                    {s && <Badge className={`${sCls} hover:${sCls}`}>{s.label}</Badge>}
                     <span className="text-xs text-muted-foreground">Édition {game.edition_year}</span>
                   </div>
                   <h2 className="text-base font-semibold text-foreground">{game.name}</h2>

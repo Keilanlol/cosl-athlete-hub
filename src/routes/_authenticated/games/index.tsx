@@ -365,7 +365,7 @@ function GamesListPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {t && <Badge className={`${clsForCode(g.game_type)} hover:${clsForCode(g.game_type)}`}>{t.label}</Badge>}
+                      {t && <Badge className={`${clsForCode("game_types", g.game_type)} hover:${clsForCode("game_types", g.game_type)}`}>{t.label}</Badge>}
                     </TableCell>
                     <TableCell>{g.edition_year}</TableCell>
                     <TableCell className="text-muted-foreground">{g.host_country ?? "—"}</TableCell>
@@ -373,7 +373,7 @@ function GamesListPage() {
                     <TableCell>{fmtDate(g.competition_start)}</TableCell>
                     <TableCell>{fmtDate(g.competition_end)}</TableCell>
                     <TableCell>
-                      {s && <Badge className={`${clsForCode(g.status)} hover:${clsForCode(g.status)}`}>{s.label}</Badge>}
+                      {s && <Badge className={`${clsForCode("game_statuses", g.status)} hover:${clsForCode("game_statuses", g.status)}`}>{s.label}</Badge>}
                     </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <Button variant="ghost" size="icon" onClick={() => openEdit(g)} aria-label="Modifier">

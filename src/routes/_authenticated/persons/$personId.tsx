@@ -69,10 +69,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { syncPhotoFromPerson } from "@/lib/person-photo-sync";
 import { syncPersonToLegacy } from "@/lib/person-sync";
-import { useTypeItems, useTypeGroup } from "@/hooks/useTypeItems";
+import { useTypeItems, useTypeGroup, clsForCode } from "@/hooks/useTypeItems";
 import { useAuth } from "@/hooks/useAuth";
 import { useHashTab } from "@/hooks/useHashTab";
-import { DOCUMENT_STATUSES, type PersonDocument } from "@/lib/types";
+import type { PersonDocument } from "@/lib/types";
 import { computeMissingDocs, type MissingDoc } from "@/lib/conformity-utils";
 import { EmptyState, TableSkeleton } from "@/components/DataTableShell";
 
@@ -108,6 +108,8 @@ function PersonDetailPage() {
   const isAdmin = role === "admin";
   const [tab, setTab] = useHashTab("informations");
   const docTypesHook = useTypeGroup("document_types");
+  const docStatusesHook = useTypeGroup("document_statuses");
+  const selectionStatusesHook = useTypeGroup("selection_statuses");
   const { refresh: refreshTypes } = useTypeItems();
   const [bundle, setBundle] = useState<PersonBundle | null>(null);
   const [editOpen, setEditOpen] = useState(false);
@@ -639,8 +641,9 @@ function PersonDetailPage() {
   const { person } = bundle;
 
   const docStatusBadge = (s: string) => {
-    const m = DOCUMENT_STATUSES.find((x) => x.value === s);
-    return <Badge className={`${m?.cls ?? ""} hover:${m?.cls ?? ""}`}>{m?.label ?? s}</Badge>;
+    const item = docStatusesHook.findItem(s);
+    const cls = item ? clsForCode("document_statuses", s) : "";
+    return <Badge className={`${cls} hover:${cls}`}>{item?.label ?? s}</Badge>;
   };
 
   return (
@@ -929,14 +932,7 @@ function PersonDetailPage() {
             <div className="space-y-3">
               <h3 className="text-lg font-semibold text-foreground">Documents requis</h3>
               {requiredByGames.map((rg) => {
-                const stageLabel =
-                  rg.selectionStage === "pre_selected"
-                    ? "Long List"
-                    : rg.selectionStage === "selected"
-                    ? "Short List"
-                    : rg.selectionStage === "reserve"
-                    ? "Réserve"
-                    : rg.selectionStage;
+                const stageLabel = selectionStatusesHook.getLabel(rg.selectionStage);
                 const allGood = rg.missing.length === 0;
                 return (
                   <div key={rg.game.id} className="rounded-lg border border-border bg-card p-4">
@@ -1086,8 +1082,8 @@ function PersonDetailPage() {
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {DOCUMENT_STATUSES.map((s) => (
-                                    <SelectItem key={s.value} value={s.value}>
+                                  {docStatusesHook.items.map((s) => (
+                                    <SelectItem key={s.code} value={s.code}>
                                       {s.label}
                                     </SelectItem>
                                   ))}
@@ -1261,8 +1257,8 @@ function PersonDetailPage() {
                   >
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {DOCUMENT_STATUSES.map((s) => (
-                        <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                      {docStatusesHook.items.map((s) => (
+                        <SelectItem key={s.code} value={s.code}>{s.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

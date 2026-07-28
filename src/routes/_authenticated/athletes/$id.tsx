@@ -6,7 +6,6 @@ import { computeAge } from "@/lib/kyc-utils";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import { coachRoleLabel } from "@/lib/role-labels";
 import { confirmAction } from "@/components/ConfirmDialog";
 import {
   GENDERS,
@@ -94,9 +93,9 @@ export const Route = createFileRoute("/_authenticated/athletes/$id")({
 
 const ALL = "__all";
 
-function statusBadge(s: string) {
-  const cls = clsForCode(s);
-  return <Badge className={`${cls} hover:${cls}`}>{s}</Badge>;
+function statusBadge(s: string, label: string) {
+  const cls = clsForCode("athlete_statuses", s);
+  return <Badge className={`${cls} hover:${cls}`}>{label}</Badge>;
 }
 
 function AthleteDetailPage() {
@@ -611,7 +610,7 @@ function AthleteDetailPage() {
             </h1>
             <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
               <span className="font-mono">{athlete.cosl_id}</span>
-              {statusBadge(athlete.status)}
+              {statusBadge(athlete.status, athleteStatusesHook.getLabel(athlete.status))}
               {athlete.is_active === false && (
                 <Badge variant="outline" className="border-border text-muted-foreground">
                   Inactif
@@ -741,7 +740,7 @@ function AthleteDetailPage() {
                             : "—"}
                         </TableCell>
                         <TableCell>
-                          {coachRoleLabel(r.relation_role)}
+                          {coachRolesHook.getLabel(r.relation_role)}
                         </TableCell>
                         <TableCell>{r.start_date}</TableCell>
                         <TableCell>{r.end_date ?? "—"}</TableCell>
@@ -1232,7 +1231,7 @@ function AthleteDetailPage() {
                   <SelectContent>
                     {coaches.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
-                        {c.first_name} {c.last_name} — {coachRoleLabel(c.role)}
+                        {c.first_name} {c.last_name} — {coachRolesHook.getLabel(c.role)}
                       </SelectItem>
                     ))}
                   </SelectContent>

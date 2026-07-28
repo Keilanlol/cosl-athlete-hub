@@ -6,11 +6,11 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { confirmAction } from "@/components/ConfirmDialog";
 import {
-  COACH_ROLES,
   type Athlete,
   type Coach,
   type Federation,
 } from "@/lib/types";
+import { useTypeGroup } from "@/hooks/useTypeItems";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,13 +56,11 @@ function initials(c: { first_name: string; last_name: string }) {
   return `${c.first_name?.[0] ?? ""}${c.last_name?.[0] ?? ""}`.toUpperCase();
 }
 
-function roleLabel(v: string) {
-  return COACH_ROLES.find((r) => r.value === v)?.label ?? v;
-}
-
 function CoachDetailPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
+  const coachRolesHook = useTypeGroup("coach_roles");
+  const roleLabel = (v: string) => coachRolesHook.getLabel(v);
   const [coach, setCoach] = useState<Coach | null>(null);
   const [fed, setFed] = useState<Federation | null>(null);
   const [athletes, setAthletes] = useState<(Athlete & { relation_role: string; start_date: string; end_date: string | null })[]>([]);
@@ -479,8 +477,8 @@ function CoachDetailPage() {
                 <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {COACH_ROLES.map((r) => (
-                      <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                    {coachRolesHook.items.map((r) => (
+                      <SelectItem key={r.code} value={r.code}>{r.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

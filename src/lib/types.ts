@@ -1,5 +1,15 @@
 import { z } from "zod";
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Type nominal pour les codes de référentiels (app_type_items)
+// ─────────────────────────────────────────────────────────────────────────────
+// Les colonnes sont en text et l'admin peut créer des codes custom :
+// les unions littérales d'origine mentaient. Ce branded type marque
+// clairement qu'une valeur provient d'un groupe de référentiel.
+export type TypeCode<Group extends string> = string & {
+  readonly __typeGroup: Group;
+};
+
 export type Federation = {
   id: string;
   acronym: string;
@@ -29,18 +39,6 @@ export type Coach = {
   created_at: string;
 };
 
-export const COACH_ROLES = [
-  { value: "coach", label: "Coach" },
-  { value: "mechanic", label: "Mécano" },
-  { value: "medical", label: "Encadrant médical" },
-  { value: "physio_v2", label: "Kiné" },
-  { value: "team_manager", label: "Team Manager" },
-  { value: "chief_of_mission", label: "Chief of Mission" },
-  { value: "press", label: "Press" },
-  { value: "judge", label: "Juge" },
-  { value: "other", label: "Autre" },
-] as const;
-
 export type FederationMember = {
   id: string;
   federation_id: string;
@@ -64,16 +62,6 @@ export type FederationMember = {
   created_at: string;
 };
 
-export const FEDERATION_MEMBER_ROLES = [
-  { value: "president", label: "Président" },
-  { value: "vice_president", label: "Vice-Président" },
-  { value: "secretary_general", label: "Secrétaire général" },
-  { value: "treasurer", label: "Trésorier" },
-  { value: "member_ca", label: "Membre CA" },
-  { value: "staff", label: "Staff" },
-  { value: "other", label: "Autre" },
-] as const;
-
 export type Sport = {
   id: string;
   name: string;
@@ -81,33 +69,10 @@ export type Sport = {
   is_summer: boolean | null;
 };
 
-export type AthleteStatus =
-  | "active"
-  | "injured"
-  | "suspended"
-  | "retired"
-  | "ambassador";
-
-export type AthleteLevel = "elite" | "promotion" | "espoir" | "olympic_contract";
+export type AthleteStatus = TypeCode<"athlete_statuses">;
+export type AthleteLevel = TypeCode<"athlete_levels">;
 
 export type Gender = "male" | "female" | "mixed";
-
-export type KycStatusValue = "green" | "orange" | "red";
-
-export const ATHLETE_STATUSES: { value: AthleteStatus; label: string; cls: string }[] = [
-  { value: "active", label: "Actif", cls: "bg-emerald-100 text-emerald-700" },
-  { value: "injured", label: "Blessé", cls: "bg-amber-100 text-amber-700" },
-  { value: "suspended", label: "Suspendu", cls: "bg-red-100 text-red-700" },
-  { value: "retired", label: "Retraité", cls: "bg-slate-200 text-slate-700" },
-  { value: "ambassador", label: "Ambassadeur", cls: "bg-indigo-100 text-indigo-700" },
-];
-
-export const ATHLETE_LEVELS: { value: AthleteLevel; label: string }[] = [
-  { value: "elite", label: "Élite" },
-  { value: "promotion", label: "Promotion" },
-  { value: "espoir", label: "Espoir" },
-  { value: "olympic_contract", label: "Contrat olympique" },
-];
 
 export const GENDERS: { value: Gender; label: string }[] = [
   { value: "male", label: "Masculin" },
@@ -115,20 +80,7 @@ export const GENDERS: { value: Gender; label: string }[] = [
   { value: "mixed", label: "Mixte" },
 ];
 
-export const DOCUMENT_CATEGORIES = [
-  { value: "admin", label: "Administratif" },
-  { value: "medical", label: "Médical" },
-  { value: "sportive", label: "Sportif" },
-  { value: "contractual", label: "Contractuel" },
-] as const;
-
-export const DOCUMENT_STATUSES: { value: string; label: string; cls: string }[] = [
-  { value: "missing", label: "Manquant", cls: "bg-slate-200 text-slate-700" },
-  { value: "pending", label: "En attente", cls: "bg-amber-100 text-amber-700" },
-  { value: "valid", label: "Valide", cls: "bg-emerald-100 text-emerald-700" },
-  { value: "expired", label: "Expiré", cls: "bg-red-100 text-red-700" },
-  { value: "rejected", label: "Rejeté", cls: "bg-red-100 text-red-700" },
-];
+export type KycStatusValue = "green" | "orange" | "red";
 
 export type Athlete = {
   id: string;
@@ -329,7 +281,7 @@ export const athleteSchema = z.object({
   photo_url: z.string().trim().url("URL invalide").optional().or(z.literal("")),
   primary_sport_id: z.string().uuid().optional().or(z.literal("")),
   primary_federation_id: z.string().uuid().optional().or(z.literal("")),
-  status: z.enum(["active", "injured", "suspended", "retired", "ambassador"]),
+  status: z.string().min(1, "Statut requis"),
   level: z
     .string()
     .trim()
@@ -411,44 +363,9 @@ export const MEDAL_LABELS: { value: "gold" | "silver" | "bronze"; label: string;
   { value: "bronze", label: "🥉 Bronze", cls: "bg-orange-100 text-orange-700" },
 ];
 
-export const ROUND_OPTIONS = [
-  "Finale",
-  "Petite Finale",
-  "Demi-finale",
-  "Quart de finale",
-  "Huitième de finale",
-  "Qualification",
-  "Séries",
-  "Poules",
-  "Autre",
-];
-
 // Games
-export type GameType =
-  | "jo_summer" | "jo_winter" | "joj_summer" | "joj_winter"
-  | "jpee" | "european_games" | "eyof_summer" | "eyof_winter" | "world_games" | "other";
-
-export type GameStatus = "preparation" | "in_progress" | "finished" | "archived";
-
-export const GAME_TYPES: { value: GameType; label: string; cls: string }[] = [
-  { value: "jo_summer", label: "JO été", cls: "bg-amber-100 text-amber-800" },
-  { value: "jo_winter", label: "JO hiver", cls: "bg-sky-100 text-sky-800" },
-  { value: "joj_summer", label: "JOJ été", cls: "bg-amber-50 text-amber-700" },
-  { value: "joj_winter", label: "JOJ hiver", cls: "bg-sky-50 text-sky-700" },
-  { value: "jpee", label: "JPEE", cls: "bg-indigo-100 text-indigo-700" },
-  { value: "european_games", label: "European Games", cls: "bg-blue-100 text-blue-800" },
-  { value: "eyof_summer", label: "EYOF été", cls: "bg-emerald-100 text-emerald-700" },
-  { value: "eyof_winter", label: "EYOF hiver", cls: "bg-cyan-100 text-cyan-800" },
-  { value: "world_games", label: "World Games", cls: "bg-violet-100 text-violet-800" },
-  { value: "other", label: "Autre", cls: "bg-slate-200 text-slate-700" },
-];
-
-export const GAME_STATUSES: { value: GameStatus; label: string; cls: string }[] = [
-  { value: "preparation", label: "Préparation", cls: "bg-amber-100 text-amber-700" },
-  { value: "in_progress", label: "En cours", cls: "bg-emerald-100 text-emerald-700" },
-  { value: "finished", label: "Terminé", cls: "bg-slate-200 text-slate-700" },
-  { value: "archived", label: "Archivé", cls: "bg-slate-100 text-slate-500" },
-];
+export type GameType = TypeCode<"game_types">;
+export type GameStatus = TypeCode<"game_statuses">;
 
 export type Game = {
   id: string;
@@ -492,15 +409,8 @@ export type GameQuota = {
 };
 
 // Logistics
-export type TravelStatus = "planned" | "confirmed" | "modified" | "cancelled";
+export type TravelStatus = TypeCode<"travel_statuses">;
 export type TravelScope = "global" | "sport" | "individual";
-
-export const TRAVEL_STATUSES: { value: TravelStatus; label: string; cls: string }[] = [
-  { value: "planned", label: "Planifié", cls: "bg-amber-100 text-amber-700" },
-  { value: "confirmed", label: "Confirmé", cls: "bg-emerald-100 text-emerald-700" },
-  { value: "modified", label: "Modifié", cls: "bg-sky-100 text-sky-700" },
-  { value: "cancelled", label: "Annulé", cls: "bg-red-100 text-red-700" },
-];
 
 export const TRAVEL_SCOPES: { value: TravelScope; label: string }[] = [
   { value: "global", label: "Global" },
@@ -644,12 +554,3 @@ export type UserProfile = {
   plain_password: string | null;
   created_at: string;
 };
-
-export const USER_ROLES: { value: UserProfile["role"]; label: string; cls: string }[] = [
-  { value: "admin", label: "Administrateur", cls: "bg-red-100 text-red-700" },
-  { value: "games_manager", label: "Games Manager", cls: "bg-indigo-100 text-indigo-700" },
-  { value: "fed_manager", label: "Fed. Manager", cls: "bg-blue-100 text-blue-700" },
-  { value: "logistics", label: "Logistique", cls: "bg-amber-100 text-amber-700" },
-  { value: "communication", label: "Communication", cls: "bg-emerald-100 text-emerald-700" },
-  { value: "reader", label: "Lecteur", cls: "bg-slate-200 text-slate-700" },
-];

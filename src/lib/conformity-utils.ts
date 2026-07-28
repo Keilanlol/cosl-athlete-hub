@@ -129,14 +129,8 @@ export async function createConformityNotification(
     ? `${(person as { first_name: string }).first_name} ${(person as { last_name: string }).last_name}`
     : "Personne";
 
-  const stageLabel =
-    selectionStage === "pre_selected"
-      ? "Long List"
-      : selectionStage === "selected"
-      ? "Short List"
-      : selectionStage === "reserve"
-      ? "Réserve"
-      : selectionStage;
+  // Libellé de l'étape de sélection depuis le référentiel app_type_items
+  const stageLabel = await resolveSelectionStageLabel(selectionStage);
 
   if (result.missing.length === 0) {
     // Tous les documents requis sont déjà fournis — pas de notification
@@ -176,6 +170,23 @@ async function fetchDocTypeLabels(
   });
 
   return map;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// resolveSelectionStageLabel
+// Récupère le libellé d'une étape de sélection depuis app_type_items
+// (groupe selection_statuses). Remplace le mapping hardcodé.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function resolveSelectionStageLabel(stage: string | null): Promise<string> {
+  if (!stage) return "—";
+  const { data } = await supabase
+    .from("app_type_items")
+    .select("label")
+    .eq("group_key", "selection_statuses")
+    .eq("code", stage)
+    .maybeSingle();
+  return (data as { label?: string } | null)?.label ?? stage;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
