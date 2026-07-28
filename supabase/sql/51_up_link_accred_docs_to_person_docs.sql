@@ -29,10 +29,10 @@ SET person_document_id = pd.id
 FROM public.accreditations a
 JOIN public.person_documents pd
   ON pd.person_id = a.person_id
-  AND pd.doc_type = ad.doc_type
-  AND pd.file_url = ad.file_url
 WHERE ad.accreditation_id = a.id
-  AND ad.person_document_id IS NULL;
+  AND ad.person_document_id IS NULL
+  AND pd.doc_type = ad.doc_type
+  AND pd.file_url = ad.file_url;
 
 -- ── 4. Vérification du backfill ─────────────────────────────────────────────
 -- À exécuter par l'utilisateur :
