@@ -66,16 +66,37 @@ export async function computeMissingDocs(
   accreditationCategory: string,
   selectionStage?: string | null,
 ): Promise<ConformityResult> {
-  const [required, docsRes] = await Promise.all([
+  const [required, docsRes, gameRes] = await Promise.all([
     computeRequiredDocs(gameId, accreditationCategory, selectionStage),
     supabase
       .from("person_documents")
       .select("*")
       .eq("person_id", personId)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("games")
+      .select("competition_start")
+      .eq("id", gameId)
+      .maybeSingle(),
   ]);
 
-  const provided = (docsRes.data ?? []) as PersonDocument[];
+  const allDocs = (docsRes.data ?? []) as PersonDocument[];
+  const gameStart = (gameRes.data as { competition_start?: string } | null)?.competition_start;
+
+  // Un document n'est considéré fourni que s'il est valide ET non expiré
+  // à la date de compétition du Games
+  const isDocValid = (d: PersonDocument): boolean => {
+    if (d.status !== "valid") return false;
+    if (d.expiry_date && gameStart) {
+      return d.expiry_date >= gameStart;
+    }
+    if (d.expiry_date) {
+      return d.expiry_date >= new Date().toISOString().slice(0, 10);
+    }
+    return true;
+  };
+
+  const provided = allDocs.filter(isDocValid);
 
   // Fetch labels for doc types
   const docTypeCodes = required.map((r) => r.doc_type_code);

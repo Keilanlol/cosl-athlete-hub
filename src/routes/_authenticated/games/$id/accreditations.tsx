@@ -71,6 +71,7 @@ function GameAccreditationsPage() {
   const [drawerPersonId, setDrawerPersonId] = useState<string | null>(null);
   const [drawerRequiredDocs, setDrawerRequiredDocs] = useState<string[]>([]);
   const [drawerReloadKey, setDrawerReloadKey] = useState(0);
+  const [completenessMap, setCompletenessMap] = useState<Record<string, { required: number; provided: number }>>({});
 
   const load = async () => {
     setAccreds(null);
@@ -85,6 +86,19 @@ function GameAccreditationsPage() {
       .select("*, docs:accreditation_documents(*, person_doc:person_documents(*))")
       .eq("game_id", gameId)
       .order("created_at", { ascending: false });
+
+    // Charger la complétude depuis la vue SQL
+    const cRes = await supabase
+      .from("v_accreditation_completeness")
+      .select("accreditation_id, required_count, provided_count")
+      .eq("game_id", gameId);
+
+    const cMap: Record<string, { required: number; provided: number }> = {};
+    (cRes.data ?? []).forEach((row) => {
+      const r = row as { accreditation_id: string; required_count: number; provided_count: number };
+      cMap[r.accreditation_id] = { required: r.required_count, provided: r.provided_count };
+    });
+    setCompletenessMap(cMap);
 
     setAccreds(((aRes.data ?? []) as unknown) as Accreditation[]);
     setGame((gRes.data ?? null) as { name: string; short_name: string | null } | null);
@@ -122,24 +136,11 @@ function GameAccreditationsPage() {
 
   useEffect(() => { load(); }, [gameId]);
 
-  const completeness = (a: Accreditation) => {
-    // Count required docs that are satisfied by linked accreditation_documents
-    if (drawerRequiredDocs.length === 0 && a.docs.length === 0) return 0;
-    const total = drawerRequiredDocs.length > 0 ? drawerRequiredDocs.length : a.docs.length;
-    if (total === 0) return 0;
-    // Valid accreditation docs (read doc_type from the linked person_document)
-    const validAccDocs = new Set(
-      a.docs
-        .filter((d) => d.status === "valid")
-        .map((d) => d.person_doc?.doc_type)
-        .filter(Boolean) as string[]
-    );
-    // Count satisfied required docs
-    const requiredCodes = drawerRequiredDocs.length > 0
-      ? drawerRequiredDocs
-      : a.docs.map((d) => d.person_doc?.doc_type).filter(Boolean) as string[];
-    const satisfied = requiredCodes.filter((code) => validAccDocs.has(code)).length;
-    return Math.round((satisfied / total) * 100);
+  // Complétude calculée côté serveur (vue v_accreditation_completeness)
+  const getCompleteness = (a: Accreditation): number => {
+    const c = completenessMap[a.id];
+    if (!c || c.required === 0) return 0;
+    return Math.round((c.provided / c.required) * 100);
   };
 
   const kpi = useMemo(() => {
@@ -195,8 +196,32 @@ function GameAccreditationsPage() {
 
       setDrawerPersonId(pid);
 
+      // Récupérer l'étape de sélection de la personne pour ce Games
+      let selectionStage: string | null = null;
+      if (current.athlete_id) {
+        const { data: selData } = await supabase
+          .from("selections")
+          .select("status")
+          .eq("game_id", gameId)
+          .eq("athlete_id", current.athlete_id)
+          .in("status", ["pre_selected", "selected", "reserve"])
+          .order("status", { ascending: false })
+          .limit(1);
+        selectionStage = (selData?.[0] as { status?: string } | undefined)?.status ?? null;
+      } else if (pid) {
+        const { data: selData } = await supabase
+          .from("selections")
+          .select("status")
+          .eq("game_id", gameId)
+          .eq("person_id", pid)
+          .in("status", ["pre_selected", "selected", "reserve"])
+          .order("status", { ascending: false })
+          .limit(1);
+        selectionStage = (selData?.[0] as { status?: string } | undefined)?.status ?? null;
+      }
+
       const reqPromise = current.role_code
-        ? computeRequiredDocs(gameId, current.role_code)
+        ? computeRequiredDocs(gameId, current.role_code, current.athlete_id ? selectionStage : null)
         : Promise.resolve([]);
 
       const docsPromise = supabase
@@ -234,7 +259,7 @@ function GameAccreditationsPage() {
     if (!accreds || !game) return;
     const header = ["Rôle", "Nom complet", "Statut", "Complétude %"];
     const rows = accreds.map((a) => [
-      a.role_code ?? "", a.full_name, a.status, String(completeness(a)),
+      a.role_code ?? "", a.full_name, a.status, String(getCompleteness(a)),
     ]);
     const csv = [header, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
     download(`accreditations_${(game.short_name ?? game.name).replace(/\W+/g, "_")}.csv`, "text/csv", "\ufeff" + csv);
@@ -336,11 +361,11 @@ function GameAccreditationsPage() {
                     <TableCell><Badge variant="outline">{roleLabel}</Badge></TableCell>
                     <TableCell>{sb && <Badge className={`${clsForCode("accreditation_statuses", a.status)} hover:${clsForCode("accreditation_statuses", a.status)}`}>{sb.label}</Badge>}</TableCell>
                     <TableCell>
-                      {a.docs.length > 0 ? (
-                        <span className="text-sm">{valid}/{a.docs.length} lié(s)</span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
+                      {(() => {
+                        const c = completenessMap[a.id];
+                        if (!c || c.required === 0) return <span className="text-xs text-muted-foreground">—</span>;
+                        return <span className="text-sm">{c.provided}/{c.required}</span>;
+                      })()}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setOpenId(a.id); }}>Ouvrir</Button>
@@ -373,7 +398,7 @@ function GameAccreditationsPage() {
               <div className="mt-6 space-y-6">
                 <AccredDrawerBody
                   accreditation={current}
-                  completeness={completeness(current)}
+                  completeness={getCompleteness(current)}
                   docTypes={docTypes}
                   requiredDocCodes={drawerRequiredDocs}
                   personDocs={drawerPersonDocs}
