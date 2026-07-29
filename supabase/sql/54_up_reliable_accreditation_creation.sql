@@ -45,7 +45,8 @@ WHERE role_code IS NULL
 
 -- Construire la liste : pour chaque (game_id, person_id) en doublon, identifier
 -- la ligne à garder (rn = 1) et les lignes à supprimer (rn > 1)
-CREATE TEMP TABLE _dup_map AS
+DROP TABLE IF EXISTS public._migration_54_dup_map;
+CREATE TABLE public._migration_54_dup_map AS
 SELECT
   id,
   game_id,
@@ -64,8 +65,8 @@ WHERE person_id IS NOT NULL
 -- 2a. Transférer les accreditation_documents du doublon vers la ligne gardée
 UPDATE public.accreditation_documents ad
 SET accreditation_id = kept.id
-FROM _dup_map dup
-JOIN _dup_map kept
+FROM public._migration_54_dup_map dup
+JOIN public._migration_54_dup_map kept
   ON kept.game_id = dup.game_id
   AND kept.person_id = dup.person_id
   AND kept.rn = 1
@@ -74,9 +75,9 @@ WHERE dup.rn > 1
 
 -- 2b. Supprimer les doublons (rn > 1)
 DELETE FROM public.accreditations
-WHERE id IN (SELECT id FROM _dup_map WHERE rn > 1);
+WHERE id IN (SELECT id FROM public._migration_54_dup_map WHERE rn > 1);
 
-DROP TABLE _dup_map;
+DROP TABLE public._migration_54_dup_map;
 
 -- ── 3. Index unique partiel ─────────────────────────────────────────────────
 CREATE UNIQUE INDEX IF NOT EXISTS idx_accreditations_game_person_unique
