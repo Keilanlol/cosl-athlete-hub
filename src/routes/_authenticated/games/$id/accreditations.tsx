@@ -538,13 +538,15 @@ function AccredDrawerBody({
   // Écrit person_document_id — plus de recopie de file_name/file_url
   const selectPersonDoc = async (docType: string, personDocId: string) => {
     const pd = personDocs.find((d) => d.id === personDocId);
-    if (!pd) return;
+    // Si le document n'est pas encore dans la liste locale (ex: vient d'être uploadé),
+    // on le crée/lie quand même avec un statut par défaut
+    const status = pd?.status === "valid" ? "valid" : "pending";
     const existing = accDocMap.get(docType);
     const payload = {
       accreditation_id: a.id,
       doc_type: docType,
       person_document_id: personDocId,
-      status: pd.status === "valid" ? "valid" : "pending",
+      status,
       uploaded_at: new Date().toISOString(),
     };
     if (existing) {
