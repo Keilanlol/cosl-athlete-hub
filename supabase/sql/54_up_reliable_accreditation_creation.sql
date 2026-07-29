@@ -41,43 +41,46 @@ WHERE role_code IS NULL
 -- ── 2. Nettoyer les 3 doublons ──────────────────────────────────────────────
 -- Pour chaque doublon, garder la ligne avec le plus petit id (ordre arbitraire
 -- puisque created_at est identique), transférer les accreditation_documents,
--- puis supprimer le doublon.
+-- puis supprimer le doublon. Tout dans un bloc DO pour garantir l'atomicité.
 
--- Construire la liste : pour chaque (game_id, person_id) en doublon, identifier
--- la ligne à garder (rn = 1) et les lignes à supprimer (rn > 1)
-DROP TABLE IF EXISTS public._migration_54_dup_map;
-CREATE TABLE public._migration_54_dup_map AS
-SELECT
-  id,
-  game_id,
-  person_id,
-  ROW_NUMBER() OVER (PARTITION BY game_id, person_id ORDER BY id) AS rn
-FROM public.accreditations
-WHERE person_id IS NOT NULL
-  AND (game_id, person_id) IN (
-    SELECT game_id, person_id
+DO $$
+DECLARE
+  dup_record RECORD;
+  keep_id uuid;
+BEGIN
+  FOR dup_record IN
+    SELECT id, game_id, person_id
     FROM public.accreditations
     WHERE person_id IS NOT NULL
-    GROUP BY game_id, person_id
-    HAVING count(*) > 1
-  );
+      AND (game_id, person_id) IN (
+        SELECT game_id, person_id
+        FROM public.accreditations
+        WHERE person_id IS NOT NULL
+        GROUP BY game_id, person_id
+        HAVING count(*) > 1
+      )
+    ORDER BY game_id, person_id, id
+  LOOP
+    -- Trouver la ligne à garder (la première par id pour ce couple)
+    SELECT id INTO keep_id
+    FROM public.accreditations
+    WHERE game_id = dup_record.game_id
+      AND person_id = dup_record.person_id
+    ORDER BY id
+    LIMIT 1;
 
--- 2a. Transférer les accreditation_documents du doublon vers la ligne gardée
-UPDATE public.accreditation_documents ad
-SET accreditation_id = kept.id
-FROM public._migration_54_dup_map dup
-JOIN public._migration_54_dup_map kept
-  ON kept.game_id = dup.game_id
-  AND kept.person_id = dup.person_id
-  AND kept.rn = 1
-WHERE dup.rn > 1
-  AND ad.accreditation_id = dup.id;
+    -- Si la ligne courante n'est pas celle à garder, c'est un doublon
+    IF dup_record.id <> keep_id THEN
+      -- Transférer les accreditation_documents
+      UPDATE public.accreditation_documents
+      SET accreditation_id = keep_id
+      WHERE accreditation_id = dup_record.id;
 
--- 2b. Supprimer les doublons (rn > 1)
-DELETE FROM public.accreditations
-WHERE id IN (SELECT id FROM public._migration_54_dup_map WHERE rn > 1);
-
-DROP TABLE public._migration_54_dup_map;
+      -- Supprimer le doublon
+      DELETE FROM public.accreditations WHERE id = dup_record.id;
+    END IF;
+  END LOOP;
+END $$;
 
 -- ── 3. Index unique partiel ─────────────────────────────────────────────────
 CREATE UNIQUE INDEX IF NOT EXISTS idx_accreditations_game_person_unique
