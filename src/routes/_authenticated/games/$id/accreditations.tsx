@@ -36,9 +36,10 @@ export const Route = createFileRoute("/_authenticated/games/$id/accreditations")
 });
 
 type AccDoc = {
-  id: string; accreditation_id: string; doc_type: string;
+  id: string; accreditation_id: string;
   person_document_id: string | null;
-  file_name: string | null; file_url: string | null; status: string; uploaded_at: string;
+  status: string; uploaded_at: string;
+  person_doc: PersonDocument | null;
 };
 type Accreditation = {
   id: string; game_id: string; accreditation_type_id: string | null;
@@ -88,7 +89,7 @@ function GameAccreditationsPage() {
 
     // 2. Fetch existing accreditations
     const aRes = await supabase.from("accreditations")
-      .select("*, docs:accreditation_documents(*)")
+      .select("*, docs:accreditation_documents(*, person_doc:person_documents(*))")
       .eq("game_id", gameId)
       .order("created_at", { ascending: false });
 
@@ -197,7 +198,7 @@ function GameAccreditationsPage() {
       await supabase.from("accreditations").insert(toCreate);
       // Reload to get the fresh data
       const aRes2 = await supabase.from("accreditations")
-        .select("*, docs:accreditation_documents(*)")
+        .select("*, docs:accreditation_documents(*, person_doc:person_documents(*))")
         .eq("game_id", gameId)
         .order("created_at", { ascending: false });
       setAccreds(((aRes2.data ?? []) as unknown) as Accreditation[]);
@@ -213,26 +214,22 @@ function GameAccreditationsPage() {
   useEffect(() => { load(); }, [gameId]);
 
   const completeness = (a: Accreditation) => {
-    // Count required docs that are satisfied (either by accreditation_documents
-    // or by person_documents with a valid/pending status)
+    // Count required docs that are satisfied by linked accreditation_documents
     if (drawerRequiredDocs.length === 0 && a.docs.length === 0) return 0;
     const total = drawerRequiredDocs.length > 0 ? drawerRequiredDocs.length : a.docs.length;
     if (total === 0) return 0;
-    // Valid accreditations docs
+    // Valid accreditation docs (read doc_type from the linked person_document)
     const validAccDocs = new Set(
-      a.docs.filter((d) => d.status === "valid").map((d) => d.doc_type)
-    );
-    // Valid/pending person docs (count as provided)
-    const providedPersonDocs = new Set(
-      drawerPersonDocs
-        .filter((d) => d.status === "valid" || d.status === "pending")
-        .map((d) => d.doc_type)
+      a.docs
+        .filter((d) => d.status === "valid")
+        .map((d) => d.person_doc?.doc_type)
+        .filter(Boolean) as string[]
     );
     // Count satisfied required docs
-    const requiredCodes = drawerRequiredDocs.length > 0 ? drawerRequiredDocs : a.docs.map((d) => d.doc_type);
-    const satisfied = requiredCodes.filter(
-      (code) => validAccDocs.has(code) || providedPersonDocs.has(code)
-    ).length;
+    const requiredCodes = drawerRequiredDocs.length > 0
+      ? drawerRequiredDocs
+      : a.docs.map((d) => d.person_doc?.doc_type).filter(Boolean) as string[];
+    const satisfied = requiredCodes.filter((code) => validAccDocs.has(code)).length;
     return Math.round((satisfied / total) * 100);
   };
 
@@ -512,12 +509,14 @@ function AccredDrawerBody({
 }) {
   const a = accreditation;
 
-  // Map of accreditation docs by doc_type (keep most recent if multiple)
+  // Map of accreditation docs by doc_type (read from the linked person_document)
   const accDocMap = new Map<string, AccDoc>();
   a.docs.forEach((d) => {
-    const existing = accDocMap.get(d.doc_type);
+    const dt = d.person_doc?.doc_type;
+    if (!dt) return;
+    const existing = accDocMap.get(dt);
     if (!existing || d.uploaded_at > existing.uploaded_at) {
-      accDocMap.set(d.doc_type, d);
+      accDocMap.set(dt, d);
     }
   });
 
@@ -531,20 +530,17 @@ function AccredDrawerBody({
   // All doc codes to display: required docs + any existing acc docs
   const allDocCodes = Array.from(new Set([
     ...requiredDocCodes,
-    ...a.docs.map((d) => d.doc_type),
+    ...a.docs.map((d) => d.person_doc?.doc_type).filter(Boolean) as string[],
   ]));
 
   // Handle selecting a person document for an accreditation doc type
   // Écrit person_document_id — plus de recopie de file_name/file_url
   const selectPersonDoc = async (docType: string, personDocId: string) => {
     const pd = personDocs.find((d) => d.id === personDocId);
-    // Si le document n'est pas encore dans la liste locale (ex: vient d'être uploadé),
-    // on le crée/lie quand même avec un statut par défaut
     const status = pd?.status === "valid" ? "valid" : "pending";
     const existing = accDocMap.get(docType);
     const payload = {
       accreditation_id: a.id,
-      doc_type: docType,
       person_document_id: personDocId,
       status,
       uploaded_at: new Date().toISOString(),
@@ -554,17 +550,17 @@ function AccredDrawerBody({
     } else {
       await supabase.from("accreditation_documents").insert(payload);
     }
-    toast.success("Document lié à l'accréditation");
+    toast.success("Document rattaché à l'accréditation");
     onReload();
   };
 
-  // Délier un document de l'accréditation (supprime la ligne accreditation_documents,
-  // le person_documents reste intact)
+  // Retirer un document de l'accréditation (supprime la liaison,
+  // le person_documents reste intact dans la fiche personne)
   const unlinkDoc = async (docType: string) => {
     const existing = accDocMap.get(docType);
     if (!existing) return;
     await supabase.from("accreditation_documents").delete().eq("id", existing.id);
-    toast.success("Document détaché de l'accréditation");
+    toast.success("Document retiré de l'accréditation");
     onReload();
   };
 
@@ -699,14 +695,13 @@ function DocTypeRow({
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
 
-  // Le document lié est le person_document référencé par accDoc.person_document_id
-  const linkedPersonDoc = accDoc?.person_document_id
-    ? candidates.find((c) => c.id === accDoc.person_document_id)
-    : undefined;
+  // Le document lié : priorité au person_doc jointé depuis la requête,
+  // fallback sur les candidates locales
+  const linkedPersonDoc: PersonDocument | undefined = accDoc?.person_doc ?? undefined;
+  const isLinked = !!linkedPersonDoc;
 
   // Le document affiché : le lié s'il existe, sinon le premier candidat (proposé, non lié)
   const displayDoc = linkedPersonDoc ?? candidates[0];
-  const isLinked = !!linkedPersonDoc;
 
   const isImage = (url: string | null | undefined) =>
     !!url && /\.(png|jpe?g|webp|gif)(\?|$)/i.test(url);
