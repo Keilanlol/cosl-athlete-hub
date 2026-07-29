@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ExternalLink } from "lucide-react";
 import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
-import { Trash2, Download, FileText, Check, X, Search, Settings, Plus } from "lucide-react";
+import { Trash2, Download, FileText, Check, X, Search, Settings, Plus, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,6 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { computeRequiredDocs } from "@/lib/conformity-utils";
 import { useTypeGroup, clsForCode } from "@/hooks/useTypeItems";
-import { resolveAccreditationCategory } from "@/lib/role-mapping";
 import type { PersonDocument } from "@/lib/types";
 
 export const Route = createFileRoute("/_authenticated/games/$id/accreditations")({
@@ -76,139 +75,49 @@ function GameAccreditationsPage() {
   const load = async () => {
     setAccreds(null);
 
-    // 1. Fetch all selections for this game (athletes + persons)
-    const [selRes, gRes, rolesRes, dtRes] = await Promise.all([
-      supabase.from("selections")
-        .select("athlete_id, person_id, status")
-        .eq("game_id", gameId)
-        .in("status", ["pre_selected", "selected", "reserve"]),
+    const [gRes, rolesRes, dtRes] = await Promise.all([
       supabase.from("games").select("name,short_name").eq("id", gameId).maybeSingle(),
       supabase.from("app_type_items").select("code,label").eq("group_key", "accreditation_categories").order("sort_order"),
       supabase.from("app_type_items").select("code,label").eq("group_key", "document_types").order("sort_order"),
     ]);
 
-    // 2. Fetch existing accreditations
     const aRes = await supabase.from("accreditations")
       .select("*, docs:accreditation_documents(*, person_doc:person_documents(*))")
       .eq("game_id", gameId)
       .order("created_at", { ascending: false });
 
-    // 3. Build a set of existing person_ids in accreditations
-    const existingPids = new Set(
-      ((aRes.data ?? []) as Accreditation[]).map((a) => a.person_id).filter(Boolean) as string[],
-    );
-
-    // 4. For each selection, ensure an accreditation exists
-    const selections = (selRes.data ?? []) as unknown as Array<{
-      athlete_id: string | null;
-      person_id: string | null;
-      status: string;
-    }>;
-
-    const toCreate: { game_id: string; person_id: string; full_name: string; status: string; role_code: string }[] = [];
-
-    for (const sel of selections) {
-      let pid = sel.person_id;
-      let fullName = "";
-      let roleCode = "athlete";
-
-      if (sel.athlete_id) {
-        // Athlete selection — get person_id + name
-        const { data: ap } = await supabase
-          .from("athlete_profiles")
-          .select("person_id")
-          .eq("legacy_athlete_id", sel.athlete_id)
-          .maybeSingle();
-        pid = (ap as { person_id?: string | null } | null)?.person_id ?? null;
-
-        // Fallback: athletes table
-        if (!pid) {
-          const { data: ath } = await supabase
-            .from("athletes")
-            .select("person_id, first_name, last_name")
-            .eq("id", sel.athlete_id)
-            .maybeSingle();
-          pid = (ath as { person_id?: string | null } | null)?.person_id ?? null;
-        }
-
-        // Get name from persons
-        if (pid) {
-          const { data: p } = await supabase
-            .from("persons")
-            .select("first_name, last_name")
-            .eq("id", pid)
-            .maybeSingle();
-          if (p) {
-            fullName = `${(p as { first_name: string }).first_name} ${(p as { last_name: string }).last_name}`;
-          }
-        }
-      } else if (sel.person_id) {
-        // Person-based selection (coach/fed member)
-        pid = sel.person_id;
-        const { data: p } = await supabase
-          .from("persons")
-          .select("first_name, last_name")
-          .eq("id", sel.person_id)
-          .maybeSingle();
-        if (p) {
-          fullName = `${(p as { first_name: string }).first_name} ${(p as { last_name: string }).last_name}`;
-        }
-        // Résoudre le rôle via role_accreditation_mapping :
-        // 1. Essayer coach_profiles (utiliser .limit(1) au lieu de .maybeSingle()
-        //    pour gérer le cas de plusieurs profils actifs)
-        const { data: cpRows } = await supabase
-          .from("coach_profiles")
-          .select("role")
-          .eq("person_id", sel.person_id)
-          .eq("is_active", true)
-          .limit(1);
-        if (cpRows && cpRows.length > 0) {
-          const coachRole = (cpRows[0] as { role: string }).role;
-          const resolved = await resolveAccreditationCategory("coach_roles", coachRole);
-          roleCode = resolved ?? "coach";
-        } else {
-          // 2. Essayer federation_member_profiles
-          const { data: fmRows } = await supabase
-            .from("federation_member_profiles")
-            .select("role")
-            .eq("person_id", sel.person_id)
-            .eq("is_active", true)
-            .limit(1);
-          if (fmRows && fmRows.length > 0) {
-            const fmRole = (fmRows[0] as { role: string }).role;
-            const resolved = await resolveAccreditationCategory("federation_member_roles", fmRole);
-            roleCode = resolved ?? "official";
-          }
-        }
-      }
-
-      if (pid && fullName && !existingPids.has(pid)) {
-        toCreate.push({
-          game_id: gameId,
-          person_id: pid,
-          full_name: fullName,
-          status: "draft",
-          role_code: roleCode,
-        });
-      }
-    }
-
-    // 5. Insert missing accreditations
-    if (toCreate.length > 0) {
-      await supabase.from("accreditations").insert(toCreate);
-      // Reload to get the fresh data
-      const aRes2 = await supabase.from("accreditations")
-        .select("*, docs:accreditation_documents(*, person_doc:person_documents(*))")
-        .eq("game_id", gameId)
-        .order("created_at", { ascending: false });
-      setAccreds(((aRes2.data ?? []) as unknown) as Accreditation[]);
-    } else {
-      setAccreds(((aRes.data ?? []) as unknown) as Accreditation[]);
-    }
-
+    setAccreds(((aRes.data ?? []) as unknown) as Accreditation[]);
     setGame((gRes.data ?? null) as { name: string; short_name: string | null } | null);
     setRoles((rolesRes.data ?? []) as { code: string; label: string }[]);
     setDocTypes((dtRes.data ?? []) as { code: string; label: string }[]);
+  };
+
+  // Synchronisation explicite depuis les sélections (RPC)
+  const [syncing, setSyncing] = useState(false);
+  const [syncReport, setSyncReport] = useState<{ selection_id: string; reason: string }[] | null>(null);
+
+  const syncFromSelections = async () => {
+    setSyncing(true);
+    setSyncReport(null);
+    const { data, error } = await supabase.rpc("sync_accreditations_for_game", {
+      p_game_id: gameId,
+    });
+    setSyncing(false);
+    if (error) {
+      toast.error("Échec de la synchronisation", { description: friendlyError(error) });
+      return;
+    }
+    const unresolved = (data ?? []) as { selection_id: string; reason: string }[];
+    if (unresolved.length > 0) {
+      setSyncReport(unresolved);
+      toast.warning("Synchronisation terminée", {
+        description: `${unresolved.length} sélection(s) n'ont pas pu être traitées (pas de person_id résolu).`,
+        duration: 8000,
+      });
+    } else {
+      toast.success("Synchronisation terminée");
+    }
+    load();
   };
 
   useEffect(() => { load(); }, [gameId]);
@@ -348,12 +257,33 @@ function GameAccreditationsPage() {
           </Link>
         </Button>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={syncFromSelections}
+            disabled={syncing}
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
+            {syncing ? "Synchronisation…" : "Synchroniser depuis les sélections"}
+          </Button>
           <Button variant="outline" onClick={exportCsv}><Download className="mr-2 h-4 w-4" /> CSV</Button>
         </div>
       </div>
 
+      {syncReport && syncReport.length > 0 && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm">
+          <p className="font-medium text-amber-900">
+            {syncReport.length} sélection(s) non traitée(s) :
+          </p>
+          <ul className="mt-1 space-y-0.5 text-amber-800">
+            {syncReport.map((r) => (
+              <li key={r.selection_id}>• {r.reason}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <p className="text-sm text-muted-foreground">
-        Les accréditations sont créées automatiquement lorsqu'une personne est ajoutée aux sélections.
+        Cliquez sur « Synchroniser depuis les sélections » pour créer ou mettre à jour les accréditations à partir des sélections.
       </p>
 
       <div className="flex flex-wrap items-center gap-3">
