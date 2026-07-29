@@ -55,7 +55,7 @@ FROM (
   FROM public.accreditations dup
   WHERE dup.person_id IS NOT NULL
     AND dup.id NOT IN (
-      SELECT min(id) FROM public.accreditations
+      SELECT (array_agg(id ORDER BY id))[1] FROM public.accreditations
       WHERE person_id IS NOT NULL
       GROUP BY game_id, person_id
       HAVING count(*) > 1
@@ -81,7 +81,7 @@ WHERE id IN (
   FROM public.accreditations dup
   WHERE dup.person_id IS NOT NULL
     AND dup.id NOT IN (
-      SELECT min(id) FROM public.accreditations
+      SELECT (array_agg(id ORDER BY id))[1] FROM public.accreditations
       WHERE person_id IS NOT NULL
       GROUP BY game_id, person_id
     )
