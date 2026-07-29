@@ -41,58 +41,42 @@ WHERE role_code IS NULL
 -- ── 2. Nettoyer les 3 doublons ──────────────────────────────────────────────
 -- Pour chaque doublon, garder la ligne avec le plus petit id (ordre arbitraire
 -- puisque created_at est identique), transférer les accreditation_documents,
--- puis supprimer la doublon.
+-- puis supprimer le doublon.
+
+-- Construire la liste : pour chaque (game_id, person_id) en doublon, identifier
+-- la ligne à garder (rn = 1) et les lignes à supprimer (rn > 1)
+CREATE TEMP TABLE _dup_map AS
+SELECT
+  id,
+  game_id,
+  person_id,
+  ROW_NUMBER() OVER (PARTITION BY game_id, person_id ORDER BY id) AS rn
+FROM public.accreditations
+WHERE person_id IS NOT NULL
+  AND (game_id, person_id) IN (
+    SELECT game_id, person_id
+    FROM public.accreditations
+    WHERE person_id IS NOT NULL
+    GROUP BY game_id, person_id
+    HAVING count(*) > 1
+  );
 
 -- 2a. Transférer les accreditation_documents du doublon vers la ligne gardée
 UPDATE public.accreditation_documents ad
 SET accreditation_id = kept.id
-FROM (
-  SELECT
-    dup.game_id,
-    dup.person_id,
-    min(dup.id) AS keep_id,
-    dup.id AS dup_id
-  FROM public.accreditations dup
-  WHERE dup.person_id IS NOT NULL
-    AND dup.id NOT IN (
-      SELECT (array_agg(id ORDER BY id))[1] FROM public.accreditations
-      WHERE person_id IS NOT NULL
-      GROUP BY game_id, person_id
-      HAVING count(*) > 1
-    )
-    AND (dup.game_id, dup.person_id) IN (
-      SELECT game_id, person_id
-      FROM public.accreditations
-      WHERE person_id IS NOT NULL
-      GROUP BY game_id, person_id
-      HAVING count(*) > 1
-    )
-) AS dups
-JOIN public.accreditations kept
-  ON kept.game_id = dups.game_id
-  AND kept.person_id = dups.person_id
-  AND kept.id = dups.keep_id
-WHERE ad.accreditation_id = dups.dup_id;
+FROM _dup_map dup
+JOIN _dup_map kept
+  ON kept.game_id = dup.game_id
+  AND kept.person_id = dup.person_id
+  AND kept.rn = 1
+WHERE dup.rn > 1
+  AND ad.accreditation_id = dup.id;
 
--- 2b. Supprimer les doublons (ceux qui ne sont pas la ligne gardée)
+-- 2b. Supprimer les doublons (rn > 1)
 DELETE FROM public.accreditations
-WHERE id IN (
-  SELECT dup.id
-  FROM public.accreditations dup
-  WHERE dup.person_id IS NOT NULL
-    AND dup.id NOT IN (
-      SELECT (array_agg(id ORDER BY id))[1] FROM public.accreditations
-      WHERE person_id IS NOT NULL
-      GROUP BY game_id, person_id
-    )
-    AND (dup.game_id, dup.person_id) IN (
-      SELECT game_id, person_id
-      FROM public.accreditations
-      WHERE person_id IS NOT NULL
-      GROUP BY game_id, person_id
-      HAVING count(*) > 1
-    )
-);
+WHERE id IN (SELECT id FROM _dup_map WHERE rn > 1);
+
+DROP TABLE _dup_map;
 
 -- ── 3. Index unique partiel ─────────────────────────────────────────────────
 CREATE UNIQUE INDEX IF NOT EXISTS idx_accreditations_game_person_unique
@@ -154,14 +138,15 @@ BEGIN
       END IF;
     END IF;
 
-    -- Si toujours pas de person_id, signaler
+    -- Si toujours pas de person_id, passer à la suite
     IF v_person_id IS NULL THEN
-      INSERT INTO public.accreditations (game_id, person_id, full_name, status, role_code)
-      VALUES (p_game_id, NULL, '', 'draft', v_role_code)
-      ON CONFLICT DO NOTHING;
-      -- Retourner l'info pour l'UI
-      -- (ne peut pas retourner depuis une boucle directement, on accumule)
-      NEXT;
+      v_person_id := NULL;
+      v_full_name := '';
+      v_role_code := 'athlete';
+      v_coach_role := NULL;
+      v_fed_role := NULL;
+      v_mapped_cat := NULL;
+      CONTINUE;
     END IF;
 
     -- Récupérer le nom
