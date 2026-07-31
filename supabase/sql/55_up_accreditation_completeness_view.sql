@@ -22,7 +22,7 @@ SELECT
       AND (
         ar.selection_stage IS NULL
         OR ar.selection_stage = (
-          SELECT s.status FROM public.selections s
+          SELECT s.status::text FROM public.selections s
           WHERE s.game_id = a.game_id
             AND (s.person_id = a.person_id OR s.athlete_id = a.athlete_id)
             AND s.status IN ('pre_selected', 'selected', 'reserve')
