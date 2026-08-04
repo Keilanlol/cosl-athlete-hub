@@ -550,7 +550,7 @@ export type UserProfile = {
   username: string;
   full_name: string;
   email: string;
-  role: "admin" | "games_manager" | "fed_manager" | "logistics" | "communication" | "reader";
+  role: string;
   plain_password: string | null;
   created_at: string;
 };

@@ -36,6 +36,7 @@ import { Route as AuthenticatedCoachesIdRouteImport } from './routes/_authentica
 import { Route as AuthenticatedAthletesIdRouteImport } from './routes/_authenticated/athletes/$id'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin/users'
 import { Route as AuthenticatedAdminTypesRolesRouteImport } from './routes/_authenticated/admin/types-roles'
+import { Route as AuthenticatedAdminRolesPermissionsRouteImport } from './routes/_authenticated/admin/roles-permissions'
 import { Route as AuthenticatedAccreditationsGameIdRouteImport } from './routes/_authenticated/accreditations/$gameId'
 import { Route as AuthenticatedGamesIdIndexRouteImport } from './routes/_authenticated/games/$id/index'
 import { Route as AuthenticatedGamesIdVolunteersRouteImport } from './routes/_authenticated/games/$id/volunteers'
@@ -203,6 +204,12 @@ const AuthenticatedAdminTypesRolesRoute =
     path: '/admin/types-roles',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAdminRolesPermissionsRoute =
+  AuthenticatedAdminRolesPermissionsRouteImport.update({
+    id: '/admin/roles-permissions',
+    path: '/admin/roles-permissions',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAccreditationsGameIdRoute =
   AuthenticatedAccreditationsGameIdRouteImport.update({
     id: '/accreditations/$gameId',
@@ -293,6 +300,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/accreditations/$gameId': typeof AuthenticatedAccreditationsGameIdRoute
+  '/admin/roles-permissions': typeof AuthenticatedAdminRolesPermissionsRoute
   '/admin/types-roles': typeof AuthenticatedAdminTypesRolesRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/athletes/$id': typeof AuthenticatedAthletesIdRoute
@@ -335,6 +343,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/accreditations/$gameId': typeof AuthenticatedAccreditationsGameIdRoute
+  '/admin/roles-permissions': typeof AuthenticatedAdminRolesPermissionsRoute
   '/admin/types-roles': typeof AuthenticatedAdminTypesRolesRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/athletes/$id': typeof AuthenticatedAthletesIdRoute
@@ -378,6 +387,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/accreditations/$gameId': typeof AuthenticatedAccreditationsGameIdRoute
+  '/_authenticated/admin/roles-permissions': typeof AuthenticatedAdminRolesPermissionsRoute
   '/_authenticated/admin/types-roles': typeof AuthenticatedAdminTypesRolesRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/athletes/$id': typeof AuthenticatedAthletesIdRoute
@@ -422,6 +432,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/dashboard'
     | '/accreditations/$gameId'
+    | '/admin/roles-permissions'
     | '/admin/types-roles'
     | '/admin/users'
     | '/athletes/$id'
@@ -464,6 +475,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/dashboard'
     | '/accreditations/$gameId'
+    | '/admin/roles-permissions'
     | '/admin/types-roles'
     | '/admin/users'
     | '/athletes/$id'
@@ -506,6 +518,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/_authenticated/dashboard'
     | '/_authenticated/accreditations/$gameId'
+    | '/_authenticated/admin/roles-permissions'
     | '/_authenticated/admin/types-roles'
     | '/_authenticated/admin/users'
     | '/_authenticated/athletes/$id'
@@ -741,6 +754,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminTypesRolesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin/roles-permissions': {
+      id: '/_authenticated/admin/roles-permissions'
+      path: '/admin/roles-permissions'
+      fullPath: '/admin/roles-permissions'
+      preLoaderRoute: typeof AuthenticatedAdminRolesPermissionsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/accreditations/$gameId': {
       id: '/_authenticated/accreditations/$gameId'
       path: '/accreditations/$gameId'
@@ -883,6 +903,7 @@ const AuthenticatedGamesIdRouteWithChildren =
 interface AuthenticatedRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedAccreditationsGameIdRoute: typeof AuthenticatedAccreditationsGameIdRoute
+  AuthenticatedAdminRolesPermissionsRoute: typeof AuthenticatedAdminRolesPermissionsRoute
   AuthenticatedAdminTypesRolesRoute: typeof AuthenticatedAdminTypesRolesRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
   AuthenticatedAthletesIdRoute: typeof AuthenticatedAthletesIdRoute
@@ -913,6 +934,8 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedAccreditationsGameIdRoute:
     AuthenticatedAccreditationsGameIdRoute,
+  AuthenticatedAdminRolesPermissionsRoute:
+    AuthenticatedAdminRolesPermissionsRoute,
   AuthenticatedAdminTypesRolesRoute: AuthenticatedAdminTypesRolesRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
   AuthenticatedAthletesIdRoute: AuthenticatedAthletesIdRoute,

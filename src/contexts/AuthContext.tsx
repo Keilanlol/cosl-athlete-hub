@@ -11,20 +11,14 @@ import {
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase, usernameToEmail } from "@/lib/supabase";
 
-export type UserRole =
-  | "admin"
-  | "games_manager"
-  | "fed_manager"
-  | "logistics"
-  | "communication"
-  | "reader";
+export type UserRole = string;
 
 interface AuthContextValue {
   session: Session | null;
   user: User | null;
   username: string | null;
   full_name: string | null;
-  role: UserRole | null;
+  role: string | null;
   loading: boolean;
   signIn: (
     username: string,
@@ -92,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.info("[auth] profile loaded:", data);
           setUsername(data.username ?? null);
           setFullName(data.full_name ?? null);
-          setRole((data.role as UserRole | undefined) ?? null);
+          setRole((data.role as string | undefined) ?? null);
         } catch (e) {
           console.error("[auth] loadProfile threw:", e);
         }

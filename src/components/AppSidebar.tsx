@@ -15,6 +15,7 @@ import {
   Volleyball,
   CalendarDays,
   Tag,
+  ShieldCheck,
 } from "lucide-react";
 
 import {
@@ -29,8 +30,9 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { usePermissions } from "@/hooks/usePermissions";
 
-type Item = { title: string; url: string; icon: React.ComponentType<{ className?: string }> };
+type Item = { title: string; url: string; icon: React.ComponentType<{ className?: string }>; module?: string };
 
 const groups: { label: string; items: Item[] }[] = [
   {
@@ -40,39 +42,40 @@ const groups: { label: string; items: Item[] }[] = [
   {
     label: "Gestion de fédérations & effectifs",
     items: [
-      { title: "Personnes", url: "/persons", icon: Users },
-      { title: "Athlètes", url: "/athletes", icon: Users },
-      { title: "Fédérations", url: "/federations", icon: Building2 },
-      { title: "Encadrement", url: "/coaches", icon: UserCog },
-      { title: "Membres", url: "/members", icon: UserRound },
+      { title: "Personnes", url: "/persons", icon: Users, module: "persons" },
+      { title: "Athlètes", url: "/athletes", icon: Users, module: "athletes" },
+      { title: "Fédérations", url: "/federations", icon: Building2, module: "federations" },
+      { title: "Encadrement", url: "/coaches", icon: UserCog, module: "persons" },
+      { title: "Membres", url: "/members", icon: UserRound, module: "persons" },
     ],
   },
   {
     label: "Games Management",
     items: [
-      { title: "Games", url: "/games", icon: Trophy },
-      { title: "Sports", url: "/sports", icon: Volleyball },
-      { title: "Logistique", url: "/logistics", icon: Plane },
-      { title: "Accréditations", url: "/accreditations", icon: BadgeCheck },
+      { title: "Games", url: "/games", icon: Trophy, module: "games" },
+      { title: "Sports", url: "/sports", icon: Volleyball, module: "games" },
+      { title: "Logistique", url: "/logistics", icon: Plane, module: "logistics" },
+      { title: "Accréditations", url: "/accreditations", icon: BadgeCheck, module: "accreditations" },
     ],
   },
   {
     label: "Events Management",
     items: [
-      { title: "Events", url: "/events", icon: CalendarDays },
-      { title: "Sponsors", url: "/sponsors", icon: Star },
-      { title: "Partenaires", url: "/partners", icon: Handshake },
+      { title: "Events", url: "/events", icon: CalendarDays, module: "events" },
+      { title: "Sponsors", url: "/sponsors", icon: Star, module: "games" },
+      { title: "Partenaires", url: "/partners", icon: Handshake, module: "games" },
     ],
   },
   {
     label: "Communication",
-    items: [{ title: "Messages & Reporting", url: "/communication", icon: MessageSquare }],
+    items: [{ title: "Messages & Reporting", url: "/communication", icon: MessageSquare, module: "communication" }],
   },
   {
     label: "Administration",
     items: [
-      { title: "Types & Rôles", url: "/admin/types-roles", icon: Tag },
-      { title: "Comptes COSL", url: "/admin/users", icon: Settings },
+      { title: "Types & Rôles", url: "/admin/types-roles", icon: Tag, module: "admin" },
+      { title: "Rôles & Permissions", url: "/admin/roles-permissions", icon: ShieldCheck, module: "admin" },
+      { title: "Comptes COSL", url: "/admin/users", icon: Settings, module: "admin" },
     ],
   },
 ];
@@ -81,6 +84,7 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const pathname = useRouterState({ select: (r) => r.location.pathname });
+  const { canRead } = usePermissions();
 
   const isActive = (url: string) =>
     pathname === url || (url !== "/dashboard" && pathname.startsWith(url));
@@ -99,7 +103,14 @@ export function AppSidebar() {
         </div>
       </SidebarHeader>
       <SidebarContent className="bg-[#1A1A1A] text-[#C0C0C0]">
-        {groups.map((group) => (
+        {groups.map((group) => {
+          // Filtrer les items selon les permissions (Dashboard toujours visible)
+          const visibleItems = group.items.filter(
+            (item) => !item.module || canRead(item.module),
+          );
+          if (visibleItems.length === 0) return null;
+
+          return (
           <SidebarGroup key={group.label}>
             {!collapsed && (
               <SidebarGroupLabel className="text-[#717171] text-[10px] font-semibold tracking-[0.12em] uppercase">
@@ -108,7 +119,7 @@ export function AppSidebar() {
             )}
             <SidebarGroupContent>
               <SidebarMenu>
-                {group.items.map((item) => {
+                {visibleItems.map((item) => {
                   const active = isActive(item.url);
                   return (
                     <SidebarMenuItem key={item.url}>
@@ -132,7 +143,8 @@ export function AppSidebar() {
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
-        ))}
+          );
+        })}
       </SidebarContent>
     </Sidebar>
   );
