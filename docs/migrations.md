@@ -16,6 +16,16 @@ FROM supabase_migrations.schema_migrations
 ORDER BY version;
 ```
 
+## Règles impératives
+
+1. **Un numéro = une migration.** Chaque migration a un numéro unique à 4 chiffres (`0047`, `0048`, …). Ne jamais réutiliser un numéro pour deux migrations différentes — le `ON CONFLICT (version) DO NOTHING` avale silencieusement la deuxième et falsifie le journal.
+2. **Vérifier le dernier numéro utilisé avant d'en créer une.** Exécuter :
+   ```sql
+   SELECT version FROM supabase_migrations.schema_migrations ORDER BY version DESC LIMIT 1;
+   ```
+   Et vérifier aussi les fichiers dans `supabase/sql/` pour les migrations pas encore enregistrées.
+3. **Numérotation séquentielle.** Si la dernière migration est `0058`, la suivante est `0059` (ou `0060` si `0059` existe déjà). Ne pas sauter de numéros sans raison documentée.
+
 ## Convention de nommage
 
 ```
