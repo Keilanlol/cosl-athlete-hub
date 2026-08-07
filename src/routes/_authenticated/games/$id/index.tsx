@@ -11,8 +11,8 @@ import {
   type GameSport,
   type Gender,
   type Sport,
-  GENDERS,
 } from "@/lib/types";
+import { useTypeGroup } from "@/hooks/useTypeItems";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -82,6 +82,7 @@ type Discipline = { id: string; sport_id: string; name: string; gender: Gender }
 
 function GameOverviewPage() {
   const { id } = Route.useParams();
+  const gendersHook = useTypeGroup("genders");
   const [tab, setTab] = useHashTab("overview");
   const [game, setGame] = useState<Game | null>(null);
   const [sports, setSports] = useState<Sport[]>([]);
@@ -563,8 +564,8 @@ function GameOverviewPage() {
                   <Select value={newDiscGender} onValueChange={(v) => setNewDiscGender(v as Gender)}>
                     <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {GENDERS.map((g) => (
-                        <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
+                      {gendersHook.items.map((g) => (
+                        <SelectItem key={g.code} value={g.code}>{g.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -630,8 +631,8 @@ function GameOverviewPage() {
                 <Select value={quotaForm.gender} onValueChange={(v) => setQuotaForm({ ...quotaForm, gender: v as Gender })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {GENDERS.map((g) => (
-                      <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
+                    {gendersHook.items.map((g) => (
+                      <SelectItem key={g.code} value={g.code}>{g.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -709,8 +710,8 @@ function GameOverviewPage() {
               <Select value={newDiscGender} onValueChange={(v) => setNewDiscGender(v as Gender)}>
                 <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {GENDERS.map((g) => (
-                    <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
+                  {gendersHook.items.map((g) => (
+                    <SelectItem key={g.code} value={g.code}>{g.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

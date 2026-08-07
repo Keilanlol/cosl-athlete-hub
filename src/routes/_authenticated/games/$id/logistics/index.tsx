@@ -9,7 +9,6 @@ import {
   type TravelScope,
   type TravelStatus,
   type Sport,
-  TRAVEL_SCOPES,
 } from "@/lib/types";
 import { useTypeGroup, clsForCode } from "@/hooks/useTypeItems";
 import { Button } from "@/components/ui/button";
@@ -65,6 +64,7 @@ const empty: Form = {
 function TravelPlansPage() {
   const { id } = Route.useParams();
   const travelStatusesHook = useTypeGroup("travel_statuses");
+  const travelScopesHook = useTypeGroup("travel_scopes");
   const [plans, setPlans] = useState<TravelPlan[]>([]);
   const [sports, setSports] = useState<Sport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -202,7 +202,7 @@ function TravelPlansPage() {
             <TableBody>
               {paged.map((p) => {
                 const st = travelStatusesHook.findItem(p.status);
-                const sc = TRAVEL_SCOPES.find((x) => x.value === p.scope);
+                const sc = travelScopesHook.findItem(p.scope);
                 return (
                   <TableRow key={p.id}>
                     <TableCell className="font-medium">{p.name}</TableCell>
@@ -254,8 +254,8 @@ function TravelPlansPage() {
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {TRAVEL_SCOPES.map((s) => (
-                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                  {travelScopesHook.items.map((s) => (
+                    <SelectItem key={s.code} value={s.code}>{s.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

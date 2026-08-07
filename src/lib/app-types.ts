@@ -58,6 +58,3 @@ export const APP_TYPE_GROUPS: AppTypeGroupMeta[] = [
 ];
 
 export const APP_TYPE_GROUP_KEYS = APP_TYPE_GROUPS.map((g) => g.key);
-
-// Re-export du hook fusionné
-export { useAppTypes } from "@/hooks/useTypeItems";

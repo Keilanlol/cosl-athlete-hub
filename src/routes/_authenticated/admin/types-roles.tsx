@@ -10,7 +10,7 @@ import {
   Search,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useAppTypes, type AppTypeItem, type AppTypeGroup } from "@/lib/app-types";
+import { useAppTypes, type AppTypeItem, type AppTypeGroup } from "@/hooks/useTypeItems";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

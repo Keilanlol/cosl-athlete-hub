@@ -405,6 +405,8 @@ function GameAccreditationsPage() {
                   personId={drawerPersonId}
                   gameId={gameId}
                   getDocStatusLabel={docStatusesHook.getLabel}
+                  getRoleLabel={(code) => roles.find((r) => r.code === code)?.label ?? code ?? "—"}
+                  getAccredStatusLabel={accredStatusesHook.getLabel}
                   onReload={() => { load(); setDrawerReloadKey((k) => k + 1); }}
                   onDocStatus={setDocStatus}
                   onSubmit={() => setAccredStatus(current, "submitted")}
@@ -444,7 +446,7 @@ function GameAccreditationsPage() {
 
 function AccredDrawerBody({
   accreditation, completeness, docTypes, requiredDocCodes, personDocs, personId, gameId,
-  getDocStatusLabel,
+  getDocStatusLabel, getRoleLabel, getAccredStatusLabel,
   onReload, onDocStatus,
   onSubmit, onValidate, onReject,
 }: {
@@ -456,6 +458,8 @@ function AccredDrawerBody({
   personId: string | null;
   gameId: string;
   getDocStatusLabel: (code: string | null | undefined) => string;
+  getRoleLabel: (code: string | null | undefined) => string;
+  getAccredStatusLabel: (code: string | null | undefined) => string;
   onReload: () => void;
   onDocStatus: (doc: AccDoc, status: string) => void;
   onSubmit: () => void;
@@ -524,8 +528,8 @@ function AccredDrawerBody({
       <section className="rounded-lg border border-border p-4">
         <h3 className="text-sm font-semibold mb-2 text-foreground">Personne</h3>
         <dl className="grid grid-cols-2 gap-2 text-sm">
-          <div><dt className="text-xs text-muted-foreground">Rôle</dt><dd>{a.role_code ?? "—"}</dd></div>
-          <div><dt className="text-xs text-muted-foreground">Statut</dt><dd>{a.status}</dd></div>
+          <div><dt className="text-xs text-muted-foreground">Rôle</dt><dd>{getRoleLabel(a.role_code)}</dd></div>
+          <div><dt className="text-xs text-muted-foreground">Statut</dt><dd>{getAccredStatusLabel(a.status)}</dd></div>
         </dl>
       </section>
 

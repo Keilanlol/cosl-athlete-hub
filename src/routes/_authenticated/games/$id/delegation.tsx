@@ -166,7 +166,12 @@ function DelegationPage() {
 
   // Get role label for a member in the table
   const getMemberRoleLabel = (m: Member): string => {
-    if (m.member_role) return m.member_role;
+    if (m.member_role) {
+      // Résoudre le code via les référentiels (coach_roles puis federation_member_roles)
+      return coachRolesHook.getLabel(m.member_role) !== m.member_role
+        ? coachRolesHook.getLabel(m.member_role)
+        : fedMemberRolesHook.getLabel(m.member_role);
+    }
     if (m.person_id) {
       const roles: string[] = [];
       if (athletePersonIds.has(m.person_id)) roles.push("Athlète");

@@ -8,8 +8,6 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { confirmAction } from "@/components/ConfirmDialog";
 import {
-  GENDERS,
-  MEDAL_LABELS,
   athleteSchema,
   type Athlete,
   type AthleteDocument,
@@ -109,6 +107,8 @@ function AthleteDetailPage() {
   const athleteStatusesHook = useTypeGroup("athlete_statuses");
   const athleteLevelsHook = useTypeGroup("athlete_levels");
   const coachRolesHook = useTypeGroup("coach_roles");
+  const gendersHook = useTypeGroup("genders");
+  const medalTypesHook = useTypeGroup("medal_types");
   const [athlete, setAthlete] = useState<Athlete | null>(null);
   const [personId, setPersonId] = useState<string | null>(null);
   const [personData, setPersonData] = useState<{
@@ -661,7 +661,7 @@ function AthleteDetailPage() {
             <Field label="Lieu de naissance" value={athlete.birth_place} />
             <Field
               label="Genre"
-              value={GENDERS.find((g) => g.value === athlete.gender)?.label ?? athlete.gender}
+              value={gendersHook.getLabel(athlete.gender)}
             />
             <Field label="Nationalité" value={athlete.nationality} />
             <Field label="Email" value={athlete.email} />
@@ -893,7 +893,8 @@ function AthleteDetailPage() {
                   </TableHeader>
                   <TableBody>
                     {results.map((r) => {
-                      const med = r.medal ? MEDAL_LABELS.find((m) => m.value === r.medal) : null;
+                      const med = r.medal ? medalTypesHook.findItem(r.medal) : null;
+                      const medCls = med ? clsForCode("medal_types", r.medal!) : "";
                       return (
                         <TableRow key={r.id}>
                           <TableCell>{r.game ? `${r.game.name} ${r.game.edition_year}` : "—"}</TableCell>
@@ -902,7 +903,7 @@ function AthleteDetailPage() {
                           <TableCell>{r.discipline?.name ?? "—"}</TableCell>
                           <TableCell>{r.result_date ?? "—"}</TableCell>
                           <TableCell>{r.rank ?? "—"}</TableCell>
-                          <TableCell>{med ? <Badge className={`${med.cls} hover:${med.cls}`}>{med.label}</Badge> : "—"}</TableCell>
+                          <TableCell>{med ? <Badge className={`${medCls} hover:${medCls}`}>{med.label}</Badge> : "—"}</TableCell>
                           <TableCell>{r.score ? `${r.score}${r.unit ? " " + r.unit : ""}` : "—"}</TableCell>
                           <TableCell>{r.is_national_record ? <Badge className="bg-[var(--cosl-red-light)] text-primary hover:bg-[var(--cosl-red-light)]">RN</Badge> : "—"}</TableCell>
                           <TableCell>{r.is_personal_best ? <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">PB</Badge> : "—"}</TableCell>
@@ -1031,8 +1032,8 @@ function AthleteDetailPage() {
                     >
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {GENDERS.map((g) => (
-                          <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
+                        {gendersHook.items.map((g) => (
+                          <SelectItem key={g.code} value={g.code}>{g.label}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -1416,7 +1417,7 @@ function AthleteDetailPage() {
                 <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value={ALL}>Aucune</SelectItem>
-                  {MEDAL_LABELS.map((m) => (<SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>))}
+                  {medalTypesHook.items.map((m) => (<SelectItem key={m.code} value={m.code}>{m.label}</SelectItem>))}
                 </SelectContent>
               </Select>
             </div>

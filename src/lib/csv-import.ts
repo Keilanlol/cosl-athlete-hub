@@ -13,6 +13,8 @@ export type CsvColumn = {
   transform?: (raw: string) => unknown;
   linkOnly?: boolean;
   autoGenerate?: boolean;
+  /** Groupe app_type_items pour valider la valeur transformée. Rejette la ligne si invalide. */
+  validateTypeGroup?: string;
 };
 
 export type DuplicateCheck = {
@@ -246,6 +248,20 @@ export async function previewImport(
     }
   }
 
+  // Pre-load valid codes for validateTypeGroup columns
+  const typeGroupCache: Record<string, Set<string>> = {};
+  for (const col of config.columns) {
+    if (col.validateTypeGroup && !typeGroupCache[col.validateTypeGroup]) {
+      const { data } = await supabase
+        .from("app_type_items")
+        .select("code")
+        .eq("group_key", col.validateTypeGroup);
+      typeGroupCache[col.validateTypeGroup] = new Set(
+        (data ?? []).map((r) => (r as { code: string }).code),
+      );
+    }
+  }
+
   const generatedValues: string[] = [];
   const batchSeen = new Set<string>();
 
@@ -264,6 +280,23 @@ export async function previewImport(
       if (!col.linkOnly) {
         payload[col.key] = col.transform ? col.transform(raw) : raw;
       }
+    }
+
+    // Validate type group columns
+    let validationError: string | null = null;
+    for (const col of config.columns) {
+      if (!col.validateTypeGroup) continue;
+      const val = payload[col.key];
+      if (val == null || val === "") continue;
+      const validCodes = typeGroupCache[col.validateTypeGroup];
+      if (validCodes && !validCodes.has(String(val))) {
+        validationError = `Valeur « ${val} » invalide pour ${col.label} (groupe ${col.validateTypeGroup}). Valeurs acceptées : ${Array.from(validCodes).join(", ")}.`;
+        break;
+      }
+    }
+    if (validationError) {
+      errors.push({ row, reason: validationError });
+      continue;
     }
 
     // Resolve links

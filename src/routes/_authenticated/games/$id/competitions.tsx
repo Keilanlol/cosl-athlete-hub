@@ -5,14 +5,12 @@ import { Plus, Trash2, Download, Pencil, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import {
-  GENDERS,
-  MEDAL_LABELS,
   type AthleteResult,
   type Discipline,
   type GameCompetition,
   type Sport,
 } from "@/lib/types";
-import { useTypeGroup } from "@/hooks/useTypeItems";
+import { useTypeGroup, clsForCode } from "@/hooks/useTypeItems";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AddressSearch } from "@/components/AddressSearch";
@@ -55,15 +53,18 @@ type AthleteLite = {
   id: string; first_name: string; last_name: string; cosl_id: string; gender: string;
 };
 
-function medalBadge(m: AthleteResult["medal"]) {
+function medalBadge(m: AthleteResult["medal"], medalTypesHook: ReturnType<typeof useTypeGroup>) {
   if (!m) return <span className="text-muted-foreground">—</span>;
-  const meta = MEDAL_LABELS.find((x) => x.value === m);
-  return <Badge className={`${meta?.cls} hover:${meta?.cls}`}>{meta?.label}</Badge>;
+  const meta = medalTypesHook.findItem(m);
+  const cls = meta ? clsForCode("medal_types", m) : "";
+  return <Badge className={`${cls} hover:${cls}`}>{meta?.label}</Badge>;
 }
 
 function CompetitionsPage() {
   const { id } = Route.useParams();
   const roundsHook = useTypeGroup("competition_rounds");
+  const gendersHook = useTypeGroup("genders");
+  const medalTypesHook = useTypeGroup("medal_types");
   const [comps, setComps] = useState<GameCompetition[] | null>(null);
   const [results, setResults] = useState<ParticipantRow[] | null>(null);
   const [sports, setSports] = useState<Sport[]>([]);
@@ -400,8 +401,8 @@ function CompetitionsPage() {
                     <TableCell>{sports.find((s) => s.id === c.sport_id)?.name ?? "—"}</TableCell>
                     <TableCell>{disciplines.find((d) => d.id === c.discipline_id)?.name ?? "—"}</TableCell>
                     <TableCell className="font-medium text-primary">{c.name}</TableCell>
-                    <TableCell>{c.round ?? "—"}</TableCell>
-                    <TableCell>{GENDERS.find((g) => g.value === c.gender)?.label ?? "—"}</TableCell>
+                    <TableCell>{roundsHook.getLabel(c.round)}</TableCell>
+                    <TableCell>{gendersHook.getLabel(c.gender)}</TableCell>
                     <TableCell>{c.competition_date ?? "—"}</TableCell>
                     <TableCell>
                       <Badge variant="outline">{getParticipantCount(c.id)}</Badge>
@@ -446,7 +447,7 @@ function CompetitionsPage() {
               <SelectTrigger className="w-44"><SelectValue placeholder="Médaille" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value={ALL}>Toutes médailles</SelectItem>
-                {MEDAL_LABELS.map((m) => (<SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>))}
+                {medalTypesHook.items.map((m) => (<SelectItem key={m.code} value={m.code}>{m.label}</SelectItem>))}
               </SelectContent>
             </Select>
             <Button variant="outline" onClick={exportCsv}>
@@ -480,7 +481,7 @@ function CompetitionsPage() {
                       {r.athlete ? `${r.athlete.last_name} ${r.athlete.first_name}` : "—"}
                     </TableCell>
                     <TableCell>{r.rank ?? "—"}</TableCell>
-                    <TableCell>{medalBadge(r.medal)}</TableCell>
+                    <TableCell>{medalBadge(r.medal, medalTypesHook)}</TableCell>
                     <TableCell>{r.score ? `${r.score}${r.unit ? " " + r.unit : ""}` : "—"}</TableCell>
                     <TableCell>{r.is_national_record ? <Badge className="bg-[var(--cosl-red-light)] text-primary hover:bg-[var(--cosl-red-light)]">RN</Badge> : "—"}</TableCell>
                     <TableCell>{r.is_personal_best ? <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">PB</Badge> : "—"}</TableCell>
@@ -539,7 +540,7 @@ function CompetitionsPage() {
               <Select value={compForm.gender} onValueChange={(v) => setCompForm({ ...compForm, gender: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {GENDERS.map((g) => (<SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>))}
+                  {gendersHook.items.map((g) => (<SelectItem key={g.code} value={g.code}>{g.label}</SelectItem>))}
                 </SelectContent>
               </Select>
             </div>
@@ -609,7 +610,7 @@ function CompetitionsPage() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
                 <div><div className="text-xs text-muted-foreground">Sport</div><div>{sports.find((s) => s.id === viewComp.sport_id)?.name ?? "—"}</div></div>
                 <div><div className="text-xs text-muted-foreground">Discipline</div><div>{disciplines.find((d) => d.id === viewComp.discipline_id)?.name ?? "—"}</div></div>
-                <div><div className="text-xs text-muted-foreground">Round</div><div>{viewComp.round ?? "—"}</div></div>
+                <div><div className="text-xs text-muted-foreground">Round</div><div>{roundsHook.getLabel(viewComp.round)}</div></div>
                 <div><div className="text-xs text-muted-foreground">Date</div><div>{viewComp.competition_date ?? "—"}</div></div>
               </div>
 
@@ -670,11 +671,11 @@ function CompetitionsPage() {
                                     <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                       <SelectItem value="none">—</SelectItem>
-                                      {MEDAL_LABELS.map((m) => (<SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>))}
+                                      {medalTypesHook.items.map((m) => (<SelectItem key={m.code} value={m.code}>{m.label}</SelectItem>))}
                                     </SelectContent>
                                   </Select>
                                 ) : (
-                                  medalBadge(r.medal)
+                                  medalBadge(r.medal, medalTypesHook)
                                 )}
                               </TableCell>
                               <TableCell>

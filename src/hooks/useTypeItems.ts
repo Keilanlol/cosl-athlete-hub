@@ -5,6 +5,10 @@ import { friendlyError } from "@/lib/error-messages";
 import { toast } from "sonner";
 import type { AppTypeItem, AppTypeGroupMeta, AppTypeGroup } from "@/lib/app-types";
 import { APP_TYPE_GROUPS } from "@/lib/app-types";
+import { slugifyCode } from "@/lib/utils";
+
+// Re-export des types pour les consommateurs
+export type { AppTypeItem, AppTypeGroup, AppTypeGroupMeta };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -208,7 +212,7 @@ export function useTypeItems() {
   // ── Mutations (write) ──
   const addItem = useCallback(
     async (groupKey: string, code: string, label: string) => {
-      const codeSlug = code.trim().toLowerCase().replace(/[^a-z0-9_]+/g, "_").replace(/^_+|_+$/g, "");
+      const codeSlug = slugifyCode(code);
       if (!codeSlug) {
         toast.error("Le code est requis");
         return false;

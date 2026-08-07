@@ -1,18 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { slugifyCode } from "@/lib/utils";
 
 export type LevelRef = { id: string; code: string; label: string; sort_order: number };
 export type SportRef = { id: string; name: string; is_olympic: boolean | null; is_summer: boolean | null };
-
-const slugify = (s: string) =>
-  s
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .slice(0, 40) || `item_${Date.now()}`;
 
 /** Athlete levels reference (athlete_levels_ref). */
 export function useAthleteLevels() {
@@ -39,7 +31,7 @@ export function useAthleteLevels() {
   }, [load]);
 
   const add = async (label: string) => {
-    const code = slugify(label);
+    const code = slugifyCode(label);
     const next = (items[items.length - 1]?.sort_order ?? 0) + 1;
     const { error } = await supabase
       .from("athlete_levels_ref")

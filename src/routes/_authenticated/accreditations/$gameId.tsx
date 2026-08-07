@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { EmptyState, TableSkeleton } from "@/components/DataTableShell";
 import { useAccreditationRequirements } from "@/hooks/useAccreditationRequirements";
-import { useAppTypes, type AppTypeItem } from "@/lib/app-types";
+import { useAppTypes, type AppTypeItem } from "@/hooks/useTypeItems";
 import { useTypeGroup } from "@/hooks/useTypeItems";
 import { confirmAction } from "@/components/ConfirmDialog";
 

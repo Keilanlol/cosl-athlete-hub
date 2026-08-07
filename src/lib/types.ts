@@ -74,12 +74,6 @@ export type AthleteLevel = TypeCode<"athlete_levels">;
 
 export type Gender = "male" | "female" | "mixed";
 
-export const GENDERS: { value: Gender; label: string }[] = [
-  { value: "male", label: "Masculin" },
-  { value: "female", label: "Féminin" },
-  { value: "mixed", label: "Mixte" },
-];
-
 export type KycStatusValue = "green" | "orange" | "red";
 
 export type Athlete = {
@@ -357,12 +351,6 @@ export type AthleteResult = {
   created_at: string;
 };
 
-export const MEDAL_LABELS: { value: "gold" | "silver" | "bronze"; label: string; cls: string }[] = [
-  { value: "gold", label: "🥇 Or", cls: "bg-amber-100 text-amber-800" },
-  { value: "silver", label: "🥈 Argent", cls: "bg-slate-200 text-slate-700" },
-  { value: "bronze", label: "🥉 Bronze", cls: "bg-orange-100 text-orange-700" },
-];
-
 // Games
 export type GameType = TypeCode<"game_types">;
 export type GameStatus = TypeCode<"game_statuses">;
@@ -411,12 +399,6 @@ export type GameQuota = {
 // Logistics
 export type TravelStatus = TypeCode<"travel_statuses">;
 export type TravelScope = "global" | "sport" | "individual";
-
-export const TRAVEL_SCOPES: { value: TravelScope; label: string }[] = [
-  { value: "global", label: "Global" },
-  { value: "sport", label: "Sport" },
-  { value: "individual", label: "Individuel" },
-];
 
 export type TravelPlan = {
   id: string;

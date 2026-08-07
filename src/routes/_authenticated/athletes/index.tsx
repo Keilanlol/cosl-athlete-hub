@@ -6,7 +6,6 @@ import { KycStatusBadge } from "@/components/KycStatusBadge";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import {
-  GENDERS,
   athleteSchema,
   generateCoslId,
   type Athlete,
@@ -139,6 +138,7 @@ type SortKey = "cosl_id" | "first_name" | "last_name" | "primary_sport" | "prima
 function AthletesPage() {
   const navigate = useNavigate();
   const athleteStatusesHook = useTypeGroup("athlete_statuses");
+  const gendersHook = useTypeGroup("genders");
   const [rows, setRows] = useState<AthleteRow[] | null>(null);
   const { items: sports, add: addSport, remove: removeSport } = useSports();
   const { items: levels, add: addLevel, remove: removeLevel } = useAthleteLevels();
@@ -782,8 +782,8 @@ function AthletesPage() {
                     >
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {GENDERS.map((g) => (
-                          <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
+                        {gendersHook.items.map((g) => (
+                          <SelectItem key={g.code} value={g.code}>{g.label}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
