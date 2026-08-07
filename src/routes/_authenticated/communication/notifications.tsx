@@ -16,6 +16,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { TableSkeleton, EmptyState, PagerBar, PAGE_SIZE } from "@/components/DataTableShell";
+import { useTypeGroup } from "@/hooks/useTypeItems";
 
 export const Route = createFileRoute("/_authenticated/communication/notifications")({
   component: NotificationsPage,
@@ -35,6 +36,8 @@ function NotificationsPage() {
   const [filterType, setFilterType] = useState<string>("all");
   const [filterRead, setFilterRead] = useState<string>("all");
   const [search, setSearch] = useState("");
+  const notifTypesHook = useTypeGroup("notification_types");
+  const docTypesHook = useTypeGroup("document_types");
 
   useEffect(() => { setPage(1); }, [search, filterType, filterRead]);
 
@@ -76,10 +79,8 @@ function NotificationsPage() {
 
   useEffect(() => { load(); }, []);
 
-  const types = useMemo(
-    () => Array.from(new Set(notifs.map((n) => n.notification_type))),
-    [notifs],
-  );
+  // Types de notification depuis le référentiel (plus depuis les données)
+  const types = notifTypesHook.items;
 
   const filtered = useMemo(
     () =>
@@ -154,7 +155,7 @@ function NotificationsPage() {
           <SelectContent>
             <SelectItem value="all">Tous types</SelectItem>
             {types.map((t) => (
-              <SelectItem key={t} value={t}>{t}</SelectItem>
+              <SelectItem key={t.code} value={t.code}>{t.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -192,14 +193,14 @@ function NotificationsPage() {
                 return (
                   <TableRow key={n.id} className={n.is_read ? "" : "bg-amber-50/40"}>
                     <TableCell>
-                      <Badge variant="outline">{n.notification_type}</Badge>
+                      <Badge variant="outline">{notifTypesHook.getLabel(n.notification_type)}</Badge>
                     </TableCell>
                     <TableCell className="max-w-md">{n.message}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       {p && <div>👤 {p.first_name} {p.last_name}</div>}
                       {a && !p && <div>👤 {a.first_name} {a.last_name}</div>}
                       {g && <div>🏟 {g.name}</div>}
-                      {n.related_doc_type && <div>📄 {n.related_doc_type}</div>}
+                      {n.related_doc_type && <div>📄 {docTypesHook.getLabel(n.related_doc_type)}</div>}
                       {!a && !p && !g && !n.related_doc_type && "—"}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{fmt(n.created_at)}</TableCell>

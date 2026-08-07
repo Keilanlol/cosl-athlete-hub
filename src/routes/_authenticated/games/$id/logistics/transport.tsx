@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { LogisticsTabs } from "@/components/LogisticsTabs";
 import { TableSkeleton, EmptyState } from "@/components/DataTableShell";
+import { useTypeGroup } from "@/hooks/useTypeItems";
 import { PersonCombobox } from "@/components/PersonCombobox";
 
 export const Route = createFileRoute("/_authenticated/games/$id/logistics/transport")({
@@ -61,6 +62,7 @@ const empty: Form = {
 
 function TransportPage() {
   const { id } = Route.useParams();
+  const transportTypesHook = useTypeGroup("transport_types");
   const [items, setItems] = useState<LocalTransport[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [athletes, setAthletes] = useState<Athlete[]>([]);
@@ -315,7 +317,7 @@ function TransportPage() {
                     className="cursor-pointer hover:bg-muted"
                     onClick={() => openDrawer(t)}
                   >
-                    <TableCell className="font-medium">{t.transport_type}</TableCell>
+                    <TableCell className="font-medium">{transportTypesHook.getLabel(t.transport_type)}</TableCell>
                     <TableCell>{t.pickup_location}</TableCell>
                     <TableCell>{t.dropoff_location}</TableCell>
                     <TableCell>{fmtDt(t.pickup_time)}</TableCell>
@@ -351,7 +353,14 @@ function TransportPage() {
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
               <Label>Type</Label>
-              <Input value={form.transport_type} onChange={(e) => setForm({ ...form, transport_type: e.target.value })} placeholder="navette, bus…" />
+              <Select value={form.transport_type} onValueChange={(v) => setForm({ ...form, transport_type: v })}>
+                <SelectTrigger><SelectValue placeholder="Choisir…" /></SelectTrigger>
+                <SelectContent>
+                  {transportTypesHook.items.map((t) => (
+                    <SelectItem key={t.code} value={t.code}>{t.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1">
               <Label>Capacité</Label>
@@ -396,7 +405,7 @@ function TransportPage() {
         <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
           <SheetHeader>
             <SheetTitle>
-              {drawer ? `${drawer.transport_type} · ${fmtDt(drawer.pickup_time)}` : ""}
+              {drawer ? `${transportTypesHook.getLabel(drawer.transport_type)} · ${fmtDt(drawer.pickup_time)}` : ""}
             </SheetTitle>
           </SheetHeader>
           {drawer && (

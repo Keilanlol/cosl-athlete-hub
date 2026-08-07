@@ -11,6 +11,7 @@ import {
   type Athlete,
   type Coach,
 } from "@/lib/types";
+import { useTypeGroup } from "@/hooks/useTypeItems";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AddressSearch } from "@/components/AddressSearch";
@@ -78,6 +79,8 @@ type DrawerState = {
 
 function LodgingPage() {
   const { id } = Route.useParams();
+  const accommodationTypesHook = useTypeGroup("accommodation_types");
+  const roomTypesHook = useTypeGroup("room_types");
   const [accs, setAccs] = useState<Accommodation[]>([]);
   const [rooms, setRooms] = useState<RoomingAssignment[]>([]);
   const [athletes, setAthletes] = useState<Athlete[]>([]);
@@ -163,6 +166,17 @@ function LodgingPage() {
     athletes.forEach((a) => a.primary_sport_id && ids.add(a.primary_sport_id));
     return Array.from(ids);
   }, [athletes]);
+
+  // Charger les noms des sports pour le filtre
+  const [sportsMap, setSportsMap] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (sports.length === 0) return;
+    supabase.from("sports").select("id,name").in("id", sports).then(({ data }) => {
+      const map: Record<string, string> = {};
+      (data ?? []).forEach((s) => { map[(s as { id: string }).id] = (s as { name: string }).name; });
+      setSportsMap(map);
+    });
+  }, [sports]);
 
   const occupantLabel = (room: RoomingAssignment) => {
     if (room.athlete_id) {
@@ -348,7 +362,7 @@ function LodgingPage() {
     const rows = filteredGroups.map((g) => [
       accName(g.accId),
       g.roomNo,
-      g.items[0]?.room_type ?? "",
+      roomTypesHook.getLabel(g.items[0]?.room_type),
       g.items.filter((i) => i.athlete_id || i.coach_id).map((i) => `${occupantLabel(i)}${i.coach_id ? " (encadrant)" : ""}`).join(" | "),
       g.items[0]?.check_in ?? "",
       g.items[0]?.check_out ?? "",
@@ -380,11 +394,8 @@ function LodgingPage() {
   }, [paxKind, athletes, coaches, drawer]);
 
 
-  const roomTypes = useMemo(() => {
-    const set = new Set<string>();
-    rooms.forEach((r) => r.room_type && set.add(r.room_type));
-    return Array.from(set);
-  }, [rooms]);
+  // Filtre des types de chambre : depuis le référentiel (plus depuis les données)
+  const roomTypes = roomTypesHook.items;
 
   return (
     <div className="space-y-6">
@@ -413,7 +424,7 @@ function LodgingPage() {
                   </Button>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {[a.type, [a.postcode, a.city].filter(Boolean).join(" "), a.country].filter(Boolean).join(" · ") || "—"}
+                  {[accommodationTypesHook.getLabel(a.type), [a.postcode, a.city].filter(Boolean).join(" "), a.country].filter(Boolean).join(" · ") || "—"}
                 </p>
                 {a.street && <p className="mt-1 text-xs text-muted-foreground">{a.street}</p>}
                 <p className="mt-2 text-xs text-muted-foreground">
@@ -462,7 +473,7 @@ function LodgingPage() {
             <SelectContent>
               <SelectItem value="all">Tous types</SelectItem>
               {roomTypes.map((t) => (
-                <SelectItem key={t} value={t}>{t}</SelectItem>
+                <SelectItem key={t.code} value={t.code}>{t.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -471,7 +482,7 @@ function LodgingPage() {
             <SelectContent>
               <SelectItem value="all">Tous sports</SelectItem>
               {sports.map((s) => (
-                <SelectItem key={s} value={s}>{s.slice(0, 8)}</SelectItem>
+                <SelectItem key={s} value={s}>{sportsMap[s] ?? s}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -514,7 +525,7 @@ function LodgingPage() {
                   >
                     <TableCell>{accName(g.accId)}</TableCell>
                     <TableCell className="font-medium">{g.roomNo}</TableCell>
-                    <TableCell>{g.items[0]?.room_type ?? "—"}</TableCell>
+                    <TableCell>{roomTypesHook.getLabel(g.items[0]?.room_type)}</TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {g.items.filter((it) => it.athlete_id || it.coach_id).map((it) => (
@@ -556,7 +567,15 @@ function LodgingPage() {
             </div>
             <div className="space-y-1">
               <Label>Type</Label>
-              <Input value={accForm.type} onChange={(e) => setAccForm({ ...accForm, type: e.target.value })} placeholder="hôtel, village…" />
+              <Select value={accForm.type || "__none"} onValueChange={(v) => setAccForm({ ...accForm, type: v === "__none" ? "" : v })}>
+                <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">—</SelectItem>
+                  {accommodationTypesHook.items.map((t) => (
+                    <SelectItem key={t.code} value={t.code}>{t.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1">
               <Label>Capacité (nb chambres)</Label>
@@ -623,7 +642,15 @@ function LodgingPage() {
             </div>
             <div className="space-y-1">
               <Label>Type</Label>
-              <Input value={roomForm.room_type} onChange={(e) => setRoomForm({ ...roomForm, room_type: e.target.value })} placeholder="single, double, suite…" />
+              <Select value={roomForm.room_type || "__none"} onValueChange={(v) => setRoomForm({ ...roomForm, room_type: v === "__none" ? "" : v })}>
+                <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">—</SelectItem>
+                  {roomTypesHook.items.map((t) => (
+                    <SelectItem key={t.code} value={t.code}>{t.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1">
               <Label>Check-in</Label>

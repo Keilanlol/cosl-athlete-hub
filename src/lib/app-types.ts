@@ -41,6 +41,7 @@ export const APP_TYPE_GROUPS: AppTypeGroupMeta[] = [
   { key: "document_categories",        label: "Catégories de documents",    description: "Classification des documents athlètes" },
   { key: "document_statuses",          label: "Statuts de documents",       description: "État d'un document (valide, expiré, etc.)" },
   { key: "travel_statuses",            label: "Statuts de voyage",           description: "État d'un plan de voyage" },
+  { key: "travel_scopes",              label: "Portées de voyage",           description: "Global, sport, individuel" },
   { key: "selection_statuses",         label: "Statuts de sélection",       description: "État d'une sélection d'athlète" },
   { key: "kyc_statuses",               label: "Statuts KYC",                description: "Code couleur des axes KYC" },
   { key: "coach_roles",                label: "Rôles des encadrants",       description: "Rôles des coachs et encadrants" },
@@ -50,6 +51,10 @@ export const APP_TYPE_GROUPS: AppTypeGroupMeta[] = [
   { key: "competition_rounds",         label: "Rounds de compétition",      description: "Finale, demi-finale, quart, séries, etc." },
   { key: "transport_types",            label: "Types de transport",         description: "Navette, bus, train, etc. (logistique locale)" },
   { key: "accommodation_types",        label: "Types d'hébergement",         description: "Hôtel, résidence, village, etc." },
+  { key: "room_types",                 label: "Types de chambre",           description: "Single, double, twin, triple, suite, etc." },
+  { key: "notification_types",         label: "Types de notification",      description: "Types d'alertes système" },
+  { key: "genders",                    label: "Genres",                    description: "Masculin, féminin, mixte" },
+  { key: "medal_types",               label: "Types de médaille",          description: "Or, argent, bronze" },
 ];
 
 export const APP_TYPE_GROUP_KEYS = APP_TYPE_GROUPS.map((g) => g.key);
