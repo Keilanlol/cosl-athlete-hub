@@ -279,11 +279,11 @@ function AdminUsersPage() {
   };
 
   // ── Update role ─────────────────────────────────────────────────────────────
-  const updateRole = async (u: UserProfile, newRole: UserProfile["role"]) => {
-    const { error } = await supabase
-      .from("user_profiles")
-      .update({ role: newRole })
-      .eq("id", u.id);
+  const updateRole = async (u: UserProfile, newRole: string) => {
+    const { error } = await supabase.rpc("admin_update_user_role", {
+      p_user_id: u.id,
+      p_role: newRole,
+    });
     if (error) return toast.error("Échec", { description: friendlyError(error) });
     toast.success("Rôle mis à jour");
     setUsers((arr) => arr.map((x) => (x.id === u.id ? { ...x, role: newRole } : x)));
