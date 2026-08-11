@@ -606,6 +606,55 @@ export async function computeRequiredDocsMultiRole(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// getRequiredDocTypesRPC
+// Appelle la fonction SQL get_required_doc_types (source unique de vérité).
+// Remplace getPersonAccreditationCategories + computeRequiredDocsMultiRole +
+// getActiveSelectionsForPerson côté frontend.
+// Retourne les RequiredDocWithSource prêts à l'emploi.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function getRequiredDocTypesRPC(
+  personId: string,
+  gameId: string,
+): Promise<RequiredDocWithSource[]> {
+  const { data, error } = await supabase.rpc("get_required_doc_types", {
+    p_person_id: personId,
+    p_game_id: gameId,
+  });
+
+  if (error || !data) return [];
+
+  // La RPC retourne des lignes (doc_type_code, role_label, discipline_name, stage_label)
+  // On les groupe par doc_type_code en concaténant les sources
+  const rows = data as { doc_type_code: string; role_label: string; discipline_name: string | null; stage_label: string }[];
+  const docMap = new Map<string, { role_label: string; discipline_name: string | null; stage_label: string }[]>();
+
+  for (const row of rows) {
+    const existing = docMap.get(row.doc_type_code) ?? [];
+    // Éviter les doublons exacts
+    const isDuplicate = existing.some(
+      (e) =>
+        e.role_label === row.role_label &&
+        e.discipline_name === row.discipline_name &&
+        e.stage_label === row.stage_label,
+    );
+    if (!isDuplicate) {
+      existing.push({
+        role_label: row.role_label,
+        discipline_name: row.discipline_name,
+        stage_label: row.stage_label,
+      });
+    }
+    docMap.set(row.doc_type_code, existing);
+  }
+
+  return Array.from(docMap.entries()).map(([doc_type_code, sources]) => ({
+    doc_type_code,
+    sources,
+  }));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // getPersonIdForAthlete
 // Récupère le person_id d'un athlete via athlete_profiles
 // ─────────────────────────────────────────────────────────────────────────────

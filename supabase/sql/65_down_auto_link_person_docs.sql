@@ -33,6 +33,49 @@ ON CONFLICT (id) DO NOTHING;
 -- ── Supprimer la colonne unlinked_at ────────────────────────────────────────
 ALTER TABLE public.accreditation_documents DROP COLUMN IF EXISTS unlinked_at;
 
+-- ── Restaurer la vue (version migration 61, sans get_required_doc_types) ───
+DROP VIEW IF EXISTS public.v_accreditation_completeness;
+CREATE VIEW public.v_accreditation_completeness
+WITH (security_invoker = true) AS
+SELECT
+  a.id AS accreditation_id,
+  a.game_id,
+  a.person_id,
+  a.role_code,
+  (
+    SELECT count(DISTINCT ar.doc_type_code)
+    FROM public.accreditation_requirements ar
+    WHERE ar.game_id = a.game_id
+      AND ar.role_code = a.role_code
+      AND ar.required = true
+      AND (
+        ar.selection_stage IS NULL
+        OR EXISTS (
+          SELECT 1
+          FROM public.selections s
+          WHERE s.game_id = a.game_id
+            AND s.person_id = a.person_id
+            AND s.status::text = ar.selection_stage
+            AND s.status IN ('pre_selected', 'selected', 'reserve')
+        )
+      )
+  ) AS required_count,
+  (
+    SELECT count(DISTINCT ad.person_document_id)
+    FROM public.accreditation_documents ad
+    JOIN public.person_documents pd ON pd.id = ad.person_document_id
+    WHERE ad.accreditation_id = a.id
+      AND ad.status = 'valid'
+      AND pd.status = 'valid'
+      AND (pd.expiry_date IS NULL OR pd.expiry_date >= COALESCE(
+        (SELECT g.competition_start FROM public.games g WHERE g.id = a.game_id),
+        CURRENT_DATE
+      ))
+  ) AS provided_count
+FROM public.accreditations a;
+
+GRANT SELECT ON public.v_accreditation_completeness TO authenticated;
+
 -- ── Restaurer role_code depuis le snapshot ──────────────────────────────────
 UPDATE public.accreditations a
 SET role_code = snap.role_code

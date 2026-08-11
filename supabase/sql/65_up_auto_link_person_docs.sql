@@ -184,6 +184,45 @@ CREATE INDEX IF NOT EXISTS idx_accred_docs_accred_person_doc
   WHERE person_document_id IS NOT NULL;
 
 -- ════════════════════════════════════════════════════════════════════════════
+-- 3bis. Réécriture de v_accreditation_completeness avec get_required_doc_types
+-- ════════════════════════════════════════════════════════════════════════════
+-- La vue précédente (migration 61) jointait sur ar.role_code = a.role_code,
+-- ce qui écartait les 54% d'accréditations avec role_code NULL.
+-- La nouvelle vue appelle get_required_doc_types (source unique) qui dérive
+-- les catégories depuis person_roles, indépendamment de role_code.
+-- Le filtre unlinked_at IS NOT NULL exclut les documents déliés du compteur.
+
+DROP VIEW IF EXISTS public.v_accreditation_completeness;
+CREATE VIEW public.v_accreditation_completeness
+WITH (security_invoker = true) AS
+SELECT
+  a.id AS accreditation_id,
+  a.game_id,
+  a.person_id,
+  a.role_code,
+  (
+    SELECT count(DISTINCT rdt.doc_type_code)
+    FROM public.get_required_doc_types(a.person_id, a.game_id) rdt
+  ) AS required_count,
+  (
+    SELECT count(DISTINCT ad.person_document_id)
+    FROM public.accreditation_documents ad
+    JOIN public.person_documents pd ON pd.id = ad.person_document_id
+    WHERE ad.accreditation_id = a.id
+      AND ad.status = 'valid'
+      AND ad.unlinked_at IS NULL
+      AND pd.status = 'valid'
+      AND (pd.expiry_date IS NULL OR pd.expiry_date >= COALESCE(
+        (SELECT g.competition_start FROM public.games g WHERE g.id = a.game_id),
+        CURRENT_DATE
+      ))
+  ) AS provided_count
+FROM public.accreditations a
+WHERE a.person_id IS NOT NULL;
+
+GRANT SELECT ON public.v_accreditation_completeness TO authenticated;
+
+-- ════════════════════════════════════════════════════════════════════════════
 -- 4. Trigger auto_link_person_docs()
 -- ════════════════════════════════════════════════════════════════════════════
 -- Se déclenche après INSERT (status='valid') ou UPDATE (passage à 'valid').

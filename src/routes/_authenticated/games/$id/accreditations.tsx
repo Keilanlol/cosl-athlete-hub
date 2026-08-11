@@ -26,7 +26,7 @@ import {
   Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { computeRequiredDocsMultiRole, getActiveSelectionsForPerson, getPersonAccreditationCategories, type PersonAccreditationCategory, type RequiredDocWithSource, type SelectionWithStage } from "@/lib/conformity-utils";
+import { getRequiredDocTypesRPC, type PersonAccreditationCategory, type RequiredDocWithSource, type SelectionWithStage } from "@/lib/conformity-utils";
 import { useTypeGroup, clsForCode } from "@/hooks/useTypeItems";
 import type { PersonDocument } from "@/lib/types";
 
@@ -198,31 +198,56 @@ function GameAccreditationsPage() {
 
       setDrawerPersonId(pid);
 
-      // Récupérer TOUTES les sélections actives de la personne pour ce Games
-      // (par person_id, identité unique depuis migration 45).
-      const activeSelections = await getActiveSelectionsForPerson(pid, gameId);
-      setDrawerSelections(activeSelections);
+      // Appel RPC unique à get_required_doc_types (source unique SQL).
+      // Dérive les catégories depuis person_roles + role_accreditation_mapping,
+      // applique l'union des stages actifs, retourne les doc_types requis
+      // avec leurs provenances (rôle + discipline + stage).
+      // Remplace getPersonAccreditationCategories + computeRequiredDocsMultiRole
+      // + getActiveSelectionsForPerson (3 fonctions frontend → 1 appel RPC).
+      const [reqDocs, docsRes, selectionsRes] = await Promise.all([
+        getRequiredDocTypesRPC(pid, gameId),
+        supabase
+          .from("person_documents")
+          .select("*")
+          .eq("person_id", pid)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("selections")
+          .select("id, status, sport_id, sport:sports(name), discipline_id, discipline:disciplines(name)")
+          .eq("game_id", gameId)
+          .eq("person_id", pid)
+          .in("status", ["pre_selected", "selected", "reserve"]),
+      ]);
 
-      // Dériver les rôles actifs depuis person_roles + profils,
-      // résolus en catégories d'accréditation via role_accreditation_mapping.
-      // Ne dépend plus de current.role_code (qui est unique et souvent null
-      // pour les accréditations créées par sync_accreditations_for_game).
-      const categories = await getPersonAccreditationCategories(pid);
-      setDrawerCategories(categories);
-
-      const reqPromise = categories.length > 0
-        ? computeRequiredDocsMultiRole(gameId, categories, activeSelections)
-        : Promise.resolve([] as RequiredDocWithSource[]);
-
-      const docsPromise = supabase
-        .from("person_documents")
-        .select("*")
-        .eq("person_id", pid)
-        .order("created_at", { ascending: false });
-
-      const [reqDocs, docsRes] = await Promise.all([reqPromise, docsPromise]);
       setDrawerRequiredDocs(reqDocs);
       setDrawerPersonDocs((docsRes.data ?? []) as PersonDocument[]);
+
+      // Les sélections restent nécessaires pour les boutons étape (Partie 5.3)
+      const sels = ((selectionsRes.data ?? []) as unknown[]).map((row) => {
+        const r = row as {
+          id: string; status: string; sport_id: string | null;
+          sport: { name: string } | null;
+          discipline_id: string | null;
+          discipline: { name: string } | null;
+        };
+        return {
+          id: r.id, status: r.status,
+          sport_id: r.sport_id, sport_name: r.sport?.name ?? null,
+          discipline_id: r.discipline_id, discipline_name: r.discipline?.name ?? null,
+        } as SelectionWithStage;
+      });
+      setDrawerSelections(sels);
+
+      // Les catégories sont dérivées depuis les provenances des reqDocs
+      const uniqueCategories = new Map<string, PersonAccreditationCategory>();
+      for (const doc of reqDocs) {
+        for (const src of doc.sources) {
+          if (!uniqueCategories.has(src.role_label)) {
+            uniqueCategories.set(src.role_label, { category: src.role_label, role_label: src.role_label });
+          }
+        }
+      }
+      setDrawerCategories(Array.from(uniqueCategories.values()));
     };
 
     run();
