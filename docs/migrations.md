@@ -111,3 +111,9 @@ Le snapshot est **conservé après rollback** (par sécurité). La suppression e
 - **Pas de `supabase db reset`** pour un rollback ciblé — cela remet TOUT à zéro avec perte de données.
 - **Pas de rollback natif** Supabase — le rollback est manuel via le script `down`.
 - Le snapshot permet de restaurer les valeurs exactes qui existaient avant la migration.
+- **Les snapshots doivent être créés directement dans le schéma `migration_backups`**, jamais dans le schéma `public`. Le schéma `public` est exposé via PostgREST : toute table qu'il contient est accessible aux comptes authentifiés (sauf RLS restrictif). Les snapshots contiennent souvent des données sensibles (URLs de passeports, fiches médicales, profils d'encadrants). La migration 60 déplace les snapshots historiques vers `migration_backups`, mais les migrations futures doivent créer leurs snapshots directement dans ce schéma :
+  ```sql
+  CREATE TABLE migration_backups.migration_XX_snapshot_table AS
+    SELECT * FROM public.table;
+  ```
+  Le schéma `migration_backups` n'est pas accessible à `authenticated` ni à `anon` (permissions révoquées par la migration 60).

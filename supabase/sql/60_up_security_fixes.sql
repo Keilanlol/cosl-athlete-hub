@@ -13,31 +13,25 @@
 -- ── 1. Déplacer les snapshots vers un schéma non exposé ─────────────────────
 CREATE SCHEMA IF NOT EXISTS migration_backups;
 
--- Révoquer tous les droits du schéma public sur ces tables
-REVOKE ALL ON public.migration_47_snapshot_fk_constraints FROM PUBLIC, authenticated;
-REVOKE ALL ON public.migration_51_snapshot_accreditation_documents FROM PUBLIC, authenticated;
-REVOKE ALL ON public.migration_54_snapshot_accreditations FROM PUBLIC, authenticated;
-REVOKE ALL ON public.migration_48_snapshot_app_type_items FROM PUBLIC, authenticated;
-REVOKE ALL ON public.migration_48_snapshot_person_documents FROM PUBLIC, authenticated;
-REVOKE ALL ON public.migration_48_snapshot_accreditation_documents FROM PUBLIC, authenticated;
-REVOKE ALL ON public.migration_48_snapshot_accreditation_requirements FROM PUBLIC, authenticated;
-REVOKE ALL ON public.migration_48_snapshot_document_types FROM PUBLIC, authenticated;
-REVOKE ALL ON public.migration_49_snapshot_app_type_items_coach_roles FROM PUBLIC, authenticated;
-REVOKE ALL ON public.migration_49_snapshot_accreditations FROM PUBLIC, authenticated;
-REVOKE ALL ON public.migration_49_snapshot_coach_profiles FROM PUBLIC, authenticated;
-
--- Déplacer les tables vers migration_backups
-ALTER TABLE IF EXISTS public.migration_47_snapshot_fk_constraints SET SCHEMA migration_backups;
-ALTER TABLE IF EXISTS public.migration_51_snapshot_accreditation_documents SET SCHEMA migration_backups;
-ALTER TABLE IF EXISTS public.migration_54_snapshot_accreditations SET SCHEMA migration_backups;
-ALTER TABLE IF EXISTS public.migration_48_snapshot_app_type_items SET SCHEMA migration_backups;
-ALTER TABLE IF EXISTS public.migration_48_snapshot_person_documents SET SCHEMA migration_backups;
-ALTER TABLE IF EXISTS public.migration_48_snapshot_accreditation_documents SET SCHEMA migration_backups;
-ALTER TABLE IF EXISTS public.migration_48_snapshot_accreditation_requirements SET SCHEMA migration_backups;
-ALTER TABLE IF EXISTS public.migration_48_snapshot_document_types SET SCHEMA migration_backups;
-ALTER TABLE IF EXISTS public.migration_49_snapshot_app_type_items_coach_roles SET SCHEMA migration_backups;
-ALTER TABLE IF EXISTS public.migration_49_snapshot_accreditations SET SCHEMA migration_backups;
-ALTER TABLE IF EXISTS public.migration_49_snapshot_coach_profiles SET SCHEMA migration_backups;
+-- Boucle générique : déplace TOUTES les tables du schéma public dont le nom
+-- correspond au motif "migration_%_snapshot_%". Couvre les snapshots existants
+-- (migrations 39, 43, 47, 48, 49, 51, 54…) et les futurs.
+DO $$
+DECLARE
+  snap RECORD;
+BEGIN
+  FOR snap IN
+    SELECT tablename
+    FROM pg_tables
+    WHERE schemaname = 'public'
+      AND tablename ~ '^migration_[0-9]+_snapshot_'
+  LOOP
+    -- Révoquer les droits avant le déplacement
+    EXECUTE format('REVOKE ALL ON public.%I FROM PUBLIC, authenticated', snap.tablename);
+    -- Déplacer la table vers migration_backups
+    EXECUTE format('ALTER TABLE public.%I SET SCHEMA migration_backups', snap.tablename);
+  END LOOP;
+END $$;
 
 -- Révoquer tous les droits sur le schéma migration_backups
 REVOKE ALL ON SCHEMA migration_backups FROM PUBLIC, anon, authenticated;

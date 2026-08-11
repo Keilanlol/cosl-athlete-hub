@@ -3,17 +3,21 @@
 -- ============================================================================
 
 -- ── 1. Restaurer les snapshots dans public ──────────────────────────────────
-ALTER TABLE IF EXISTS migration_backups.migration_47_snapshot_fk_constraints SET SCHEMA public;
-ALTER TABLE IF EXISTS migration_backups.migration_51_snapshot_accreditation_documents SET SCHEMA public;
-ALTER TABLE IF EXISTS migration_backups.migration_54_snapshot_accreditations SET SCHEMA public;
-ALTER TABLE IF EXISTS migration_backups.migration_48_snapshot_app_type_items SET SCHEMA public;
-ALTER TABLE IF EXISTS migration_backups.migration_48_snapshot_person_documents SET SCHEMA public;
-ALTER TABLE IF EXISTS migration_backups.migration_48_snapshot_accreditation_documents SET SCHEMA public;
-ALTER TABLE IF EXISTS migration_backups.migration_48_snapshot_accreditation_requirements SET SCHEMA public;
-ALTER TABLE IF EXISTS migration_backups.migration_48_snapshot_document_types SET SCHEMA public;
-ALTER TABLE IF EXISTS migration_backups.migration_49_snapshot_app_type_items_coach_roles SET SCHEMA public;
-ALTER TABLE IF EXISTS migration_backups.migration_49_snapshot_accreditations SET SCHEMA public;
-ALTER TABLE IF EXISTS migration_backups.migration_49_snapshot_coach_profiles SET SCHEMA public;
+-- Boucle générique inverse : déplace TOUTES les tables de migration_backups
+-- dont le nom correspond au motif "migration_%_snapshot_%".
+DO $$
+DECLARE
+  snap RECORD;
+BEGIN
+  FOR snap IN
+    SELECT tablename
+    FROM pg_tables
+    WHERE schemaname = 'migration_backups'
+      AND tablename ~ '^migration_[0-9]+_snapshot_'
+  LOOP
+    EXECUTE format('ALTER TABLE migration_backups.%I SET SCHEMA public', snap.tablename);
+  END LOOP;
+END $$;
 
 -- ── 2. Supprimer les policies techniques et désactiver RLS ──────────────────
 DROP POLICY IF EXISTS document_type_codes_select ON public.document_type_codes;
