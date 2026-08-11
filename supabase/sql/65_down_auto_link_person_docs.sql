@@ -14,6 +14,9 @@ DROP FUNCTION IF EXISTS public.auto_link_person_docs();
 -- ── Supprimer la RPC link_available_docs ────────────────────────────────────
 DROP FUNCTION IF EXISTS public.link_available_docs(uuid);
 
+-- ── Supprimer la RPC link_all_existing_docs ──────────────────────────────────
+DROP FUNCTION IF EXISTS public.link_all_existing_docs(boolean);
+
 -- ── Supprimer l'index ───────────────────────────────────────────────────────
 DROP INDEX IF EXISTS public.idx_accred_docs_accred_person_doc;
 

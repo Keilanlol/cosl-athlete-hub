@@ -262,6 +262,145 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.link_available_docs(uuid) TO authenticated;
 
+-- ── 4bis. RPC link_all_existing_docs() — rattrapage des accréditations existantes ──
+-- Passe de rattrapage exécutable manuellement (depuis l'admin).
+-- En dry_run (défaut), ne crée rien et retourne un rapport détaillé.
+-- Respecte unlinked_at : ne relie pas les types déliés.
+-- Crée les liaisons en status = 'pending' uniquement.
+-- Réservée aux rôles admin / games_manager.
+
+CREATE OR REPLACE FUNCTION public.link_all_existing_docs(
+  p_dry_run boolean DEFAULT true
+)
+RETURNS TABLE(
+  accreditation_id uuid,
+  full_name text,
+  game_short_name text,
+  doc_type_code text,
+  would_link boolean,
+  reason text
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_caller_role text;
+  v_accred RECORD;
+  v_req RECORD;
+  v_best_doc RECORD;
+  v_existing RECORD;
+  v_game_name text;
+  v_total_to_link int := 0;
+  v_total_already_linked int := 0;
+  v_total_unlinked int := 0;
+  v_total_no_doc int := 0;
+BEGIN
+  -- Garde : admin ou games_manager uniquement
+  v_caller_role := public.get_current_user_role();
+  IF v_caller_role NOT IN ('admin', 'games_manager') THEN
+    RAISE EXCEPTION 'Accès refusé : rôle % non autorisé', v_caller_role;
+  END IF;
+
+  -- Parcourir toutes les accréditations qui ont un person_id
+  FOR v_accred IN
+    SELECT a.id, a.game_id, a.person_id, a.role_code, a.full_name
+    FROM public.accreditations a
+    WHERE a.person_id IS NOT NULL
+    ORDER BY a.full_name
+  LOOP
+    -- Récupérer le nom court du Games
+    SELECT g.short_name INTO v_game_name
+    FROM public.games g
+    WHERE g.id = v_accred.game_id;
+    v_game_name := COALESCE(v_game_name, v_accred.game_id::text);
+
+    -- Pour chaque doc_type requis pour cette accréditation
+    FOR v_req IN
+      SELECT DISTINCT ar.doc_type_code
+      FROM public.accreditation_requirements ar
+      WHERE ar.game_id = v_accred.game_id
+        AND ar.role_code = v_accred.role_code
+        AND ar.required = true
+    LOOP
+      -- Vérifier s'il existe déjà une liaison non déliée
+      SELECT ad.id INTO v_existing
+      FROM public.accreditation_documents ad
+      JOIN public.person_documents pd ON pd.id = ad.person_document_id
+      WHERE ad.accreditation_id = v_accred.id
+        AND pd.doc_type = v_req.doc_type_code
+        AND ad.unlinked_at IS NULL
+      LIMIT 1;
+
+      IF v_existing IS NOT NULL THEN
+        v_total_already_linked := v_total_already_linked + 1;
+        RETURN QUERY SELECT
+          v_accred.id, v_accred.full_name, v_game_name,
+          v_req.doc_type_code, false, 'Déjà lié'::text;
+        CONTINUE;
+      END IF;
+
+      -- Vérifier s'il existe une liaison déliée
+      PERFORM 1
+      FROM public.accreditation_documents ad
+      JOIN public.person_documents pd ON pd.id = ad.person_document_id
+      WHERE ad.accreditation_id = v_accred.id
+        AND pd.doc_type = v_req.doc_type_code
+        AND ad.unlinked_at IS NOT NULL
+      LIMIT 1;
+
+      IF FOUND THEN
+        v_total_unlinked := v_total_unlinked + 1;
+        RETURN QUERY SELECT
+          v_accred.id, v_accred.full_name, v_game_name,
+          v_req.doc_type_code, false, 'Délié par l''utilisateur'::text;
+        CONTINUE;
+      END IF;
+
+      -- Trouver le meilleur document valide
+      SELECT pd.id INTO v_best_doc
+      FROM public.person_documents pd
+      WHERE pd.person_id = v_accred.person_id
+        AND pd.doc_type = v_req.doc_type_code
+        AND pd.status = 'valid'
+      ORDER BY pd.issued_date DESC NULLS LAST, pd.created_at DESC
+      LIMIT 1;
+
+      IF v_best_doc IS NULL THEN
+        v_total_no_doc := v_total_no_doc + 1;
+        RETURN QUERY SELECT
+          v_accred.id, v_accred.full_name, v_game_name,
+          v_req.doc_type_code, false, 'Aucun document valide'::text;
+      ELSE
+        v_total_to_link := v_total_to_link + 1;
+        -- En dry_run, ne pas écrire
+        IF NOT p_dry_run THEN
+          INSERT INTO public.accreditation_documents (
+            accreditation_id, person_document_id, status, uploaded_at
+          )
+          VALUES (v_accred.id, v_best_doc.id, 'pending', now());
+        END IF;
+        RETURN QUERY SELECT
+          v_accred.id, v_accred.full_name, v_game_name,
+          v_req.doc_type_code, true,
+          CASE WHEN p_dry_run THEN 'Sera lié (dry run)'::text ELSE 'Liaison créée (pending)'::text END;
+      END IF;
+    END LOOP;
+  END LOOP;
+
+  -- Ligne de synthèse (accréditation_id NULL pour la distinguer)
+  RETURN QUERY SELECT
+    NULL::uuid,
+    'SYNTHÈSE'::text,
+    CASE WHEN p_dry_run THEN 'DRY RUN'::text ELSE 'EXÉCUTION'::text END,
+    NULL::text,
+    v_total_to_link > 0,
+    format('À lier: %s · Déjà liés: %s · Déliés: %s · Sans doc: %s',
+      v_total_to_link, v_total_already_linked, v_total_unlinked, v_total_no_doc)::text;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.link_all_existing_docs(boolean) TO authenticated;
+
 -- ── 5. Mise à jour de v_accreditation_completeness ──────────────────────────
 -- Exclure les lignes déliées (unlinked_at IS NOT NULL) du compteur provided.
 -- La vue actuelle (migration 61) ne filtre pas sur unlinked_at car la colonne
