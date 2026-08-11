@@ -45,7 +45,7 @@ export function PersonCombobox({
   const selected = options.find((o) => o.id === value);
 
   return (
-    <Popover open={open} onOpenChange={setOpen} modal>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
           type="button"
