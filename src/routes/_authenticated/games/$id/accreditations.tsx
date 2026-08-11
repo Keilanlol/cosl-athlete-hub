@@ -374,10 +374,10 @@ function GameAccreditationsPage() {
           {current && (
             <>
               <SheetHeader>
-                <div className="flex items-center justify-between">
-                  <SheetTitle>{current.full_name}</SheetTitle>
+                <div className="flex items-center justify-between pr-12">
+                  <SheetTitle className="truncate">{current.full_name}</SheetTitle>
                   {current.person_id && (
-                    <Button asChild size="sm" variant="outline">
+                    <Button asChild size="sm" variant="outline" className="shrink-0">
                       <Link to="/persons/$personId" params={{ personId: current.person_id }}>
                         <ExternalLink className="mr-1 h-3 w-3" /> Fiche personne
                       </Link>
