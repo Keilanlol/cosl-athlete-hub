@@ -73,7 +73,7 @@ export const supabaseConfigError = supabaseConfigured ? null : configErrorMessag
 // Remplace l'ancienne fonction
 export const usernameToEmail = async (username: string): Promise<string> => {
   const { data, error } = await supabase
-    .from("user_profiles")
+    .from("v_username_lookup")
     .select("email")
     .eq("username", username.trim().toLowerCase())
     .maybeSingle();
