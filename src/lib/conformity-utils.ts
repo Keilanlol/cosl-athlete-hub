@@ -162,23 +162,61 @@ export async function computeMissingDocs(
 
 // ─────────────────────────────────────────────────────────────────────────────
 // createConformityNotification
-// Crée une notification listant les documents manquants pour une personne
+// Crée une notification listant les documents manquants pour une personne,
+// en tenant compte de l'UNION des stages actifs (comme le drawer).
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function createConformityNotification(
   personId: string,
   gameId: string,
   accreditationCategory: string,
-  selectionStage: string,
 ): Promise<void> {
-  const result = await computeMissingDocs(
-    personId,
-    gameId,
-    accreditationCategory,
-    selectionStage,
-  );
+  // Récupérer toutes les sélections actives de la personne
+  const activeSelections = await getActiveSelectionsForPerson(personId, gameId);
 
-  // Récupère le nom du Games
+  // Calculer l'union des requirements
+  const requiredDocs = await computeRequiredDocsUnion(gameId, accreditationCategory, activeSelections);
+  const requiredCodes = requiredDocs.map((d) => d.doc_type_code);
+
+  // Récupérer les documents de la personne
+  const [docsRes, gameRes] = await Promise.all([
+    supabase
+      .from("person_documents")
+      .select("*")
+      .eq("person_id", personId)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("games")
+      .select("competition_start")
+      .eq("id", gameId)
+      .maybeSingle(),
+  ]);
+
+  const allDocs = (docsRes.data ?? []) as PersonDocument[];
+  const gameStart = (gameRes.data as { competition_start?: string } | null)?.competition_start;
+
+  // Un document n'est considéré fourni que s'il est valide ET non expiré
+  const isDocValid = (d: PersonDocument): boolean => {
+    if (d.status !== "valid") return false;
+    if (d.expiry_date && gameStart) {
+      return d.expiry_date >= gameStart;
+    }
+    if (d.expiry_date) {
+      return d.expiry_date >= new Date().toISOString().slice(0, 10);
+    }
+    return true;
+  };
+
+  const providedTypes = new Set(allDocs.filter(isDocValid).map((d) => d.doc_type));
+  const missingCodes = requiredCodes.filter((code) => !providedTypes.has(code));
+
+  if (missingCodes.length === 0) return;
+
+  // Récupérer les libellés des types de documents manquants
+  const labelMap = await fetchDocTypeLabels(missingCodes);
+  const missingList = missingCodes.map((code) => labelMap[code] ?? code).join(", ");
+
+  // Récupérer le nom du Games
   const { data: game } = await supabase
     .from("games")
     .select("name")
@@ -186,7 +224,7 @@ export async function createConformityNotification(
     .maybeSingle();
   const gameName = (game as { name?: string } | null)?.name ?? "Games";
 
-  // Récupère le nom de la personne
+  // Récupérer le nom de la personne
   const { data: person } = await supabase
     .from("persons")
     .select("first_name, last_name")
@@ -196,16 +234,7 @@ export async function createConformityNotification(
     ? `${(person as { first_name: string }).first_name} ${(person as { last_name: string }).last_name}`
     : "Personne";
 
-  // Libellé de l'étape de sélection depuis le référentiel app_type_items
-  const stageLabel = await resolveSelectionStageLabel(selectionStage);
-
-  if (result.missing.length === 0) {
-    // Tous les documents requis sont déjà fournis — pas de notification
-    return;
-  }
-
-  const missingList = result.missing.map((m) => m.label).join(", ");
-  const message = `Documents requis pour ${gameName} — ${accreditationCategory} — ${stageLabel} (${personName}) : ${missingList}`;
+  const message = `Documents requis pour ${gameName} — ${accreditationCategory} (${personName}) : ${missingList}`;
 
   await supabase.from("notifications").insert({
     notification_type: "selection_documents_required",

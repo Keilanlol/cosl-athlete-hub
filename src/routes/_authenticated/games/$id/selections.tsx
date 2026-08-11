@@ -333,7 +333,7 @@ function SelectionsPage() {
       if (entityType === "athlete") {
         const personId = await getPersonIdForAthlete(form.entity_id);
         if (personId) {
-          await createConformityNotification(personId, gameId, "athlete", "pre_selected");
+          await createConformityNotification(personId, gameId, "athlete");
           const athlete = athletes.find((a) => a.id === form.entity_id);
           if (athlete) {
             await createAutoAccreditation(personId, "athlete", `${athlete.first_name} ${athlete.last_name}`);
@@ -344,7 +344,7 @@ function SelectionsPage() {
         const person = persons.find((p) => p.id === form.person_id);
         if (person) {
           const roleCode = getPersonRoleCode(form.person_id);
-          await createConformityNotification(form.person_id, gameId, roleCode, "pre_selected");
+          await createConformityNotification(form.person_id, gameId, roleCode);
           await createAutoAccreditation(form.person_id, roleCode, `${person.first_name} ${person.last_name}`);
         }
       }
@@ -525,7 +525,7 @@ function SelectionsPage() {
       if (["pre_selected", "selected", "reserve"].includes(newStatus) && pid) {
         const type = getRowType(sel);
         const roleCode = type === "athlete" ? "athlete" : getPersonRoleCode(pid);
-        await createConformityNotification(pid, gameId, roleCode, newStatus);
+        await createConformityNotification(pid, gameId, roleCode);
       }
 
       load();
