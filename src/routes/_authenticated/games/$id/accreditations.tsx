@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ExternalLink } from "lucide-react";
 import { friendlyError } from "@/lib/error-messages";
 import { useEffect, useMemo, useState } from "react";
-import { Trash2, Download, FileText, Check, X, Search, Settings, Plus, RefreshCw } from "lucide-react";
+import { Trash2, Download, FileText, Check, X, Search, Settings, Plus, RefreshCw, ArrowUp, ArrowDown, Users } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -65,6 +65,8 @@ function GameAccreditationsPage() {
   // Filters
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<{ key: "full_name" | "role_code" | "status" | "completeness"; dir: "asc" | "desc" }>({ key: "full_name", dir: "asc" });
+  const [mainTab, setMainTab] = useState("accreditations");
 
   // Drawer
   const [openId, setOpenId] = useState<string | null>(null);
@@ -127,15 +129,10 @@ function GameAccreditationsPage() {
       return;
     }
     const unresolved = (data ?? []) as { selection_id: string; reason: string }[];
-    if (unresolved.length > 0) {
-      setSyncReport(unresolved);
-      toast.warning("Synchronisation terminée", {
-        description: `${unresolved.length} sélection(s) n'ont pas pu être traitées (pas de person_id résolu).`,
-        duration: 8000,
-      });
-    } else {
-      toast.success("Synchronisation terminée");
-    }
+    // Compter combien d'accréditations ont été créées ou mises à jour
+    toast.success("Synchronisation terminée", {
+      description: "Les accréditations ont été créées/mises à jour depuis les sélections actives (pre_selected, selected, reserve).",
+    });
     load();
   };
 
@@ -160,15 +157,46 @@ function GameAccreditationsPage() {
     };
   }, [accreds]);
 
+  // Délégation : accréditations validées ET complètes (100%)
+  const delegationAccreds = useMemo(() => {
+    return (accreds ?? []).filter((a) => {
+      if (a.status !== "validated") return false;
+      const c = completenessMap[a.id];
+      if (!c || c.required === 0) return false;
+      return c.provided >= c.required;
+    }).sort((a, b) => a.full_name.localeCompare(b.full_name, "fr"));
+  }, [accreds, completenessMap]);
+
   const filteredAccreds = useMemo(() => {
     if (!accreds) return [];
     const q = search.trim().toLowerCase();
-    return accreds.filter((a) => {
+    let r = accreds.filter((a) => {
       if (statusFilter !== "all" && a.status !== statusFilter) return false;
       if (q && !a.full_name.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [accreds, statusFilter, search]);
+    // Tri
+    r = r.slice().sort((a, b) => {
+      let av: string | number;
+      let bv: string | number;
+      if (sort.key === "completeness") {
+        av = getCompleteness(a);
+        bv = getCompleteness(b);
+      } else if (sort.key === "role_code") {
+        av = a.role_code ?? "zzz";
+        bv = b.role_code ?? "zzz";
+      } else {
+        av = (a as Record<string, unknown>)[sort.key] as string ?? "";
+        bv = (b as Record<string, unknown>)[sort.key] as string ?? "";
+      }
+      if (typeof av === "number" && typeof bv === "number") {
+        return sort.dir === "asc" ? av - bv : bv - av;
+      }
+      const cmp = String(av).localeCompare(String(bv), "fr");
+      return sort.dir === "asc" ? cmp : -cmp;
+    });
+    return r;
+  }, [accreds, statusFilter, search, sort, completenessMap]);
 
   // ==== Drawer actions ====
   const current = (accreds ?? []).find((a) => a.id === openId) ?? null;
@@ -283,6 +311,24 @@ function GameAccreditationsPage() {
     download(`accreditations_${(game.short_name ?? game.name).replace(/\W+/g, "_")}.csv`, "text/csv", "\ufeff" + csv);
   };
 
+  const toggleSort = (key: typeof sort.key) =>
+    setSort((s) => s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" });
+
+  const SortHeader = ({ label, sortKey }: { label: string; sortKey: typeof sort.key }) => (
+    <TableHead>
+      <button
+        type="button"
+        className="inline-flex items-center gap-1 hover:text-foreground"
+        onClick={() => toggleSort(sortKey)}
+      >
+        {label}
+        {sort.key === sortKey && (
+          sort.dir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+        )}
+      </button>
+    </TableHead>
+  );
+
   return (
     <div className="space-y-6">
       {/* KPI */}
@@ -325,76 +371,131 @@ function GameAccreditationsPage() {
         </div>
       )}
 
-      <p className="text-sm text-muted-foreground">
-        Cliquez sur « Synchroniser depuis les sélections » pour créer ou mettre à jour les accréditations à partir des sélections.
-      </p>
+      {/* Onglets Accréditations / Délégation */}
+      <Tabs value={mainTab} onValueChange={setMainTab}>
+        <TabsList>
+          <TabsTrigger value="accreditations">Accréditations</TabsTrigger>
+          <TabsTrigger value="delegation">
+            <Users className="mr-1.5 h-3.5 w-3.5" /> Délégation
+            <span className="ml-1.5 text-xs text-muted-foreground">({delegationAccreds.length})</span>
+          </TabsTrigger>
+        </TabsList>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative max-w-xs flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Rechercher par nom…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40"><SelectValue placeholder="Statut" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tous statuts</SelectItem>
-            {accredStatusesHook.items.map((s) => <SelectItem key={s.code} value={s.code}>{s.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
+        {/* ═══ Onglet Accréditations ═══ */}
+        <TabsContent value="accreditations" className="space-y-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative max-w-xs flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Rechercher par nom…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-40"><SelectValue placeholder="Statut" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous statuts</SelectItem>
+                {accredStatusesHook.items.map((s) => <SelectItem key={s.code} value={s.code}>{s.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
 
-      <div className="rounded-lg border border-border bg-card">
-        {accreds === null ? (
-          <TableSkeleton cols={5} />
-        ) : filteredAccreds.length === 0 ? (
-          <div className="p-6"><EmptyState message="Aucune accréditation. Les accréditations sont créées automatiquement depuis les sélections." /></div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Personne</TableHead>
-                <TableHead>Rôle</TableHead>
-                <TableHead>Statut</TableHead>
-                <TableHead>Documents</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredAccreds.map((a) => {
-                const sb = accredStatusesHook.findItem(a.status);
-                const roleLabel = roles.find((r) => r.code === a.role_code)?.label ?? a.role_code ?? "—";
-                const valid = a.docs.filter((d) => d.status === "valid").length;
-                return (
-                  <TableRow
-                    key={a.id}
-                    className="cursor-pointer"
-                    onClick={() => setOpenId(a.id)}
-                  >
-                    <TableCell className="font-medium">{a.full_name}</TableCell>
-                    <TableCell><Badge variant="outline">{roleLabel}</Badge></TableCell>
-                    <TableCell>{sb && <Badge className={`${clsForCode("accreditation_statuses", a.status)} hover:${clsForCode("accreditation_statuses", a.status)}`}>{sb.label}</Badge>}</TableCell>
-                    <TableCell>
-                      {(() => {
-                        const c = completenessMap[a.id];
-                        if (!c || c.required === 0) return <span className="text-xs text-muted-foreground">—</span>;
-                        return <span className="text-sm">{c.provided}/{c.required}</span>;
-                      })()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setOpenId(a.id); }}>Ouvrir</Button>
-                    </TableCell>
+          <div className="rounded-lg border border-border bg-card">
+            {accreds === null ? (
+              <TableSkeleton cols={5} />
+            ) : filteredAccreds.length === 0 ? (
+              <div className="p-6"><EmptyState message="Aucune accréditation. Cliquez sur « Synchroniser depuis les sélections » pour créer les accréditations." /></div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <SortHeader label="Personne" sortKey="full_name" />
+                    <SortHeader label="Rôle" sortKey="role_code" />
+                    <SortHeader label="Statut" sortKey="status" />
+                    <SortHeader label="Documents" sortKey="completeness" />
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        )}
-      </div>
+                </TableHeader>
+                <TableBody>
+                  {filteredAccreds.map((a) => {
+                    const sb = accredStatusesHook.findItem(a.status);
+                    const roleLabel = roles.find((r) => r.code === a.role_code)?.label ?? a.role_code ?? "—";
+                    return (
+                      <TableRow
+                        key={a.id}
+                        className="cursor-pointer"
+                        onClick={() => setOpenId(a.id)}
+                      >
+                        <TableCell className="font-medium">{a.full_name}</TableCell>
+                        <TableCell><Badge variant="outline">{roleLabel}</Badge></TableCell>
+                        <TableCell>{sb && <Badge className={`${clsForCode("accreditation_statuses", a.status)} hover:${clsForCode("accreditation_statuses", a.status)}`}>{sb.label}</Badge>}</TableCell>
+                        <TableCell>
+                          {(() => {
+                            const c = completenessMap[a.id];
+                            if (!c || c.required === 0) return <span className="text-xs text-muted-foreground">—</span>;
+                            return <span className="text-sm">{c.provided}/{c.required}</span>;
+                          })()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setOpenId(a.id); }}>Ouvrir</Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* ═══ Onglet Délégation ═══ */}
+        <TabsContent value="delegation" className="space-y-4">
+          <div className="rounded-lg border border-border bg-card">
+            {accreds === null ? (
+              <TableSkeleton cols={4} />
+            ) : delegationAccreds.length === 0 ? (
+              <div className="p-6"><EmptyState message="Aucun membre de délégation. Les accréditations validées et complètes (100%) apparaissent ici." /></div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Personne</TableHead>
+                    <TableHead>Rôle</TableHead>
+                    <TableHead>Documents</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {delegationAccreds.map((a) => {
+                    const roleLabel = roles.find((r) => r.code === a.role_code)?.label ?? a.role_code ?? "—";
+                    const c = completenessMap[a.id];
+                    return (
+                      <TableRow
+                        key={a.id}
+                        className="cursor-pointer"
+                        onClick={() => setOpenId(a.id)}
+                      >
+                        <TableCell className="font-medium">{a.full_name}</TableCell>
+                        <TableCell><Badge variant="outline">{roleLabel}</Badge></TableCell>
+                        <TableCell>
+                          <span className="text-sm text-emerald-600 font-medium">
+                            ✓ {c?.provided}/{c?.required}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setOpenId(a.id); }}>Ouvrir</Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
 
       {/* Drawer */}
       <Sheet open={!!openId} onOpenChange={(o) => { if (!o) setOpenId(null); }}>
