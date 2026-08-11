@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { computeAge, checkAgeEligibility } from "@/lib/kyc-utils";
 import { createConformityNotification, getPersonIdForAthlete } from "@/lib/conformity-utils";
+import { resolveAccreditationCategory } from "@/lib/role-mapping";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -340,12 +341,21 @@ function SelectionsPage() {
           }
         }
       } else {
-        // Coach or fed member
+        // Coach or fed member — résoudre la catégorie d'accréditation
+        // via role_accreditation_mapping (pas le rôle brut du profil)
         const person = persons.find((p) => p.id === form.person_id);
         if (person) {
-          const roleCode = getPersonRoleCode(form.person_id);
-          await createConformityNotification(form.person_id, gameId, roleCode);
-          await createAutoAccreditation(form.person_id, roleCode, `${person.first_name} ${person.last_name}`);
+          const rawRole = getPersonRoleCode(form.person_id);
+          const coachProfile = coachProfiles.find((c) => c.person_id === form.person_id);
+          const fedMemberProfile = fedMemberProfiles.find((f) => f.person_id === form.person_id);
+          let accredCategory = "official";
+          if (coachProfile) {
+            accredCategory = (await resolveAccreditationCategory("coach_roles", coachProfile.role)) ?? "coach";
+          } else if (fedMemberProfile) {
+            accredCategory = (await resolveAccreditationCategory("federation_member_roles", fedMemberProfile.role)) ?? "official";
+          }
+          await createConformityNotification(form.person_id, gameId, accredCategory);
+          await createAutoAccreditation(form.person_id, accredCategory, `${person.first_name} ${person.last_name}`);
         }
       }
     }
@@ -524,8 +534,20 @@ function SelectionsPage() {
       // Trigger conformity notification when selection stage changes
       if (["pre_selected", "selected", "reserve"].includes(newStatus) && pid) {
         const type = getRowType(sel);
-        const roleCode = type === "athlete" ? "athlete" : getPersonRoleCode(pid);
-        await createConformityNotification(pid, gameId, roleCode);
+        let accredCategory = "athlete";
+        if (type !== "athlete") {
+          // Résoudre la catégorie d'accréditation via role_accreditation_mapping
+          const coachProfile = coachProfiles.find((c) => c.person_id === pid);
+          const fedMemberProfile = fedMemberProfiles.find((f) => f.person_id === pid);
+          if (coachProfile) {
+            accredCategory = (await resolveAccreditationCategory("coach_roles", coachProfile.role)) ?? "coach";
+          } else if (fedMemberProfile) {
+            accredCategory = (await resolveAccreditationCategory("federation_member_roles", fedMemberProfile.role)) ?? "official";
+          } else {
+            accredCategory = "official";
+          }
+        }
+        await createConformityNotification(pid, gameId, accredCategory);
       }
 
       load();
