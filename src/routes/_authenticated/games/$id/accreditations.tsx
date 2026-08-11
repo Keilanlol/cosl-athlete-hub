@@ -26,7 +26,7 @@ import {
   Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { computeRequiredDocsUnion, getActiveSelectionsForPerson, type RequiredDocWithSource, type SelectionWithStage } from "@/lib/conformity-utils";
+import { computeRequiredDocsMultiRole, getActiveSelectionsForPerson, getPersonAccreditationCategories, type PersonAccreditationCategory, type RequiredDocWithSource, type SelectionWithStage } from "@/lib/conformity-utils";
 import { useTypeGroup, clsForCode } from "@/hooks/useTypeItems";
 import type { PersonDocument } from "@/lib/types";
 
@@ -71,6 +71,7 @@ function GameAccreditationsPage() {
   const [drawerPersonId, setDrawerPersonId] = useState<string | null>(null);
   const [drawerRequiredDocs, setDrawerRequiredDocs] = useState<RequiredDocWithSource[]>([]);
   const [drawerSelections, setDrawerSelections] = useState<SelectionWithStage[]>([]);
+  const [drawerCategories, setDrawerCategories] = useState<PersonAccreditationCategory[]>([]);
   const [drawerReloadKey, setDrawerReloadKey] = useState(0);
   const [completenessMap, setCompletenessMap] = useState<Record<string, { required: number; provided: number }>>({});
 
@@ -199,14 +200,18 @@ function GameAccreditationsPage() {
 
       // Récupérer TOUTES les sélections actives de la personne pour ce Games
       // (par person_id, identité unique depuis migration 45).
-      // L'union des requirements de tous les stages actifs détermine les
-      // documents à afficher. Le marquage par discipline + stage indique
-      // la provenance de chaque exigence.
       const activeSelections = await getActiveSelectionsForPerson(pid, gameId);
       setDrawerSelections(activeSelections);
 
-      const reqPromise = current.role_code
-        ? computeRequiredDocsUnion(gameId, current.role_code, activeSelections)
+      // Dériver les rôles actifs depuis person_roles + profils,
+      // résolus en catégories d'accréditation via role_accreditation_mapping.
+      // Ne dépend plus de current.role_code (qui est unique et souvent null
+      // pour les accréditations créées par sync_accreditations_for_game).
+      const categories = await getPersonAccreditationCategories(pid);
+      setDrawerCategories(categories);
+
+      const reqPromise = categories.length > 0
+        ? computeRequiredDocsMultiRole(gameId, categories, activeSelections)
         : Promise.resolve([] as RequiredDocWithSource[]);
 
       const docsPromise = supabase
@@ -387,6 +392,7 @@ function GameAccreditationsPage() {
                   docTypes={docTypes}
                   requiredDocs={drawerRequiredDocs}
                   selections={drawerSelections}
+                  categories={drawerCategories}
                   personDocs={drawerPersonDocs}
                   personId={drawerPersonId}
                   gameId={gameId}
@@ -431,7 +437,7 @@ function GameAccreditationsPage() {
 }
 
 function AccredDrawerBody({
-  accreditation, completeness, docTypes, requiredDocs, selections, personDocs, personId, gameId,
+  accreditation, completeness, docTypes, requiredDocs, selections, categories, personDocs, personId, gameId,
   getDocStatusLabel, getRoleLabel, getAccredStatusLabel,
   onReload, onDocStatus,
   onSubmit, onValidate, onReject,
@@ -441,6 +447,7 @@ function AccredDrawerBody({
   docTypes: { code: string; label: string }[];
   requiredDocs: RequiredDocWithSource[];
   selections: SelectionWithStage[];
+  categories: PersonAccreditationCategory[];
   personDocs: PersonDocument[];
   personId: string | null;
   gameId: string;
@@ -516,7 +523,20 @@ function AccredDrawerBody({
       <section className="rounded-lg border border-border p-4">
         <h3 className="text-sm font-semibold mb-2 text-foreground">Personne</h3>
         <dl className="grid grid-cols-2 gap-2 text-sm">
-          <div><dt className="text-xs text-muted-foreground">Rôle</dt><dd>{getRoleLabel(a.role_code)}</dd></div>
+          <div>
+            <dt className="text-xs text-muted-foreground">Rôles</dt>
+            <dd className="flex flex-wrap gap-1 mt-0.5">
+              {categories.length === 0 ? (
+                <span className="text-muted-foreground">{getRoleLabel(a.role_code)}</span>
+              ) : (
+                categories.map((c) => (
+                  <Badge key={c.category} variant="outline" className="text-xs">
+                    {c.role_label}
+                  </Badge>
+                ))
+              )}
+            </dd>
+          </div>
           <div><dt className="text-xs text-muted-foreground">Statut</dt><dd>{getAccredStatusLabel(a.status)}</dd></div>
         </dl>
       </section>
@@ -690,7 +710,7 @@ function DocTypeRow({
         )}
       </div>
 
-      {/* Provenances : liste des disciplines + stages qui exigent ce document */}
+      {/* Provenances : liste des rôles + disciplines + stages qui exigent ce document */}
       {sources.length > 0 && (
         <p className="text-xs text-muted-foreground">
           Requis pour :{" "}
@@ -698,8 +718,10 @@ function DocTypeRow({
             <span key={i}>
               {i > 0 && ", "}
               {src.discipline_name
-                ? `${src.discipline_name} (${formatStageLabel(src.stage_label)})`
-                : formatStageLabel(src.stage_label)}
+                ? `${src.role_label} ${src.discipline_name} (${formatStageLabel(src.stage_label)})`
+                : src.stage_label === "Toutes étapes"
+                  ? src.role_label
+                  : `${src.role_label} (${formatStageLabel(src.stage_label)})`}
             </span>
           ))}
         </p>

@@ -439,6 +439,173 @@ export async function computeRequiredDocsUnion(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// getPersonAccreditationCategories
+// Dérive les catégories d'accréditation d'une personne depuis person_roles
+// et les tables de profil, résolues via role_accreditation_mapping.
+// Retourne un tableau de { category, role_label } dédoublonné.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type PersonAccreditationCategory = {
+  category: string;
+  role_label: string;
+};
+
+export async function getPersonAccreditationCategories(
+  personId: string,
+): Promise<PersonAccreditationCategory[]> {
+  // 1. Récupérer les rôles actifs depuis person_roles
+  const { data: rolesData } = await supabase
+    .from("person_roles")
+    .select("role_type")
+    .eq("person_id", personId)
+    .eq("is_active", true);
+
+  const roleTypes = ((rolesData ?? []) as { role_type: string }[]).map((r) => r.role_type);
+
+  // 2. Pour chaque rôle, récupérer le rôle détaillé depuis les profils
+  // et résoudre la catégorie via role_accreditation_mapping
+  const categories: PersonAccreditationCategory[] = [];
+
+  // Récupérer les mappings d'avance (une seule requête)
+  const { data: mappingData } = await supabase
+    .from("role_accreditation_mapping")
+    .select("source_group, source_code, accreditation_category");
+
+  const mappings = new Map<string, string>();
+  (mappingData ?? []).forEach((m) => {
+    const row = m as { source_group: string; source_code: string; accreditation_category: string };
+    mappings.set(`${row.source_group}:${row.source_code}`, row.accreditation_category);
+  });
+
+  // Récupérer les libellés des catégories d'accréditation
+  const { data: catData } = await supabase
+    .from("app_type_items")
+    .select("code, label")
+    .eq("group_key", "accreditation_categories");
+
+  const catLabels = new Map<string, string>();
+  (catData ?? []).forEach((c) => {
+    const row = c as { code: string; label: string };
+    catLabels.set(row.code, row.label);
+  });
+
+  for (const roleType of roleTypes) {
+    if (roleType === "athlete") {
+      categories.push({ category: "athlete", role_label: catLabels.get("athlete") ?? "Athlète" });
+      continue;
+    }
+
+    if (roleType === "coach") {
+      // Récupérer le rôle détaillé depuis coach_profiles
+      const { data: cp } = await supabase
+        .from("coach_profiles")
+        .select("role")
+        .eq("person_id", personId)
+        .eq("is_active", true)
+        .limit(1)
+        .maybeSingle();
+
+      const coachRole = (cp as { role?: string } | null)?.role;
+      if (coachRole) {
+        const cat = mappings.get(`coach_roles:${coachRole}`) ?? "coach";
+        categories.push({ category: cat, role_label: catLabels.get(cat) ?? cat });
+      } else {
+        categories.push({ category: "coach", role_label: catLabels.get("coach") ?? "Coach" });
+      }
+      continue;
+    }
+
+    if (roleType === "federation_member") {
+      // Récupérer le rôle détaillé depuis federation_member_profiles
+      const { data: fmp } = await supabase
+        .from("federation_member_profiles")
+        .select("role")
+        .eq("person_id", personId)
+        .eq("is_active", true)
+        .limit(1)
+        .maybeSingle();
+
+      const fedRole = (fmp as { role?: string } | null)?.role;
+      if (fedRole) {
+        const cat = mappings.get(`federation_member_roles:${fedRole}`) ?? "official";
+        categories.push({ category: cat, role_label: catLabels.get(cat) ?? cat });
+      } else {
+        categories.push({ category: "official", role_label: catLabels.get("official") ?? "Officiel" });
+      }
+      continue;
+    }
+
+    // Rôles sans profil détaillé : official, volunteer, staff
+    const cat = mappings.get(`person_role_types:${roleType}`) ?? "official";
+    categories.push({ category: cat, role_label: catLabels.get(cat) ?? cat });
+  }
+
+  // Dédoublonner par catégorie (une personne peut avoir plusieurs profils coach
+  // mappés sur la même catégorie)
+  const seen = new Set<string>();
+  return categories.filter((c) => {
+    if (seen.has(c.category)) return false;
+    seen.add(c.category);
+    return true;
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// computeRequiredDocsMultiRole
+// Calcule l'union des requirements pour TOUS les rôles d'une personne.
+// Fusionne les résultats de computeRequiredDocsUnion par catégorie,
+// dédoublonne sur doc_type_code, concatène les sources.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function computeRequiredDocsMultiRole(
+  gameId: string,
+  categories: PersonAccreditationCategory[],
+  activeSelections: SelectionWithStage[],
+): Promise<RequiredDocWithSource[]> {
+  // Appeler computeRequiredDocsUnion pour chaque catégorie
+  const perRole = await Promise.all(
+    categories.map((cat) =>
+      computeRequiredDocsUnion(gameId, cat.category, activeSelections).then((docs) =>
+        docs.map((d) => ({
+          doc_type_code: d.doc_type_code,
+          sources: d.sources.map((s) => ({
+            ...s,
+            role_label: cat.role_label,
+          })),
+        })),
+      ),
+    ),
+  );
+
+  // Fusionner : dédoublonner sur doc_type_code, concaténer les sources
+  const docMap = new Map<string, { role_label: string; discipline_name: string | null; stage_label: string }[]>();
+
+  for (const docs of perRole) {
+    for (const doc of docs) {
+      const existing = docMap.get(doc.doc_type_code) ?? [];
+      // Concaténer les sources (en évitant les doublons exacts)
+      for (const src of doc.sources) {
+        const isDuplicate = existing.some(
+          (e) =>
+            e.role_label === src.role_label &&
+            e.discipline_name === src.discipline_name &&
+            e.stage_label === src.stage_label,
+        );
+        if (!isDuplicate) {
+          existing.push(src);
+        }
+      }
+      docMap.set(doc.doc_type_code, existing);
+    }
+  }
+
+  return Array.from(docMap.entries()).map(([doc_type_code, sources]) => ({
+    doc_type_code,
+    sources,
+  }));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // getPersonIdForAthlete
 // Récupère le person_id d'un athlete via athlete_profiles
 // ─────────────────────────────────────────────────────────────────────────────
