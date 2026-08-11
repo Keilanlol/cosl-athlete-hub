@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import { GENDERS } from "@/lib/types";
+import { useTypeGroup } from "@/hooks/useTypeItems";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -81,7 +81,16 @@ type Discipline = {
 
 type SortKey = "name" | "is_olympic" | "is_summer";
 
+// Fallback si le groupe "genders" n'est pas encore en base (migration 58 non appliquée)
+const GENDERS_FALLBACK: { code: string; label: string }[] = [
+  { code: "male", label: "Hommes" },
+  { code: "female", label: "Femmes" },
+  { code: "mixed", label: "Mixte" },
+];
+
 function SportsPage() {
+  const gendersHook = useTypeGroup("genders");
+  const genderItems = gendersHook.items.length > 0 ? gendersHook.items : GENDERS_FALLBACK;
   const [sports, setSports] = useState<Sport[] | null>(null);
   const [disciplines, setDisciplines] = useState<Discipline[]>([]);
   const [search, setSearch] = useState("");
@@ -251,7 +260,7 @@ function SportsPage() {
   };
 
   const genderLabel = (g: string) =>
-    GENDERS.find((x) => x.value === g)?.label ?? g;
+    genderItems.find((x) => x.code === g)?.label ?? g;
 
   return (
     <div className="space-y-6">
@@ -347,6 +356,7 @@ function SportsPage() {
         <DisciplineDialog
           sportId={discDialog.sportId}
           discipline={discDialog.discipline}
+          genderItems={genderItems}
           onOpenChange={(o) => !o && setDiscDialog(null)}
           onSave={saveDiscipline}
         />
@@ -627,11 +637,13 @@ function SportDialog({
 function DisciplineDialog({
   sportId,
   discipline,
+  genderItems,
   onOpenChange,
   onSave,
 }: {
   sportId: string;
   discipline: Discipline | null;
+  genderItems: { code: string; label: string }[];
   onOpenChange: (v: boolean) => void;
   onSave: (
     sportId: string,
@@ -693,8 +705,8 @@ function DisciplineDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {GENDERS.map((g) => (
-                  <SelectItem key={g.value} value={g.value}>
+                {genderItems.map((g) => (
+                  <SelectItem key={g.code} value={g.code}>
                     {g.label}
                   </SelectItem>
                 ))}
