@@ -508,13 +508,42 @@ function AccredDrawerBody({
     onReload();
   };
 
-  // Retirer un document de l'accréditation (supprime la liaison,
-  // le person_documents reste intact dans la fiche personne)
+  // Retirer un document de l'accréditation : marque unlinked_at au lieu de supprimer.
+  // Le trigger auto_link_person_docs respecte unlinked_at et ne relierait pas ce type.
+  // Le person_documents reste intact dans la fiche personne.
   const unlinkDoc = async (docType: string) => {
     const existing = accDocMap.get(docType);
     if (!existing) return;
-    await supabase.from("accreditation_documents").delete().eq("id", existing.id);
+    await supabase
+      .from("accreditation_documents")
+      .update({ unlinked_at: new Date().toISOString() })
+      .eq("id", existing.id);
     toast.success("Document retiré de l'accréditation");
+    onReload();
+  };
+
+  // Lier les documents disponibles : bouton explicite qui appelle la RPC.
+  // Force la liaison des documents valides pour les types requis non encore liés.
+  const linkAvailableDocs = async () => {
+    const { data, error } = await supabase.rpc("link_available_docs", {
+      p_accreditation_id: a.id,
+    });
+    if (error) {
+      toast.error("Échec de la liaison", { description: friendlyError(error) });
+      return;
+    }
+    const results = (data ?? []) as { doc_type_code: string; linked: boolean; reason: string }[];
+    const linked = results.filter((r) => r.linked).length;
+    const skipped = results.filter((r) => !r.linked).length;
+    if (linked > 0) {
+      toast.success(`${linked} document(s) lié(s)`, {
+        description: skipped > 0 ? `${skipped} non lié(s) : déjà lié, délié, ou aucun document valide` : undefined,
+      });
+    } else {
+      toast.info("Aucun document à lier", {
+        description: "Tous les types requis sont déjà liés, déliés, ou aucun document valide n'est disponible.",
+      });
+    }
     onReload();
   };
 
@@ -550,7 +579,12 @@ function AccredDrawerBody({
       </section>
 
       <section className="rounded-lg border border-border p-4">
-        <h3 className="text-sm font-semibold mb-3 text-foreground">Documents</h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-foreground">Documents</h3>
+          <Button variant="outline" size="sm" onClick={linkAvailableDocs}>
+            <RefreshCw className="mr-1 h-3 w-3" /> Lier les documents disponibles
+          </Button>
+        </div>
         {allDocCodes.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             Aucun document requis pour ce rôle. Configurez les requirements dans la page de configuration.
