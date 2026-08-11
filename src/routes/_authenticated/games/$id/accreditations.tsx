@@ -26,7 +26,7 @@ import {
   Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { computeRequiredDocs } from "@/lib/conformity-utils";
+import { computeRequiredDocs, getSelectionStageForPerson } from "@/lib/conformity-utils";
 import { useTypeGroup, clsForCode } from "@/hooks/useTypeItems";
 import type { PersonDocument } from "@/lib/types";
 
@@ -196,32 +196,14 @@ function GameAccreditationsPage() {
 
       setDrawerPersonId(pid);
 
-      // Récupérer l'étape de sélection de la personne pour ce Games
-      let selectionStage: string | null = null;
-      if (current.athlete_id) {
-        const { data: selData } = await supabase
-          .from("selections")
-          .select("status")
-          .eq("game_id", gameId)
-          .eq("athlete_id", current.athlete_id)
-          .in("status", ["pre_selected", "selected", "reserve"])
-          .order("status", { ascending: false })
-          .limit(1);
-        selectionStage = (selData?.[0] as { status?: string } | undefined)?.status ?? null;
-      } else if (pid) {
-        const { data: selData } = await supabase
-          .from("selections")
-          .select("status")
-          .eq("game_id", gameId)
-          .eq("person_id", pid)
-          .in("status", ["pre_selected", "selected", "reserve"])
-          .order("status", { ascending: false })
-          .limit(1);
-        selectionStage = (selData?.[0] as { status?: string } | undefined)?.status ?? null;
-      }
+      // Récupérer l'étape de sélection la plus avancée pour cette personne
+      // Résolution par person_id uniquement (identité unique depuis migration 45)
+      // Tri par priorité métier : selected > pre_selected > reserve
+      // Retourne undefined si aucune sélection → ne filtre pas les requirements
+      const selectionStage = await getSelectionStageForPerson(pid, gameId);
 
       const reqPromise = current.role_code
-        ? computeRequiredDocs(gameId, current.role_code, current.athlete_id ? selectionStage : null)
+        ? computeRequiredDocs(gameId, current.role_code, selectionStage)
         : Promise.resolve([]);
 
       const docsPromise = supabase

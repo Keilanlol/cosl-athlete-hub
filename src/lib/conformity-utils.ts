@@ -10,6 +10,26 @@ export type RequiredDoc = {
   selection_stage: string | null;
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SELECTION_STAGE_PRIORITY
+// Ordre explicite des étapes de sélection, du plus avancé au moins avancé.
+// NE PAS utiliser l'ordre de l'enum selection_status (Postgres trie par
+// ordre de déclaration : pre_selected < selected < reserve < rejected).
+// Règle métier validée : selected (Short List) > pre_selected (Long List) > reserve.
+// Partagé avec la vue SQL v_accreditation_completeness (migration 61).
+// ─────────────────────────────────────────────────────────────────────────────
+export const SELECTION_STAGE_PRIORITY: Record<string, number> = {
+  selected: 1,
+  pre_selected: 2,
+  reserve: 3,
+};
+
+export function compareStagePriority(a: string, b: string): number {
+  const pa = SELECTION_STAGE_PRIORITY[a] ?? 99;
+  const pb = SELECTION_STAGE_PRIORITY[b] ?? 99;
+  return pa - pb; // plus petit = plus avancé
+}
+
 export type MissingDoc = {
   doc_type_code: string;
   selection_stage: string | null;
@@ -211,21 +231,35 @@ export async function resolveSelectionStageLabel(stage: string | null): Promise<
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// getSelectionStageForAthlete
-// Récupère le statut de sélection d'un athlete pour un Games donné
+// getSelectionStageForPerson
+// Récupère l'étape de sélection la plus avancée d'une personne pour un Games.
+// Résout par person_id (identité unique depuis la migration 45).
+// Tri par priorité métier : selected > pre_selected > reserve.
+// Retourne undefined si aucune sélection trouvée (pour ne pas filtrer).
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function getSelectionStageForAthlete(
-  athleteId: string,
+export async function getSelectionStageForPerson(
+  personId: string,
   gameId: string,
-): Promise<string | null> {
+): Promise<string | undefined> {
   const { data } = await supabase
     .from("selections")
     .select("status")
-    .eq("athlete_id", athleteId)
     .eq("game_id", gameId)
-    .maybeSingle();
-  return (data as { status?: string } | null)?.status ?? null;
+    .eq("person_id", personId)
+    .in("status", ["pre_selected", "selected", "reserve"]);
+
+  const statuses = ((data ?? []) as { status?: string }[]).map((r) => r.status);
+  if (statuses.length === 0) return undefined;
+
+  // Trier par priorité métier (selected = 1, pre_selected = 2, reserve = 3)
+  statuses.sort((a, b) => {
+    const pa = SELECTION_STAGE_PRIORITY[a ?? ""] ?? 99;
+    const pb = SELECTION_STAGE_PRIORITY[b ?? ""] ?? 99;
+    return pa - pb;
+  });
+
+  return statuses[0];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
