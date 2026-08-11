@@ -19,6 +19,9 @@ import {
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Tabs, TabsContent, TabsList, TabsTrigger,
+} from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { TableSkeleton, EmptyState } from "@/components/DataTableShell";
 import { FileUpload } from "@/components/FileUpload";
@@ -512,6 +515,83 @@ function AccredDrawerBody({
     ...a.docs.map((d) => d.person_doc?.doc_type).filter(Boolean) as string[],
   ]));
 
+  // Construire les onglets par rôle à partir des provenances des requiredDocs.
+  // Chaque onglet regroupe les doc_types dont au moins une source a ce role_label.
+  // Un doc_type exigé par plusieurs rôles apparaît dans chacun de leurs onglets.
+  const roleTabs = categories.length > 0
+    ? categories.map((cat) => {
+        const docCodes = allDocCodes.filter((code) => {
+          const doc = requiredDocs.find((d) => d.doc_type_code === code);
+          return doc?.sources.some((s) => s.role_label === cat.role_label);
+        });
+        return { label: cat.role_label, docCodes, docCount: docCodes.length };
+      }).filter((tab) => tab.docCount > 0)
+    : [];
+
+  // Fonction de rendu d'une ligne de document (réutilisée dans onglets et liste plate)
+  const renderDocRow = (docType: string) => {
+    const accDoc = accDocMap.get(docType);
+    const candidates = personDocsByType.get(docType) ?? [];
+    const label = docTypes.find((t) => t.code === docType)?.label ?? docType;
+    const isRequired = requiredDocCodes.includes(docType);
+    const docWithSource = requiredDocs.find((d) => d.doc_type_code === docType);
+    const sources = docWithSource?.sources ?? [];
+    const docStatus = accDoc
+      ? getDocStatusLabel(accDoc.status)
+      : candidates.length > 0
+      ? getDocStatusLabel(candidates[0].status)
+      : "Manquant";
+    const statusCls = accDoc
+      ? clsForCode("document_statuses", accDoc.status)
+      : candidates.length > 0
+      ? clsForCode("document_statuses", candidates[0].status)
+      : "bg-slate-200 text-foreground";
+
+    return (
+      <DocTypeRow
+        key={docType}
+        docType={docType}
+        label={label}
+        isRequired={isRequired}
+        sources={sources}
+        accDoc={accDoc}
+        candidates={candidates}
+        docStatus={docStatus}
+        statusCls={statusCls}
+        personId={personId}
+        getDocStatusLabel={getDocStatusLabel}
+        onSelectPersonDoc={(pid) => selectPersonDoc(docType, pid)}
+        onUnlink={() => unlinkDoc(docType)}
+        onDocStatus={(s) => accDoc && onDocStatus(accDoc, s)}
+        onUpload={async (url, fileName) => {
+          if (!personId) return;
+          const { data: atiRow } = await supabase
+            .from("app_type_items")
+            .select("category")
+            .eq("group_key", "document_types")
+            .eq("code", docType)
+            .maybeSingle();
+          const category = (atiRow as { category?: string } | null)?.category ?? "admin";
+          const { data: inserted } = await supabase.from("person_documents").insert({
+            person_id: personId,
+            doc_type: docType,
+            category,
+            file_name: fileName,
+            file_url: url,
+            status: "pending",
+          }).select("id").single();
+
+          const newDocId = (inserted as { id?: string } | null)?.id;
+          if (newDocId) {
+            await selectPersonDoc(docType, newDocId);
+          } else {
+            onReload();
+          }
+        }}
+      />
+    );
+  };
+
   // Handle selecting a person document for an accreditation doc type
   // Écrit person_document_id — plus de recopie de file_name/file_url
   const selectPersonDoc = async (docType: string, personDocId: string) => {
@@ -612,76 +692,30 @@ function AccredDrawerBody({
         </div>
         {allDocCodes.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Aucun document requis pour ce rôle. Configurez les requirements dans la page de configuration.
+            Aucun document requis. Configurez les requirements dans la page de configuration.
           </p>
-        ) : (
+        ) : roleTabs.length <= 1 ? (
           <div className="space-y-3">
-            {allDocCodes.map((docType) => {
-              const accDoc = accDocMap.get(docType);
-              const candidates = personDocsByType.get(docType) ?? [];
-              const label = docTypes.find((t) => t.code === docType)?.label ?? docType;
-              const isRequired = requiredDocCodes.includes(docType);
-              // Provenances : liste des (discipline + stage) qui exigent ce document
-              const docWithSource = requiredDocs.find((d) => d.doc_type_code === docType);
-              const sources = docWithSource?.sources ?? [];
-              const docStatus = accDoc
-                ? getDocStatusLabel(accDoc.status)
-                : candidates.length > 0
-                ? getDocStatusLabel(candidates[0].status)
-                : "Manquant";
-              const statusCls = accDoc
-                ? clsForCode("document_statuses", accDoc.status)
-                : candidates.length > 0
-                ? clsForCode("document_statuses", candidates[0].status)
-                : "bg-slate-200 text-foreground";
-
-              return (
-                <DocTypeRow
-                  key={docType}
-                  docType={docType}
-                  label={label}
-                  isRequired={isRequired}
-                  sources={sources}
-                  accDoc={accDoc}
-                  candidates={candidates}
-                  docStatus={docStatus}
-                  statusCls={statusCls}
-                  personId={personId}
-                  getDocStatusLabel={getDocStatusLabel}
-                  onSelectPersonDoc={(pid) => selectPersonDoc(docType, pid)}
-                  onUnlink={() => unlinkDoc(docType)}
-                  onDocStatus={(s) => accDoc && onDocStatus(accDoc, s)}
-                  onUpload={async (url, fileName) => {
-                    if (!personId) return;
-                    // Lire la catégorie depuis app_type_items (groupe document_types)
-                    const { data: atiRow } = await supabase
-                      .from("app_type_items")
-                      .select("category")
-                      .eq("group_key", "document_types")
-                      .eq("code", docType)
-                      .maybeSingle();
-                    const category = (atiRow as { category?: string } | null)?.category ?? "admin";
-                    // Upload crée un person_document, puis le lie à l'accréditation
-                    const { data: inserted } = await supabase.from("person_documents").insert({
-                      person_id: personId,
-                      doc_type: docType,
-                      category,
-                      file_name: fileName,
-                      file_url: url,
-                      status: "pending",
-                    }).select("id").single();
-
-                    const newDocId = (inserted as { id?: string } | null)?.id;
-                    if (newDocId) {
-                      await selectPersonDoc(docType, newDocId);
-                    } else {
-                      onReload();
-                    }
-                  }}
-                />
-              );
-            })}
+            {allDocCodes.map((docType) => renderDocRow(docType))}
           </div>
+        ) : (
+          <Tabs defaultValue={roleTabs[0].label} className="w-full">
+            <TabsList className="w-full flex-wrap h-auto">
+              {roleTabs.map((tab) => (
+                <TabsTrigger key={tab.label} value={tab.label} className="text-xs">
+                  {tab.label}
+                  <span className="ml-1.5 text-[10px] text-muted-foreground">
+                    {tab.docCount}
+                  </span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            {roleTabs.map((tab) => (
+              <TabsContent key={tab.label} value={tab.label} className="space-y-3 mt-3">
+                {tab.docCodes.map((docType) => renderDocRow(docType))}
+              </TabsContent>
+            ))}
+          </Tabs>
         )}
       </section>
 
