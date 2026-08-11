@@ -217,6 +217,25 @@ function CompetitionsPage() {
       toast.info("Cet athlète est déjà dans l'épreuve");
       return;
     }
+    // Validation du genre : refuser si l'athlète ne correspond pas à l'épreuve
+    const athlete = athletes.find((a) => a.id === athleteId);
+    if (athlete && viewComp.gender && viewComp.gender !== "mixed" && athlete.gender !== viewComp.gender) {
+      const genderLabel = gendersHook.getLabel(viewComp.gender);
+      toast.error("Genre incompatible", {
+        description: `Cette épreuve est ${genderLabel.toLowerCase()}. L'athlète ne peut pas y participer.`,
+      });
+      return;
+    }
+    // Validation du sport : refuser si l'athlète n'est pas sélectionné dans ce sport
+    const sportKey = viewComp.sport_id ?? "__no_sport__";
+    const sportAthletes = selectedAthletes.get(sportKey) ?? new Set<string>();
+    if (!sportAthletes.has(athleteId)) {
+      const sportName = sports.find((s) => s.id === viewComp.sport_id)?.name ?? "ce sport";
+      toast.error("Sport incompatible", {
+        description: `L'athlète n'est pas sélectionné(e) en ${sportName} pour ce Games.`,
+      });
+      return;
+    }
     const { error } = await supabase.from("athlete_results").insert({
       athlete_id: athleteId,
       game_id: id,
@@ -301,24 +320,28 @@ function CompetitionsPage() {
   };
 
   // Available athletes for the picker: only those selected for this Games
-  // (active selections), filtered by sport/discipline if the competition has one,
+  // (active selections), filtered by gender and sport of the competition,
   // and not already in the competition.
-  const [selectedAthletes, setSelectedAthletes] = useState<Set<string>>(new Set());
+  const [selectedAthletes, setSelectedAthletes] = useState<Map<string, Set<string>>>(new Map());
 
   useEffect(() => {
-    // Load selected athletes for this game (person_id resolved from selections)
+    // Load selected athletes for this game, indexed by sport_id
     const loadSelected = async () => {
       const { data: sels } = await supabase
         .from("selections")
-        .select("athlete_id, person_id, sport_id, discipline_id, status")
+        .select("athlete_id, sport_id, status")
         .eq("game_id", id)
         .in("status", ["pre_selected", "selected", "reserve"]);
-      const ids = new Set<string>();
+      const bySport = new Map<string, Set<string>>();
       (sels ?? []).forEach((s) => {
-        const sel = s as { athlete_id: string | null; person_id: string | null; sport_id: string | null; discipline_id: string | null };
-        if (sel.athlete_id) ids.add(sel.athlete_id);
+        const sel = s as { athlete_id: string | null; sport_id: string | null; status: string };
+        if (!sel.athlete_id) return;
+        const sportKey = sel.sport_id ?? "__no_sport__";
+        const set = bySport.get(sportKey) ?? new Set<string>();
+        set.add(sel.athlete_id);
+        bySport.set(sportKey, set);
       });
-      setSelectedAthletes(ids);
+      setSelectedAthletes(bySport);
     };
     loadSelected();
   }, [id]);
@@ -326,18 +349,22 @@ function CompetitionsPage() {
   const availableAthletes = useMemo(() => {
     if (!viewComp) return [];
     const inComp = new Set(compParticipants.map((p) => p.athlete_id));
-    let pool = athletes.filter((a) => selectedAthletes.has(a.id) && !inComp.has(a.id));
-    // Filtrer par sport si l'épreuve en a un
-    if (viewComp.sport_id) {
-      // Les athlètes peuvent être sélectionnés sur n'importe quel sport,
-      // on les montre tous mais en priorité ceux du sport de l'épreuve
-      pool.sort((a, b) => {
-        // Pas de filtre strict par sport — un athlète peut être sélectionné
-        // en athlétisme mais courir une épreuve spécifique
-        return 0;
-      });
+
+    // Filtre par sport : athlètes sélectionnés dans le sport de l'épreuve
+    const sportKey = viewComp.sport_id ?? "__no_sport__";
+    const sportAthletes = selectedAthletes.get(sportKey) ?? new Set<string>();
+
+    let pool = athletes.filter((a) =>
+      sportAthletes.has(a.id) && !inComp.has(a.id)
+    );
+
+    // Filtre par genre : l'épreuve a un gender, l'athlète doit correspondre.
+    // 'mixed' = tous les genres admis.
+    if (viewComp.gender && viewComp.gender !== "mixed") {
+      pool = pool.filter((a) => a.gender === viewComp.gender);
     }
-    return pool.slice(0, 200);
+
+    return pool;
   }, [athletes, compParticipants, viewComp, selectedAthletes]);
 
   const filteredResults = useMemo(() => {
