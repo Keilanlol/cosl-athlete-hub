@@ -73,11 +73,8 @@ export const supabaseConfigError = supabaseConfigured ? null : configErrorMessag
 // Remplace l'ancienne fonction
 export const usernameToEmail = async (username: string): Promise<string> => {
   const { data, error } = await supabase
-    .from("v_username_lookup")
-    .select("email")
-    .eq("username", username.trim().toLowerCase())
-    .maybeSingle();
+    .rpc("resolve_username_email", { p_username: username.trim().toLowerCase() });
 
-  if (error || !data?.email) throw new Error("Utilisateur introuvable.");
-  return data.email;
+  if (error || !data) throw new Error("Utilisateur introuvable.");
+  return data;
 };
