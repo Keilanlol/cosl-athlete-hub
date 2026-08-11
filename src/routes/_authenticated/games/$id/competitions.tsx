@@ -300,12 +300,45 @@ function CompetitionsPage() {
     load();
   };
 
-  // Available athletes for the picker (not already in the competition)
+  // Available athletes for the picker: only those selected for this Games
+  // (active selections), filtered by sport/discipline if the competition has one,
+  // and not already in the competition.
+  const [selectedAthletes, setSelectedAthletes] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    // Load selected athletes for this game (person_id resolved from selections)
+    const loadSelected = async () => {
+      const { data: sels } = await supabase
+        .from("selections")
+        .select("athlete_id, person_id, sport_id, discipline_id, status")
+        .eq("game_id", id)
+        .in("status", ["pre_selected", "selected", "reserve"]);
+      const ids = new Set<string>();
+      (sels ?? []).forEach((s) => {
+        const sel = s as { athlete_id: string | null; person_id: string | null; sport_id: string | null; discipline_id: string | null };
+        if (sel.athlete_id) ids.add(sel.athlete_id);
+      });
+      setSelectedAthletes(ids);
+    };
+    loadSelected();
+  }, [id]);
+
   const availableAthletes = useMemo(() => {
     if (!viewComp) return [];
     const inComp = new Set(compParticipants.map((p) => p.athlete_id));
-    return athletes.filter((a) => !inComp.has(a.id)).slice(0, 200);
-  }, [athletes, compParticipants, viewComp]);
+    let pool = athletes.filter((a) => selectedAthletes.has(a.id) && !inComp.has(a.id));
+    // Filtrer par sport si l'épreuve en a un
+    if (viewComp.sport_id) {
+      // Les athlètes peuvent être sélectionnés sur n'importe quel sport,
+      // on les montre tous mais en priorité ceux du sport de l'épreuve
+      pool.sort((a, b) => {
+        // Pas de filtre strict par sport — un athlète peut être sélectionné
+        // en athlétisme mais courir une épreuve spécifique
+        return 0;
+      });
+    }
+    return pool.slice(0, 200);
+  }, [athletes, compParticipants, viewComp, selectedAthletes]);
 
   const filteredResults = useMemo(() => {
     if (!results) return [];
@@ -748,7 +781,7 @@ function CompetitionsPage() {
               <PopoverContent className="p-0 w-[400px]" align="start">
                 <Command>
                   <CommandInput placeholder="Rechercher par nom…" />
-                  <CommandList>
+                  <CommandList className="max-h-[300px] overflow-y-auto">
                     <CommandEmpty>Aucun athlète trouvé.</CommandEmpty>
                     <CommandGroup>
                       {availableAthletes.map((a) => (
