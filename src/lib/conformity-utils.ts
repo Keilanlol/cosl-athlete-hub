@@ -15,8 +15,11 @@ export type RequiredDoc = {
 // Ordre explicite des étapes de sélection, du plus avancé au moins avancé.
 // NE PAS utiliser l'ordre de l'enum selection_status (Postgres trie par
 // ordre de déclaration : pre_selected < selected < reserve < rejected).
-// Règle métier validée : selected (Short List) > pre_selected (Long List) > reserve.
-// Partagé avec la vue SQL v_accreditation_completeness (migration 61).
+//
+// CHANGEMENT D'USAGE : cette priorité ne pilote PLUS le choix des documents.
+// Les documents sont now l'UNION de tous les stages actifs (Decision Y).
+// Elle reste utilisée uniquement pour afficher un STATUT SYNTHÉTIQUE dans le
+// tableau des accréditations (ex: "Tom — Short List" plutôt que "Short List + Réserve").
 // ─────────────────────────────────────────────────────────────────────────────
 export const SELECTION_STAGE_PRIORITY: Record<string, number> = {
   selected: 1,
@@ -30,6 +33,29 @@ export function compareStagePriority(a: string, b: string): number {
   return pa - pb; // plus petit = plus avancé
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SelectionWithStage — une sélection avec son stage et sa discipline
+// ─────────────────────────────────────────────────────────────────────────────
+export type SelectionWithStage = {
+  id: string;
+  status: string;
+  sport_id: string | null;
+  sport_name: string | null;
+  discipline_id: string | null;
+  discipline_name: string | null;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RequiredDocWithSource — document requis avec ses provenances (rôle + discipline + stage)
+// ─────────────────────────────────────────────────────────────────────────────
+export type RequiredDocWithSource = {
+  doc_type_code: string;
+  sources: { role_label: string; discipline_name: string | null; stage_label: string }[];
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MissingDoc
+// ─────────────────────────────────────────────────────────────────────────────
 export type MissingDoc = {
   doc_type_code: string;
   selection_stage: string | null;
@@ -231,11 +257,11 @@ export async function resolveSelectionStageLabel(stage: string | null): Promise<
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// getSelectionStageForPerson
-// Récupère l'étape de sélection la plus avancée d'une personne pour un Games.
-// Résout par person_id (identité unique depuis la migration 45).
-// Tri par priorité métier : selected > pre_selected > reserve.
-// Retourne undefined si aucune sélection trouvée (pour ne pas filtrer).
+// getSelectionStageForPerson — STATUT SYNTHÉTIQUE
+// Retourne l'étape la plus avancée d'une personne pour un Games.
+// Utilise la priorité métier : selected > pre_selected > reserve.
+// Sert uniquement pour l'affichage synthétique dans le tableau des accréditations.
+// NE PILOTE PAS le choix des documents (qui est l'union de tous les stages).
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function getSelectionStageForPerson(
@@ -260,6 +286,127 @@ export async function getSelectionStageForPerson(
   });
 
   return statuses[0];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// getActiveSelectionsForPerson
+// Retourne TOUTES les sélections actives (pre_selected, selected, reserve)
+// d'une personne pour un Games, avec le nom du sport et de la discipline.
+// Sert à calculer l'union des requirements et le marquage par discipline.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function getActiveSelectionsForPerson(
+  personId: string,
+  gameId: string,
+): Promise<SelectionWithStage[]> {
+  const { data, error } = await supabase
+    .from("selections")
+    .select(`
+      id,
+      status,
+      sport_id,
+      sport:sports(name),
+      discipline_id,
+      discipline:disciplines(name)
+    `)
+    .eq("game_id", gameId)
+    .eq("person_id", personId)
+    .in("status", ["pre_selected", "selected", "reserve"]);
+
+  if (error || !data) return [];
+
+  return (data as unknown[]).map((row) => {
+    const r = row as {
+      id: string;
+      status: string;
+      sport_id: string | null;
+      sport: { name: string } | null;
+      discipline_id: string | null;
+      discipline: { name: string } | null;
+    };
+    return {
+      id: r.id,
+      status: r.status,
+      sport_id: r.sport_id,
+      sport_name: r.sport?.name ?? null,
+      discipline_id: r.discipline_id,
+      discipline_name: r.discipline?.name ?? null,
+    };
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// computeRequiredDocsUnion
+// Récupère les documents requis en UNION sur tous les stages actifs.
+// Pour chaque document, liste ses provenances (discipline + stage).
+// Les requirements sans stage (selection_stage IS NULL) sont toujours inclus.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function computeRequiredDocsUnion(
+  gameId: string,
+  accreditationCategory: string,
+  activeSelections: SelectionWithStage[],
+): Promise<RequiredDocWithSource[]> {
+  // Récupérer tous les requirements pour ce rôle et ce game
+  const { data, error } = await supabase
+    .from("accreditation_requirements")
+    .select("doc_type_code, selection_stage, required")
+    .eq("game_id", gameId)
+    .eq("role_code", accreditationCategory)
+    .eq("required", true);
+
+  if (error || !data) return [];
+
+  const requirements = data as { doc_type_code: string; selection_stage: string | null }[];
+
+  // Les stages actifs de cette personne
+  const activeStages = new Set(activeSelections.map((s) => s.status));
+
+  // Indexer les sélections par stage pour retrouver la discipline
+  const selectionsByStage = new Map<string, SelectionWithStage[]>();
+  for (const sel of activeSelections) {
+    const list = selectionsByStage.get(sel.status) ?? [];
+    list.push(sel);
+    selectionsByStage.set(sel.status, list);
+  }
+
+  // Filtrer les requirements : sans stage (toujours) OU avec un stage actif
+  const applicableReqs = requirements.filter(
+    (r) => r.selection_stage === null || activeStages.has(r.selection_stage),
+  );
+
+  // Grouper par doc_type_code et construire les provenances
+  const docMap = new Map<string, { role_label: string; discipline_name: string | null; stage_label: string }[]>();
+
+  for (const req of applicableReqs) {
+    const existing = docMap.get(req.doc_type_code) ?? [];
+
+    if (req.selection_stage === null) {
+      // Requirement sans stage : toujours exigé, pas de provenance discipline
+      existing.push({
+        role_label: accreditationCategory,
+        discipline_name: null,
+        stage_label: "Toutes étapes",
+      });
+    } else {
+      // Requirement avec stage : provenance = chaque sélection à ce stage
+      const sels = selectionsByStage.get(req.selection_stage) ?? [];
+      for (const sel of sels) {
+        existing.push({
+          role_label: accreditationCategory,
+          discipline_name: sel.discipline_name ?? sel.sport_name,
+          stage_label: sel.status,
+        });
+      }
+    }
+
+    docMap.set(req.doc_type_code, existing);
+  }
+
+  return Array.from(docMap.entries()).map(([doc_type_code, sources]) => ({
+    doc_type_code,
+    sources,
+  }));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

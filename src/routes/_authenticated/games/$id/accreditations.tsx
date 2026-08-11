@@ -26,7 +26,7 @@ import {
   Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { computeRequiredDocs, getSelectionStageForPerson } from "@/lib/conformity-utils";
+import { computeRequiredDocsUnion, getActiveSelectionsForPerson, type RequiredDocWithSource, type SelectionWithStage } from "@/lib/conformity-utils";
 import { useTypeGroup, clsForCode } from "@/hooks/useTypeItems";
 import type { PersonDocument } from "@/lib/types";
 
@@ -69,7 +69,8 @@ function GameAccreditationsPage() {
   const [rejectReason, setRejectReason] = useState("");
   const [drawerPersonDocs, setDrawerPersonDocs] = useState<PersonDocument[]>([]);
   const [drawerPersonId, setDrawerPersonId] = useState<string | null>(null);
-  const [drawerRequiredDocs, setDrawerRequiredDocs] = useState<string[]>([]);
+  const [drawerRequiredDocs, setDrawerRequiredDocs] = useState<RequiredDocWithSource[]>([]);
+  const [drawerSelections, setDrawerSelections] = useState<SelectionWithStage[]>([]);
   const [drawerReloadKey, setDrawerReloadKey] = useState(0);
   const [completenessMap, setCompletenessMap] = useState<Record<string, { required: number; provided: number }>>({});
 
@@ -196,15 +197,17 @@ function GameAccreditationsPage() {
 
       setDrawerPersonId(pid);
 
-      // Récupérer l'étape de sélection la plus avancée pour cette personne
-      // Résolution par person_id uniquement (identité unique depuis migration 45)
-      // Tri par priorité métier : selected > pre_selected > reserve
-      // Retourne undefined si aucune sélection → ne filtre pas les requirements
-      const selectionStage = await getSelectionStageForPerson(pid, gameId);
+      // Récupérer TOUTES les sélections actives de la personne pour ce Games
+      // (par person_id, identité unique depuis migration 45).
+      // L'union des requirements de tous les stages actifs détermine les
+      // documents à afficher. Le marquage par discipline + stage indique
+      // la provenance de chaque exigence.
+      const activeSelections = await getActiveSelectionsForPerson(pid, gameId);
+      setDrawerSelections(activeSelections);
 
       const reqPromise = current.role_code
-        ? computeRequiredDocs(gameId, current.role_code, selectionStage)
-        : Promise.resolve([]);
+        ? computeRequiredDocsUnion(gameId, current.role_code, activeSelections)
+        : Promise.resolve([] as RequiredDocWithSource[]);
 
       const docsPromise = supabase
         .from("person_documents")
@@ -213,7 +216,7 @@ function GameAccreditationsPage() {
         .order("created_at", { ascending: false });
 
       const [reqDocs, docsRes] = await Promise.all([reqPromise, docsPromise]);
-      setDrawerRequiredDocs(reqDocs.map((d) => d.doc_type_code));
+      setDrawerRequiredDocs(reqDocs);
       setDrawerPersonDocs((docsRes.data ?? []) as PersonDocument[]);
     };
 
@@ -382,7 +385,8 @@ function GameAccreditationsPage() {
                   accreditation={current}
                   completeness={getCompleteness(current)}
                   docTypes={docTypes}
-                  requiredDocCodes={drawerRequiredDocs}
+                  requiredDocs={drawerRequiredDocs}
+                  selections={drawerSelections}
                   personDocs={drawerPersonDocs}
                   personId={drawerPersonId}
                   gameId={gameId}
@@ -427,7 +431,7 @@ function GameAccreditationsPage() {
 }
 
 function AccredDrawerBody({
-  accreditation, completeness, docTypes, requiredDocCodes, personDocs, personId, gameId,
+  accreditation, completeness, docTypes, requiredDocs, selections, personDocs, personId, gameId,
   getDocStatusLabel, getRoleLabel, getAccredStatusLabel,
   onReload, onDocStatus,
   onSubmit, onValidate, onReject,
@@ -435,7 +439,8 @@ function AccredDrawerBody({
   accreditation: Accreditation;
   completeness: number;
   docTypes: { code: string; label: string }[];
-  requiredDocCodes: string[];
+  requiredDocs: RequiredDocWithSource[];
+  selections: SelectionWithStage[];
   personDocs: PersonDocument[];
   personId: string | null;
   gameId: string;
@@ -468,7 +473,8 @@ function AccredDrawerBody({
     personDocsByType.get(d.doc_type)!.push(d);
   });
 
-  // All doc codes to display: required docs + any existing acc docs
+  // All doc codes to display: required docs (union) + any existing acc docs
+  const requiredDocCodes = requiredDocs.map((d) => d.doc_type_code);
   const allDocCodes = Array.from(new Set([
     ...requiredDocCodes,
     ...a.docs.map((d) => d.person_doc?.doc_type).filter(Boolean) as string[],
@@ -536,6 +542,9 @@ function AccredDrawerBody({
               const candidates = personDocsByType.get(docType) ?? [];
               const label = docTypes.find((t) => t.code === docType)?.label ?? docType;
               const isRequired = requiredDocCodes.includes(docType);
+              // Provenances : liste des (discipline + stage) qui exigent ce document
+              const docWithSource = requiredDocs.find((d) => d.doc_type_code === docType);
+              const sources = docWithSource?.sources ?? [];
               const docStatus = accDoc
                 ? getDocStatusLabel(accDoc.status)
                 : candidates.length > 0
@@ -553,6 +562,7 @@ function AccredDrawerBody({
                   docType={docType}
                   label={label}
                   isRequired={isRequired}
+                  sources={sources}
                   accDoc={accDoc}
                   candidates={candidates}
                   docStatus={docStatus}
@@ -615,13 +625,25 @@ function AccredDrawerBody({
 // DocTypeRow — une ligne par type de document requis
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Libellés courts pour les stages de sélection
+const STAGE_LABELS: Record<string, string> = {
+  selected: "Short List",
+  pre_selected: "Long List",
+  reserve: "Réserve",
+};
+
+function formatStageLabel(stage: string): string {
+  return STAGE_LABELS[stage] ?? stage;
+}
+
 function DocTypeRow({
-  docType, label, isRequired, accDoc, candidates, docStatus, statusCls, personId,
+  docType, label, isRequired, sources, accDoc, candidates, docStatus, statusCls, personId,
   getDocStatusLabel, onSelectPersonDoc, onUnlink, onDocStatus, onUpload,
 }: {
   docType: string;
   label: string;
   isRequired: boolean;
+  sources: { role_label: string; discipline_name: string | null; stage_label: string }[];
   accDoc: AccDoc | undefined;
   candidates: PersonDocument[];
   docStatus: string;
@@ -667,6 +689,21 @@ function DocTypeRow({
           </Button>
         )}
       </div>
+
+      {/* Provenances : liste des disciplines + stages qui exigent ce document */}
+      {sources.length > 0 && (
+        <p className="text-xs text-muted-foreground">
+          Requis pour :{" "}
+          {sources.map((src, i) => (
+            <span key={i}>
+              {i > 0 && ", "}
+              {src.discipline_name
+                ? `${src.discipline_name} (${formatStageLabel(src.stage_label)})`
+                : formatStageLabel(src.stage_label)}
+            </span>
+          ))}
+        </p>
+      )}
 
       {/* Document preview — lié (rattaché) ou proposé (non lié) */}
       {displayDoc && (
