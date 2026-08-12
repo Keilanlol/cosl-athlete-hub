@@ -157,12 +157,15 @@ function GameAccreditationsPage() {
     };
   }, [accreds]);
 
-  // Délégation : accréditations validées ET complètes (100%)
+  // Délégation : accréditations validées.
+  // Si la complétude est disponible (vue v_accreditation_completeness),
+  // exige aussi 100% (provided >= required). Sinon, valide seul.
   const delegationAccreds = useMemo(() => {
     return (accreds ?? []).filter((a) => {
       if (a.status !== "validated") return false;
       const c = completenessMap[a.id];
-      if (!c || c.required === 0) return false;
+      if (!c) return true; // complétude indisponible → valide seul
+      if (c.required === 0) return true; // pas de requirements → valide
       return c.provided >= c.required;
     }).sort((a, b) => a.full_name.localeCompare(b.full_name, "fr"));
   }, [accreds, completenessMap]);
